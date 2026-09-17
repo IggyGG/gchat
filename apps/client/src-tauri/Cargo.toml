@@ -3,6 +3,9 @@ name = "gchat-desktop"
 version = "0.1.0"
 edition = "2021"
 publish = false
+license = "MIT OR Apache-2.0"
+rust-version = "1.98"
+description = "GChat desktop application for GComs"
 
 [lib]
 name = "gchat_native"

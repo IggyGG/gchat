@@ -239,6 +239,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
         network_recovery: !args.no_network_bootstrap,
         local_fixture: args.local_fixture,
     };
+    let create_archive = !config.archive.exists();
     let endpoint = config.chat_endpoint();
     let host = InstanceHost::new(config)?;
     if !args.interactive {
@@ -285,7 +286,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
                         instance_id: Some(host.instance_id().into()),
                         request: gchat_api::Request::Unlock {
                             passphrase: secret.to_string(),
-                            create: false,
+                            create: create_archive,
                         },
                     })
                     .await;

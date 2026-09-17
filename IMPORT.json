@@ -3,5 +3,11 @@
   "source_revision": "1c27abd1332c96130cbe8a97077ecae1d3e71f3e",
   "date": "2026-09-17",
   "status": "release preparation; not published",
-  "excluded_integrations": []
+  "excluded_integrations": [
+    "central and machine component hosts",
+    "machine shell and file integration implementations",
+    "private recorder and installer integrations",
+    "private biometric and managed daemon integrations",
+    "private history and test artifacts"
+  ]
 }

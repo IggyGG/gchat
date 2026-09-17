@@ -882,6 +882,37 @@ pub fn build_frwd_policy(
     Ok(Some(policy))
 }
 
+async fn forward_protocol_events(
+    mut source: mpsc::Receiver<ClientEvent>,
+    sender: mpsc::Sender<ClientEvent>,
+    runtime: std::sync::Weak<Inner>,
+    ownership: Option<CentralPartition>,
+) {
+    while let Some(event) = tokio::select! {
+        biased;
+        _ = sender.closed() => None,
+        event = source.recv() => event,
+    } {
+        if matches!(&event, ClientEvent::DirectMessage { body, .. } if central_reserved(&ownership, body))
+        {
+            continue;
+        }
+        let Some(inner) = runtime.upgrade() else {
+            break;
+        };
+        if ProtocolRuntime(inner).save().await.is_err() || sender.send(event).await.is_err() {
+            break;
+        }
+    }
+}
+
+fn central_reserved(ownership: &Option<CentralPartition>, body: &[u8]) -> bool {
+    ownership.as_ref().is_some_and(|(_, scoped)| {
+        gcoms_sdk::component::RoutedApplication::decode(body)
+            .is_ok_and(|route| scoped.contains(&route.destination))
+    })
+}
+
 #[cfg(test)]
 mod frwd_policy_tests {
     use super::build_frwd_policy;
@@ -918,35 +949,4 @@ mod frwd_policy_tests {
         let error = build_frwd_policy(&["not-a-cidr".to_string()], 8443).unwrap_err();
         assert!(error.contains("not-a-cidr"));
     }
-}
-
-async fn forward_protocol_events(
-    mut source: mpsc::Receiver<ClientEvent>,
-    sender: mpsc::Sender<ClientEvent>,
-    runtime: std::sync::Weak<Inner>,
-    ownership: Option<CentralPartition>,
-) {
-    while let Some(event) = tokio::select! {
-        biased;
-        _ = sender.closed() => None,
-        event = source.recv() => event,
-    } {
-        if matches!(&event, ClientEvent::DirectMessage { body, .. } if central_reserved(&ownership, body))
-        {
-            continue;
-        }
-        let Some(inner) = runtime.upgrade() else {
-            break;
-        };
-        if ProtocolRuntime(inner).save().await.is_err() || sender.send(event).await.is_err() {
-            break;
-        }
-    }
-}
-
-fn central_reserved(ownership: &Option<CentralPartition>, body: &[u8]) -> bool {
-    ownership.as_ref().is_some_and(|(_, scoped)| {
-        gcoms_sdk::component::RoutedApplication::decode(body)
-            .is_ok_and(|route| scoped.contains(&route.destination))
-    })
 }

@@ -24,7 +24,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"
 clap = { version = "4", features = ["derive", "env"] }
 ed25519-dalek = { version = "2", default-features = false, features = ["fast", "zeroize"] }
 serde = { version = "1", features = ["derive"] }
-postcard = { version = "1", features = ["alloc"] }
+postcard = { version = "1", default-features = false, features = ["alloc"] }
 argon2 = "0.5"
 aes-gcm = "0.10"
 rand = "0.8"

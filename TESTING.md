@@ -37,3 +37,23 @@ macOS artifacts. Never remove quarantine to make an unsigned build appear releas
 The release manifest must record hashes, signatures, toolchain and exact source
 commits. Mobile builds and production security/privacy claims are deferred.
 See docs/RELEASE.md for launch blockers and docs/NETWORK.md for operator acceptance.
+
+## Forgejo runners
+
+`.forgejo/workflows/check.yml` uses a pinned checkout action and the four named
+native runner labels. Provision disposable runners with Rust 1.98, Node 22, npm 11,
+Python 3.11+, the native build dependencies and cargo-deny. Untrusted pull requests
+receive no signing/registry secrets and must not execute on a developer workstation.
+Public GChat CI starts after its GComs registry dependencies are available; local
+pre-publication checks use the documented extracted-package staging.
+
+Run `cargo deny check` for the application workspace and separately with
+`cargo deny --manifest-path apps/client/src-tauri/Cargo.toml --config deny.toml check`
+for the desktop graph. Review each advisory against the pinned versions; keep
+unmaintained macro exceptions distinct from runtime vulnerability fixes.
+
+For pre-publication lockfile verification, GComs' `check-registry-consumer.py`
+serves inspected package archives through a loopback registry and checks `--locked`
+with canonical crates.io checksums. Run it for both this workspace and the separate
+Tauri manifest. Path-patched development commands can rewrite these lock entries;
+repeat registry verification before committing release lockfiles.
