@@ -126,6 +126,8 @@ impl ApplicationTranscript {
             options.mode(0o600);
         }
         let mut file = options.open(path).map_err(|error| error.to_string())?;
+        crate::private_fs::make_private(path, false)?;
+        crate::private_fs::validate_private_file(path, "transcript")?;
         file.try_lock_exclusive()
             .map_err(|_| format!("transcript is already in use: {}", path.display()))?;
         file.write_all(MAGIC)
@@ -348,12 +350,8 @@ fn ensure_parent(path: &std::path::Path) -> Result<(), String> {
     };
     if !parent.exists() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700))
-                .map_err(|error| error.to_string())?;
-        }
+        crate::private_fs::make_private(parent, true)?;
+        crate::private_fs::validate_private_dir(parent, "transcript directory")?;
     }
     Ok(())
 }
@@ -388,6 +386,7 @@ mod tests {
         let mut transcript =
             ApplicationTranscript::create(&path, "passphrase", identity, TranscriptPolicy::Lab)
                 .unwrap();
+        crate::private_fs::validate_private_file(&path, "transcript").unwrap();
         transcript.append(&entry(true)).unwrap();
         assert!(!entry(true).authorizes_commands());
         assert_eq!(transcript.rotate().unwrap(), 1);
