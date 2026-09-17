@@ -139,6 +139,40 @@ impl ClientHandle {
         self.0.data.lock().unwrap().clone()
     }
 
+    /// File scheduling needs conversation metadata, never a copy of transcripts.
+    pub(crate) fn file_context(&self) -> ArchiveData {
+        let data = self.0.data.lock().unwrap();
+        ArchiveData {
+            channels: data
+                .channels
+                .iter()
+                .map(|c| ChannelRecord {
+                    id: c.id,
+                    protocol_name: c.protocol_name.clone(),
+                    title: c.title.clone(),
+                    visibility: c.visibility,
+                    role: c.role,
+                    joined_at_unix: c.joined_at_unix,
+                    active: c.active,
+                    self_member_id: c.self_member_id,
+                    members: c.members.clone(),
+                    messages: Vec::new(),
+                })
+                .collect(),
+            scoped_pms: data
+                .scoped_pms
+                .iter()
+                .map(|p| ScopedPmRecord {
+                    id: p.id,
+                    remote_display_name: p.remote_display_name.clone(),
+                    messages: Vec::new(),
+                    active: p.active,
+                })
+                .collect(),
+            ..ArchiveData::default()
+        }
+    }
+
     pub fn sdk_client(&self) -> Result<EmbeddedClient, String> {
         self.0
             .embedded_sdk
@@ -1373,6 +1407,11 @@ fn spawn_archiver(inner: &Arc<Inner>) {
             let Some(inner) = weak.upgrade() else { break };
             if matches!(event, ClientEvent::ChannelRosterChanged { .. }) {
                 let _ = ClientHandle(inner.clone()).reconcile_channels().await;
+            }
+            if matches!(&event, ClientEvent::ChannelMessage { body, .. } | ClientEvent::ChannelDirectMessage { body, .. }
+                if gcoms_core::is_piece_application_payload(body))
+            {
+                continue;
             }
             archive_event(&inner, &event).await;
             // Incoming state is durable before any UI observes the event.

@@ -11,6 +11,9 @@ and publisher accounts are future release decisions, not prerequisites for this
 private development stage. The intended preview version remains 0.1.0. See
 [development and future release status](docs/RELEASE.md).
 
+[Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
+authorized sources, explicit download acceptance and a bounded encrypted cache.
+
 ## Build and run
 
 Install Rust 1.98, Node 22, npm 11 and the platform's Tauri v2 prerequisites.
