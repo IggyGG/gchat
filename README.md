@@ -4,10 +4,12 @@
 application, terminal client and local service built from one repository.
 The Rust API contract drives both native clients and generated TypeScript bindings.
 
-This checkout prepares the **0.1.0 developer preview**. Signed installers and public
-packages have not yet been released. Follow [release readiness](docs/RELEASE.md)
-for current blockers. The authoritative Forgejo and companion GComs URLs must be
-set in [publication configuration](release/publication.json) before launch.
+Current development uses the existing [private local Forgejo repository](http://127.0.0.1:3300/ghost-local/gchat)
+and its [companion GComs repository](http://127.0.0.1:3300/ghost-local/gcoms).
+Public publication is deferred by the project owner. Public URLs, reporting contacts
+and publisher accounts are future release decisions, not prerequisites for this
+private development stage. The intended preview version remains 0.1.0. See
+[development and future release status](docs/RELEASE.md).
 
 ## Build and run
 

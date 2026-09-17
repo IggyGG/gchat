@@ -10,5 +10,26 @@
   "rights_review": null,
   "operator_acceptance": null,
   "native_qualification": {},
-  "publisher_identities": {}
+  "publisher_identities": {},
+  "publication_status": "deferred_by_owner",
+  "development": {
+    "visibility": "private",
+    "forgejo_url": "http://127.0.0.1:3300/ghost-local/gchat",
+    "companion_url": "http://127.0.0.1:3300/ghost-local/gcoms",
+    "git_remote": "ssh://git@ghost-forgejo/ghost-local/gchat.git",
+    "native_hosts": {
+      "macos": {
+        "ssh_host": "macbuild",
+        "account": "iggy",
+        "architecture": "arm64",
+        "signing_identity": "Apple Development: Iggy Gullstrand (99T8PLK737)",
+        "purpose": "development; public distribution deferred"
+      },
+      "windows": {
+        "kind": "virtual_machine",
+        "architecture": "x86_64",
+        "purpose": "private build and test validation"
+      }
+    }
+  }
 }
