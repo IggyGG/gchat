@@ -1,0 +1,30 @@
+┌ signed public channel listing ───────────────────────────────────────────────────────────────────┐
+│#town-square                                                                                      │
+│Open discussion for everyone on this relay.                                                       │
+│                                                                                                  │
+│capacity: 200                                                                                     │
+│active today                                                                                      │
+│listing expires: 2026-09-11 (UTC)                                                                 │
+│                                                                                                  │
+│Choose a display name for this channel below and press Enter.                                     │
+│The join is automatic: your app does the whole exchange for you.                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌ display name ────────────────────────────────────────────────────────────────────────────────────┐
+│ghost-runner                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+enter join (or retry) | esc back

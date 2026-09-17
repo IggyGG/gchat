@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/chat-api", "crates/core", "crates/tui"]
+exclude = ["apps/client/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.98"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[profile.release]
+lto = true

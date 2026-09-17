@@ -1,0 +1,15 @@
+┌ members [FOCUS] ──────────┐┌ #ops (private, owner) ────────────────────────────────────┐
+│@ada                       ││[10:31] ada: morning! is the relay up?                     │
+│@bob                       ││[10:32] you: yes, since last night                         │
+│                           ││[10:33] bob: great. long message to check wrapping on      │
+│                           ││narrow phone terminals where the transcript pane is only   │
+│                           ││fifty columns wide                                         │
+│                           ││                                                           │
+│                           ││                                                           │
+│                           ││                                                           │
+└───────────────────────────┘└───────────────────────────────────────────────────────────┘
+┌ message ───────────────────────────────────────────────────────────────────────────────┐
+│                                                                                        │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+
+up/down member | enter PM | i invite | p publish | d remove | tab message | esc back

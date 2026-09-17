@@ -1,0 +1,15 @@
+┌ channels and scoped PMs ─────────────────────────┐┌ gchat ─────────────────────────────┐
+│no joined or public channels                      ││CHANNEL-FIRST                       │
+│                                                  ││People and PMs exist only inside a  │
+│Press n to create a channel or join one.          ││channel.                            │
+│                                                  ││                                    │
+│                                                  ││Enter  open selected                │
+│                                                  ││n      create / join / let in       │
+│                                                  ││i      identity and safety number   │
+│                                                  ││?      how it works                 │
+│                                                  ││l      read-only legacy archive     │
+│                                                  ││s      save now                     │
+│                                                  ││q      quit                         │
+└──────────────────────────────────────────────────┘└────────────────────────────────────┘
+relay unavailable: bootstrap endpoint unreachable: dns error (r to retry, i for details)
+up/down select | enter open | n new | i identity | ? help | r refresh | q quit

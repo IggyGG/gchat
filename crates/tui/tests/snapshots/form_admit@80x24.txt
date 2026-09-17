@@ -1,0 +1,24 @@
+┌ let a member in ─────────────────────────────────────────────────────────────┐
+│Paste the join request a prospective member sent you, or type the path        │
+│of a file that holds it (e.g. ~/Downloads/join-request.txt).                  │
+│You get back an invite code to send them; only they can use it.               │
+│                                                                              │
+│  channel: ops                                                                │
+│  member name: ada                                                            │
+│> join request: DQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+tab next field | enter submit | esc cancel | ctrl-p paste mode

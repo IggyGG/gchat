@@ -1,0 +1,16 @@
+{
+  "name": "gchat-clients",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "ui",
+    "apps/client"
+  ],
+  "scripts": {
+    "check": "npm run check -w @gchat/ui && npm run check -w @gchat/client",
+    "build": "npm run build -w @gchat/client",
+    "dev": "npm run dev -w @gchat/client",
+    "test": "npm run test -w @gchat/ui",
+    "types": "cargo run -q -p gchat-api --bin gchat-types > ui/src/api.ts"
+  }
+}

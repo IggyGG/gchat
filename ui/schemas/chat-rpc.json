@@ -1,0 +1,2053 @@
+{
+  "service": {
+    "methods": [
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "title": "ChatIdentifyArgs",
+          "type": "object"
+        },
+        "args_typescript": "Record<string, never>",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "identify",
+        "kind": "query",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "archiveExists": {
+              "type": "boolean"
+            },
+            "bootId": {
+              "type": "string"
+            },
+            "capabilities": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "locked": {
+              "type": "boolean"
+            },
+            "profileExists": {
+              "type": "boolean"
+            },
+            "protocolLocked": {
+              "type": "boolean"
+            },
+            "safetyNumber": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "label",
+            "bootId",
+            "locked",
+            "protocolLocked",
+            "profileExists",
+            "archiveExists",
+            "safetyNumber",
+            "capabilities"
+          ],
+          "title": "InstanceInfo",
+          "type": "object"
+        },
+        "output_typescript": "{ id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "passphrase": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "passphrase",
+            "create"
+          ],
+          "title": "ChatUnlockArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ passphrase: string, create: boolean, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "unlock",
+        "kind": "session",
+        "output_schema": {
+          "$defs": {
+            "CommandSpec": {
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "capability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "usage",
+                "description",
+                "scope",
+                "available"
+              ],
+              "type": "object"
+            },
+            "Conversation": {
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "channelId": {
+                  "type": "string"
+                },
+                "commands": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/CommandSpec"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "inputLimitBytes": {
+                  "default": 12000,
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "$ref": "#/$defs/ConversationKind"
+                },
+                "lastMessageId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "members": {
+                  "items": {
+                    "$ref": "#/$defs/Member"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "unread": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "channelId",
+                "kind",
+                "name",
+                "topic",
+                "active",
+                "owner",
+                "members",
+                "unread"
+              ],
+              "type": "object"
+            },
+            "ConversationKind": {
+              "enum": [
+                "channel",
+                "query",
+                "archive"
+              ],
+              "type": "string"
+            },
+            "InputHistoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "type": "object"
+            },
+            "InstanceInfo": {
+              "properties": {
+                "archiveExists": {
+                  "type": "boolean"
+                },
+                "bootId": {
+                  "type": "string"
+                },
+                "capabilities": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "profileExists": {
+                  "type": "boolean"
+                },
+                "protocolLocked": {
+                  "type": "boolean"
+                },
+                "safetyNumber": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "bootId",
+                "locked",
+                "protocolLocked",
+                "profileExists",
+                "archiveExists",
+                "safetyNumber",
+                "capabilities"
+              ],
+              "type": "object"
+            },
+            "Member": {
+              "properties": {
+                "capabilities": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "isSelf": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "nickname",
+                "isSelf"
+              ],
+              "type": "object"
+            },
+            "ProviderStatus": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "message",
+                "retryable"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "commandHistory": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "conversations": {
+              "items": {
+                "$ref": "#/$defs/Conversation"
+              },
+              "type": "array"
+            },
+            "inputHistory": {
+              "items": {
+                "$ref": "#/$defs/InputHistoryEntry"
+              },
+              "type": "array"
+            },
+            "instance": {
+              "$ref": "#/$defs/InstanceInfo"
+            },
+            "providerErrors": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ProviderStatus"
+              },
+              "type": "array"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "instance",
+            "revision",
+            "conversations",
+            "commandHistory",
+            "inputHistory"
+          ],
+          "title": "Snapshot",
+          "type": "object"
+        },
+        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "title": "ChatLockArgs",
+          "type": "object"
+        },
+        "args_typescript": "Record<string, never>",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "lock",
+        "kind": "session",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "archiveExists": {
+              "type": "boolean"
+            },
+            "bootId": {
+              "type": "string"
+            },
+            "capabilities": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "locked": {
+              "type": "boolean"
+            },
+            "profileExists": {
+              "type": "boolean"
+            },
+            "protocolLocked": {
+              "type": "boolean"
+            },
+            "safetyNumber": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "label",
+            "bootId",
+            "locked",
+            "protocolLocked",
+            "profileExists",
+            "archiveExists",
+            "safetyNumber",
+            "capabilities"
+          ],
+          "title": "InstanceInfo",
+          "type": "object"
+        },
+        "output_typescript": "{ id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "title": "ChatDisconnectArgs",
+          "type": "object"
+        },
+        "args_typescript": "Record<string, never>",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "disconnect",
+        "kind": "session",
+        "output_schema": {
+          "$defs": {
+            "CommandSpec": {
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "capability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "usage",
+                "description",
+                "scope",
+                "available"
+              ],
+              "type": "object"
+            },
+            "Conversation": {
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "channelId": {
+                  "type": "string"
+                },
+                "commands": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/CommandSpec"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "inputLimitBytes": {
+                  "default": 12000,
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "$ref": "#/$defs/ConversationKind"
+                },
+                "lastMessageId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "members": {
+                  "items": {
+                    "$ref": "#/$defs/Member"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "unread": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "channelId",
+                "kind",
+                "name",
+                "topic",
+                "active",
+                "owner",
+                "members",
+                "unread"
+              ],
+              "type": "object"
+            },
+            "ConversationKind": {
+              "enum": [
+                "channel",
+                "query",
+                "archive"
+              ],
+              "type": "string"
+            },
+            "InputHistoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "type": "object"
+            },
+            "InstanceInfo": {
+              "properties": {
+                "archiveExists": {
+                  "type": "boolean"
+                },
+                "bootId": {
+                  "type": "string"
+                },
+                "capabilities": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "profileExists": {
+                  "type": "boolean"
+                },
+                "protocolLocked": {
+                  "type": "boolean"
+                },
+                "safetyNumber": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "bootId",
+                "locked",
+                "protocolLocked",
+                "profileExists",
+                "archiveExists",
+                "safetyNumber",
+                "capabilities"
+              ],
+              "type": "object"
+            },
+            "Member": {
+              "properties": {
+                "capabilities": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "isSelf": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "nickname",
+                "isSelf"
+              ],
+              "type": "object"
+            },
+            "ProviderStatus": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "message",
+                "retryable"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "commandHistory": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "conversations": {
+              "items": {
+                "$ref": "#/$defs/Conversation"
+              },
+              "type": "array"
+            },
+            "inputHistory": {
+              "items": {
+                "$ref": "#/$defs/InputHistoryEntry"
+              },
+              "type": "array"
+            },
+            "instance": {
+              "$ref": "#/$defs/InstanceInfo"
+            },
+            "providerErrors": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ProviderStatus"
+              },
+              "type": "array"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "instance",
+            "revision",
+            "conversations",
+            "commandHistory",
+            "inputHistory"
+          ],
+          "title": "Snapshot",
+          "type": "object"
+        },
+        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "title": "ChatSnapshotArgs",
+          "type": "object"
+        },
+        "args_typescript": "Record<string, never>",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "snapshot",
+        "kind": "query",
+        "output_schema": {
+          "$defs": {
+            "CommandSpec": {
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "capability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "usage",
+                "description",
+                "scope",
+                "available"
+              ],
+              "type": "object"
+            },
+            "Conversation": {
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "channelId": {
+                  "type": "string"
+                },
+                "commands": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/CommandSpec"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "inputLimitBytes": {
+                  "default": 12000,
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "$ref": "#/$defs/ConversationKind"
+                },
+                "lastMessageId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "members": {
+                  "items": {
+                    "$ref": "#/$defs/Member"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "unread": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "channelId",
+                "kind",
+                "name",
+                "topic",
+                "active",
+                "owner",
+                "members",
+                "unread"
+              ],
+              "type": "object"
+            },
+            "ConversationKind": {
+              "enum": [
+                "channel",
+                "query",
+                "archive"
+              ],
+              "type": "string"
+            },
+            "InputHistoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "type": "object"
+            },
+            "InstanceInfo": {
+              "properties": {
+                "archiveExists": {
+                  "type": "boolean"
+                },
+                "bootId": {
+                  "type": "string"
+                },
+                "capabilities": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "profileExists": {
+                  "type": "boolean"
+                },
+                "protocolLocked": {
+                  "type": "boolean"
+                },
+                "safetyNumber": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "bootId",
+                "locked",
+                "protocolLocked",
+                "profileExists",
+                "archiveExists",
+                "safetyNumber",
+                "capabilities"
+              ],
+              "type": "object"
+            },
+            "Member": {
+              "properties": {
+                "capabilities": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "isSelf": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "nickname",
+                "isSelf"
+              ],
+              "type": "object"
+            },
+            "ProviderStatus": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "message",
+                "retryable"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "commandHistory": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "conversations": {
+              "items": {
+                "$ref": "#/$defs/Conversation"
+              },
+              "type": "array"
+            },
+            "inputHistory": {
+              "items": {
+                "$ref": "#/$defs/InputHistoryEntry"
+              },
+              "type": "array"
+            },
+            "instance": {
+              "$ref": "#/$defs/InstanceInfo"
+            },
+            "providerErrors": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ProviderStatus"
+              },
+              "type": "array"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "instance",
+            "revision",
+            "conversations",
+            "commandHistory",
+            "inputHistory"
+          ],
+          "title": "Snapshot",
+          "type": "object"
+        },
+        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "conversation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "title": "ChatCatalogueArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ conversation: string | null, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "catalogue",
+        "kind": "query",
+        "output_schema": {
+          "$defs": {
+            "CommandSpec": {
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "capability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "usage",
+                "description",
+                "scope",
+                "available"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "items": {
+            "$ref": "#/$defs/CommandSpec"
+          },
+          "title": "Array_of_CommandSpec",
+          "type": "array"
+        },
+        "output_typescript": "Array<{ name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, }>"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "conversation": {
+              "type": "string"
+            },
+            "limit": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "conversation",
+            "limit"
+          ],
+          "title": "ChatHistoryArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ conversation: string, before: string | null, limit: number, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "history",
+        "kind": "query",
+        "output_schema": {
+          "$defs": {
+            "ActionResult": {
+              "properties": {
+                "artifacts": {
+                  "items": {
+                    "$ref": "#/$defs/Artifact"
+                  },
+                  "type": "array"
+                },
+                "details": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "messageId": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "outputBase64": {
+                  "description": "Exact signed bytes, base64 encoded; views decode only for display.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "type": "string"
+                },
+                "stderr": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "state",
+                "stderr",
+                "details",
+                "artifacts"
+              ],
+              "type": "object"
+            },
+            "Artifact": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "url"
+              ],
+              "type": "object"
+            },
+            "Delivery": {
+              "enum": [
+                "local_accepted"
+              ],
+              "type": "string"
+            },
+            "Message": {
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "conversationId": {
+                  "type": "string"
+                },
+                "delivery": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Delivery"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Local archive acceptance is the only fact currently available for outgoing text."
+                },
+                "id": {
+                  "type": "string"
+                },
+                "memberId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mine": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                },
+                "result": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ActionResult"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversationId",
+                "nickname",
+                "body",
+                "timestamp",
+                "mine"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "messages": {
+              "items": {
+                "$ref": "#/$defs/Message"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "messages"
+          ],
+          "title": "HistoryPage",
+          "type": "object"
+        },
+        "output_typescript": "{ messages: Array<Message>, before: string | null, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "conversation": {
+              "type": "string"
+            },
+            "limit": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "conversation",
+            "text",
+            "limit"
+          ],
+          "title": "ChatSearchArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ conversation: string, text: string, before: string | null, limit: number, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "search",
+        "kind": "query",
+        "output_schema": {
+          "$defs": {
+            "ActionResult": {
+              "properties": {
+                "artifacts": {
+                  "items": {
+                    "$ref": "#/$defs/Artifact"
+                  },
+                  "type": "array"
+                },
+                "details": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "messageId": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "outputBase64": {
+                  "description": "Exact signed bytes, base64 encoded; views decode only for display.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "type": "string"
+                },
+                "stderr": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "state",
+                "stderr",
+                "details",
+                "artifacts"
+              ],
+              "type": "object"
+            },
+            "Artifact": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "url"
+              ],
+              "type": "object"
+            },
+            "Delivery": {
+              "enum": [
+                "local_accepted"
+              ],
+              "type": "string"
+            },
+            "Message": {
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "conversationId": {
+                  "type": "string"
+                },
+                "delivery": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Delivery"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Local archive acceptance is the only fact currently available for outgoing text."
+                },
+                "id": {
+                  "type": "string"
+                },
+                "memberId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mine": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                },
+                "result": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ActionResult"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversationId",
+                "nickname",
+                "body",
+                "timestamp",
+                "mine"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "messages": {
+              "items": {
+                "$ref": "#/$defs/Message"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "messages"
+          ],
+          "title": "HistoryPage",
+          "type": "object"
+        },
+        "output_typescript": "{ messages: Array<Message>, before: string | null, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "conversation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "title": "ChatSubmitArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ conversation: string | null, text: string, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "submit",
+        "kind": "operation",
+        "output_schema": {
+          "$defs": {
+            "CommandOutput": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "help",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channels": {
+                      "items": {
+                        "$ref": "#/$defs/DirectoryEntry"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "directory",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channels"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channel": {
+                      "type": "string"
+                    },
+                    "expires": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "const": "invitation",
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    },
+                    "localOnly": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channel",
+                    "link",
+                    "expires"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "text",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "title",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "status",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "close",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "CommandSpec": {
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "capability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "usage",
+                "description",
+                "scope",
+                "available"
+              ],
+              "type": "object"
+            },
+            "DirectoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "joined": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "joined"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "applied",
+                  "type": "string"
+                },
+                "notice": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "output",
+                  "type": "string"
+                },
+                "output": {
+                  "$ref": "#/$defs/CommandOutput"
+                }
+              },
+              "required": [
+                "kind",
+                "output"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "SubmitOutcome"
+        },
+        "output_typescript": "{ \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "conversation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "title": "ChatCompleteArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ conversation: string | null, text: string, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "complete",
+        "kind": "query",
+        "output_schema": {
+          "$defs": {
+            "Completion": {
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text",
+                "description"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "items": {
+            "$ref": "#/$defs/Completion"
+          },
+          "title": "Array_of_Completion",
+          "type": "array"
+        },
+        "output_typescript": "Array<{ text: string, description: string, }>"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "conversation": {
+              "type": "string"
+            },
+            "message_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "conversation",
+            "message_id"
+          ],
+          "title": "ChatMarkReadArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ conversation: string, message_id: string, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "mark_read",
+        "kind": "operation",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "conversation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notice": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "title": "Applied",
+          "type": "object"
+        },
+        "output_typescript": "{ conversation: string | null, notice: string | null, }"
+      },
+      {
+        "args_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "type": "string"
+            },
+            "wait_ms": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "after",
+            "wait_ms"
+          ],
+          "title": "ChatEventsArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ after: string, wait_ms: number, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "events",
+        "kind": "query",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "string",
+          "type": "string"
+        },
+        "output_typescript": "string"
+      }
+    ],
+    "name": "ghost.chat",
+    "version": 1
+  },
+  "typescript": "// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = 2;\nexport const MAX_INPUT_BYTES = 12000;\nexport type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };\nexport type Member = { id: string, nickname: string, isSelf: boolean, capabilities: Array<string>, };\nexport type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };\nexport type ConversationKind = \"channel\" | \"query\" | \"archive\";\nexport type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,\n/**\n * Local archive acceptance is the only fact currently available for outgoing text.\n */\ndelivery: Delivery | null, result: ActionResult | null, };\nexport type ActionResult = { id: string, messageId: string | null, state: string,\n/**\n * Exact signed bytes, base64 encoded; views decode only for display.\n */\noutputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };\nexport type Artifact = { name: string, url: string, };\nexport type Delivery = \"local_accepted\";\nexport type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };\nexport type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };\nexport type CommandOutput = { \"kind\": \"help\", commands: Array<CommandSpec>, } | { \"kind\": \"directory\", channels: Array<DirectoryEntry>, } | { \"kind\": \"invitation\", channel: string, link: string, expires: number, localOnly: boolean, } | { \"kind\": \"text\", title: string, text: string, } | { \"kind\": \"status\", text: string, } | { \"kind\": \"close\", conversation: string, };\nexport type InputHistoryEntry = { conversation: string | null, text: string, };\nexport type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };\nexport type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, };\nexport type HistoryPage = { messages: Array<Message>, before: string | null, };\nexport type Completion = { text: string, description: string, };\nexport type Request = { \"kind\": \"identify\" } | { \"kind\": \"unlock\", passphrase: string, create: boolean, } | { \"kind\": \"lock\" } | { \"kind\": \"disconnect\" } | { \"kind\": \"snapshot\" } | { \"kind\": \"catalogue\", conversation: string | null, } | { \"kind\": \"history\", conversation: string, before: string | null, limit: number, } | { \"kind\": \"search\", conversation: string, text: string, before: string | null, limit: number, } | { \"kind\": \"submit\", operation_id: string, conversation: string | null, text: string, } | { \"kind\": \"complete\", conversation: string | null, text: string, } | { \"kind\": \"mark_read\", conversation: string, message_id: string, } | { \"kind\": \"events\", after: string, wait_ms: number, };\nexport type Response = { \"kind\": \"instance\", instance: InstanceInfo, } | { \"kind\": \"snapshot\", snapshot: Snapshot, } | { \"kind\": \"history\", page: HistoryPage, } | { \"kind\": \"completed\", items: Array<Completion>, } | { \"kind\": \"catalogue\", commands: Array<CommandSpec>, } | { \"kind\": \"projection\", conversations: Array<Conversation>, revision: string, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, } | { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"changed\", revision: string, } | { \"kind\": \"error\", code: string, message: string, };\nexport type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };\nexport type ResponseEnvelope = { version: number, instance_id: string, response: Response, };\n\nexport type ChatError = { code: string, message: string, };\nexport type Applied = { conversation: string | null, notice: string | null, };\nexport type SubmitOutcome = { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, };\n"
+}

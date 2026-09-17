@@ -1,0 +1,24 @@
+┌ join private channel (2/2) ──────────────────────────────────────────────────┐
+│request #42 as me                                                             │
+│Type the exact channel name, then paste the invite code the owner sent        │
+│(or the path of a file holding it).                                           │
+│Esc keeps this request while gchat runs; quitting discards it, and the        │
+│owner would then have to let in a fresh join request.                         │
+│                                                                              │
+│> channel:                                                                    │
+│  invite code:                                                                │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+tab next field | enter submit | esc cancel | ctrl-p paste mode

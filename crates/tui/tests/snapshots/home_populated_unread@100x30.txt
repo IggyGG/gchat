@@ -1,0 +1,30 @@
+┌ channels and scoped PMs ───────────────────────────────┐┌ gchat ─────────────────────────────────┐
+│@ ada in #ops  2 ●                                      ││CHANNEL-FIRST                           │
+│# lounge  1 ●                                           ││People and PMs exist only inside a      │
+│# ops  3 ●                                              ││channel.                                │
+│                                                        ││                                        │
+│                                                        ││Enter  open selected                    │
+│                                                        ││n      create / join / let in           │
+│                                                        ││i      identity and safety number       │
+│                                                        ││?      how it works                     │
+│                                                        ││l      read-only legacy archive         │
+│                                                        ││s      save now                         │
+│                                                        ││q      quit                             │
+│                                                        ││                                        │
+│                                                        ││catalogs: none configured (public       │
+│                                                        ││channels hidden)                        │
+│                                                        ││relay: 203.0.113.5:8443                 │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+│                                                        ││                                        │
+└────────────────────────────────────────────────────────┘└────────────────────────────────────────┘
+
+up/down select | enter open | n new | i identity | ? help | q quit

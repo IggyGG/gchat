@@ -1,0 +1,20 @@
+┌ new ───────────────────────────────────────────┐
+│create channel          you become the owner    │
+│join with invite        paste an invite link a f│
+│join private channel (advanced)manual: get a joi│
+│let a member in (advanced)manual: paste a join r│
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
+
+up/down choose | enter | esc back

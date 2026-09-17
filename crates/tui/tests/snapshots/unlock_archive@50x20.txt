@@ -1,0 +1,20 @@
+┌ create profile ────────────────────────────────┐
+│gchat — GC/1 secure chat                        │
+│Your identity lives in the daemon at            │
+│/run/user/1000/gchat/gcd.sock.                  │
+│This passphrase protects the local chat archive │
+│at                                              │
+│/home/u/.local/share/gchat/profile.gcprotocol.  │
+│Use at least 8 characters.                      │
+│                                                │
+│> passphrase:                                   │
+│  confirm:                                      │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
+
+tab next field | enter submit | esc quit

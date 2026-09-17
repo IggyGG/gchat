@@ -1,0 +1,20 @@
+┌ join request #42 (me) ─────────────────────────┐
+│Send this join request to the channel owner (y  │
+│copies, e exports a file).                      │
+│Then wait for the invite code and complete the  │
+│join from New.                                  │
+│A paste field also takes the path of a file     │
+│holding it (e.g. ~/Downloads/invite-code.txt).  │
+│                                                │
+│BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcH│
+│BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcH│
+│BwcHBwcHBwcHBwcHBwcHBwcH                        │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
+
+y copy | e export to outbox | up/down scroll |
+enter continue

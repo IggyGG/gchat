@@ -1,0 +1,37 @@
+[package]
+name = "gchat-tui"
+description = "GC/1 terminal client (ratatui)"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+gchat-api = { version = "0.1.0", path = "../chat-api" }
+rand = "0.8"
+gchat-core = { version = "0.1.0", path = "../core" }
+gcoms-sdk = { version = "0.1.0" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+ratatui = "0.29"
+crossterm = "0.28"
+clap = { version = "4", features = ["derive", "env"] }
+base64 = "0.22"
+unicode-width = "0.2"
+zeroize = "1"
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+[dev-dependencies]
+async-trait = "0.1"
+gcoms-node = { version = "0.1.0" }
+portable-pty = "0.9"
+tempfile = "3"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "gchat"
+path = "src/main.rs"
+test = false

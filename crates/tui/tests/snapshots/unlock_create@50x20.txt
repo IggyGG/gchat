@@ -1,0 +1,20 @@
+┌ create profile ────────────────────────────────┐
+│gchat — GC/1 secure chat                        │
+│No profile found. This creates a NEW identity at│
+│/home/u/.local/share/gchat/profile.gcprotocol.  │
+│Choose a passphrase of at least 8 characters.   │
+│There is no recovery: losing it loses this      │
+│identity and its history.                       │
+│/run/user/1000/gchat/gcd.sock                   │
+│                                                │
+│> passphrase: ********                          │
+│  confirm:                                      │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
+
+tab next field | enter submit | esc quit

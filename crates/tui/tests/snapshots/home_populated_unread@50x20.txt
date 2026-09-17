@@ -1,0 +1,20 @@
+┌ channels and scoped PMs ───────────────────────┐
+│@ ada in #ops  2 ●                              │
+│# lounge  1 ●                                   │
+│# ops  3 ●                                      │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
+┌ gchat ─────────────────────────────────────────┐
+│catalogs: none (public channels hidden)         │
+│relay: 203.0.113.5:8443                         │
+│                                                │
+└────────────────────────────────────────────────┘
+
+up/down select | enter open | n new | i identity |
+? help | q quit

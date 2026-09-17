@@ -1,0 +1,24 @@
+┌ how it works ────────────────────────────────────────────────────────────────┐
+│FIRST CHANNEL                                                                 │
+│Press n on Home. 'create channel' makes you the owner. To bring a friend in:  │
+│open the channel, press Tab to focus the member list, and press i to make a   │
+│one-time invite link; send it to them. They pick New > 'join with invite',    │
+│paste the link, and their app joins automatically. Keep gchat open until they │
+│join. (The 'advanced' New items do the same by hand — a join request and      │
+│invite code — for a LAN with no relay.)                                       │
+│                                                                              │
+│COPYING CODES                                                                 │
+│On any screen that shows a join request or invite code, y copies it and e     │
+│writes it to your outbox folder (the path is shown). If your terminal cannot  │
+│paste a long code, press Ctrl-P for paste mode, or type the path of a file    │
+│containing it.                                                                │
+│                                                                              │
+│PUBLIC CHANNELS                                                               │
+│Configured catalogs are queried after unlock and with r. Open a + row, read   │
+│the signed listing, enter a display name, press Enter. Failed joins can be    │
+│retried.                                                                      │
+│                                                                              │
+│MEMBERS AND PMS                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+up/down scroll | esc back

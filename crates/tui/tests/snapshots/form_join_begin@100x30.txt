@@ -1,0 +1,30 @@
+┌ join private channel (1/2) ──────────────────────────────────────────────────────────────────────┐
+│Step 1 makes a join request to send to the channel owner.                                         │
+│Step 2 pastes the invite code the owner sends back.                                               │
+│Your display name is shown inside the channel.                                                    │
+│                                                                                                  │
+│> display name:                                                                                   │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+tab next field | enter submit | esc cancel | ctrl-p paste mode

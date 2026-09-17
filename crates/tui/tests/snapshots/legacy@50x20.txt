@@ -1,0 +1,20 @@
+┌ read-only legacy global archive ───────────────┐
+│0 contacts, 0 conversations                     │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
+
+legacy data is never guessed into channels |
+up/down scroll | esc back

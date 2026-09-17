@@ -1,0 +1,20 @@
+┌ invite to #ops ────────────────────────────────┐
+│#ops is yours. To add a friend:                 │
+│                                                │
+│1. Open the channel, press Tab to focus members,│
+│and press i.                                    │
+│That makes a one-time invite link.              │
+│2. Send them the link. They pick New > 'join    │
+│with invite' and                                │
+│paste it — no addresses, no back-and-forth.     │
+│                                                │
+│Keep gchat open until they join, so their app   │
+│can reach you.                                  │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
+created #ops
+up/down scroll | enter continue

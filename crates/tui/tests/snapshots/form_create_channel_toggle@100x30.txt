@@ -1,0 +1,30 @@
+┌ create channel ──────────────────────────────────────────────────────────────────────────────────┐
+│You become the owner. You let each new member in.                                                 │
+│Your display name is shown inside this channel only.                                              │
+│Private channels never appear in catalogs; public ones can be published.                          │
+│                                                                                                  │
+│  channel: ops                                                                                    │
+│  display name: ghost                                                                             │
+│  capacity (64):                                                                                  │
+│> visibility:  private  [public]                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+tab next field | space toggles | enter submit | esc cancel

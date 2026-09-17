@@ -1,0 +1,30 @@
+┌ identity ────────────────────────────────────────────────────────────────────────────────────────┐
+│safety number: 12345 67890 24680 13579 11223 34455                                                │
+│Compare it out-of-band with people you talk to.                                                   │
+│                                                                                                  │
+│listen: memory                                                                                    │
+│catalogs: none (public channels hidden; add --catalog-url or GC_CATALOG_URLS)                     │
+│runtime: in this process                                                                          │
+│relay: 203.0.113.5:8443                                                                           │
+│profile: /home/u/.local/share/gchat/profile.gcprotocol                                            │
+│archive: /home/u/.local/share/gchat/chat.gcarchive                                                │
+│outbox: /home/u/.local/share/gchat/outbox                                                         │
+│pending joins: 1                                                                                  │
+│                                                                                                  │
+│y copies the safety number; e exports your contact card.                                          │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+y copy | e export to outbox | up/down scroll | enter continue
