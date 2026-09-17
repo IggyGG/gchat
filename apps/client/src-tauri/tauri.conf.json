@@ -40,7 +40,15 @@
       "../../../LICENSE-APACHE": "licenses/LICENSE-APACHE",
       "../../../NOTICE.md": "licenses/NOTICE.md",
       "../../../third-party/LICENSE-webpki-roots": "licenses/LICENSE-webpki-roots",
-      "../public/fonts/LICENSE-CC0": "licenses/LICENSE-CC0"
-    }
+      "../public/fonts/LICENSE-CC0": "licenses/LICENSE-CC0",
+      "../../../third-party/generated/": "licenses/dependencies/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }

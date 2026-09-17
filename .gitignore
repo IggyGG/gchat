@@ -8,3 +8,7 @@ node_modules/
 *.tmp
 /test-evidence/
 __pycache__/
+
+/apps/client/src-tauri/gen/schemas/
+
+/third-party/generated/

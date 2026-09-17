@@ -21,6 +21,7 @@ npm ci --ignore-scripts
 npm run check
 npm test
 npm run build
+python3 scripts/collect-notices.py
 npm run tauri -w @gchat/client -- dev
 ```
 
@@ -73,4 +74,5 @@ The preview uses GComs' rustls/XML advisory fixes and disables unused postcard
 heapless defaults. `deny.toml` records reviewed transitive-version exceptions and
 two unmaintained build-time macros (OpenMLS/libcrux and ratatui). These require
 follow-up upgrades; no runtime vulnerability is waived. The desktop dependency
-graph has its own audit and native packaging requirements.
+graph has its own audit and native packaging requirements. See the exact
+[dependency review and follow-up](docs/DEPENDENCIES.md).

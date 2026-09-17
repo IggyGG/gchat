@@ -53,6 +53,23 @@ if a.exists() and a.read_bytes() != z.read_bytes():
     errors.append('RPC schema copies differ; regenerate both from the Rust contract')
 if not paths:
     errors.append('empty source inventory')
+# The desktop advisory review assumes local capabilities only. A remote origin
+# grant must trigger a new review of Tauri's URLPattern/Unicode dependency path.
+capability_dir = root / 'apps/client/src-tauri/capabilities'
+for path in capability_dir.iterdir():
+    if path.suffix == '.json':
+        capability = json.loads(path.read_text())
+    elif path.suffix == '.toml':
+        capability = tomllib.loads(path.read_text())
+    else:
+        errors.append('desktop capability format requires explicit review')
+        continue
+    if capability.get('remote') is not None:
+        errors.append('remote desktop capabilities require a new dependency review')
+config = json.loads((root / 'apps/client/src-tauri/tauri.conf.json').read_text())
+for capability in config.get('app', {}).get('security', {}).get('capabilities', []):
+    if isinstance(capability, dict) and capability.get('remote') is not None:
+        errors.append('inline remote desktop capabilities require a new dependency review')
 if errors:
     print('\n'.join(errors), file=sys.stderr)
     sys.exit(1)

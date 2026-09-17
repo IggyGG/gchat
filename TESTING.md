@@ -48,7 +48,7 @@ Public GChat CI starts after its GComs registry dependencies are available; loca
 pre-publication checks use the documented extracted-package staging.
 
 Run `cargo deny check` for the application workspace and separately with
-`cargo deny --manifest-path apps/client/src-tauri/Cargo.toml --config deny.toml check`
+`cargo deny --manifest-path apps/client/src-tauri/Cargo.toml --config deny-desktop.toml check`
 for the desktop graph. Review each advisory against the pinned versions; keep
 unmaintained macro exceptions distinct from runtime vulnerability fixes.
 

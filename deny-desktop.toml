@@ -1,0 +1,131 @@
+# cargo-deny policy for the GChat desktop developer preview. Run: cargo deny check
+#
+# Every duplicated major version doubles the audit and patch surface of a
+# primitive we rely on. Duplicates are denied by default; the exceptions below
+# are the openmls/hpke tree, which pins a newer RustCrypto generation than
+# the rest of the workspace. Remove each skip when the workspace catches up.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = [
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error 1.0.4 is a GTK3 build macro via glib-macros and gtk3-macros; stable Tauri 2 retains GTK3; reviewed 2026-09-17 for this developer preview, revisit with the next stable Tauri upgrade or any remote capability change. No known runtime vulnerability is waived." },
+    { id = "RUSTSEC-2025-0081", reason = "unic-char-property 0.9.0 is an unmaintained Unicode table through urlpattern 0.3 and tauri-utils 2.9.3. GChat grants no remote origin capabilities; check-source enforces that boundary; reviewed 2026-09-17 for this developer preview, revisit with the next stable Tauri upgrade or any remote capability change. No known runtime vulnerability is waived." },
+    { id = "RUSTSEC-2025-0075", reason = "unic-char-range 0.9.0 is an unmaintained Unicode table through urlpattern 0.3 and tauri-utils 2.9.3. GChat grants no remote origin capabilities; check-source enforces that boundary; reviewed 2026-09-17 for this developer preview, revisit with the next stable Tauri upgrade or any remote capability change. No known runtime vulnerability is waived." },
+    { id = "RUSTSEC-2025-0080", reason = "unic-common 0.9.0 is an unmaintained Unicode table through urlpattern 0.3 and tauri-utils 2.9.3. GChat grants no remote origin capabilities; check-source enforces that boundary; reviewed 2026-09-17 for this developer preview, revisit with the next stable Tauri upgrade or any remote capability change. No known runtime vulnerability is waived." },
+    { id = "RUSTSEC-2025-0100", reason = "unic-ucd-ident 0.9.0 is an unmaintained Unicode table through urlpattern 0.3 and tauri-utils 2.9.3. GChat grants no remote origin capabilities; check-source enforces that boundary; reviewed 2026-09-17 for this developer preview, revisit with the next stable Tauri upgrade or any remote capability change. No known runtime vulnerability is waived." },
+    { id = "RUSTSEC-2025-0098", reason = "unic-ucd-version 0.9.0 is an unmaintained Unicode table through urlpattern 0.3 and tauri-utils 2.9.3. GChat grants no remote origin capabilities; check-source enforces that boundary; reviewed 2026-09-17 for this developer preview, revisit with the next stable Tauri upgrade or any remote capability change. No known runtime vulnerability is waived." },
+
+    { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2 2.0.1 is build-time-only through hax-lib-macros 0.3.7 in OpenMLS/libcrux. Upstream has no replacement release; reviewed 2026-09-17, revisit before the next preview. No runtime vulnerability is waived." },
+]
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "MPL-2.0",
+    "OpenSSL",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0", # webpki-roots trust data; license bundled under third-party/
+]
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+deny = [
+    # Custom or unmaintained cryptography is forbidden (SPEC §8.1).
+    { crate = "openssl", reason = "Native node TLS selects aws-lc; no OpenSSL backend" },
+    { crate = "ring", wrappers = ["rustls-webpki", "rustls"], reason = "Ring is confined to the reviewed rustls/reqwest TLS dependency path" },
+]
+skip = [
+    { crate = "base64@0.21.7", reason = "Pinned Tauri/GTK integration requires this API generation through swift-rs; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "base64@0.22.1", reason = "Pinned Tauri/GTK integration requires this API generation through gchat-core, gcoms-network, gcoms-network-client, hyper-util, pem, reqwest, tauri-codegen, wry; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "bitflags@1.3.2", reason = "Pinned Tauri/GTK integration requires this API generation through defmt, javascriptcore-rs, png, webkit2gtk, webkit2gtk-sys; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "getrandom@0.2.17", reason = "Pinned Tauri/GTK integration requires this API generation through rand_core, redox_users, ring; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "getrandom@0.3.4", reason = "Pinned Tauri/GTK integration requires this API generation through tauri, tempfile; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "hashbrown@0.12.3", reason = "Pinned Tauri/GTK integration requires this API generation through indexmap; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "heck@0.4.1", reason = "Pinned Tauri/GTK integration requires this API generation through glib-macros; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "indexmap@1.9.3", reason = "Pinned Tauri/GTK integration requires this API generation through schemars, serde_with; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "miniz_oxide@0.8.9", reason = "Pinned Tauri/GTK integration requires this API generation through png; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "png@0.17.16", reason = "Pinned Tauri/GTK integration requires this API generation through ico, tauri-codegen; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "proc-macro-crate@1.3.1", reason = "Pinned Tauri/GTK integration requires this API generation through gtk3-macros; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "proc-macro-crate@2.0.2", reason = "Pinned Tauri/GTK integration requires this API generation through glib-macros; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "quick-xml@0.41.0", reason = "Pinned Tauri/GTK integration requires this API generation through gcoms-node; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "r-efi@5.3.0", reason = "Pinned Tauri/GTK integration requires this API generation through getrandom; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "reqwest@0.12.28", reason = "Pinned Tauri/GTK integration requires this API generation through gchat-core, gcoms-network-client, gcoms-node; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "schemars@0.8.22", reason = "Pinned Tauri/GTK integration requires this API generation through tauri-build, tauri-utils; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "schemars@0.9.0", reason = "Pinned Tauri/GTK integration requires this API generation through serde_with; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "schemars_derive@0.8.22", reason = "Pinned Tauri/GTK integration requires this API generation through schemars; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "serde_derive_internals@0.29.1", reason = "Pinned Tauri/GTK integration requires this API generation through schemars_derive; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "serde_spanned@0.6.9", reason = "Pinned Tauri/GTK integration requires this API generation through toml, toml_edit; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "syn@1.0.109", reason = "Pinned Tauri/GTK integration requires this API generation through proc-macro-error; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "syn@2.0.119", reason = "Pinned Tauri/GTK integration requires this API generation through asn1-rs-derive, asn1-rs-impl, bindgen, cssparser-macros, curve25519-dalek-derive, defmt-macros, derive_more-impl, dlopen2_derive, gcoms-rpc-macros, glib-macros, gtk3-macros, hax-lib-macros, jiff-static, jni-sys-macros, libcrux-macros, num_enum_derive, openmls_serialization_helpers, openmls_test, phf_macros, prettyplease, proc-macro-error2, refinery-macros, schemars_derive, serde_derive_internals, serialize-to-javascript-impl, synstructure, tao-macros, tauri-codegen, tauri-macros, thiserror-impl, tls_codec_derive, ts-rs-macros, webview2-com-macros, windows-implement, windows-interface, yoke-derive, zerocopy-derive, zerofrom-derive, zeroize_derive; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "thiserror@1.0.69", reason = "Pinned Tauri/GTK integration requires this API generation through cairo-rs, gio, glib, jni, json-patch, ndk; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "thiserror-impl@1.0.69", reason = "Pinned Tauri/GTK integration requires this API generation through thiserror; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "toml@0.8.2", reason = "Pinned Tauri/GTK integration requires this API generation through system-deps; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "toml@0.9.12+spec-1.1.0", reason = "Pinned Tauri/GTK integration requires this API generation through cargo_toml; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "toml_datetime@0.6.3", reason = "Pinned Tauri/GTK integration requires this API generation through proc-macro-crate, toml, toml_edit; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "toml_datetime@0.7.5+spec-1.1.0", reason = "Pinned Tauri/GTK integration requires this API generation through toml; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "toml_edit@0.19.15", reason = "Pinned Tauri/GTK integration requires this API generation through proc-macro-crate; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "toml_edit@0.20.2", reason = "Pinned Tauri/GTK integration requires this API generation through proc-macro-crate, toml; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows-link@0.1.3", reason = "Pinned Tauri/GTK integration requires this API generation through windows, windows-core, windows-future, windows-numerics, windows-result, windows-strings, windows-threading; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows-sys@0.45.0", reason = "Pinned Tauri/GTK integration requires this API generation through jni; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows-targets@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-sys; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows_aarch64_gnullvm@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-targets; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows_aarch64_msvc@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-targets; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows_i686_gnu@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-targets; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows_i686_msvc@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-targets; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows_x86_64_gnu@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-targets; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows_x86_64_gnullvm@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-targets; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "windows_x86_64_msvc@0.42.2", reason = "Pinned Tauri/GTK integration requires this API generation through windows-targets; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "winnow@0.5.40", reason = "Pinned Tauri/GTK integration requires this API generation through toml_edit; checked 2026-09-17, revisit with compatible upstream upgrades" },
+    { crate = "winnow@0.7.15", reason = "Pinned Tauri/GTK integration requires this API generation through toml; checked 2026-09-17, revisit with compatible upstream upgrades" },
+
+    { crate = "hashbrown@0.15.5", reason = "ratatui lru uses hashbrown 0.15 while indexmap uses 0.17; revisit with terminal dependency upgrades" },
+    { crate = "linux-raw-sys@0.4.15", reason = "crossterm rustix 0.38 and private filesystem rustix 1 use separate system bindings; revisit with terminal dependency upgrades" },
+    { crate = "rustix@0.38.44", reason = "crossterm retains rustix 0.38; private filesystem code uses rustix 1; revisit with terminal dependency upgrades" },
+    { crate = "unicode-width@0.1.14", reason = "ratatui unicode-truncate retains width 0.1 alongside width 0.2; revisit with terminal dependency upgrades" },
+    { crate = "windows-sys@0.59.0", reason = "crossterm rustix 0.38 uses windows-sys 0.59 alongside newer runtime bindings; revisit with terminal dependency upgrades" },
+
+    { crate = "block-buffer@0.12.1", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "chacha20@0.10.2", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "const-oid@0.10.2", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "cpufeatures@0.3.1", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "crypto-common@0.2.2", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "curve25519-dalek@5.0.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "der@0.8.2", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "digest@0.11.3", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "fiat-crypto@0.3.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "getrandom@0.4.3", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "hkdf@0.13.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "hmac@0.13.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "pkcs8@0.11.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "rand@0.10.2", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "rand_chacha@0.10.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "rand_core@0.10.1", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "sha2@0.11.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "sha3@0.12.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "shlex@2.0.1", reason = "cc and bindgen use different parser major versions" },
+    { crate = "signature@3.0.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "spki@0.8.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+    { crate = "syn@3.0.5", reason = "derive dependencies use syn 3 while remaining proc macros use syn 2" },
+    { crate = "windows-sys@0.52.0", reason = "ring retains windows-sys 0.52; current runtime crates use 0.61" },
+    { crate = "x25519-dalek@3.0.0", reason = "RustCrypto and OpenMLS HPKE require parallel audited API generations; revisit with their next compatible upgrades" },
+]
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
