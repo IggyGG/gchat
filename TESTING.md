@@ -1,5 +1,11 @@
 # Validation
 
+Current work stays in the existing private local Forgejo repositories. Public
+publication is deferred by the owner. Run the build/test and local package-consumer
+checks below; `check-release.py` applies only when a public release is reconsidered.
+Native development uses the tunneled Mac's `iggy` account and a Windows x86_64 VM.
+Their availability does not imply completed native or installer qualification.
+
 Use Rust 1.98, Node 22, npm 11 and the platform's Tauri v2 prerequisites.
 After GComs packages have been published:
 
