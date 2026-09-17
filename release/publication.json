@@ -23,7 +23,8 @@
         "account": "iggy",
         "architecture": "arm64",
         "signing_identity": "Apple Development: Iggy Gullstrand (99T8PLK737)",
-        "purpose": "development; public distribution deferred"
+        "purpose": "development; public distribution deferred",
+        "status": "unavailable; excluded from current release effort"
       },
       "windows": {
         "kind": "virtual_machine",
@@ -36,5 +37,13 @@
       }
     },
     "native_validation_record": "native-validation-2026-09-17.json"
+  },
+  "qualification_targets": [
+    "linux-x86_64",
+    "windows-x86_64"
+  ],
+  "unqualified_targets": {
+    "macos-x86_64": "Mac unavailable; excluded from current release effort by owner",
+    "macos-aarch64": "Mac unavailable; excluded from current release effort by owner"
   }
 }

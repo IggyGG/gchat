@@ -10,14 +10,17 @@ Continue local builds and archive-consumer validation without public registries.
 
 `release/publication.json` records these private endpoints under `development`.
 Its public URL/contact/signing fields remain unset until publication is revisited.
-`scripts/check-release.py` is a future public-release gate, not the acceptance gate
-for current private development. Run the ordinary checks in TESTING.md for this stage.
+`scripts/check-release.py --stage candidate` checks private qualification evidence.
+`--stage preflight` adds owner reviews, public identity and Windows distribution
+signing; `--stage published` also requires actual registry/install verification.
+None of these commands publishes. See [candidate evidence](RELEASE_EVIDENCE.md)
+for commands and the Linux/Windows scope. Ordinary development checks remain in
+TESTING.md; a passing build alone does not qualify a release.
 
-Current native development uses the tunneled Mac's `iggy` account and its existing
-`Apple Development: Iggy Gullstrand (99T8PLK737)` identity. This is a development
-certificate; the future public-distribution publisher remains undecided. Windows
-build/test work uses an isolated x86_64 VM from the existing local Windows image.
-Neither host selection is a claim of completed installer or platform qualification.
+Current qualification targets Linux x86_64 and Windows x86_64. Windows release
+builds require a Windows 11 VM with native MSVC; the older Windows GNU runtime
+checks remain diagnostic evidence. macOS is unavailable and outside this release's
+qualified platform set. No Mac build or signing identity is required for this effort.
 
 ## Future public release
 
@@ -36,7 +39,8 @@ secret audit by itself.
    README links and package metadata together.
 4. Qualify exact-source native platforms and the operated network. Record evidence
    and signing identities; do not substitute private historical performance results.
-5. Run `python3 scripts/check-release.py`. Missing inputs fail closed.
+5. Validate the candidate bundle with `check-release.py` and the chosen stage.
+   Missing, failed or stale evidence blocks qualification.
 
 ## Publication
 

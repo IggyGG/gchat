@@ -69,8 +69,9 @@ See [TESTING.md](TESTING.md), [integration](docs/INTEGRATION.md),
 GComs provides transport and typed services; GChat owns chat behavior and UI.
 
 MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
-Linux x86_64, macOS x86_64/aarch64 and Windows x86_64 are intended preview targets;
-qualification is tracked per platform. Mobile is deferred.
+Linux x86_64 and Windows x86_64 are the current preview qualification targets.
+macOS is unavailable and unqualified; mobile is deferred. See the
+[release evidence procedure](docs/RELEASE_EVIDENCE.md).
 
 The preview uses GComs' rustls/XML advisory fixes and disables unused postcard
 heapless defaults. `deny.toml` records reviewed transitive-version exceptions and
