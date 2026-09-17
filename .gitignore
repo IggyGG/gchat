@@ -12,3 +12,6 @@ __pycache__/
 /apps/client/src-tauri/gen/schemas/
 
 /third-party/generated/
+
+# Contained task checkouts are local workspace state.
+/.worktrees/
