@@ -1,0 +1,141 @@
+{
+  "date": "2026-09-17",
+  "status": "private developer-preview staging; not published",
+  "sources": {
+    "gcoms": "4f60f2f522fcfbe8e2cb7dfa512e3c8d1bee9adc",
+    "gchat": "19ca61dbb230eb3a01fd1dc6a7506b50c5bb0070"
+  },
+  "tests": {
+    "gcoms_linux": {
+      "passed": 596,
+      "failed": 0,
+      "ignored": 5,
+      "log": "core-tests-qualified.log",
+      "sha256": "adaff96d349831138faa51802b8c2c92f123686f279347ee0f19c95a10945e5e"
+    },
+    "gchat_linux": {
+      "passed": 142,
+      "failed": 0,
+      "ignored": 0,
+      "log": "chat-tests-final.log",
+      "sha256": "67e0740345a3ce4894d2cd0eeccb9d388cdc0791dff92a6614213fd725ae2412"
+    },
+    "gchat_macos_arm64": {
+      "passed": 142,
+      "failed": 0,
+      "ignored": 0,
+      "log": "macos-gchat-final.log",
+      "sha256": "4987eec7c81ee48db3694d00336dba4cb58fc5f97653cd813f89bdebcf40e962"
+    },
+    "private_authority": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "log": "private-adapter-final.log",
+      "sha256": "50c3e2840dee05fcbd6bee57f8e4594ceeca82e4b1d8bcd2c03362c198ef0d3b"
+    },
+    "gcoms_typescript": {
+      "passed": 8
+    },
+    "gchat_ui": {
+      "passed": 14
+    },
+    "npm_runtime_audits": {
+      "gcoms": 0,
+      "gchat": 0,
+      "unit": "reported vulnerabilities; dev dependencies omitted"
+    },
+    "browser": {
+      "rust_wasm": "passed",
+      "typescript": "passed",
+      "lost_reply_reload": "passed",
+      "authenticated_gateway": "passed"
+    },
+    "cell_vectors": {
+      "passed": 8
+    },
+    "fuzz_smoke": {
+      "runs": 38609581,
+      "seconds": 61,
+      "coverage": 76,
+      "features": 91,
+      "crashes": 0
+    },
+    "rust_clippy": "passed for both public workspaces and private adapter",
+    "rust_documentation": "passed",
+    "core_no_std": "passed",
+    "sdk_ipc_only": "passed",
+    "generated_contracts": "passed for GComs and GChat",
+    "cargo_deny": "passed with the versioned documented exceptions; desktop checked separately",
+    "gchat_macos_desktop_check": "passed; development cargo check, not signed native acceptance"
+  },
+  "packages": {
+    "gcoms-catalog-0.1.0.crate": "12e7bb306a55f1ad7bcc59136799fbe333f0236c11981f5ee8354cd7d77dfacb",
+    "gcoms-core-0.1.0.crate": "f2bb7f91b3d9613d3f65566b57ac9ed02eefe2feb646e19b30c394e85d4c54b5",
+    "gcoms-crypto-0.1.0.crate": "04a1a79fb0129ad5a3cf1b37de4d945e34cdd9acca82d7ce48e199139f465239",
+    "gcoms-file-transfer-0.1.0.crate": "712728335a6108eb2ffda435a3a0cf42ac894b97636f5b51a12d378df7ca43c9",
+    "gcoms-gossip-0.1.0.crate": "8ac677be89a5a7a931a8b0d06052d44a277db1cdbe281bd98f2cc6392c860c4a",
+    "gcoms-mls-0.1.0.crate": "39387f6ca37a80479de4730258b8686875e105ccc07eaa17362b1c3d7d8fd7ca",
+    "gcoms-network-0.1.0.crate": "9f532af6825084fc3e0720c7d148fb5bfbbc6e9bdb3c888d1a82ea0afd0b9172",
+    "gcoms-network-client-0.1.0.crate": "78412b4d2038ddb8a45de92428269d682a621c0cd32847c28b22ffe91e231379",
+    "gcoms-node-0.1.0.crate": "87b636034158dd6207f6eb0b8f62876d75fee3052588e2ccc2ea8e5f9598e0ef",
+    "gcoms-private-fs-0.1.0.crate": "d3b076bb72658f97f59530915d8f73e75e53776895e2eacbdb3b257eff5cc327",
+    "gcoms-protocol-0.1.0.crate": "9122e9ba193409db45fcca4314a888c719cf9d65f06889e2b7594d64a3f5279c",
+    "gcoms-routing-0.1.0.crate": "bbb897f3e7022d945c4e362220f3ce2c710ee20587ac43ccbcac20a7fd223f81",
+    "gcoms-rpc-0.1.0.crate": "f856b38be4813980a270972aed89a0303ccc37cb58d6f03eecdf6739a9da04bc",
+    "gcoms-rpc-contract-0.1.0.crate": "4f2b8b625e59f16a65c4eaeedf343e9dda5fed8e39a158335192b4d53c157c6e",
+    "gcoms-rpc-macros-0.1.0.crate": "767491fec7c32ed96638215b502175ca3ff8c3deb1a99597681b920f542a7ff5",
+    "gcoms-sdk-0.1.0.crate": "a1db5a83fa910cf149108dd93558d4ff6376375954ae1dfbba4ed198bd4628c8",
+    "gcoms-transport-0.1.0.crate": "1dad417ba3f961ca40455c70b5910beb75de182a03938790dc6ac9a55518bfdd",
+    "gcoms-rpc-0.1.0.tgz": "240055d57b2cae59a6cb1bbd98074109a89c9ddbf97c0e5eddd245fd98ad3eab",
+    "gcoms-rpc-codegen-0.1.0.tgz": "bfc44a38517c684537f8a1d685e44e3c31b5bf8bb9cae638f24ea64ef29f855e"
+  },
+  "limitations": [
+    "Native fresh-install/upgrade/uninstall acceptance and signing are pending.",
+    "Windows and macOS x86_64 are not qualified.",
+    "Full macOS GComs routing suite requires administrator-provisioned loopback aliases.",
+    "Public Forgejo URLs, security/conduct contacts, maintainers, rights review and operator acceptance are unresolved.",
+    "Complete native dependency-notice review is pending; inventory includes build tools and optional platform dependencies.",
+    "Independent cryptographic/privacy review and mobile support are outside the qualified preview.",
+    "Private authority adapter is tested but existing private deployments have not migrated."
+  ],
+  "packages_validation": {
+    "isolated_rust_alias_consumer": "passed",
+    "isolated_npm_consumer": "passed",
+    "gchat_registry_build": "passed",
+    "gchat_lockfile_archive_checksums": "verified for both workspaces",
+    "desktop_registry_metadata": "passed"
+  },
+  "notices": {
+    "inventory_entries": 794,
+    "without_discoverable_notice_files": 94,
+    "review": "pending; does not imply 94 runtime libraries"
+  },
+  "artifacts": {
+    "GChat_0.1.0_amd64.deb": {
+      "sha256": "dc70cc6dbdee9f470025e1674bdd5dcb44ebd75254f2eb06e39e6ddd81d98b3e",
+      "bytes": 13701632,
+      "status": "unpublished development artifact; not signed or install-qualified"
+    },
+    "GChat_0.1.0_amd64.AppImage": {
+      "sha256": "6c8b4126d235cb44b290b39fd5d131f1fd2e30ce9483395f71a54cc700ffbc75",
+      "bytes": 92215800,
+      "status": "unpublished development artifact; not signed or install-qualified"
+    }
+  },
+  "artifacts_validation": "Debian archive contains the 794-entry dependency-notice inventory and bundled license resources. Install/upgrade/uninstall acceptance pending.",
+  "commands": {
+    "gcoms": "cargo test --workspace --all-features --locked -- --test-threads=1",
+    "gchat": "cargo test --config <external-staging-config> --workspace --all-features -- --test-threads=1",
+    "archive_consumer": "python3 scripts/check-consumers.py --offline --output <package-release>",
+    "registry_consumer": "python3 scripts/check-registry-consumer.py --application <gchat> --packages <package-release/package> --target-dir <isolated-target> --offline",
+    "native_bundle": "npm run tauri -w @gchat/client -- build --bundles deb appimage --ci -- --config <external-staging-config> --offline"
+  },
+  "tested_source_notes": {
+    "gcoms_linux_suite": "902d74f; final 4f60f2f changes operator documentation and CLI usage text only; strict Clippy and archive consumer pass on final source",
+    "gchat_rust_suites": "b41246e source; final 19ca61d changes packaging inputs, dependency policies and collection scripts, not service runtime",
+    "macos_gchat_dependencies": "source-patched GComs 902d74f; archived remote lockfile retained with evidence",
+    "linux_bundle": "19ca61d application sources with external GComs source patches; standalone registry GChat compile checked separately"
+  },
+  "evidence_retention": "Full build/test logs and private source history retained by project owner; this file is a preparation record, not a release attestation."
+}
