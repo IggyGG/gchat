@@ -9,6 +9,22 @@ and operation journal. A UI identifies an instance before sending requests and
 pins that instance for its attachment. Unlock and disconnect are lifecycle actions;
 query and operation routes are bound to the selected service.
 
+The separated GComs repository is the protocol source of truth. Do not reconnect
+GChat to the original private `gc-*` workspace to pick up transport changes. Keep
+the `gcoms-*` registry dependencies in this application's manifests and validate
+current-source development from GComs with:
+
+```sh
+python3 scripts/check-gchat.py --gchat /path/to/gchat --offline
+```
+
+That runner snapshots both repositories and applies temporary GComs source overrides.
+Cargo may update the snapshot's lockfile without changing this repository's lockfiles.
+It reports both source hashes and revisions and detects changes during the check. Actual
+package-archive validation remains a separate distribution gate. The GC/2 protocol
+implementation and qualification ledger lives in GComs; repository consolidation
+alone does not change chat archives or the implemented GC/1 wire profile.
+
 Use `ui/scripts/generate-rpc.mjs` after exporting the Rust schema with `gchat-types`.
 The build-time import is `@gcoms/rpc-codegen`; the browser runtime is `@gcoms/rpc`.
 Rebuild and check generated files after changing the contract. Wide integers use

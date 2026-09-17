@@ -27,6 +27,13 @@ Before publication, qualify against GComs' extracted package staging using its
 `check-consumers.py --gchat /path/to/gchat`. An external Cargo patch file can select
 those extracted packages without adding sibling paths to public manifests.
 
+For current-source development, run GComs' `scripts/check-gchat.py --gchat
+/path/to/gchat --offline` from the separated GComs repository. Its default action
+runs this Rust workspace's all-feature tests; `--action check` and `--action
+clippy` provide build/lint variants. It snapshots both repositories, leaving both checked-in
+Cargo.lock files and registry dependency manifests intact. Read its retained
+summary before treating the two-source integration as qualified.
+
 The Rust suite covers chat history, encrypted archive continuity, instance-bound
 RPC, durable submission/recovery, runtime shutdown and refusal of retained component
 ownership before personal archive or IPC startup. UI tests exercise service errors,
