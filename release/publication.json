@@ -28,8 +28,13 @@
       "windows": {
         "kind": "virtual_machine",
         "architecture": "x86_64",
-        "purpose": "private build and test validation"
+        "purpose": "private build and test validation",
+        "vm_name": "gcoms-gchat-validation",
+        "operating_system": "Windows 10 build 19045",
+        "execution": "native Windows tests from Linux-cross-built x86_64-pc-windows-gnu executables",
+        "forgejo_runner_registered": false
       }
-    }
+    },
+    "native_validation_record": "native-validation-2026-09-17.json"
   }
 }

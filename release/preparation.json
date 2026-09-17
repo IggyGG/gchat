@@ -137,5 +137,7 @@
     "macos_gchat_dependencies": "source-patched GComs 902d74f; archived remote lockfile retained with evidence",
     "linux_bundle": "19ca61d application sources with external GComs source patches; standalone registry GChat compile checked separately"
   },
-  "evidence_retention": "Full build/test logs and private source history retained by project owner; this file is a preparation record, not a release attestation."
+  "evidence_retention": "Full build/test logs and private source history retained by project owner; this file is a preparation record, not a release attestation.",
+  "record_scope": "Initial preparation snapshot for the source and package hashes recorded here. Later private VM validation and refreshed packages are recorded in native-validation-2026-09-17.json.",
+  "follow_up": "native-validation-2026-09-17.json"
 }

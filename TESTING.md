@@ -63,3 +63,27 @@ serves inspected package archives through a loopback registry and checks `--lock
 with canonical crates.io checksums. Run it for both this workspace and the separate
 Tauri manifest. Path-patched development commands can rewrite these lock entries;
 repeat registry verification before committing release lockfiles.
+
+## Private Windows VM checks
+
+The current manual test host is the isolated `gcoms-gchat-validation` x86_64 VM
+(Windows 10 build 19045). Its restricted network exposes SSH only on the Linux
+host's loopback interface. Windows GNU test executables are cross-built with Rust
+1.98 on Linux, then executed inside Windows with their source fixtures and runtime
+DLLs. Each harness retains its exit code and logs; timeouts and harnesses with no
+Windows cases must be reported separately.
+
+This checks Windows runtime behavior, including named pipes and file permissions.
+It does not establish MSVC compilation, native compiler UI tests, desktop installer
+behavior, signing or a configured Forgejo runner. Those require the corresponding
+Windows build dependencies and separate acceptance evidence when release work
+resumes. Public publication remains deferred.
+
+The [2026-09-17 runtime record](release/native-validation-2026-09-17.json) contains
+584 passing GComs Windows cases (five ignored) and 121 passing GChat Windows cases.
+GComs' offline-member backlog harness exceeded the 15-minute VM budget; a separate
+90-second diagnostic reached offline sending after successful admission and member
+shutdown. It remains an open Windows qualification issue. Unix-only harnesses with
+zero Windows cases and the native compiler/installer gaps above are excluded from
+these counts. Linux has 598 GComs and 142 GChat passing cases, with the final
+transcript fix additionally retested across all core-library cases on both OSes.
