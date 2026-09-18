@@ -30,9 +30,12 @@ jobs:
       - name: Validate site and published downloads
         run: |
           python3 -m unittest discover -s scripts/tests -p website_test.py
+          python3 -m unittest discover -s scripts/tests -p website_deploy_test.py
           python3 scripts/website.py --check-remote
-      - name: Deploy to current GChat web host
+      - name: Deploy to the existing GChat Kubernetes workload
         env:
-          GCHAT_WEB_SSH: ${{ vars.GCHAT_WEB_SSH }}
-          GCHAT_WEB_ROOT: ${{ vars.GCHAT_WEB_ROOT }}
+          KUBECONFIG: ${{ vars.GCHAT_WEB_KUBECONFIG }}
+          GCHAT_KUBE_CONTEXT: ${{ vars.GCHAT_KUBE_CONTEXT }}
+          GCHAT_WEB_NAMESPACE: ${{ vars.GCHAT_WEB_NAMESPACE }}
+          GCHAT_WEB_DEPLOYMENT: ${{ vars.GCHAT_WEB_DEPLOYMENT }}
         run: python3 scripts/deploy-website.py
