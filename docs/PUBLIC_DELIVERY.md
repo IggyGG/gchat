@@ -60,8 +60,9 @@ an Apple Development certificate is not a distribution certificate.
   separate from the network-defaults signing root.
 
 Record actual signer names and certificate/key fingerprints in
-`release/publication.json`. Configure the private security/conduct contacts and
-retain the required rights/operator reviews. Unconfigured fields remain explicit
+`release/publication.json`. Private security and conduct reports use
+`iggy@gchat.boo`; GitHub private vulnerability reporting is also enabled for both
+public repositories. Retain the required rights/operator reviews. Unconfigured fields remain explicit
 release blockers; scripts never invent identities or passing evidence.
 
 ## Build and qualify

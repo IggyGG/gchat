@@ -193,6 +193,13 @@
   .facts .g{width:14px;height:14px;shape-rendering:crispEdges;color:var(--mint);flex:none}
 
   /* ---------- sections ---------- */
+  #source{scroll-margin-top:80px}
+  .source-links{list-style:none;padding:0;margin:28px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .source-links .panel{padding:20px;min-width:0}
+  .source-links h3{margin:0 0 10px}
+  .source-links p,.source-docs{color:var(--muted)}
+  .source-docs{margin-top:22px}
+  @media(max-width:640px){.source-links{grid-template-columns:1fr}}
   #downloads code{overflow-wrap:anywhere}
   #downloads{scroll-margin-top:80px}
   .sec-label{font-family:var(--pixel);font-size:13px;letter-spacing:1px;color:var(--accent)}
@@ -300,8 +307,9 @@
       <svg class="g" viewBox="2 2 27 27" data-sprite="ghost" aria-hidden="true"><rect x="11" y="2" width="2" height="1" fill="#232529"/><rect x="9" y="3" width="5" height="1" fill="#232529"/><rect x="8" y="4" width="2" height="1" fill="#232529"/><rect x="10" y="4" width="3" height="1" fill="#eeeeee"/><rect x="13" y="4" width="7" height="1" fill="#232529"/><rect x="9" y="5" width="1" height="1" fill="#232529"/><rect x="10" y="5" width="7" height="1" fill="#eeeeee"/><rect x="17" y="5" width="2" height="1" fill="#cfd0d1"/><rect x="19" y="5" width="3" height="1" fill="#232529"/><rect x="7" y="6" width="3" height="1" fill="#232529"/><rect x="10" y="6" width="7" height="1" fill="#eeeeee"/><rect x="17" y="6" width="4" height="1" fill="#cfd0d1"/><rect x="21" y="6" width="3" height="1" fill="#232529"/><rect x="6" y="7" width="2" height="1" fill="#232529"/><rect x="8" y="7" width="4" height="1" fill="#eeeeee"/><rect x="12" y="7" width="11" height="1" fill="#cfd0d1"/><rect x="23" y="7" width="2" height="1" fill="#232529"/><rect x="5" y="8" width="2" height="1" fill="#232529"/><rect x="7" y="8" width="4" height="1" fill="#eeeeee"/><rect x="11" y="8" width="12" height="1" fill="#cfd0d1"/><rect x="23" y="8" width="1" height="1" fill="#3a3d42"/><rect x="24" y="8" width="2" height="1" fill="#232529"/><rect x="5" y="9" width="1" height="1" fill="#232529"/><rect x="6" y="9" width="3" height="1" fill="#eeeeee"/><rect x="9" y="9" width="14" height="1" fill="#cfd0d1"/><rect x="23" y="9" width="2" height="1" fill="#3a3d42"/><rect x="25" y="9" width="1" height="1" fill="#232529"/><rect x="4" y="10" width="2" height="1" fill="#232529"/><rect x="6" y="10" width="2" height="1" fill="#eeeeee"/><rect x="8" y="10" width="16" height="1" fill="#cfd0d1"/><rect x="24" y="10" width="1" height="1" fill="#3a3d42"/><rect x="25" y="10" width="2" height="1" fill="#232529"/><rect x="4" y="11" width="1" height="1" fill="#232529"/><rect x="5" y="11" width="2" height="1" fill="#eeeeee"/><rect x="7" y="11" width="17" height="1" fill="#cfd0d1"/><rect x="24" y="11" width="2" height="1" fill="#3a3d42"/><rect x="26" y="11" width="1" height="1" fill="#232529"/><rect x="3" y="12" width="2" height="1" fill="#232529"/><rect x="5" y="12" width="2" height="1" fill="#eeeeee"/><rect x="7" y="12" width="1" height="1" fill="#cfd0d1"/><rect x="8" y="12" width="2" height="1" fill="#232529"/><rect x="10" y="12" width="2" height="1" fill="#cfd0d1"/><rect x="12" y="12" width="2" height="1" fill="#232529"/><rect x="14" y="12" width="11" height="1" fill="#cfd0d1"/><rect x="25" y="12" width="1" height="1" fill="#3a3d42"/><rect x="26" y="12" width="2" height="1" fill="#232529"/><rect x="3" y="13" width="1" height="1" fill="#232529"/><rect x="4" y="13" width="2" height="1" fill="#eeeeee"/><rect x="6" y="13" width="2" height="1" fill="#cfd0d1"/><rect x="8" y="13" width="1" height="1" fill="#ffffff"/><rect x="9" y="13" width="1" height="1" fill="#232529"/><rect x="10" y="13" width="2" height="1" fill="#cfd0d1"/><rect x="12" y="13" width="1" height="1" fill="#ffffff"/><rect x="13" y="13" width="1" height="1" fill="#232529"/><rect x="14" y="13" width="11" height="1" fill="#cfd0d1"/><rect x="25" y="13" width="2" height="1" fill="#3a3d42"/><rect x="27" y="13" width="1" height="1" fill="#232529"/><rect x="3" y="14" width="1" height="1" fill="#232529"/><rect x="4" y="14" width="2" height="1" fill="#eeeeee"/><rect x="6" y="14" width="2" height="1" fill="#cfd0d1"/><rect x="8" y="14" width="2" height="1" fill="#232529"/><rect x="10" y="14" width="2" height="1" fill="#cfd0d1"/><rect x="12" y="14" width="2" height="1" fill="#232529"/><rect x="14" y="14" width="13" height="1" fill="#cfd0d1"/><rect x="27" y="14" width="1" height="1" fill="#232529"/><rect x="3" y="15" width="1" height="1" fill="#232529"/><rect x="4" y="15" width="2" height="1" fill="#eeeeee"/><rect x="6" y="15" width="2" height="1" fill="#cfd0d1"/><rect x="8" y="15" width="2" height="1" fill="#232529"/><rect x="10" y="15" width="2" height="1" fill="#cfd0d1"/><rect x="12" y="15" width="2" height="1" fill="#232529"/><rect x="14" y="15" width="11" height="1" fill="#cfd0d1"/><rect x="25" y="15" width="2" height="1" fill="#a9adb3"/><rect x="27" y="15" width="1" height="1" fill="#232529"/><rect x="2" y="16" width="2" height="1" fill="#232529"/><rect x="4" y="16" width="2" height="1" fill="#eeeeee"/><rect x="6" y="16" width="2" height="1" fill="#cfd0d1"/><rect x="8" y="16" width="2" height="1" fill="#232529"/><rect x="10" y="16" width="2" height="1" fill="#cfd0d1"/><rect x="12" y="16" width="2" height="1" fill="#232529"/><rect x="14" y="16" width="11" height="1" fill="#cfd0d1"/><rect x="25" y="16" width="1" height="1" fill="#a9adb3"/><rect x="26" y="16" width="1" height="1" fill="#3a3d42"/><rect x="27" y="16" width="2" height="1" fill="#232529"/><rect x="3" y="17" width="1" height="1" fill="#232529"/><rect x="4" y="17" width="2" height="1" fill="#eeeeee"/><rect x="6" y="17" width="2" height="1" fill="#cfd0d1"/><rect x="8" y="17" width="2" height="1" fill="#232529"/><rect x="10" y="17" width="2" height="1" fill="#cfd0d1"/><rect x="12" y="17" width="2" height="1" fill="#232529"/><rect x="14" y="17" width="11" height="1" fill="#cfd0d1"/><rect x="25" y="17" width="2" height="1" fill="#3a3d42"/><rect x="27" y="17" width="1" height="1" fill="#232529"/><rect x="3" y="18" width="1" height="1" fill="#232529"/><rect x="4" y="18" width="2" height="1" fill="#eeeeee"/><rect x="6" y="18" width="19" height="1" fill="#cfd0d1"/><rect x="25" y="18" width="2" height="1" fill="#3a3d42"/><rect x="27" y="18" width="1" height="1" fill="#232529"/><rect x="3" y="19" width="1" height="1" fill="#232529"/><rect x="4" y="19" width="5" height="1" fill="#cfd0d1"/><rect x="9" y="19" width="4" height="1" fill="#c0424a"/><rect x="13" y="19" width="12" height="1" fill="#cfd0d1"/><rect x="25" y="19" width="2" height="1" fill="#3a3d42"/><rect x="27" y="19" width="1" height="1" fill="#232529"/><rect x="3" y="20" width="1" height="1" fill="#232529"/><rect x="4" y="20" width="4" height="1" fill="#cfd0d1"/><rect x="8" y="20" width="6" height="1" fill="#c0424a"/><rect x="14" y="20" width="11" height="1" fill="#cfd0d1"/><rect x="25" y="20" width="2" height="1" fill="#3a3d42"/><rect x="27" y="20" width="1" height="1" fill="#232529"/><rect x="3" y="21" width="1" height="1" fill="#232529"/><rect x="4" y="21" width="4" height="1" fill="#cfd0d1"/><rect x="8" y="21" width="6" height="1" fill="#c0424a"/><rect x="14" y="21" width="10" height="1" fill="#cfd0d1"/><rect x="24" y="21" width="3" height="1" fill="#a9adb3"/><rect x="27" y="21" width="1" height="1" fill="#232529"/><rect x="3" y="22" width="2" height="1" fill="#232529"/><rect x="5" y="22" width="3" height="1" fill="#cfd0d1"/><rect x="8" y="22" width="6" height="1" fill="#c0424a"/><rect x="14" y="22" width="10" height="1" fill="#cfd0d1"/><rect x="24" y="22" width="2" height="1" fill="#a9adb3"/><rect x="26" y="22" width="2" height="1" fill="#232529"/><rect x="4" y="23" width="1" height="1" fill="#232529"/><rect x="5" y="23" width="3" height="1" fill="#cfd0d1"/><rect x="8" y="23" width="6" height="1" fill="#c0424a"/><rect x="14" y="23" width="9" height="1" fill="#cfd0d1"/><rect x="23" y="23" width="3" height="1" fill="#a9adb3"/><rect x="26" y="23" width="1" height="1" fill="#232529"/><rect x="4" y="24" width="2" height="1" fill="#232529"/><rect x="6" y="24" width="3" height="1" fill="#cfd0d1"/><rect x="9" y="24" width="4" height="1" fill="#c0424a"/><rect x="13" y="24" width="9" height="1" fill="#cfd0d1"/><rect x="22" y="24" width="3" height="1" fill="#a9adb3"/><rect x="25" y="24" width="2" height="1" fill="#232529"/><rect x="5" y="25" width="2" height="1" fill="#232529"/><rect x="7" y="25" width="13" height="1" fill="#cfd0d1"/><rect x="20" y="25" width="4" height="1" fill="#a9adb3"/><rect x="24" y="25" width="2" height="1" fill="#232529"/><rect x="6" y="26" width="2" height="1" fill="#232529"/><rect x="8" y="26" width="7" height="1" fill="#cfd0d1"/><rect x="15" y="26" width="8" height="1" fill="#a9adb3"/><rect x="23" y="26" width="2" height="1" fill="#232529"/><rect x="7" y="27" width="3" height="1" fill="#232529"/><rect x="10" y="27" width="5" height="1" fill="#cfd0d1"/><rect x="15" y="27" width="6" height="1" fill="#a9adb3"/><rect x="21" y="27" width="3" height="1" fill="#232529"/><rect x="9" y="28" width="13" height="1" fill="#232529"/></svg>
     </a>
     <nav class="nav-links" aria-label="Page sections">
+      <a href="#source">Source</a>
+      <a href="#downloads">Get GChat</a>
       <a href="#security">Security</a>
-      <a href="#how">How it works</a>
       <a href="#status">Status</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -322,10 +330,7 @@
           No account, email address, or phone number is needed to use GChat.
         </p>
         <div class="actions">
-          <span class="btn btn-soon" aria-disabled="true">
-            <svg class="lock" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5a3 3 0 0 0-3 3V6H4.5A1.5 1.5 0 0 0 3 7.5v5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 6H11V4.5a3 3 0 0 0-3-3Zm-1.5 3a1.5 1.5 0 0 1 3 0V6h-3V4.5Z" fill="currentColor"/></svg>
-            Invitation-only — opening soon
-          </span>
+          <a class="btn" href="https://github.com/IggyGG/gchat">View GChat on GitHub</a>
           <a class="btn btn-ghost" href="#downloads">Downloads and setup</a>
         </div>
         <p class="hero-note">
@@ -374,6 +379,28 @@
       </ul>
     </div>
   </div>
+
+  <section id="source">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="sec-label">Open source</p>
+        <h2>Read the code. Build on GComs.</h2>
+        <p>GChat and GComs are public on GitHub under MIT or Apache-2.0.
+          The application, protocol, and this website can all be inspected.</p>
+      </div>
+      <ul class="source-links">
+        <li class="panel"><h3>GChat application</h3>
+          <p>The desktop app, terminal client, installation guide, and website.</p>
+          <a href="https://github.com/IggyGG/gchat">IggyGG/gchat →</a></li>
+        <li class="panel"><h3>GComs protocol</h3>
+          <p>The Rust protocol implementation, typed service APIs, and conformance vectors.</p>
+          <a href="https://github.com/IggyGG/gcoms">IggyGG/gcoms →</a></li>
+      </ul>
+      <p class="source-docs"><a href="https://github.com/IggyGG/gcoms/blob/main/docs/TYPED_SERVICES.md">Addon and client integration</a> ·
+        <a href="https://github.com/IggyGG/gchat/tree/main/website">Website source</a> ·
+        <a href="https://github.com/IggyGG/gchat/blob/main/CONTRIBUTING.md">Contributing</a></p>
+    </div>
+  </section>
 
   @@DOWNLOADS@@
 
@@ -471,9 +498,14 @@
       <div class="status-grid">
         <ul class="status panel">
           <li>
+            <p class="k">source</p>
+            <p class="v">Public. <a href="https://github.com/IggyGG/gchat">GChat</a> and
+              <a href="https://github.com/IggyGG/gcoms">GComs</a> are available on GitHub.</p>
+          </li>
+          <li>
             <p class="k">spec</p>
-            <p class="v">v0.1-draft. Review the protocol specification and conformance vectors in
-              the GComs source mirror.</p>
+            <p class="v">v0.1-draft. Read the <a href="https://github.com/IggyGG/gcoms/blob/main/README.md">protocol documentation</a> and
+              <a href="https://github.com/IggyGG/gcoms/tree/main/crates/conformance/vectors">conformance vectors</a>.</p>
           </li>
           <li>
             <p class="k">network</p>
@@ -512,7 +544,7 @@
       <div class="faq">
         <details>
           <summary>Is GChat open source?</summary>
-          <p>GChat and GComs are open source under MIT or Apache-2.0. GitHub hosts public mirrors; development and releases are managed in our local Forgejo.</p>
+          <p><a href="https://github.com/IggyGG/gchat">GChat</a> and <a href="https://github.com/IggyGG/gcoms">GComs</a> are open source under MIT or Apache-2.0. The GChat repository also contains this website.</p>
         </details>
         <details>
           <summary>How do I get access?</summary>
@@ -531,6 +563,14 @@
           <summary>Can I run my own relays?</summary>
           <p>Yes. Relays and catalog services are self-hostable, and the network's defaults are
             signed so clients can verify what they connect to.</p>
+        </details>
+        <details>
+          <summary>How do I report a security or conduct issue?</summary>
+          <p>Email <a href="mailto:iggy@gchat.boo">iggy@gchat.boo</a> privately.
+            For security issues, you can also use GitHub's private reporting for
+            <a href="https://github.com/IggyGG/gchat/security/advisories/new">GChat</a> or
+            <a href="https://github.com/IggyGG/gcoms/security/advisories/new">GComs</a>.
+            Do not put private invitations, keys, or user data in public issues.</p>
         </details>
         <details>
           <summary>Has it been audited?</summary>
@@ -565,6 +605,8 @@
         <h3>Source</h3>
         <ul>
           <li><a href="https://github.com/IggyGG/gchat">GChat on GitHub</a></li>
+          <li><a href="https://github.com/IggyGG/gcoms">GComs on GitHub</a></li>
+          <li><a href="https://github.com/IggyGG/gchat/tree/main/website">Website source</a></li>
           <li><a href="#downloads">Downloads and installation</a></li>
         </ul>
       </div>
@@ -574,6 +616,7 @@
           <li><a href="#security">Security</a></li>
           <li><a href="#status">Status</a></li>
           <li><a href="#faq">FAQ</a></li>
+          <li><a href="mailto:iggy@gchat.boo">Private reports</a></li>
         </ul>
       </div>
     </div>
