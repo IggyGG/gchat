@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./api": "./src/api.ts",
+    "./files": "./src/files.ts",
     "./transport": "./src/transport.ts",
     "./server": "./server/local.ts",
     "./rpc": "./src/rpc-transport.ts"

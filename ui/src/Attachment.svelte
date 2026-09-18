@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte';
   import GhostMark from './GhostMark.svelte';
+  import type { FileAccess } from './files';
   import Workspace from './Workspace.svelte';
   import { attach, chatError, type ChatError, type Exchange, type Transport } from './transport';
   import { attachRpc, type RpcTransport } from './rpc-transport';
-  let { exchange, rpcTransport, expectedInstance, tools }: { exchange: Exchange; rpcTransport?: RpcTransport; expectedInstance?: string; tools?: Snippet } = $props();
+  let { exchange, rpcTransport, expectedInstance, tools, fileAccess }: { exchange: Exchange; rpcTransport?: RpcTransport; expectedInstance?: string; tools?: Snippet; fileAccess?: FileAccess } = $props();
   let transport = $state<Transport>();
   let error = $state<ChatError>();
   let running = false, connecting = false;
@@ -23,7 +24,7 @@
     finally { connecting = false; }
   }
 </script>
-{#if transport}<Workspace {transport} {tools} />{:else}
+{#if transport}<Workspace {transport} {tools} {fileAccess} />{:else}
   <main><h1 class="brand">GChat.<GhostMark /></h1><p role="status">{error ? error.retryable ? 'Reconnecting to this instance…' : error.message : 'Connecting to this instance…'}</p>
     {#if error}<button onclick={() => error?.retryable ? void connect() : location.reload()}>{error.action}</button><details><summary>Connection details</summary>{error.message}</details>{/if}
     {#if tools}{@render tools()}{/if}

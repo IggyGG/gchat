@@ -11,10 +11,13 @@ and publisher accounts are future release decisions, not prerequisites for this
 private development stage. The intended preview version remains 0.1.0. See
 [development and future release status](docs/RELEASE.md).
 
-Current work is limited to secure connections in GComs and GChat: authentication,
-transport security, local IPC access controls, and disconnect/reconnect behavior.
+Current validation covers secure connections, authentication, transport security,
+local IPC access controls, disconnect/reconnect behavior, and private file sharing.
 Validation uses Linux and the existing Windows VM. macOS is unavailable;
 installer and publication work is deferred.
+
+[Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
+authorized sources, explicit download acceptance and a bounded encrypted cache.
 
 ## Build and run
 

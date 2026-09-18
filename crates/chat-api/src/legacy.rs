@@ -38,6 +38,33 @@ impl ChatClient {
         })
     }
 
+    /// One bounded piece per owner-authenticated local exchange.
+    pub async fn file_io(&self, frame: Vec<u8>) -> Result<Vec<u8>, String> {
+        let (header, _) = files::decode_io(&frame)?;
+        if header.instance != self.instance {
+            return Err("File request belongs to another instance".into());
+        }
+        tokio::time::timeout(std::time::Duration::from_secs(150), async {
+            let mut stream =
+                gcoms_sdk::local::connect(&gcoms_sdk::LocalEndpoint::new(&self.endpoint))
+                    .await
+                    .map_err(|e| e.to_string())?;
+            gcoms_sdk::local_rpc::write(&mut stream, &frame, files::IO_LIMIT)
+                .await
+                .map_err(|e| e.to_string())?;
+            let response = gcoms_sdk::local_rpc::read(&mut stream, files::IO_LIMIT)
+                .await
+                .map_err(|e| e.to_string())?;
+            match response.first() {
+                Some(0) => Ok(response[1..].to_vec()),
+                Some(1) => Err(String::from_utf8_lossy(&response[1..]).into_owned()),
+                _ => Err("Invalid file response".into()),
+            }
+        })
+        .await
+        .map_err(|_| "File exchange timed out".to_string())?
+    }
+
     pub fn instance_id(&self) -> &str {
         &self.instance
     }

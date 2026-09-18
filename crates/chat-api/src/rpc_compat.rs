@@ -31,6 +31,9 @@ pub(super) async fn request<T: gcoms_rpc::Transport>(
 ) -> Result<Response, ChatError> {
     let client = rpc::ChatClient::new(client);
     Ok(match request {
+        Request::Files { request } => Response::Files {
+            snapshot: client.files(request).await.map_err(error)?,
+        },
         Request::Identify => Response::Instance {
             instance: client.identify().await.map_err(error)?,
         },

@@ -851,16 +851,19 @@ async fn typed_host_resumes_the_same_journal_across_lock_and_protocol_restart() 
         client.inner.status(&handle).await.unwrap(),
         gcoms_rpc::ReplyBody::Done { .. }
     ));
-    assert!(client.disconnect().await.unwrap().instance.protocol_locked);
-    assert_eq!(
-        client.inner.status(&handle).await.unwrap_err().code,
-        gcoms_rpc::ErrorCode::Unauthorized
-    );
-    client.unlock(PASS.into(), false).await.unwrap();
-    assert!(matches!(
-        client.inner.status(&handle).await.unwrap(),
-        gcoms_rpc::ReplyBody::Done { .. }
-    ));
+    // Every restart must release the protocol lock, including event workers.
+    for _ in 0..3 {
+        assert!(client.disconnect().await.unwrap().instance.protocol_locked);
+        assert_eq!(
+            client.inner.status(&handle).await.unwrap_err().code,
+            gcoms_rpc::ErrorCode::Unauthorized
+        );
+        client.unlock(PASS.into(), false).await.unwrap();
+        assert!(matches!(
+            client.inner.status(&handle).await.unwrap(),
+            gcoms_rpc::ReplyBody::Done { .. }
+        ));
+    }
     assert_eq!(client.snapshot().await.unwrap().conversations.len(), 1);
     host.flush().await.unwrap();
 }
@@ -1206,4 +1209,384 @@ async fn network_invitation_is_local_private_and_survives_reopen_without_chat_au
     assert!(!reopened.network_dns_status().unwrap().opted_in);
     service.disconnect().await.unwrap();
     reopened.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive() {
+    use chat_service::ChatEndpoint;
+    use gchat_api::files::{encode_io, FileIo, PIECE_BYTES};
+    use gchat_api::{FileRequest, FileState};
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = open_runtime(dir.path(), true).await;
+    let service = make_service(dir.path(), runtime.clone());
+    unlock(&service, true).await;
+    let Response::Applied {
+        conversation: Some(channel),
+        ..
+    } = submit(
+        &service,
+        "create-file-channel-fixture",
+        None,
+        "/create #files tester",
+    )
+    .await
+    else {
+        panic!("create channel");
+    };
+    let handle = "01010101010101010101010101010101";
+    let response = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Prepare {
+                id: handle.into(),
+                conversation: channel.clone(),
+                name: "fixture.bin".into(),
+                size_bytes: (PIECE_BYTES + 7).to_string(),
+            },
+        },
+    )
+    .await;
+    assert!(matches!(response, Response::Files { .. }), "{response:?}");
+    let instance = service.snapshot().await.unwrap().instance.id;
+    let frame = |piece, upload, bytes: &[u8]| {
+        encode_io(
+            &FileIo {
+                instance: instance.clone(),
+                id: handle.into(),
+                piece,
+                upload,
+            },
+            bytes,
+        )
+        .unwrap()
+    };
+    let piece = vec![0xa7; PIECE_BYTES];
+    service
+        .clone()
+        .file_io(frame(0, true, &piece))
+        .await
+        .unwrap();
+    service
+        .clone()
+        .file_io(frame(0, true, &piece))
+        .await
+        .unwrap();
+    assert!(service
+        .clone()
+        .file_io(frame(0, true, &vec![0x5a; PIECE_BYTES]))
+        .await
+        .is_err());
+    service
+        .clone()
+        .file_io(frame(1, true, b"retained"))
+        .await
+        .unwrap_err(); // Exact final-piece bounds.
+    service
+        .clone()
+        .file_io(frame(1, true, b"content"))
+        .await
+        .unwrap();
+    let committed = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Commit { id: handle.into() },
+        },
+    )
+    .await;
+    assert!(
+        matches!(committed,Response::Files { snapshot } if matches!(snapshot.files[0].state,FileState::Complete))
+    );
+    assert_eq!(
+        service.clone().file_io(frame(0, false, &[])).await.unwrap(),
+        piece
+    );
+    request(&service, Request::Lock).await;
+    assert!(service.clone().file_io(frame(0, false, &[])).await.is_err());
+    assert!(matches!(
+        request(
+            &service,
+            Request::Files {
+                request: FileRequest::List { conversation: None }
+            }
+        )
+        .await,
+        Response::Error { .. }
+    ));
+    unlock(&service, false).await;
+    let Response::History { page } = request(
+        &service,
+        Request::History {
+            conversation: channel.clone(),
+            before: None,
+            limit: 200,
+        },
+    )
+    .await
+    else {
+        panic!("history")
+    };
+    assert!(page.messages.iter().all(|m| !m.body.contains("content")));
+    service.disconnect().await.unwrap();
+    drop(service);
+    let service = make_service(dir.path(), runtime.clone());
+    unlock(&service, false).await;
+    assert_eq!(
+        service.clone().file_io(frame(1, false, &[])).await.unwrap(),
+        b"content"
+    );
+    let result = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Cancel { id: handle.into() },
+        },
+    )
+    .await;
+    assert!(
+        matches!(result,Response::Files{snapshot} if matches!(snapshot.files[0].state,FileState::Cancelled))
+    );
+    assert!(service.clone().file_io(frame(0, false, &[])).await.is_err());
+    service.disconnect().await.unwrap();
+    drop(service);
+    let journal = dir.path().join("chat.pieces").join(handle).join("state");
+    let mut sealed = std::fs::read(&journal).unwrap();
+    sealed[0] ^= 1;
+    std::fs::write(&journal, sealed).unwrap();
+    let service = make_service(dir.path(), runtime.clone());
+    unlock(&service, false).await;
+    assert!(!service.snapshot().await.unwrap().instance.locked);
+    assert!(
+        matches!(request(&service, Request::Files { request: FileRequest::List { conversation: None } }).await,
+        Response::Error { message, .. } if message.contains("File cache unavailable"))
+    );
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn files_cross_real_private_channel_after_acceptance_without_transcript_records() {
+    use chat_service::ChatEndpoint;
+    use gchat_api::files::{encode_io, FileIo};
+    use gchat_api::{FileRequest, FileState};
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    let ar = open_runtime(a.path(), true).await;
+    let br = open_runtime(b.path(), true).await;
+    let owner = ar.sdk_client();
+    let peer = br.sdk_client();
+    owner
+        .create_channel("files-network", "owner", 8, ChannelVisibility::Private)
+        .await
+        .unwrap();
+    let join = peer.prepare_channel_join("peer").await.unwrap();
+    let welcome = owner
+        .admit_channel(
+            "files-network",
+            &peer.channel_key_package(join).await.unwrap(),
+            "peer",
+        )
+        .await
+        .unwrap();
+    peer.join_channel(join, "files-network", ChannelVisibility::Private, &welcome)
+        .await
+        .unwrap();
+    let sender = make_service(a.path(), ar.clone());
+    let receiver = make_service(b.path(), br.clone());
+    unlock(&sender, true).await;
+    unlock(&receiver, true).await;
+    let channel = sender.snapshot().await.unwrap().conversations[0].id.clone();
+    let receiver_channel = receiver.snapshot().await.unwrap().conversations[0]
+        .id
+        .clone();
+    let handle = "02020202020202020202020202020202";
+    let bytes = vec![0x7b; 32 * 1024 + 11];
+    let prepared = request(
+        &sender,
+        Request::Files {
+            request: FileRequest::Prepare {
+                id: handle.into(),
+                conversation: channel.clone(),
+                name: "network.bin".into(),
+                size_bytes: bytes.len().to_string(),
+            },
+        },
+    )
+    .await;
+    assert!(matches!(prepared, Response::Files { .. }), "{prepared:?}");
+    let header = FileIo {
+        instance: sender.snapshot().await.unwrap().instance.id,
+        id: handle.into(),
+        piece: 0,
+        upload: true,
+    };
+    sender
+        .clone()
+        .file_io(encode_io(&header, &bytes).unwrap())
+        .await
+        .unwrap();
+    assert!(matches!(
+        request(
+            &sender,
+            Request::Files {
+                request: FileRequest::Commit { id: handle.into() }
+            }
+        )
+        .await,
+        Response::Files { .. }
+    ));
+    tokio::time::timeout(Duration::from_secs(90), async {
+        loop {
+            if let Response::Files { snapshot } = request(
+                &receiver,
+                Request::Files {
+                    request: FileRequest::List { conversation: None },
+                },
+            )
+            .await
+            {
+                if let Some(file) = snapshot.files.iter().find(|f| f.id == handle) {
+                    assert!(matches!(file.state, FileState::Offered));
+                    assert_eq!(file.verified_bytes, "0");
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("private offer arrives");
+    assert!(matches!(
+        request(
+            &receiver,
+            Request::Files {
+                request: FileRequest::Accept { id: handle.into() }
+            }
+        )
+        .await,
+        Response::Files { .. }
+    ));
+    owner
+        .send_channel("files-network", b"chat alongside attachment")
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(120), async {
+        loop {
+            if let Response::Files { snapshot } = request(
+                &receiver,
+                Request::Files {
+                    request: FileRequest::List { conversation: None },
+                },
+            )
+            .await
+            {
+                if snapshot
+                    .files
+                    .iter()
+                    .any(|f| f.id == handle && matches!(f.state, FileState::Complete))
+                {
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("verified download completes");
+    let header = FileIo {
+        instance: receiver.snapshot().await.unwrap().instance.id,
+        id: handle.into(),
+        piece: 0,
+        upload: false,
+    };
+    assert_eq!(
+        receiver
+            .clone()
+            .file_io(encode_io(&header, &[]).unwrap())
+            .await
+            .unwrap(),
+        bytes
+    );
+    let Response::History { page } = request(
+        &receiver,
+        Request::History {
+            conversation: receiver_channel,
+            before: None,
+            limit: 200,
+        },
+    )
+    .await
+    else {
+        panic!("history")
+    };
+    assert!(page
+        .messages
+        .iter()
+        .any(|m| m.body == "chat alongside attachment"));
+    assert!(page
+        .messages
+        .iter()
+        .all(|m| !m.body.contains("GCAPP1") && !m.body.contains("network.bin")));
+    sender.disconnect().await.unwrap();
+    receiver.disconnect().await.unwrap();
+    ar.shutdown().await.unwrap();
+    br.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn native_file_paths_stay_local_and_export_never_clobbers() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = open_runtime(dir.path(), true).await;
+    let service = make_service(dir.path(), runtime.clone());
+    unlock(&service, true).await;
+    let Response::Applied {
+        conversation: Some(channel),
+        ..
+    } = submit(
+        &service,
+        "create-native-file-fixture",
+        None,
+        "/create #files tester",
+    )
+    .await
+    else {
+        panic!("channel")
+    };
+    let socket = dir.path().join("chat.sock");
+    let (stop, rx) = tokio::sync::watch::channel(false);
+    let server = tokio::spawn({
+        let service = service.clone();
+        let socket = socket.clone();
+        async move { chat_service::serve(service, &socket, rx).await }
+    });
+    let client = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if let Ok(client) = ChatClient::connect(&socket, None).await {
+                break client;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let source = dir.path().join("source.bin");
+    let destination = dir.path().join("saved.bin");
+    let bytes = vec![0xd3; 256 * 1024 + 3];
+    std::fs::write(&source, &bytes).unwrap();
+    let handle = "03030303030303030303030303030303";
+    client.import_file(handle, &channel, &source).await.unwrap();
+    client.import_file(handle, &channel, &source).await.unwrap();
+    client.save_file(handle, &destination).await.unwrap();
+    assert_eq!(std::fs::read(&destination).unwrap(), bytes);
+    std::fs::write(&destination, b"keep existing").unwrap();
+    assert!(client.save_file(handle, &destination).await.is_err());
+    assert_eq!(std::fs::read(&destination).unwrap(), b"keep existing");
+    client.request(Request::Lock).await.unwrap();
+    assert!(client
+        .save_file(handle, &dir.path().join("locked.bin"))
+        .await
+        .is_err());
+    assert!(!dir.path().join("locked.bin").exists());
+    stop.send(true).unwrap();
+    server.await.unwrap().unwrap();
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
 }

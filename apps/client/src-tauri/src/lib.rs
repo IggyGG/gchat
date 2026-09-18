@@ -76,6 +76,53 @@ async fn chat_rpc(
     Ok(reply)
 }
 
+#[tauri::command]
+async fn chat_file_io(
+    state: tauri::State<'_, Attachment>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<tauri::ipc::Response, String> {
+    let tauri::ipc::InvokeBody::Raw(frame) = request.body() else {
+        return Err("Expected a binary file frame".into());
+    };
+    let bytes = attached(&state).await?.file_io(frame.clone()).await?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+#[tauri::command]
+async fn chat_file_save(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Attachment>,
+    id: String,
+) -> Result<String, String> {
+    let client = attached(&state).await?;
+    let snapshot = client
+        .files(gchat_api::FileRequest::List { conversation: None })
+        .await?;
+    let file = snapshot
+        .files
+        .iter()
+        .find(|f| f.id == id && matches!(f.state, gchat_api::FileState::Complete))
+        .ok_or("File is not complete")?;
+    // The service validates names, but the native filesystem boundary also
+    // requires exactly one normal component, including on Windows.
+    let mut parts = std::path::Path::new(&file.name).components();
+    if !matches!(parts.next(), Some(std::path::Component::Normal(_)))
+        || parts.next().is_some()
+        || file.name.contains(':')
+        || file.name.ends_with('.')
+        || file.name.ends_with(' ')
+    {
+        return Err("Invalid export name".into());
+    }
+    let destination = app
+        .path()
+        .download_dir()
+        .map_err(|e| e.to_string())?
+        .join(&file.name);
+    client.save_file(&id, &destination).await?;
+    Ok(destination.display().to_string())
+}
+
 #[cfg(target_os = "android")]
 mod android;
 
@@ -108,7 +155,12 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![chat_request, chat_rpc])
+        .invoke_handler(tauri::generate_handler![
+            chat_request,
+            chat_rpc,
+            chat_file_io,
+            chat_file_save
+        ])
         .run(tauri::generate_context!())
         .expect("gchat native application");
 }

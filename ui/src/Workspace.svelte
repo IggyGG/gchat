@@ -4,12 +4,14 @@
   import type { CommandOutput, Completion, DirectoryEntry, Message, Request, Response, Snapshot } from './api';
   import CommandResult from './CommandResult.svelte';
   import GhostMark from './GhostMark.svelte';
+  import FilePanel from './FilePanel.svelte';
+  import type { FileAccess } from './files';
   import MessageResult from './MessageResult.svelte';
   import { chatError, type ChatError, type Transport } from './transport';
   import { MAX_INPUT_BYTES } from './api';
   import { ConversationViews, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
 
-  let { transport, tools }: { transport: Transport; tools?: Snippet } = $props();
+  let { transport, tools, fileAccess }: { transport: Transport; tools?: Snippet; fileAccess?: FileAccess } = $props();
   let snapshot = $state<Snapshot>();
   let selected = $state<string | null>(null);
   let messages = $state<Message[]>([]);
@@ -502,6 +504,9 @@
       {/if}
       {#if draftError}<p class="input-error" id="gchat-input-error">{draftError}</p>{/if}
       {#if !locked}
+        {#if selected && snapshot?.instance.capabilities.includes('files.v1')}
+          {#key selected}<FilePanel {transport} conversation={selected} instance={snapshot.instance.id} access={fileAccess} canShare={active?.kind !== 'archive'} />{/key}
+        {/if}
         <form class="composer" onsubmit={event => { event.preventDefault(); void send(); }}>
           {#if completions.length}<div class="completions" aria-label="Command completions">{#each completions as item}<button type="button" onclick={() => { draft = item.text + ' '; completions = []; composer?.focus(); }}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
           <span class="prompt">{active?.members.find(m => m.isSelf)?.nickname ?? '>'}</span>

@@ -284,6 +284,13 @@ macro_rules! expect_response {
 }
 #[async_trait::async_trait]
 impl<S: ChatEndpoint> Chat for Handlers<S> {
+    async fn files(
+        &self,
+        request: gchat_api::FileRequest,
+    ) -> Result<gchat_api::FileSnapshot, ChatError> {
+        expect_response!(self, Request::Files { request }, Files, snapshot)
+    }
+
     async fn identify(&self) -> Result<InstanceInfo, ChatError> {
         expect_response!(self, Request::Identify, Instance, instance)
     }

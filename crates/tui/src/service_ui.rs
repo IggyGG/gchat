@@ -451,7 +451,10 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                 failures.retain(|(request, _)| !matches!(request, Request::Submit { operation_id: prior, .. } if prior == operation_id));
             }
             tokio::spawn(async move {
-                let result = if check_operation {
+                let result = if matches!(&request, Request::Submit { text, .. } if text == "/file" || text.starts_with("/file "))
+                {
+                    crate::files::command(&client, &request).await
+                } else if check_operation {
                     if let Request::Submit { operation_id, .. } = &request {
                         client.resume_submit(operation_id).await
                     } else {
