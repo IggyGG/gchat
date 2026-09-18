@@ -25,6 +25,13 @@ struct Inner {
     naming: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     recover_now: tokio::sync::Notify,
     names_now: tokio::sync::Notify,
+    background: std::sync::Mutex<Background>,
+}
+
+#[derive(Default)]
+struct Background {
+    stopping: bool,
+    tasks: Vec<tokio::task::JoinHandle<()>>,
 }
 
 #[derive(Clone)]
@@ -207,6 +214,7 @@ impl ProtocolRuntime {
             naming: std::sync::Mutex::new(None),
             recover_now: tokio::sync::Notify::new(),
             names_now: tokio::sync::Notify::new(),
+            background: std::sync::Mutex::new(Background::default()),
         }));
         runtime.spawn_event_persistence();
         runtime.spawn_periodic_save();
@@ -262,18 +270,29 @@ impl ProtocolRuntime {
     }
 
     pub async fn shutdown(self) -> Result<(), String> {
-        let tasks = [
-            self.0
-                .recovery
-                .lock()
-                .expect("network recovery lock")
-                .take(),
-            self.0.naming.lock().expect("network naming lock").take(),
-        ];
-        for task in tasks.iter().flatten() {
+        // Weak references still become strong while an event or periodic save
+        // is in flight. Join every owned worker before releasing the profile.
+        let mut tasks = {
+            let mut background = self.0.background.lock().expect("protocol background tasks");
+            background.stopping = true;
+            std::mem::take(&mut background.tasks)
+        };
+        tasks.extend(
+            [
+                self.0
+                    .recovery
+                    .lock()
+                    .expect("network recovery lock")
+                    .take(),
+                self.0.naming.lock().expect("network naming lock").take(),
+            ]
+            .into_iter()
+            .flatten(),
+        );
+        for task in &tasks {
             task.abort();
         }
-        for task in tasks.into_iter().flatten() {
+        for task in tasks {
             let _ = task.await;
         }
 
@@ -348,9 +367,18 @@ impl ProtocolRuntime {
         Ok(())
     }
 
+    fn spawn_background(&self, task: impl std::future::Future<Output = ()> + Send + 'static) {
+        let mut background = self.0.background.lock().expect("protocol background tasks");
+        if background.stopping {
+            return;
+        }
+        background.tasks.retain(|task| !task.is_finished());
+        background.tasks.push(tokio::spawn(task));
+    }
+
     fn spawn_periodic_save(&self) {
         let inner = Arc::downgrade(&self.0);
-        tokio::spawn(async move {
+        self.spawn_background(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(30)).await;
                 let Some(inner) = inner.upgrade() else { break };
@@ -365,7 +393,7 @@ impl ProtocolRuntime {
     fn spawn_event_persistence(&self) {
         let mut events = self.sdk_client().embedded.subscribe_events();
         let inner = Arc::downgrade(&self.0);
-        tokio::spawn(async move {
+        self.spawn_background(async move {
             while events.recv().await.is_some() {
                 let Some(inner) = inner.upgrade() else { break };
                 let runtime = ProtocolRuntime(inner);
@@ -535,7 +563,8 @@ impl GcClient for ProtocolClient {
         let runtime = Arc::downgrade(&self.runtime.0);
         let ownership = self.central_primary.clone();
         let (sender, receiver) = mpsc::channel(256);
-        tokio::spawn(forward_protocol_events(source, sender, runtime, ownership));
+        self.runtime
+            .spawn_background(forward_protocol_events(source, sender, runtime, ownership));
         receiver
     }
 

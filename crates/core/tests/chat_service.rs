@@ -844,16 +844,19 @@ async fn typed_host_resumes_the_same_journal_across_lock_and_protocol_restart() 
         client.inner.status(&handle).await.unwrap(),
         gcoms_rpc::ReplyBody::Done { .. }
     ));
-    assert!(client.disconnect().await.unwrap().instance.protocol_locked);
-    assert_eq!(
-        client.inner.status(&handle).await.unwrap_err().code,
-        gcoms_rpc::ErrorCode::Unauthorized
-    );
-    client.unlock(PASS.into(), false).await.unwrap();
-    assert!(matches!(
-        client.inner.status(&handle).await.unwrap(),
-        gcoms_rpc::ReplyBody::Done { .. }
-    ));
+    // Every restart must release the protocol lock, including event workers.
+    for _ in 0..3 {
+        assert!(client.disconnect().await.unwrap().instance.protocol_locked);
+        assert_eq!(
+            client.inner.status(&handle).await.unwrap_err().code,
+            gcoms_rpc::ErrorCode::Unauthorized
+        );
+        client.unlock(PASS.into(), false).await.unwrap();
+        assert!(matches!(
+            client.inner.status(&handle).await.unwrap(),
+            gcoms_rpc::ReplyBody::Done { .. }
+        ));
+    }
     assert_eq!(client.snapshot().await.unwrap().conversations.len(), 1);
     host.flush().await.unwrap();
 }

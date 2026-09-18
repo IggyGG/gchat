@@ -380,7 +380,10 @@ impl ChatService {
     pub(super) fn spawn_file_worker(service: &Arc<Self>) -> tokio::task::JoinHandle<()> {
         let weak = Arc::downgrade(service);
         let sdk = service.runtime.sdk_client();
-        let mut events = sdk.subscribe_events();
+        // Observe the node's authenticated stream directly. The chat owner's
+        // protocol subscription already persists events; a second persistence
+        // forwarder can outlive this worker and retain the profile at reopen.
+        let mut events = sdk.embedded().subscribe_events();
         let mut stop = service.stopped.subscribe();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_millis(250));
