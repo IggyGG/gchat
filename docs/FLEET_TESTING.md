@@ -22,8 +22,10 @@ The builder snapshots both repositories and leaves registry manifests and
 canonical lockfiles untouched.
 
 `GCHAT_FILE_DIAGNOSTICS=1` emits five-second local aggregate observations on
-stderr: verified/rejected pieces, retry counts, payload buffers, pending work and
-reserved cache bytes. It emits no member, route or share identifiers. Counts reset
+stderr: verified/rejected pieces, received blocks/bytes, retry counts, send failures
+and timeouts, payload buffers, pending work and reserved cache bytes. Received
+bytes are still unverified ciphertext until a whole piece passes verification.
+It emits no member, route or share identifiers. Counts reset
 with the engine; PID and time identify each observation interval. Diagnostic
 write failure does not fail a transfer. Ordinary application behavior is unchanged
 when the environment variable is absent.

@@ -5,12 +5,14 @@ use gcoms_file_transfer::swarm::{
 };
 use std::{
     collections::{BTreeMap, VecDeque},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
 };
 
 pub(super) struct FileRuntime {
     enabled: AtomicBool,
     diagnostics: bool,
+    send_failures: AtomicU64,
+    send_timeouts: AtomicU64,
     inner: std::sync::Mutex<Backend>,
 }
 struct Work {
@@ -34,6 +36,8 @@ impl FileRuntime {
         Ok(Arc::new(Self {
             enabled: AtomicBool::new(true),
             diagnostics: std::env::var("GCHAT_FILE_DIAGNOSTICS").is_ok_and(|v| v == "1"),
+            send_failures: AtomicU64::new(0),
+            send_timeouts: AtomicU64::new(0),
             inner: std::sync::Mutex::new(Backend {
                 engine: Engine::new(cache),
                 routes: BTreeMap::new(),
@@ -484,6 +488,9 @@ impl ChatService {
                         let observation = serde_json::json!({
                             "event": "file_diagnostics", "unix_seconds": now(),
                             "pid": std::process::id(), "verified_pieces": d.verified_pieces,
+                            "received_blocks": d.received_blocks, "received_bytes": d.received_bytes,
+                            "send_failures": worker.send_failures.load(Ordering::Relaxed),
+                            "send_timeouts": worker.send_timeouts.load(Ordering::Relaxed),
                             "rejected_pieces": d.rejected_pieces, "retries": d.retries,
                             "buffered_bytes": d.buffered_bytes, "pending_pulls": d.pending_pulls,
                             "pending_actions": backend.pending.len(), "cache_bytes": backend.engine.cache.used(),
@@ -562,29 +569,43 @@ impl ChatService {
                             break;
                         }
                         let sdk = sdk.clone();
+                        let counters = runtime.clone();
                         #[cfg(test)]
                         let receipt_gate = service.file_receipt_gate.lock().unwrap().clone();
                         sends.spawn(async move {
                             if let Ok(bytes) = action.message.encode() {
-                                let _ = tokio::time::timeout(Duration::from_secs(20), async {
-                                    let result = sdk
-                                        .send_channel_application(
-                                            &channel,
-                                            action.peer.member,
-                                            CONTENT_TYPE,
-                                            &bytes,
-                                        )
-                                        .await;
-                                    // Simulate a delayed receipt after the peer
-                                    // has received a request and can answer it.
-                                    #[cfg(test)]
-                                    if let Some(gate) = receipt_gate {
-                                        gate.entered.fetch_add(1, Ordering::SeqCst);
-                                        let _permit = gate.release.acquire().await;
-                                    }
-                                    result
-                                })
-                                .await;
+                                let outcome =
+                                    tokio::time::timeout(Duration::from_secs(20), async {
+                                        let result = sdk
+                                            .send_channel_application(
+                                                &channel,
+                                                action.peer.member,
+                                                CONTENT_TYPE,
+                                                &bytes,
+                                            )
+                                            .await;
+                                        // Simulate a delayed receipt after the peer
+                                        // has received a request and can answer it.
+                                        #[cfg(test)]
+                                        if let Some(gate) = receipt_gate {
+                                            gate.entered.fetch_add(1, Ordering::SeqCst);
+                                            let _permit = gate.release.acquire().await;
+                                        }
+                                        result
+                                    })
+                                    .await;
+                                let counter = match outcome {
+                                    Ok(Ok(_)) => None,
+                                    Ok(Err(_)) => Some(&counters.send_failures),
+                                    Err(_) => Some(&counters.send_timeouts),
+                                };
+                                if let Some(counter) = counter {
+                                    let _ = counter.fetch_update(
+                                        Ordering::Relaxed,
+                                        Ordering::Relaxed,
+                                        |value| Some(value.saturating_add(1)),
+                                    );
+                                }
                             }
                         });
                     }
