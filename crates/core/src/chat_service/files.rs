@@ -10,6 +10,7 @@ use std::{
 
 pub(super) struct FileRuntime {
     enabled: AtomicBool,
+    diagnostics: bool,
     inner: std::sync::Mutex<Backend>,
 }
 struct Work {
@@ -20,16 +21,24 @@ struct Backend {
     engine: Engine,
     routes: BTreeMap<[u8; 32], String>,
     pending: VecDeque<Action>,
+    next_diagnostic: u64,
+}
+#[cfg(test)]
+pub(super) struct TestReceiptGate {
+    entered: std::sync::atomic::AtomicUsize,
+    release: tokio::sync::Semaphore,
 }
 impl FileRuntime {
     pub fn open(path: &Path, key: [u8; 32], config: CacheConfig) -> Result<Arc<Self>, String> {
         let cache = Cache::open(path, key, config).map_err(|e| e.to_string())?;
         Ok(Arc::new(Self {
             enabled: AtomicBool::new(true),
+            diagnostics: std::env::var("GCHAT_FILE_DIAGNOSTICS").is_ok_and(|v| v == "1"),
             inner: std::sync::Mutex::new(Backend {
                 engine: Engine::new(cache),
                 routes: BTreeMap::new(),
                 pending: VecDeque::new(),
+                next_diagnostic: 0,
             }),
         }))
     }
@@ -388,24 +397,31 @@ impl ChatService {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_millis(250));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            let mut sends = tokio::task::JoinSet::new();
             loop {
                 let event = tokio::select! {
                     _=stop.changed()=>break,
                     _=interval.tick()=>None,
+                    _=sends.join_next(), if !sends.is_empty()=>None,
                     event=events.recv()=>match event{Some(event)=>Some(event),None=>break},
                 };
                 let Some(service) = weak.upgrade() else { break };
+                // Ordinary IPC contention must not discard an already-received
+                // authenticated block. Shutdown can still cancel this wait.
+                let session = tokio::select! {
+                    _=stop.changed()=>break,
+                    session=service.session.lock()=>session,
+                };
                 let Some((runtime, archive, client)) =
-                    service.session.try_lock().ok().and_then(|s| {
-                        s.as_ref().filter(|s| !s.ui_locked).and_then(|s| {
-                            s.files
-                                .clone()
-                                .map(|files| (files, s.client.file_context(), s.client.clone()))
-                        })
+                    session.as_ref().filter(|s| !s.ui_locked).and_then(|s| {
+                        s.files
+                            .clone()
+                            .map(|files| (files, s.client.file_context(), s.client.clone()))
                     })
                 else {
                     continue;
                 };
+                drop(session);
                 if service
                     .refresh_file_members(&runtime, &archive)
                     .await
@@ -414,6 +430,9 @@ impl ChatService {
                     continue;
                 }
                 let worker = runtime.clone();
+                // Keep bounded sends alive across receive/tick iterations. A slow
+                // receipt must not block the peer's next piece response.
+                let send_capacity = 4usize.saturating_sub(sends.len());
                 let result = tokio::task::spawn_blocking(move || -> Result<Work, String> {
                     if !worker.enabled.load(Ordering::Acquire) {
                         return Ok(Work {
@@ -458,13 +477,28 @@ impl ChatService {
                         }
                     }
                     new.extend(backend.engine.tick(now()).map_err(|e| e.to_string())?);
+                    if worker.diagnostics && now() >= backend.next_diagnostic {
+                        use std::io::Write;
+                        backend.next_diagnostic = now().saturating_add(5);
+                        let d = backend.engine.diagnostics();
+                        let observation = serde_json::json!({
+                            "event": "file_diagnostics", "unix_seconds": now(),
+                            "pid": std::process::id(), "verified_pieces": d.verified_pieces,
+                            "rejected_pieces": d.rejected_pieces, "retries": d.retries,
+                            "buffered_bytes": d.buffered_bytes, "pending_pulls": d.pending_pulls,
+                            "pending_actions": backend.pending.len(), "cache_bytes": backend.engine.cache.used(),
+                        });
+                        // Optional local aggregates only. A full diagnostic disk
+                        // must not turn an observation into a transfer failure.
+                        let _ = writeln!(std::io::stderr().lock(), "{observation}");
+                    }
                     for action in new {
                         if backend.pending.len() < 128 {
                             backend.pending.push_back(action);
                         }
                     }
                     let mut ready = Vec::new();
-                    for _ in 0..4 {
+                    for _ in 0..send_capacity {
                         if let Some(action) = backend.pending.pop_front() {
                             if let Some(name) = backend.routes.get(&action.peer.channel) {
                                 if backend.engine.action_allowed(&action) {
@@ -523,32 +557,252 @@ impl ChatService {
                     if changed {
                         let _ = client.save().await;
                     }
-                    let mut sends = tokio::task::JoinSet::new();
                     for (channel, action) in work.actions {
                         if !runtime.enabled.load(Ordering::Acquire) {
                             break;
                         }
                         let sdk = sdk.clone();
+                        #[cfg(test)]
+                        let receipt_gate = service.file_receipt_gate.lock().unwrap().clone();
                         sends.spawn(async move {
                             if let Ok(bytes) = action.message.encode() {
-                                let _ = tokio::time::timeout(
-                                    Duration::from_secs(20),
-                                    sdk.send_channel_application(
-                                        &channel,
-                                        action.peer.member,
-                                        CONTENT_TYPE,
-                                        &bytes,
-                                    ),
-                                )
+                                let _ = tokio::time::timeout(Duration::from_secs(20), async {
+                                    let result = sdk
+                                        .send_channel_application(
+                                            &channel,
+                                            action.peer.member,
+                                            CONTENT_TYPE,
+                                            &bytes,
+                                        )
+                                        .await;
+                                    // Simulate a delayed receipt after the peer
+                                    // has received a request and can answer it.
+                                    #[cfg(test)]
+                                    if let Some(gate) = receipt_gate {
+                                        gate.entered.fetch_add(1, Ordering::SeqCst);
+                                        let _permit = gate.release.acquire().await;
+                                    }
+                                    result
+                                })
                                 .await;
                             }
                         });
                     }
-                    while !sends.is_empty() {
-                        tokio::select! {_=stop.changed()=>{sends.shutdown().await;return},_=sends.join_next()=>{}}
-                    }
                 }
             }
+            sends.shutdown().await;
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::runtime::ProtocolRuntime;
+    use gchat_api::files::{encode_io, FileIo};
+    use gcoms_sdk::{ChannelVisibility, GcClient};
+
+    async fn request(service: &ChatService, request: Request) -> Response {
+        service
+            .dispatch(RequestEnvelope {
+                version: gchat_api::VERSION,
+                instance_id: Some(service.id.clone()),
+                request,
+            })
+            .await
+            .response
+    }
+
+    async fn peer(home: &Path) -> (ProtocolRuntime, Arc<ChatService>) {
+        crate::private_fs::make_private(home, true).unwrap();
+        let runtime = ProtocolRuntime::create_fixture(
+            &home.join("profile"),
+            "file-receipt-test",
+            "127.0.0.1:0".parse().unwrap(),
+            None,
+            None,
+            &[],
+        )
+        .await
+        .unwrap();
+        let service = ChatService::new(
+            home.join("archive"),
+            runtime.clone(),
+            vec![
+                Capability::IdentityRead,
+                Capability::ChannelMember,
+                Capability::ChannelAdmin,
+                Capability::EventRead,
+            ],
+        )
+        .unwrap();
+        (runtime, service)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn incoming_file_completes_while_outbound_receipts_are_stalled() {
+        let a = tempfile::tempdir().unwrap();
+        let b = tempfile::tempdir().unwrap();
+        let (ar, sender) = peer(a.path()).await;
+        let (br, receiver) = peer(b.path()).await;
+        let owner = ar.sdk_client();
+        let joiner = br.sdk_client();
+        owner
+            .create_channel("receipts", "owner", 8, ChannelVisibility::Private)
+            .await
+            .unwrap();
+        let join = joiner.prepare_channel_join("peer").await.unwrap();
+        let package = joiner.channel_key_package(join).await.unwrap();
+        let welcome = owner
+            .admit_channel("receipts", &package, "peer")
+            .await
+            .unwrap();
+        joiner
+            .join_channel(join, "receipts", ChannelVisibility::Private, &welcome)
+            .await
+            .unwrap();
+        let gate = Arc::new(TestReceiptGate {
+            entered: std::sync::atomic::AtomicUsize::new(0),
+            release: tokio::sync::Semaphore::new(0),
+        });
+        *receiver.file_receipt_gate.lock().unwrap() = Some(gate.clone());
+        for service in [&sender, &receiver] {
+            assert!(matches!(
+                request(
+                    service,
+                    Request::Unlock {
+                        passphrase: "file-receipt-test".into(),
+                        create: true,
+                    }
+                )
+                .await,
+                Response::Snapshot { .. }
+            ));
+        }
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while gate.entered.load(Ordering::SeqCst) == 0 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("an outgoing discovery reached the peer, but its receipt is held");
+
+        // Publish only after the receiver has a pending receipt. Its file worker
+        // must continue processing authenticated incoming offers and piece data.
+        let conversation = sender.snapshot().await.unwrap().conversations[0].id.clone();
+        let handle = "81818181818181818181818181818181";
+        let bytes = vec![0x7b; 1024];
+        assert!(matches!(
+            request(
+                &sender,
+                Request::Files {
+                    request: FileRequest::Prepare {
+                        id: handle.into(),
+                        conversation,
+                        name: "receipt.bin".into(),
+                        size_bytes: bytes.len().to_string(),
+                    },
+                }
+            )
+            .await,
+            Response::Files { .. }
+        ));
+        sender
+            .clone()
+            .file_io(
+                encode_io(
+                    &FileIo {
+                        instance: sender.id.clone(),
+                        id: handle.into(),
+                        piece: 0,
+                        upload: true,
+                    },
+                    &bytes,
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(matches!(
+            request(
+                &sender,
+                Request::Files {
+                    request: FileRequest::Commit { id: handle.into() },
+                }
+            )
+            .await,
+            Response::Files { .. }
+        ));
+
+        tokio::time::timeout(Duration::from_secs(8), async {
+            let mut accepted = false;
+            loop {
+                let Response::Files { snapshot } = request(
+                    &receiver,
+                    Request::Files {
+                        request: FileRequest::List { conversation: None },
+                    },
+                )
+                .await
+                else {
+                    panic!("file list failed")
+                };
+                if let Some(file) = snapshot.files.iter().find(|f| f.id == handle) {
+                    if matches!(file.state, FileState::Complete) {
+                        break;
+                    }
+                    if !accepted {
+                        assert!(matches!(file.state, FileState::Offered));
+                        assert_eq!(file.verified_bytes, "0");
+                        assert!(matches!(
+                            request(
+                                &receiver,
+                                Request::Files {
+                                    request: FileRequest::Accept { id: handle.into() },
+                                }
+                            )
+                            .await,
+                            Response::Files { .. }
+                        ));
+                        accepted = true;
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .expect("incoming file progresses without releasing outbound receipts");
+        assert_eq!(
+            receiver
+                .clone()
+                .file_io(
+                    encode_io(
+                        &FileIo {
+                            instance: receiver.id.clone(),
+                            id: handle.into(),
+                            piece: 0,
+                            upload: false,
+                        },
+                        &[]
+                    )
+                    .unwrap()
+                )
+                .await
+                .unwrap(),
+            bytes
+        );
+        assert!((1..=4).contains(&gate.entered.load(Ordering::SeqCst)));
+        assert_eq!(gate.release.available_permits(), 0);
+        tokio::time::timeout(Duration::from_secs(5), receiver.disconnect())
+            .await
+            .expect("shutdown cancels held sends")
+            .unwrap();
+        sender.disconnect().await.unwrap();
+        drop(sender);
+        drop(receiver);
+        drop(owner);
+        drop(joiner);
+        ar.shutdown().await.unwrap();
+        br.shutdown().await.unwrap();
     }
 }

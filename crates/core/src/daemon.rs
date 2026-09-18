@@ -210,6 +210,10 @@ pub fn bootstrap_values(
 
 /// Host a standalone chat instance until the owning service is stopped.
 pub async fn run(args: DaemonArgs) -> Result<(), String> {
+    if let Some(path) = std::env::var_os("GCHAT_PROTOCOL_METRICS") {
+        gcoms_node::metrics::init(Path::new(&path))
+            .map_err(|error| format!("open local protocol metrics: {error}"))?;
+    }
     use crate::chat_service::{
         host::{InstanceConfig, InstanceHost},
         ChatEndpoint,

@@ -81,6 +81,8 @@ pub struct ChatService {
     provider_error: std::sync::RwLock<Option<gchat_api::ProviderStatus>>,
     stopped: watch::Sender<bool>,
     file_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    #[cfg(test)]
+    file_receipt_gate: std::sync::Mutex<Option<Arc<files::TestReceiptGate>>>,
     catalog_urls: std::sync::RwLock<Vec<String>>,
 }
 
@@ -195,6 +197,8 @@ impl ChatService {
             provider_error: std::sync::RwLock::new(None),
             stopped: watch::channel(false).0,
             file_worker: std::sync::Mutex::new(None),
+            #[cfg(test)]
+            file_receipt_gate: std::sync::Mutex::new(None),
             catalog_urls: std::sync::RwLock::new(Vec::new()),
         });
         if service.command_extension.is_some() {
