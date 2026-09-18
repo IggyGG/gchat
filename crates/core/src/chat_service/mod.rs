@@ -468,6 +468,15 @@ impl ChatService {
                 snapshot: self.project(session.as_ref()),
             });
         }
+        if let Request::NetworkStatus = request {
+            return Ok(Response::NetworkStatus {
+                status: if session.as_ref().is_none_or(|s| s.ui_locked) {
+                    gchat_api::NetworkStatus::new(gchat_api::NetworkState::Locked)
+                } else {
+                    self.runtime.network_status()
+                },
+            });
+        }
         if let Request::Catalogue { conversation } = request {
             return Ok(Response::Catalogue {
                 commands: self.context_commands(if session.as_ref().is_none_or(|s| s.ui_locked) {
@@ -481,6 +490,16 @@ impl ChatService {
             return Ok(Response::Error { code: "locked".into(), message: "Unlock this instance's chat archive. Receiving continues while the archive is locked.".into() });
         };
         match request {
+            Request::ImportNetworkInvitation { code } => {
+                let code = Zeroizing::new(code);
+                if code.len() > gchat_api::MAX_NETWORK_INVITATION_BYTES {
+                    return Err("Network invitation exceeds size limit".into());
+                }
+                self.runtime.import_network_invitation(code.trim())?;
+                Ok(Response::NetworkStatus {
+                    status: self.runtime.network_status(),
+                })
+            }
             Request::History {
                 conversation,
                 before,

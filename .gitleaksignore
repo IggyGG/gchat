@@ -1,0 +1,4 @@
+# Reviewed false positives: libcrux-secrets dependency names in Cargo lockfiles.
+# Exact historical fingerprints only; new findings still fail publication.
+b5614f023f56305a07c64b140facea800b7de764:Cargo.lock:generic-api-key:2357
+b5614f023f56305a07c64b140facea800b7de764:apps/client/src-tauri/Cargo.lock:generic-api-key:3375

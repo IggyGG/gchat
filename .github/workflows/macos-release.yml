@@ -1,0 +1,93 @@
+name: macOS release worker
+run-name: Forgejo macOS ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      gchat_commit:
+        required: true
+        type: string
+      gcoms_commit:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  macos:
+    environment: release-signing
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: macos-aarch64
+          - runner: macos-15-intel
+            target: macos-x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify protected source commits
+        env:
+          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess
+          if os.environ['GITHUB_SHA'] != os.environ['GCHAT_COMMIT']:
+              raise SystemExit('workflow must run from the frozen GChat commit')
+          for name in ('gchat', 'gcoms'):
+              commit = os.environ[name.upper() + '_COMMIT']
+              if not re.fullmatch('[0-9a-f]{40}', commit):
+                  raise SystemExit('full commit required')
+              actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=name, text=True).strip()
+              if actual != commit:
+                  raise SystemExit('checkout differs from source input')
+              subprocess.run(['git', 'merge-base', '--is-ancestor', commit, 'origin/main'], cwd=name, check=True)
+          PY
+      - name: Install build tools and test loopback aliases
+        run: |
+          brew install node@22
+          echo "$(brew --prefix node@22)/bin" >> "$GITHUB_PATH"
+          python3 gchat/scripts/macos-loopback.py
+      - name: Qualify both native workspaces with retained evidence
+        run: |
+          npm install --global npm@11
+          python3 gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --output native-evidence
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
+      - name: Build, sign, notarize, and verify
+        working-directory: gchat
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --output ../signed
+      - name: Retain native qualification evidence
+        run: cp -R native-evidence signed/evidence
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            signed/*.dmg
+            signed/build.json
+            signed/evidence/**
+          if-no-files-found: error

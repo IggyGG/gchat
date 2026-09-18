@@ -318,6 +318,9 @@ impl ChatEndpoint for InstanceHost {
             Request::Identify => Response::Instance {
                 instance: self.info(),
             },
+            Request::NetworkStatus => Response::NetworkStatus {
+                status: gchat_api::NetworkStatus::new(gchat_api::NetworkState::Locked),
+            },
             Request::Snapshot => Response::Snapshot {
                 snapshot: self.locked_snapshot(),
             },

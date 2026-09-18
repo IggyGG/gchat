@@ -39,3 +39,23 @@ host operations to chat's parser.
 Operation handles survive lost replies and reconnect. Resume the same handle;
 `outcome_unknown` requires reconciliation. Local message acceptance is not proof of
 remote display or application completion. Preserve this distinction in new UIs.
+
+## Network onboarding
+
+`ChatClient::network_status()` is a query returning a sanitized `NetworkStatus`.
+After unlocking, call `import_network_invitation(code)` as a transient session
+method. It validates the network identity, expiry and input size, stores the grant
+in owner-private network state, and starts connection recovery. The invitation is
+never a durable RPC operation and must not enter operation handles, message
+history, analytics or logs. `/network join` is a compatibility entrypoint to this
+same transient method in current native and TypeScript clients.
+
+The shared UI polls status independently of chat events. It distinguishes locked,
+local fixture, invitation required, connecting, connected, reconnecting, expired,
+and unavailable states. A successful import means the invitation was saved;
+`connected` follows successful routing recovery. A conversation invitation grants
+separate chat authority after the network connection is established.
+
+GChat supplies the signed `gchat.boo` relay preset to GComs. Generic addons and
+clients select their own independently trusted network configuration; they do not
+inherit GChat's operator implicitly. See [network operation](NETWORK.md).

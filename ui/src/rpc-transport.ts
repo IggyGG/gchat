@@ -54,6 +54,8 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
         case 'unlock': return { kind: 'snapshot', snapshot: await client.unlock({ passphrase: request.passphrase, create: request.create }) };
         case 'lock': return { kind: 'instance', instance: await client.lock({}) };
         case 'disconnect': return { kind: 'snapshot', snapshot: await client.disconnect({}) };
+        case 'network_status': return { kind: 'network_status', status: await client.network_status({}) };
+        case 'import_network_invitation': return { kind: 'network_status', status: await client.import_network_invitation({ code: request.code }) };
         case 'catalogue': return { kind: 'catalogue', commands: await client.catalogue({ conversation: request.conversation }) };
         case 'history': return { kind: 'history', page: await client.history({ conversation: request.conversation, before: request.before, limit: request.limit }) };
         case 'search': return { kind: 'history', page: await client.search({ conversation: request.conversation, text: request.text, before: request.before, limit: request.limit }) };
@@ -66,6 +68,11 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
         case 'submit': {
           if (request.text.trim() === '/lock') return { kind: 'instance', instance: await client.lock({}) };
           if (['/disconnect', '/quit'].includes(request.text.trim())) return { kind: 'snapshot', snapshot: await client.disconnect({}) };
+          const networkJoin = request.text.trim().match(/^\/network\s+join\s+([\s\S]+)$/i);
+          if (networkJoin) {
+            await client.import_network_invitation({ code: networkJoin[1].trim() });
+            return { kind: 'applied', conversation: null, notice: 'Network invitation saved. Connecting in the background.' };
+          }
           const p = client.prepare_submit({ conversation: request.conversation, text: request.text });
           p.handle.operation.id = request.operation_id;
           const retained = find(request.operation_id);

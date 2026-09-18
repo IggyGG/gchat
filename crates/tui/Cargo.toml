@@ -3,6 +3,7 @@ name = "gchat-tui"
 description = "GC/1 terminal client (ratatui)"
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 publish.workspace = true

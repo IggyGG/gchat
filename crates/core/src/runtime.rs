@@ -1,5 +1,6 @@
 use crate::store::{ProtocolData, ProtocolStore};
 use async_trait::async_trait;
+use gchat_api::{NetworkState, NetworkStatus};
 use gcoms_node::node::{NodeConfig, NodeHandle};
 use gcoms_node::proto::NodeInfo;
 use gcoms_sdk::{
@@ -21,10 +22,18 @@ struct Inner {
     save_lock: tokio::sync::Mutex<()>,
     error_sink: std::sync::Mutex<Option<ErrorSink>>,
     network: Option<gcoms_network_client::NetworkClient>,
-    recovery: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
-    naming: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    network_status: std::sync::Mutex<NetworkStatus>,
+    uses_installed_network: std::sync::atomic::AtomicBool,
+    background: std::sync::Mutex<Option<BackgroundTasks>>,
     recover_now: tokio::sync::Notify,
     names_now: tokio::sync::Notify,
+}
+
+#[derive(Default)]
+struct BackgroundTasks {
+    tasks: tokio::task::JoinSet<()>,
+    recovery_started: bool,
+    naming_started: bool,
 }
 
 #[derive(Clone)]
@@ -202,9 +211,14 @@ impl ProtocolRuntime {
             _store: store,
             save_lock: tokio::sync::Mutex::new(()),
             error_sink: std::sync::Mutex::new(None),
+            network_status: std::sync::Mutex::new(NetworkStatus::new(if network.is_some() {
+                NetworkState::Connecting
+            } else {
+                NetworkState::LocalOnly
+            })),
             network,
-            recovery: std::sync::Mutex::new(None),
-            naming: std::sync::Mutex::new(None),
+            uses_installed_network: std::sync::atomic::AtomicBool::new(true),
+            background: std::sync::Mutex::new(Some(BackgroundTasks::default())),
             recover_now: tokio::sync::Notify::new(),
             names_now: tokio::sync::Notify::new(),
         }));
@@ -262,19 +276,13 @@ impl ProtocolRuntime {
     }
 
     pub async fn shutdown(self) -> Result<(), String> {
-        let tasks = [
-            self.0
-                .recovery
-                .lock()
-                .expect("network recovery lock")
-                .take(),
-            self.0.naming.lock().expect("network naming lock").take(),
-        ];
-        for task in tasks.iter().flatten() {
-            task.abort();
-        }
-        for task in tasks.into_iter().flatten() {
-            let _ = task.await;
+        // A weak reference can still be upgraded by an in-flight save or event
+        // forwarder. Join every worker before releasing the encrypted profile;
+        // taking the registry also prevents new subscriptions from starting one.
+        let background = self.0.background.lock().expect("runtime task lock").take();
+        if let Some(mut background) = background {
+            background.tasks.abort_all();
+            while background.tasks.join_next().await.is_some() {}
         }
 
         let save = self.save().await;
@@ -286,12 +294,35 @@ impl ProtocolRuntime {
         self.0.network.clone()
     }
 
+    pub fn network_status(&self) -> NetworkStatus {
+        if let Some(network) = self.0.network.as_ref().filter(|_| {
+            self.0
+                .uses_installed_network
+                .load(std::sync::atomic::Ordering::Relaxed)
+        }) {
+            match network.has_invitation() {
+                Ok(false) if self.0.node.routing_bootstrap().is_err() => {
+                    return NetworkStatus::new(NetworkState::InvitationRequired)
+                }
+                Err(_) => return NetworkStatus::new(NetworkState::Unavailable),
+                _ => {}
+            }
+        }
+        self.0
+            .network_status
+            .lock()
+            .expect("network status lock")
+            .clone()
+    }
+
     pub fn import_network_invitation(&self, code: &str) -> Result<(), String> {
         self.0
             .network
             .as_ref()
             .ok_or("Network invitations are unavailable in a local fixture")?
             .import_invitation(code)?;
+        *self.0.network_status.lock().expect("network status lock") =
+            NetworkStatus::new(NetworkState::Connecting);
         self.0.recover_now.notify_one();
         Ok(())
     }
@@ -332,25 +363,39 @@ impl ProtocolRuntime {
         if bootstrap && !urls.is_empty() {
             crate::bootstrap::parse_bootstrap_urls(&urls, false)?;
         }
-        if bootstrap {
-            let mut task = self.0.recovery.lock().expect("network recovery lock");
-            if task.is_none() {
-                *task = Some(tokio::spawn(network_bootstrap_loop(
-                    Arc::downgrade(&self.0),
-                    urls,
-                )));
-            }
+        let mut background = self.0.background.lock().expect("runtime task lock");
+        let background = background.as_mut().ok_or("protocol runtime is shut down")?;
+        if bootstrap && !background.recovery_started {
+            self.0.uses_installed_network.store(
+                crate::bootstrap::uses_installed_network(&urls),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+            background.recovery_started = true;
+            background
+                .tasks
+                .spawn(network_bootstrap_loop(Arc::downgrade(&self.0), urls));
         }
-        let mut names = self.0.naming.lock().expect("network naming lock");
-        if names.is_none() {
-            *names = Some(tokio::spawn(network_names_loop(Arc::downgrade(&self.0))));
+        if !background.naming_started {
+            background.naming_started = true;
+            background
+                .tasks
+                .spawn(network_names_loop(Arc::downgrade(&self.0)));
         }
         Ok(())
     }
 
+    fn spawn_background(&self, task: impl std::future::Future<Output = ()> + Send + 'static) {
+        let mut background = self.0.background.lock().expect("runtime task lock");
+        if let Some(background) = background.as_mut() {
+            // Closed subscriptions must not accumulate completed task records.
+            while background.tasks.try_join_next().is_some() {}
+            background.tasks.spawn(task);
+        }
+    }
+
     fn spawn_periodic_save(&self) {
         let inner = Arc::downgrade(&self.0);
-        tokio::spawn(async move {
+        self.spawn_background(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(30)).await;
                 let Some(inner) = inner.upgrade() else { break };
@@ -365,7 +410,7 @@ impl ProtocolRuntime {
     fn spawn_event_persistence(&self) {
         let mut events = self.sdk_client().embedded.subscribe_events();
         let inner = Arc::downgrade(&self.0);
-        tokio::spawn(async move {
+        self.spawn_background(async move {
             while events.recv().await.is_some() {
                 let Some(inner) = inner.upgrade() else { break };
                 let runtime = ProtocolRuntime(inner);
@@ -374,6 +419,21 @@ impl ProtocolRuntime {
                 }
             }
         });
+    }
+
+    fn forward_events(
+        &self,
+        source: mpsc::Receiver<ClientEvent>,
+        ownership: Option<CentralPartition>,
+    ) -> mpsc::Receiver<ClientEvent> {
+        let (sender, receiver) = mpsc::channel(256);
+        self.spawn_background(forward_protocol_events(
+            source,
+            sender,
+            Arc::downgrade(&self.0),
+            ownership,
+        ));
+        receiver
     }
 }
 
@@ -406,19 +466,23 @@ async fn network_bootstrap_loop(weak: std::sync::Weak<Inner>, urls: Vec<String>)
     loop {
         let Some(inner) = weak.upgrade() else { break };
         let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(120);
-        let success = matches!(
-            tokio::time::timeout_at(
-                deadline,
-                crate::bootstrap::recover_network(
-                    &inner.node,
-                    inner.network.as_ref(),
-                    &urls,
-                    deadline
-                )
-            )
-            .await,
-            Ok(Ok(()))
-        );
+        let result = tokio::time::timeout_at(
+            deadline,
+            crate::bootstrap::recover_network(&inner.node, inner.network.as_ref(), &urls, deadline),
+        )
+        .await;
+        let success = matches!(result, Ok(Ok(())));
+        let state = match &result {
+            Ok(Ok(())) => NetworkState::Connected,
+            Ok(Err(error)) if error.contains("invitation expired") => {
+                NetworkState::InvitationExpired
+            }
+            Ok(Err(error)) if error.contains("Enter a network invitation") => {
+                NetworkState::InvitationRequired
+            }
+            _ => NetworkState::Reconnecting,
+        };
+        *inner.network_status.lock().expect("network status lock") = NetworkStatus::new(state);
         failures = if success {
             0
         } else {
@@ -532,11 +596,8 @@ impl GcClient for ProtocolClient {
         // lock) alive for as long as the node keeps this stream open, which
         // is exactly as long as the node lives. Hosted runtimes must be able
         // to shut down and release the profile within one process.
-        let runtime = Arc::downgrade(&self.runtime.0);
-        let ownership = self.central_primary.clone();
-        let (sender, receiver) = mpsc::channel(256);
-        tokio::spawn(forward_protocol_events(source, sender, runtime, ownership));
-        receiver
+        self.runtime
+            .forward_events(source, self.central_primary.clone())
     }
 
     async fn list_channels(&self) -> Result<Vec<JoinedChannel>, SdkError> {
@@ -912,6 +973,9 @@ fn central_reserved(ownership: &Option<CentralPartition>, body: &[u8]) -> bool {
             .is_ok_and(|route| scoped.contains(&route.destination))
     })
 }
+
+#[cfg(test)]
+mod shutdown_tests;
 
 #[cfg(test)]
 mod frwd_policy_tests {

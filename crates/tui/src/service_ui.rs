@@ -21,6 +21,7 @@ use zeroize::Zeroize;
 
 enum Reply {
     State(Snapshot),
+    Network(gchat_api::NetworkStatus),
     Operation(u64, Request, Result<Response, gchat_api::ChatError>),
     Search(u64, String, bool, Result<HistoryPage, String>),
     History(u64, String, bool, Result<HistoryPage, String>),
@@ -31,6 +32,22 @@ impl Drop for Restore {
     fn drop(&mut self) {
         let _ = terminal::disable_raw_mode();
         let _ = execute!(stdout(), LeaveAlternateScreen, event::DisableBracketedPaste);
+    }
+}
+
+fn is_network_invitation(text: &str) -> bool {
+    text.trim_start().starts_with("GCNI1-")
+        || text
+            .trim_start()
+            .to_ascii_lowercase()
+            .starts_with("/network join ")
+}
+
+fn input_limit(text: &str) -> usize {
+    if is_network_invitation(text) {
+        gchat_api::MAX_NETWORK_INVITATION_BYTES + "/network join ".len()
+    } else {
+        gchat_api::MAX_INPUT_BYTES
     }
 }
 
@@ -65,10 +82,17 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                         continue;
                     }
                 };
+                if let Ok(Response::NetworkStatus { status }) =
+                    client.request(Request::NetworkStatus).await
+                {
+                    if tx.send(Reply::Network(status)).is_err() {
+                        break;
+                    }
+                }
                 let _ = client
                     .request(Request::Events {
                         after: revision,
-                        wait_ms: 20_000,
+                        wait_ms: 2_000,
                     })
                     .await;
             }
@@ -95,6 +119,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
     let _restore = Restore;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout())).map_err(|e| e.to_string())?;
     let mut state = initial;
+    let mut network = gchat_api::NetworkStatus::new(gchat_api::NetworkState::Locked);
     let navigation_path = navigation_path(&client);
     let mut navigation = load_navigation(&navigation_path);
     let remembered = navigation
@@ -159,6 +184,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
             .collect();
         tokio::select! {
             Some(reply) = rx.recv() => match reply {
+                Reply::Network(status) => { network = status; refresh = true; },
                 Reply::State(snapshot) => {
                     offline = None;
                     refresh = snapshot.revision != state.revision;
@@ -213,6 +239,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                             }
                             refresh = true;
                         }
+                        Ok(Response::NetworkStatus { status }) => { network = status; notices.push("Network invitation saved. Connecting in the background.".into()); }
                         Ok(Response::Snapshot { snapshot }) => { let _ = tx.send(Reply::State(snapshot)); }
                         Ok(Response::Instance { instance }) => {
                             if instance.locked { scrollbacks.clear(); invitations.clear(); before = None; history_loading = false; history_generation += 1; unread_markers.clear(); search_open = false; search_draft.clear(); search_messages.clear(); search_generation += 1; saved_draft.zeroize(); draft.value.zeroize(); draft.clear(); for (text, _) in drafts.values_mut() { text.value.zeroize(); } drafts.clear(); outputs.clear(); candidates.clear(); notices.clear(); failures.clear(); history_position = None; messages.clear(); }
@@ -293,14 +320,17 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                         match key.code {
                             KeyCode::Enter if !candidates.is_empty() => { draft.set(format!("{} ", candidates[candidate_index].text)); candidates.clear(); }
                             KeyCode::Enter if !pending && offline.is_none() && !draft.value.is_empty() => {
-                                let text = draft.take();
+                                let mut text = draft.take();
                                 if state.instance.locked {
                                     let create = if state.instance.protocol_locked { !state.instance.profile_exists } else { !state.instance.archive_exists };
                                     request = Some(Request::Unlock { passphrase: text, create });
+                                } else if text.trim().starts_with("GCNI1-") {
+                                    request = Some(Request::ImportNetworkInvitation { code: text.trim().into() });
+                                    text.zeroize();
                                 } else { request = Some(submit(selected.clone(), text)); }
                                 history_position = None;
                             }
-                            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) && draft.value.len() + c.len_utf8() <= gchat_api::MAX_INPUT_BYTES => { draft.push(c); history_position = None; candidates.clear(); },
+                            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) && draft.value.len() + c.len_utf8() <= input_limit(&draft.value) => { draft.push(c); history_position = None; candidates.clear(); },
                             KeyCode::Left => draft.left(),
                             KeyCode::Right => draft.right(),
                             KeyCode::Home => draft.home(),
@@ -309,7 +339,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                             KeyCode::Backspace => { draft.backspace(); history_position = None; candidates.clear(); }
                             KeyCode::Tab if !state.instance.locked && !candidates.is_empty() => { candidate_index = (candidate_index + 1) % candidates.len(); }
                             KeyCode::BackTab if !candidates.is_empty() => { candidate_index = (candidate_index + candidates.len() - 1) % candidates.len(); }
-                            KeyCode::Tab if !pending && !state.instance.locked => request = Some(Request::Complete { conversation: selected.clone(), text: draft.value.clone() }),
+                            KeyCode::Tab if !pending && !state.instance.locked && !is_network_invitation(&draft.value) => request = Some(Request::Complete { conversation: selected.clone(), text: draft.value.clone() }),
                             KeyCode::F(1) if !pending && !state.instance.locked => request = Some(submit(selected.clone(), "/help".into())),
                             KeyCode::F(2) if !pending && !state.instance.locked && failures.last().is_some_and(|(_, code)| code != "rejected") => { request = failures.pop().map(|(request, _)| request); check_operation = true; },
                             KeyCode::F(3) if !pending && !state.instance.locked => {
@@ -321,7 +351,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                             KeyCode::End if key.modifiers.contains(KeyModifiers::CONTROL) => { offset = 0; refresh = true; },
                             KeyCode::PageUp => { offset = offset.saturating_add(10); if before.is_some() && !history_loading { older = true; refresh = true; } },
                             KeyCode::PageDown => { offset = offset.saturating_sub(10); if offset == 0 { refresh = true; } }
-                            KeyCode::Up if !state.instance.locked => {
+                            KeyCode::Up if !state.instance.locked && !is_network_invitation(&draft.value) => {
                                 let len = history.len();
                                 if len > 0 {
                                     if history_position.is_none() { saved_draft = draft.value.clone(); }
@@ -343,8 +373,12 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                     }
                 }
                 Event::Paste(text) if search_open => { if search_draft.value.len() + text.len() <= 256 { search_draft.insert_exact(&text); } else { search_error = "Search accepts at most 256 UTF-8 bytes. Input was not changed.".into(); } }
-                Event::Paste(text) if draft.value.len() + text.len() <= gchat_api::MAX_INPUT_BYTES => { draft.insert_exact(&text); history_position = None; candidates.clear(); }
-                Event::Paste(_) => notices.push(format!("Paste exceeds {} UTF-8 bytes; existing input kept unchanged.", gchat_api::MAX_INPUT_BYTES)),
+                Event::Paste(mut text) => {
+                    let limit = if draft.value.is_empty() { input_limit(&text) } else { input_limit(&draft.value) };
+                    if draft.value.len() + text.len() <= limit { draft.insert_exact(&text); history_position = None; candidates.clear(); }
+                    else { notices.push(format!("Paste exceeds {limit} UTF-8 bytes; existing input kept unchanged.")); }
+                    text.zeroize();
+                }
                 _ => {}
             },
             _ = tick.tick() => {}
@@ -367,6 +401,10 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                 }
             }
             candidates.clear();
+            if is_network_invitation(&draft.value) {
+                draft.value.zeroize();
+                draft.clear();
+            }
             drafts.insert(old_selection.clone(), (std::mem::take(&mut draft), offset));
             let restored = drafts.remove(&selected).unwrap_or_else(|| {
                 (
@@ -663,6 +701,13 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                         .collect()
                 };
                 if !state.instance.locked {
+                    if !matches!(network.state, gchat_api::NetworkState::LocalOnly | gchat_api::NetworkState::Locked) {
+                        lines.push(Line::from(network.message.clone()));
+                        if matches!(network.state, gchat_api::NetworkState::InvitationRequired | gchat_api::NetworkState::InvitationExpired) {
+                            lines.push(Line::from("Paste your GCNI1- network invitation and press Enter. Relay settings are included."));
+                            lines.push(Line::from("After connecting, use /join with a separate conversation invitation."));
+                        }
+                    }
                     for error in &state.provider_errors {
                         lines.push(Line::from(format!(
                             "Conversation provider {}: {} · /refresh reconnects",
@@ -760,7 +805,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                         .block(Block::default().borders(Borders::ALL).title("Nicks")),
                     columns[2],
                 );
-                draft.secret = state.instance.locked;
+                draft.secret = state.instance.locked || is_network_invitation(&draft.value);
                 let editor = if search_open { &search_draft } else { &draft };
                 let shown = editor.display().replace(['\r', '\n'], "↵");
                 let prefix: String = shown.chars().take(editor.cursor()).collect();
@@ -776,6 +821,8 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                                 "Find text (256 UTF-8 bytes)"
                             } else if state.instance.locked {
                                 "Passphrase"
+                            } else if matches!(network.state, gchat_api::NetworkState::InvitationRequired | gchat_api::NetworkState::InvitationExpired) {
+                                "Network invitation · paste GCNI1- and press Enter"
                             } else {
                                 "Message · Enter sends"
                             }),
@@ -872,7 +919,16 @@ fn local_datetime(timestamp: u64, format: &str) -> String {
         })
         .unwrap_or_else(|| "Unknown time".into())
 }
-fn submit(conversation: Option<String>, text: String) -> Request {
+fn submit(conversation: Option<String>, mut text: String) -> Request {
+    if let Some((command, arguments)) = text.trim().split_once(char::is_whitespace) {
+        if let Some((action, code)) = arguments.trim().split_once(char::is_whitespace) {
+            if command.eq_ignore_ascii_case("/network") && action.eq_ignore_ascii_case("join") {
+                let code = code.trim().to_string();
+                text.zeroize();
+                return Request::ImportNetworkInvitation { code };
+            }
+        }
+    }
     let id = rand::random::<[u8; 16]>()
         .iter()
         .map(|b| format!("{b:02x}"))
@@ -966,4 +1022,28 @@ fn retained_submissions(client: &ChatClient) -> Vec<(Request, String)> {
             )
         })
         .collect()
+}
+
+#[cfg(test)]
+mod network_onboarding_tests {
+    use super::*;
+
+    #[test]
+    fn network_invitation_commands_are_transient_even_with_mixed_case() {
+        assert!(
+            matches!(submit(None, "/NETWORK  JOIN  GCNI1-fixture".into()),
+            Request::ImportNetworkInvitation { code } if code == "GCNI1-fixture")
+        );
+        assert!(matches!(
+            submit(None, "/network status".into()),
+            Request::Submit { .. }
+        ));
+    }
+
+    #[test]
+    fn invitation_input_uses_the_network_bound() {
+        assert!(input_limit("GCNI1-fixture") >= gchat_api::MAX_NETWORK_INVITATION_BYTES);
+        assert_eq!(input_limit("ordinary chat"), gchat_api::MAX_INPUT_BYTES);
+        assert!(is_network_invitation("/network join GCNI1-fixture"));
+    }
 }

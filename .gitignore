@@ -15,3 +15,5 @@ __pycache__/
 
 # Contained task checkouts are local workspace state.
 /.worktrees/
+
+/signed-macos/
