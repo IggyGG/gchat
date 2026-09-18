@@ -123,3 +123,14 @@ uses a writable handle when flushing the preserved encrypted bytes to disk.
 GChat's portable service, archive-reopen and standalone-daemon suites now run on
 Windows too. Their readiness probes use IPC connections, since named pipes have
 no socket-file entry. Unix PTY tests remain platform-specific.
+
+## Application facade qualification — 2026-09-18
+
+The [application runtime record](release/application-validation-2026-09-18.json)
+contains the new GComs facade and GChat Windows execution runs, source/binary hash
+references and retained failures. GChat passes 121 Windows GNU cases and 129 Linux
+cases against the IPC detach fix. Both target Clippy checks pass. Empty Windows
+PTY/API harnesses contribute no coverage; MSVC and installers remain unqualified.
+
+The same record separates successful public bootstrap and relay-pin probes from
+authenticated live application testing, which still needs a provisioned invitation.
