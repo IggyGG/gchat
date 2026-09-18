@@ -1,4 +1,4 @@
-#![cfg(unix)]
+#![cfg(any(unix, windows))]
 use gchat_api::{ChatClient, Request, RequestEnvelope, Response, Snapshot, VERSION};
 use gchat_core::{
     chat_service::{self, ChatService},
@@ -126,7 +126,6 @@ async fn typed_completion_storage_failure_stays_unknown_live_and_after_reopen() 
 
 #[tokio::test(flavor = "multi_thread")]
 async fn slow_command_keeps_reads_and_lock_available_without_duplicate_admission() {
-    use std::os::unix::fs::PermissionsExt;
     use tokio::sync::Notify;
     let dir = tempfile::tempdir().unwrap();
     let runtime = open_runtime(dir.path(), true).await;
@@ -167,7 +166,7 @@ async fn slow_command_keeps_reads_and_lock_available_without_duplicate_admission
     ] {
         let path = dir.path().join(name);
         std::fs::write(&path, bytes).unwrap();
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).unwrap();
+        gchat_core::private_fs::make_private(&path, false).unwrap();
     }
     let service = make_service(dir.path(), runtime.clone());
     unlock(&service, true).await;
@@ -317,12 +316,20 @@ async fn two_ui_clients_share_archive_commands_and_pinned_instance() {
         let socket = socket.clone();
         async move { chat_service::serve(service, &socket, rx).await }
     });
-    let first = loop {
-        if let Ok(client) = ChatClient::connect(&socket, None).await {
-            break client;
+    let first = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if let Ok(client) = ChatClient::connect(&socket, None).await {
+                break client;
+            }
+            assert!(
+                !server.is_finished(),
+                "chat service stopped before readiness"
+            );
+            tokio::time::sleep(Duration::from_millis(20)).await;
         }
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    };
+    })
+    .await
+    .expect("chat service became ready");
     let second = ChatClient::connect(&socket, Some(first.instance_id()))
         .await
         .unwrap();

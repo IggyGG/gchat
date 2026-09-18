@@ -567,7 +567,11 @@ pub fn migrate_combined(
     // Retain the exact original encrypted bytes, even if opening the temporary
     // working copy upgraded an old archive representation.
     std::fs::copy(source, &copy).map_err(|e| e.to_string())?;
-    std::fs::File::open(&copy)
+    // Windows requires a writable handle for FlushFileBuffers. The restored
+    // bytes must reach disk before publishing the new profile directory.
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&copy)
         .and_then(|f| f.sync_all())
         .map_err(|e| e.to_string())?;
     if std::fs::symlink_metadata(destination).is_ok() {

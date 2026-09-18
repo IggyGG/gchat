@@ -1,9 +1,9 @@
-#![cfg(unix)]
+#![cfg(any(unix, windows))]
 
 use gchat_core::client::ClientHandle;
 use gcoms_node::node::{start, NodeConfig};
 use gcoms_sdk::ipc::Capability;
-use gcoms_sdk::{serve_unix, ChannelVisibility, EmbeddedClient};
+use gcoms_sdk::{serve_local, ChannelVisibility, EmbeddedClient};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn daemon_channel_archive_survives_restart() {
@@ -26,7 +26,7 @@ async fn daemon_channel_archive_survives_restart() {
     let server_client = embedded.clone();
     let server_socket = socket.clone();
     let server = tokio::spawn(async move {
-        serve_unix(
+        serve_local(
             server_socket,
             server_client,
             vec![
@@ -38,12 +38,25 @@ async fn daemon_channel_archive_survives_restart() {
         )
         .await
     });
-    for _ in 0..100 {
-        if socket.exists() {
-            break;
+    // A Windows named pipe has no filesystem entry. Probe the transport on
+    // both platforms and stop promptly if the listener failed to start.
+    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        loop {
+            if gcoms_sdk::local::connect(&gcoms_sdk::local::LocalEndpoint::new(&socket))
+                .await
+                .is_ok()
+            {
+                break;
+            }
+            assert!(
+                !server.is_finished(),
+                "protocol daemon stopped before readiness"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
+    })
+    .await
+    .expect("protocol daemon became ready");
 
     let remote = ClientHandle::connect_daemon(&archive, "archive", &socket, true)
         .await

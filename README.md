@@ -11,6 +11,11 @@ and publisher accounts are future release decisions, not prerequisites for this
 private development stage. The intended preview version remains 0.1.0. See
 [development and future release status](docs/RELEASE.md).
 
+Current work is limited to secure connections in GComs and GChat: authentication,
+transport security, local IPC access controls, and disconnect/reconnect behavior.
+Validation uses Linux and the existing Windows VM. macOS is unavailable;
+installer and publication work is deferred.
+
 ## Build and run
 
 Install Rust 1.98, Node 22, npm 11 and the platform's Tauri v2 prerequisites.
