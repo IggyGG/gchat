@@ -4,14 +4,14 @@ use gchat_core::{
     chat_service::{self, ChatService},
     runtime::ProtocolRuntime,
 };
-use gcoms_sdk::{ipc::Capability, ChannelVisibility, GcClient};
+use gcoms::sdk::{ipc::Capability, ChannelVisibility, GcClient};
 use std::{path::Path, sync::Arc, time::Duration};
 
 const PASS: &str = "shared-archive-passphrase";
 
 #[tokio::test(flavor = "multi_thread")]
 async fn typed_completion_storage_failure_stays_unknown_live_and_after_reopen() {
-    use gcoms_rpc::{CallError, Caller, Client, EmbeddedTransport, ReplyBody};
+    use gcoms::rpc::{CallError, Caller, Client, EmbeddedTransport, ReplyBody};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::Notify;
     let dir = tempfile::tempdir().unwrap();
@@ -408,7 +408,7 @@ async fn two_ui_clients_share_archive_commands_and_pinned_instance() {
             .operation_status("send-message-operation")
             .await
             .unwrap(),
-        gcoms_rpc::ReplyBody::Done { .. }
+        gcoms::rpc::ReplyBody::Done { .. }
     ));
     let Response::History { page } = second
         .request(Request::History {
@@ -636,7 +636,7 @@ async fn query_identity_is_scoped_to_channel_for_every_participant() {
     tokio::time::timeout(Duration::from_secs(20), async {
         loop {
             match events.recv().await {
-                Some(gcoms_sdk::ClientEvent::ChannelMessage { body, .. })
+                Some(gcoms::sdk::ClientEvent::ChannelMessage { body, .. })
                     if body == b"received while views locked" =>
                 {
                     break
@@ -791,10 +791,10 @@ async fn typed_host_resumes_the_same_journal_across_lock_and_protocol_restart() 
     let host = InstanceHost::new(config).unwrap();
     let router = chat_service::rpc::router(host.clone()).unwrap();
     let make_client = || {
-        TypedChat::new(gcoms_rpc::Client::new(
-            gcoms_rpc::EmbeddedTransport {
+        TypedChat::new(gcoms::rpc::Client::new(
+            gcoms::rpc::EmbeddedTransport {
                 router: router.clone(),
-                caller: gcoms_rpc::Caller {
+                caller: gcoms::rpc::Caller {
                     principal: "local-owner".into(),
                 },
                 destination: "selected-host".into(),
@@ -844,22 +844,22 @@ async fn typed_host_resumes_the_same_journal_across_lock_and_protocol_restart() 
     assert!(client.lock().await.unwrap().locked);
     assert_eq!(
         client.inner.status(&handle).await.unwrap_err().code,
-        gcoms_rpc::ErrorCode::Unauthorized
+        gcoms::rpc::ErrorCode::Unauthorized
     );
     client.unlock(PASS.into(), false).await.unwrap();
     assert!(matches!(
         client.inner.status(&handle).await.unwrap(),
-        gcoms_rpc::ReplyBody::Done { .. }
+        gcoms::rpc::ReplyBody::Done { .. }
     ));
     assert!(client.disconnect().await.unwrap().instance.protocol_locked);
     assert_eq!(
         client.inner.status(&handle).await.unwrap_err().code,
-        gcoms_rpc::ErrorCode::Unauthorized
+        gcoms::rpc::ErrorCode::Unauthorized
     );
     client.unlock(PASS.into(), false).await.unwrap();
     assert!(matches!(
         client.inner.status(&handle).await.unwrap(),
-        gcoms_rpc::ReplyBody::Done { .. }
+        gcoms::rpc::ReplyBody::Done { .. }
     ));
     assert_eq!(client.snapshot().await.unwrap().conversations.len(), 1);
     host.flush().await.unwrap();
@@ -1155,7 +1155,7 @@ async fn network_invitation_is_local_private_and_survives_reopen_without_chat_au
     assert!(!projection.contains(&code));
     assert!(!projection.contains(&grant));
     assert!(projection.contains("/network join "));
-    assert!(!runtime.network_dns_status().unwrap().opted_in);
+    assert!(!runtime.network_dns_status().await.unwrap().opted_in);
     assert!(matches!(
         submit(
             &service,
@@ -1166,10 +1166,10 @@ async fn network_invitation_is_local_private_and_survives_reopen_without_chat_au
         .await,
         Response::Applied { .. }
     ));
-    let names = runtime.network_dns_status().unwrap();
+    let names = runtime.network_dns_status().await.unwrap();
     assert!(names.opted_in);
     assert!(
-        names.registration.is_none(),
+        names.name.is_none(),
         "consent cannot invent a reachable listener"
     );
     service.disconnect().await.unwrap();
@@ -1203,7 +1203,109 @@ async fn network_invitation_is_local_private_and_survives_reopen_without_chat_au
         submit(&service, "network-dns-revoke-01", None, "/network dns off").await,
         Response::Applied { .. }
     ));
-    assert!(!reopened.network_dns_status().unwrap().opted_in);
+    assert!(!reopened.network_dns_status().await.unwrap().opted_in);
     service.disconnect().await.unwrap();
     reopened.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn chat_host_uses_shared_gcoms_and_reopens_the_same_archive() {
+    use chat_service::{
+        host::{InstanceConfig, InstanceHost},
+        ChatEndpoint,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    gchat_core::private_fs::make_private(dir.path(), true).unwrap();
+    let endpoint = dir.path().join("gcoms.sock");
+    let (stop, stopped) = tokio::sync::oneshot::channel();
+    let socket = endpoint.clone();
+    let daemon = tokio::spawn(async move {
+        gcoms::daemon::serve(&socket, async {
+            let _ = stopped.await;
+        })
+        .await
+    });
+    for _ in 0..100 {
+        if gcoms::control::exchange(&endpoint, gcoms::control::Request::Ping)
+            .await
+            .is_ok()
+        {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    config.protocol_backend = gcoms::Backend::Attach { endpoint };
+    config.local_fixture = true;
+    config.listen = "127.0.0.1:0".parse().unwrap();
+    config.network_recovery = false;
+    config.relay_urls.clear();
+    let host = InstanceHost::new(config).unwrap();
+    let Response::Instance { instance } = host
+        .dispatch(RequestEnvelope {
+            version: VERSION,
+            instance_id: None,
+            request: Request::Identify,
+        })
+        .await
+        .response
+    else {
+        panic!("identify")
+    };
+    let call = |request| RequestEnvelope {
+        version: VERSION,
+        instance_id: Some(instance.id.clone()),
+        request,
+    };
+    let response = host
+        .dispatch(call(Request::Unlock {
+            passphrase: PASS.into(),
+            create: true,
+        }))
+        .await
+        .response;
+    let Response::Snapshot { snapshot: first } = response else {
+        panic!("unlock: {response:?}")
+    };
+    let created = host
+        .dispatch(call(Request::Submit {
+            operation_id: "shared-create-room".into(),
+            conversation: None,
+            text: "/create #shared alice".into(),
+        }))
+        .await
+        .response;
+    assert!(!matches!(created, Response::Error { .. }), "{created:?}");
+    let Response::Snapshot { snapshot: before } =
+        host.dispatch(call(Request::Snapshot)).await.response
+    else {
+        panic!("snapshot")
+    };
+    let stopped = host
+        .dispatch(call(Request::Submit {
+            operation_id: "shared-disconnect".into(),
+            conversation: None,
+            text: "/disconnect".into(),
+        }))
+        .await
+        .response;
+    assert!(matches!(stopped, Response::Snapshot { .. }), "{stopped:?}");
+    let response = host
+        .dispatch(call(Request::Unlock {
+            passphrase: PASS.into(),
+            create: false,
+        }))
+        .await
+        .response;
+    let Response::Snapshot { snapshot: reopened } = response else {
+        panic!("reopen: {response:?}")
+    };
+    assert_eq!(
+        first.instance.safety_number,
+        reopened.instance.safety_number
+    );
+    assert_eq!(before.conversations, reopened.conversations);
+    host.flush().await.unwrap();
+    stop.send(()).unwrap();
+    daemon.await.unwrap().unwrap();
 }

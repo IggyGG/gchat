@@ -11,7 +11,7 @@ use gchat_api::{
     Completion, Conversation, ConversationKind, HistoryPage, InstanceInfo, Member, Message,
     Request, RequestEnvelope, Response, ResponseEnvelope, Snapshot, MAX_FRAME_BYTES, VERSION,
 };
-use gcoms_sdk::{ipc::Capability, ChannelRole, ChannelVisibility, GcClient, LocalEndpoint};
+use gcoms::sdk::{ipc::Capability, ChannelRole, ChannelVisibility, GcClient, LocalEndpoint};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -94,7 +94,7 @@ fn now() -> u64 {
         .unwrap_or_default()
         .as_secs()
 }
-fn channel_key(id: gcoms_sdk::ChannelId) -> String {
+fn channel_key(id: gcoms::sdk::ChannelId) -> String {
     format!("channel/{}", hex(&id.0))
 }
 fn record_key(channel: &ChannelRecord) -> String {
@@ -960,9 +960,9 @@ impl ChatService {
                         return Err(format!("Usage: {}", spec.usage));
                     }
                     if name == "/join" && !target.starts_with('#') {
-                        let invite = gcoms_node::channel_invite::ChannelInvite::from_link(target)
-                            .ok_or("Invalid invitation. Paste the complete link.")?;
-                        if invite.expiry <= now() {
+                        let invite = gcoms::runtime::contacts::inspect_channel_invitation(target)
+                            .map_err(|_| "Invalid invitation. Paste the complete link.")?;
+                        if invite.expires_at <= now() {
                             return Err(
                                 "This invitation has expired. Ask for a new invitation.".into()
                             );
@@ -992,27 +992,29 @@ impl ChatService {
         };
         if let Some(args @ ("dns on" | "dns off" | "dns status")) = network_arguments(text) {
             if args != "dns status" {
-                self.runtime.configure_network_dns(args == "dns on")?;
+                self.runtime.configure_network_dns(args == "dns on").await?;
             }
-            let status = self.runtime.network_dns_status()?;
+            let status = self.runtime.network_dns_status().await?;
             let notice = if !status.opted_in {
                 if status.pending {
                     "Public DNS is off; removal is queued.".into()
                 } else {
                     "Public DNS is off.".into()
                 }
-            } else if let Some(record) = status.registration.filter(|record| {
-                !status.removed && record.lease_expires_at > gcoms_network_client::now_unix()
-            }) {
-                if record.published {
+            } else if let Some(name) = status
+                .name
+                .filter(|_| !status.removed && status.lease_expires_at.unwrap_or(0) > now())
+            {
+                if status.published {
                     format!(
                         "Public DNS: {} (lease expires at {}).",
-                        record.fqdn, record.lease_expires_at
+                        name,
+                        status.lease_expires_at.unwrap_or(0)
                     )
                 } else {
                     format!(
                         "DNS name reserved: {}; publication confirmation is pending.",
-                        record.fqdn
+                        name
                     )
                 }
             } else {
@@ -1025,7 +1027,7 @@ impl ChatService {
             });
         }
         if let Some(code) = network_arguments(text).and_then(|args| args.strip_prefix("join ")) {
-            self.runtime.import_network_invitation(code.trim())?;
+            self.runtime.import_network_invitation(code.trim()).await?;
             return Ok(Response::Applied {
                 conversation: conversation.map(str::to_string),
                 notice: Some("Network invitation saved. Connecting in the background.".into()),
@@ -1201,13 +1203,9 @@ impl ChatService {
                 self.require(Capability::ChannelAdmin)?;
                 let channel = context_channel(&archive, conversation)?;
                 let link = client.create_invite(channel.id, 3600).await?;
-                let invitation = gcoms_node::channel_invite::ChannelInvite::from_link(&link)
-                    .ok_or("generated invitation is invalid")?;
-                let local_only = invitation.owner.aliases.iter().all(|alias| {
-                    let ip = alias.target.address.ip();
-                    ip.is_loopback() || ip.is_unspecified()
-                });
-                Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Invitation { channel: channel.title.clone(), link, expires: invitation.expiry, local_only } })
+                let invitation = gcoms::runtime::contacts::inspect_channel_invitation(&link)?;
+                let local_only = invitation.local_only;
+                Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Invitation { channel: channel.title.clone(), link, expires: invitation.expires_at, local_only } })
             }
             "kick" => {
                 self.require(Capability::ChannelAdmin)?;
@@ -1738,7 +1736,7 @@ pub async fn serve<S: ChatEndpoint>(
         result
     };
     let typed = async {
-        let result = gcoms_rpc::local::serve(&rpc_endpoint, router, async move {
+        let result = gcoms::rpc::local::serve(&rpc_endpoint, router, async move {
             if !*rpc_stop.borrow() {
                 let _ = rpc_stop.changed().await;
             }
@@ -1772,7 +1770,7 @@ async fn serve_legacy<S: ChatEndpoint>(
     let endpoint = LocalEndpoint::new(endpoint);
     endpoint.prepare_server().map_err(|e| e.to_string())?;
     let mut listener =
-        gcoms_sdk::local::LocalListener::bind(&endpoint).map_err(|e| e.to_string())?;
+        gcoms::sdk::local::LocalListener::bind(&endpoint).map_err(|e| e.to_string())?;
     let mut tasks = tokio::task::JoinSet::new();
     let slots = Arc::new(tokio::sync::Semaphore::new(32));
     let result = loop {
@@ -1785,12 +1783,12 @@ async fn serve_legacy<S: ChatEndpoint>(
                 tasks.spawn(async move {
                     let _permit = permit;
                     let operation = async {
-                        let bytes = gcoms_sdk::local_rpc::read(&mut stream, MAX_FRAME_BYTES).await?;
+                        let bytes = gcoms::sdk::local_rpc::read(&mut stream, MAX_FRAME_BYTES).await?;
                         let request = serde_json::from_slice::<RequestEnvelope>(&bytes)
-                            .map_err(|e| gcoms_sdk::SdkError::Protocol(e.to_string()))?;
+                            .map_err(|e| gcoms::sdk::SdkError::Protocol(e.to_string()))?;
                         let response = service.dispatch(request).await;
-                        let encoded = serde_json::to_vec(&response).map_err(|e| gcoms_sdk::SdkError::Protocol(e.to_string()))?;
-                        gcoms_sdk::local_rpc::write(&mut stream, &encoded, MAX_FRAME_BYTES).await
+                        let encoded = serde_json::to_vec(&response).map_err(|e| gcoms::sdk::SdkError::Protocol(e.to_string()))?;
+                        gcoms::sdk::local_rpc::write(&mut stream, &encoded, MAX_FRAME_BYTES).await
                     };
                     let _ = tokio::time::timeout(Duration::from_secs(145), operation).await;
                 });

@@ -1,9 +1,9 @@
 #![cfg(any(unix, windows))]
 
 use gchat_core::client::ClientHandle;
+use gcoms::sdk::ipc::Capability;
+use gcoms::sdk::{serve_local, ChannelVisibility, EmbeddedClient};
 use gcoms_node::node::{start, NodeConfig};
-use gcoms_sdk::ipc::Capability;
-use gcoms_sdk::{serve_local, ChannelVisibility, EmbeddedClient};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn daemon_channel_archive_survives_restart() {
@@ -42,7 +42,7 @@ async fn daemon_channel_archive_survives_restart() {
     // both platforms and stop promptly if the listener failed to start.
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
         loop {
-            if gcoms_sdk::local::connect(&gcoms_sdk::local::LocalEndpoint::new(&socket))
+            if gcoms::sdk::local::connect(&gcoms::sdk::local::LocalEndpoint::new(&socket))
                 .await
                 .is_ok()
             {

@@ -55,11 +55,11 @@ async fn attached(state: &tauri::State<'_, Attachment>) -> Result<ChatClient, St
 #[tauri::command]
 async fn chat_rpc(
     state: tauri::State<'_, Attachment>,
-    request: gcoms_rpc::Request,
-) -> Result<gcoms_rpc::Reply, String> {
-    use gcoms_rpc::Transport;
+    request: gcoms::rpc::Request,
+) -> Result<gcoms::rpc::Reply, String> {
+    use gcoms::rpc::Transport;
     let client = attached(&state).await?;
-    if request.rpc != gcoms_rpc::WIRE_VERSION
+    if request.rpc != gcoms::rpc::WIRE_VERSION
         || request.instance != client.instance_id()
         || request.service != gchat_api::rpc::SERVICE
         || request.version != gchat_api::rpc::SERVICE_VERSION
@@ -67,7 +67,7 @@ async fn chat_rpc(
         return Err("selected instance or service version mismatch".into());
     }
     let transport =
-        gcoms_rpc::local::LocalTransport::new(gchat_api::rpc::endpoint_for(client.endpoint()));
+        gcoms::rpc::local::LocalTransport::new(gchat_api::rpc::endpoint_for(client.endpoint()));
     let reply = transport
         .exchange(&request)
         .await

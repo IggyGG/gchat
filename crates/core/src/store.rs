@@ -64,11 +64,7 @@ struct LegacyArchiveData {
     conversations: Conversations,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct ProtocolData {
-    pub identity_seed: [u8; 32],
-    pub node_state: Option<Vec<u8>>,
-}
+pub use gcoms::runtime::store::{ProtocolData, ProtocolStore};
 
 impl StoreData {
     pub fn new(identity_seed: [u8; 32]) -> Self {
@@ -312,6 +308,23 @@ pub(crate) fn atomic_write(
 pub struct Store(EncryptedStore);
 
 impl Store {
+    pub(crate) fn path(&self) -> &std::path::Path {
+        &self.0.path
+    }
+    pub(crate) fn verify_secret(&self, secret: &str) -> Result<(), String> {
+        use hmac::{Hmac, Mac};
+        let key = derive_key(secret, &self.0.salt)?;
+        let mut expected =
+            Hmac::<sha2::Sha256>::new_from_slice(&*self.0.key).map_err(|e| e.to_string())?;
+        expected.update(b"gchat.profile.unlock");
+        let mut supplied =
+            Hmac::<sha2::Sha256>::new_from_slice(&*key).map_err(|e| e.to_string())?;
+        supplied.update(b"gchat.profile.unlock");
+        supplied
+            .verify_slice(&expected.finalize().into_bytes())
+            .map_err(|_| "wrong passphrase".into())
+    }
+
     pub(crate) fn network_directory(&self) -> std::path::PathBuf {
         self.0.path.with_extension("network")
     }
@@ -508,8 +521,6 @@ fn read_magic(path: &std::path::Path) -> Result<[u8; 6], String> {
     Ok(magic)
 }
 
-pub struct ProtocolStore(EncryptedStore);
-
 /// Split a stopped legacy profile into a new instance directory. The original
 /// encrypted file is held locked and retained byte-for-byte for recovery.
 pub fn migrate_combined(
@@ -539,19 +550,12 @@ pub fn migrate_combined(
     crate::private_fs::make_private(&copy, false)?;
     let (old, mut data) = Store::open(&copy, passphrase)?;
     let protocol_path = stage.path().join("profile.gcprotocol");
-    let protocol = ProtocolStore(EncryptedStore::create(
-        &protocol_path,
-        passphrase,
-        PROTOCOL_MAGIC,
-        "migrated protocol profile",
-    )?);
-    protocol.save(&ProtocolData {
+    let protocol_data = ProtocolData {
         identity_seed: data.identity_seed,
         node_state: data.node_state.take(),
-    })?;
-    let safety = gcoms_crypto::safety_number_of(
-        &gcoms_crypto::IdentityKeypair::from_seed(data.identity_seed).public_bytes(),
-    );
+    };
+    let safety = protocol_data.safety_number();
+    let protocol = ProtocolStore::import_new(&protocol_path, passphrase, &protocol_data)?;
     if !data.archive.daemon_safety_number.is_empty() && data.archive.daemon_safety_number != safety
     {
         return Err("legacy archive identity does not match its profile".into());
@@ -585,76 +589,6 @@ pub fn migrate_combined(
     Ok(())
 }
 
-impl ProtocolStore {
-    pub(crate) fn network_directory(&self) -> std::path::PathBuf {
-        self.0.path.with_extension("network")
-    }
-
-    pub fn create(
-        path: &std::path::Path,
-        passphrase: &str,
-    ) -> Result<(Self, ProtocolData), String> {
-        let store = Self(EncryptedStore::create(
-            path,
-            passphrase,
-            PROTOCOL_MAGIC,
-            "protocol profile",
-        )?);
-        let mut identity_seed = [0; 32];
-        rand::thread_rng().fill_bytes(&mut identity_seed);
-        let data = ProtocolData {
-            identity_seed,
-            node_state: None,
-        };
-        store.save(&data)?;
-        Ok((store, data))
-    }
-
-    pub fn open(path: &std::path::Path, passphrase: &str) -> Result<(Self, ProtocolData), String> {
-        let (store, data) = EncryptedStore::open(
-            path,
-            passphrase,
-            PROTOCOL_MAGIC,
-            "wrong passphrase or corrupted protocol profile",
-        )?;
-        Ok((Self(store), data))
-    }
-
-    /// Read a consistent encrypted snapshot without creating a profile/lock or
-    /// changing the live writer. Saves use atomic replacement; identity is stable.
-    /// Return only the public key, never the seed or protocol state.
-    pub fn inspect_identity_public_key(
-        path: &std::path::Path,
-        passphrase: &str,
-    ) -> Result<Vec<u8>, String> {
-        use aes_gcm::aead::Aead;
-        use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
-        crate::private_fs::validate_private_file(path, "encrypted profile")?;
-        crate::private_fs::validate_private_parent(path, "encrypted profile")?;
-        let raw = std::fs::read(path).map_err(|_| "read encrypted profile")?;
-        let (salt, nonce) = parse_header(&raw, PROTOCOL_MAGIC)?;
-        let key = derive_key(passphrase, &salt)?;
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&*key));
-        let plain = Zeroizing::new(
-            cipher
-                .decrypt(Nonce::from_slice(&nonce), &raw[HEADER_LEN..])
-                .map_err(|_| "profile decryption refused")?,
-        );
-        let (mut data, trailing): (ProtocolData, _) =
-            postcard::take_from_bytes(&plain).map_err(|_| "invalid encrypted profile")?;
-        if !trailing.is_empty() {
-            return Err("trailing encrypted profile data".into());
-        }
-        let public = gcoms_crypto::IdentityKeypair::from_seed(data.identity_seed).public_bytes();
-        zeroize::Zeroize::zeroize(&mut data.identity_seed);
-        Ok(public)
-    }
-
-    pub fn save(&self, data: &ProtocolData) -> Result<(), String> {
-        self.0.save(data)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -662,6 +596,7 @@ mod tests {
     fn tmpdir(tag: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("gcstore-{tag}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
+        crate::private_fs::make_private(&dir, true).unwrap();
         dir
     }
 

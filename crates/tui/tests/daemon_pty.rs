@@ -1,8 +1,8 @@
 #![cfg(unix)]
 
+use gcoms::sdk::ipc::Capability;
+use gcoms::sdk::EmbeddedClient;
 use gcoms_node::node::{start, NodeConfig};
-use gcoms_sdk::ipc::Capability;
-use gcoms_sdk::EmbeddedClient;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -291,7 +291,7 @@ async fn real_gchat_creates_and_reopens_a_daemon_archive_in_a_pty() {
     let server_node = node.clone();
     let server_socket = socket.clone();
     let server = tokio::spawn(async move {
-        gcoms_sdk::serve_unix(
+        gcoms::sdk::serve_unix(
             server_socket,
             EmbeddedClient::new(server_node),
             vec![

@@ -1,7 +1,7 @@
 #![cfg(any(unix, windows))]
 use gchat_api::ChatClient;
 use gchat_core::{chat_service::endpoint_for, runtime::ProtocolRuntime};
-use gcoms_sdk::GcClient;
+use gcoms::sdk::GcClient;
 use std::{process::Stdio, time::Duration};
 
 #[tokio::test]

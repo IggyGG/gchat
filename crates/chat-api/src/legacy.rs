@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 pub struct ChatClient {
     endpoint: PathBuf,
     instance: String,
-    handles: std::sync::Arc<gcoms_rpc::file_store::FileHandles>,
+    handles: std::sync::Arc<gcoms::rpc::file_store::FileHandles>,
 }
 
 impl ChatClient {
@@ -29,7 +29,7 @@ impl ChatClient {
         }
         let mut handle_path = endpoint.as_os_str().to_owned();
         handle_path.push(".handles");
-        let handles = gcoms_rpc::file_store::FileHandles::open(Path::new(&handle_path))
+        let handles = gcoms::rpc::file_store::FileHandles::open(Path::new(&handle_path))
             .map_err(|e| e.to_string())?;
         Ok(Self {
             endpoint: endpoint.into(),
@@ -53,15 +53,15 @@ impl ChatClient {
         super::rpc_compat::request(self.service_client(), request).await
     }
 
-    pub fn service_client(&self) -> gcoms_rpc::Client<gcoms_rpc::local::LocalTransport> {
-        gcoms_rpc::Client::new(
-            gcoms_rpc::local::LocalTransport::new(rpc::endpoint_for(&self.endpoint)),
+    pub fn service_client(&self) -> gcoms::rpc::Client<gcoms::rpc::local::LocalTransport> {
+        gcoms::rpc::Client::new(
+            gcoms::rpc::local::LocalTransport::new(rpc::endpoint_for(&self.endpoint)),
             &self.instance,
         )
         .with_handles(self.handles.clone())
     }
 
-    pub fn pending_operations(&self) -> Result<Vec<gcoms_rpc::OperationHandle>, ChatError> {
+    pub fn pending_operations(&self) -> Result<Vec<gcoms::rpc::OperationHandle>, ChatError> {
         let client = self.service_client();
         client
             .handles()
@@ -77,10 +77,10 @@ impl ChatClient {
                     })
                     .collect()
             })
-            .map_err(|e| super::rpc_compat::error(gcoms_rpc::CallError::Rpc(e)))
+            .map_err(|e| super::rpc_compat::error(gcoms::rpc::CallError::Rpc(e)))
     }
 
-    pub async fn operation_status(&self, id: &str) -> Result<gcoms_rpc::ReplyBody, ChatError> {
+    pub async fn operation_status(&self, id: &str) -> Result<gcoms::rpc::ReplyBody, ChatError> {
         super::rpc_compat::status(&self.service_client(), id).await
     }
 
@@ -124,14 +124,14 @@ impl ChatClient {
 
 async fn exchange(endpoint: &Path, request: &RequestEnvelope) -> Result<ResponseEnvelope, String> {
     tokio::time::timeout(std::time::Duration::from_secs(150), async {
-        let mut stream = gcoms_sdk::local::connect(&gcoms_sdk::LocalEndpoint::new(endpoint))
+        let mut stream = gcoms::sdk::local::connect(&gcoms::sdk::LocalEndpoint::new(endpoint))
             .await
             .map_err(|e| e.to_string())?;
         let encoded = serde_json::to_vec(request).map_err(|e| e.to_string())?;
-        gcoms_sdk::local_rpc::write(&mut stream, &encoded, MAX_FRAME_BYTES)
+        gcoms::sdk::local_rpc::write(&mut stream, &encoded, MAX_FRAME_BYTES)
             .await
             .map_err(|e| e.to_string())?;
-        let bytes = gcoms_sdk::local_rpc::read(&mut stream, MAX_FRAME_BYTES)
+        let bytes = gcoms::sdk::local_rpc::read(&mut stream, MAX_FRAME_BYTES)
             .await
             .map_err(|e| e.to_string())?;
         serde_json::from_slice(&bytes).map_err(|e| e.to_string())

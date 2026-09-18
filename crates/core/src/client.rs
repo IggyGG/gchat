@@ -8,9 +8,7 @@ use crate::runtime::ProtocolRuntime;
 use crate::store::{ArchiveData, ArchiveStore, Store, StoreData};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use gcoms_node::node::{NodeConfig, NodeHandle};
-use gcoms_node::proto::{info_from_b64, private_info_from_b64};
-use gcoms_sdk::{
+use gcoms::sdk::{
     ActivityBucket, AutomaticJoinEndpoint, Blob, CatalogResponse, ChannelId, ChannelRole,
     ChannelVisibility, ClientEvent, EmbeddedClient, GcClient, Identity, JoinRequest,
     PublicChannelDescriptor,
@@ -24,8 +22,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
 
-pub use gcoms_node::proto::NodeInfo;
-pub use gcoms_sdk::ClientEvent as NodeEvent;
+pub use gcoms::sdk::ClientEvent as NodeEvent;
+pub use gcoms::sdk::RelayCard as NodeInfo;
 
 const CATALOG_PAGE_SIZE: u16 = 100;
 const CATALOG_MAX_PAGES: usize = 10;
@@ -34,20 +32,20 @@ const CATALOG_MAX_CURSOR_BYTES: usize = 1024;
 const DESCRIPTOR_MAX_LIFETIME: u64 = 7 * 24 * 60 * 60;
 
 pub fn b64_encode(bytes: &[u8]) -> String {
-    gcoms_transport::encode_b64url(bytes)
+    URL_SAFE_NO_PAD.encode(bytes)
 }
 pub fn b64_decode(value: &str) -> Option<Vec<u8>> {
-    gcoms_transport::decode_b64url(value.trim())
+    URL_SAFE_NO_PAD.decode(value.trim()).ok()
 }
 pub fn decode_relay_card(card: &str) -> Result<NodeInfo, String> {
-    private_info_from_b64(card.trim()).ok_or_else(|| "invalid relay card".to_string())
+    gcoms::runtime::contacts::decode_relay_card(card)
 }
 
 /// Decode a peer-visible contact card. Contact cards deliberately use the
 /// public NodeInfo encoding, which excludes every relay-private capability;
 /// only local bootstrap material carries private provisioning.
-pub fn decode_contact_card(card: &str) -> Result<NodeInfo, String> {
-    info_from_b64(card.trim()).ok_or_else(|| "invalid contact card".to_string())
+pub fn decode_contact_card(card: &str) -> Result<gcoms::sdk::ContactCard, String> {
+    gcoms::runtime::contacts::decode_contact_card(card)
 }
 
 struct Inner {
@@ -69,11 +67,7 @@ struct Inner {
 enum Persistence {
     /// Legacy combined store: the node lives in this process and the
     /// archive is saved inside the same encrypted file.
-    Embedded {
-        node: Box<NodeHandle>,
-        _store: Arc<Store>,
-        network: Option<gcoms_network_client::NetworkClient>,
-    },
+    Embedded { runtime: ProtocolRuntime },
     /// Attached to an external daemon; only the chat archive is ours.
     Archive(ArchiveStore),
     /// Protocol runtime hosted in this process plus a separate archive:
@@ -121,10 +115,10 @@ impl ClientHandle {
         if data.daemon_safety_number != identity.safety_number {
             return Err("chat archive belongs to a different instance identity".into());
         }
-        let embedded = sdk.embedded();
+        let embedded = runtime.embedded();
         Self::finish(
-            Arc::new(sdk),
-            Some(embedded),
+            sdk,
+            embedded,
             identity,
             "gcd".into(),
             Persistence::Archive(store),
@@ -160,7 +154,8 @@ impl ClientHandle {
             listen,
             advertise,
             inbox_relay,
-            gcoms_node::node::NodeProfile::Production,
+            false,
+            passphrase,
         )
         .await
     }
@@ -181,7 +176,8 @@ impl ClientHandle {
             listen,
             advertise,
             inbox_relay,
-            gcoms_node::node::NodeProfile::fixture(),
+            true,
+            passphrase,
         )
         .await
     }
@@ -200,7 +196,8 @@ impl ClientHandle {
             listen,
             advertise,
             inbox_relay,
-            gcoms_node::node::NodeProfile::Production,
+            false,
+            passphrase,
         )
         .await
     }
@@ -221,7 +218,8 @@ impl ClientHandle {
             listen,
             advertise,
             inbox_relay,
-            gcoms_node::node::NodeProfile::fixture(),
+            true,
+            passphrase,
         )
         .await
     }
@@ -232,82 +230,46 @@ impl ClientHandle {
         listen: SocketAddr,
         advertise: Option<SocketAddr>,
         inbox_relay: Option<NodeInfo>,
-        profile: gcoms_node::node::NodeProfile,
+        fixture: bool,
+        secret: &str,
     ) -> Result<Self, String> {
-        let StoreData {
-            identity_seed,
-            archive,
-            node_state,
-        } = data;
-        let network = if matches!(profile, gcoms_node::node::NodeProfile::Production) {
-            Some(gcoms_network_client::NetworkClient::open(
-                &store.network_directory(),
-                crate::network::installed()?,
-            )?)
-        } else {
-            None
-        };
-        let mut routing = gcoms_node::node::RoutingConfig::from_environment()?;
-        if network.is_some() && listen.port() == 0 {
-            routing.connectivity = Some(gcoms_node::connectivity::ConnectivityConfig {
-                state: Some(Arc::new(gcoms_node::connectivity::PortState::open(
-                    &store.network_directory(),
-                    &identity_seed,
-                )?)),
-                ..Default::default()
-            });
-        }
-        let store = Arc::new(store);
-        let archive = Arc::new(Mutex::new(archive));
-        let sink_store = store.clone();
-        let sink_archive = archive.clone();
-        let sink = Arc::new(move |state| {
-            sink_store.save(&StoreData {
-                identity_seed,
-                archive: sink_archive
-                    .lock()
-                    .map_err(|_| "client archive lock poisoned")?
-                    .clone(),
-                node_state: Some(state),
-            })
+        let path = store.path().to_owned();
+        let archive = Arc::new(Mutex::new(data.archive));
+        let storage = Arc::new(LegacyProtocolStorage {
+            store,
+            archive: archive.clone(),
         });
-        let config = NodeConfig {
-            seed: identity_seed,
-            listen,
-            control: None,
-            advertise,
-            inbox_relay,
-            profile,
-            alias_lifecycle: Default::default(),
-        };
-        let node = if network.is_some() {
-            gcoms_node::node::start_persistent_restored_with_policy_and_routing(
-                config,
-                None,
-                routing,
-                sink,
-                node_state.as_deref(),
-            )
-            .await?
+        let builder = gcoms::Application::builder("gchat")
+            .profile(path)
+            .unlock_secret(secret)
+            .create(false)
+            .listen(listen)
+            .advertise(advertise)
+            .relay(inbox_relay)
+            .receive_messages(false)
+            .legacy_storage(
+                storage,
+                gcoms::runtime::store::ProtocolData {
+                    identity_seed: data.identity_seed,
+                    node_state: data.node_state,
+                },
+            );
+        let builder = if fixture {
+            builder.local_fixture().listen(listen)
         } else {
-            gcoms_node::node::start_persistent_restored(config, None, sink, node_state.as_deref())
-                .await?
+            builder
         };
-        let sdk = EmbeddedClient::new(node.clone());
-        let runtime_label = node.info.primary().map_or_else(
-            || "unavailable".into(),
-            |alias| alias.target.address.to_string(),
-        );
+        let runtime = ProtocolRuntime(builder.open().await?);
+        let sdk = runtime.sdk_client();
+        let embedded = runtime.embedded();
+        let identity = sdk.identity();
+        let label = runtime.listen_label();
         Self::finish(
-            Arc::new(sdk.clone()),
-            Some(sdk.clone()),
-            sdk.identity(),
-            runtime_label,
-            Persistence::Embedded {
-                node: Box::new(node),
-                _store: store,
-                network,
-            },
+            sdk,
+            embedded,
+            identity,
+            label,
+            Persistence::Embedded { runtime },
             archive,
             true,
         )
@@ -321,8 +283,8 @@ impl ClientHandle {
         socket: &std::path::Path,
         create: bool,
     ) -> Result<Self, String> {
-        use gcoms_sdk::ipc::Capability;
-        let sdk = gcoms_sdk::IpcClient::connect(
+        use gcoms::sdk::ipc::Capability;
+        let sdk = gcoms::sdk::IpcClient::connect(
             socket,
             "gchat",
             vec![
@@ -377,10 +339,10 @@ impl ClientHandle {
             return Err("chat archive belongs to a different identity".into());
         }
         let runtime_label = runtime.listen_label();
-        let embedded = sdk.embedded();
+        let embedded = runtime.embedded();
         Self::finish(
-            Arc::new(sdk),
-            Some(embedded),
+            sdk,
+            embedded,
             identity,
             runtime_label,
             Persistence::Hosted { runtime, store },
@@ -501,26 +463,11 @@ impl ClientHandle {
 
     /// Backend bootstrap used by hosted frontends; private introductions never enter UI state.
     pub async fn bootstrap_routing(&self, urls: &[String]) -> Result<String, String> {
-        let node = self.sdk_client()?.node().clone();
-        let network = match &self.0.persistence {
-            Persistence::Embedded { network, .. } => network.clone(),
-            Persistence::Hosted { runtime, .. } => runtime.network_client(),
-            _ => None,
-        };
-        crate::bootstrap::recover_network(
-            &node,
-            network.as_ref(),
-            urls,
-            tokio::time::Instant::now() + Duration::from_secs(120),
-        )
-        .await?;
-        let info = node.current_info().await?;
-        Ok(info
-            .primary()
-            .ok_or("inbox routing is recovering")?
-            .target
-            .address
-            .to_string())
+        self.0
+            .sdk
+            .recover_network(urls.to_vec())
+            .await
+            .map_err(|e| e.to_string())
     }
 
     async fn catalog_http(
@@ -528,7 +475,7 @@ impl ClientHandle {
         method: &str,
         url: Url,
         body: Vec<u8>,
-    ) -> Result<gcoms_sdk::CatalogHttpResponse, String> {
+    ) -> Result<gcoms::sdk::CatalogHttpResponse, String> {
         #[cfg(test)]
         if !self.0.catalog_https_only.load(Ordering::Relaxed) {
             let http = self.0.http.lock().unwrap().clone();
@@ -547,9 +494,10 @@ impl ClientHandle {
                 }
                 body.extend_from_slice(&chunk);
             }
-            return Ok(gcoms_sdk::CatalogHttpResponse { status, body });
+            return Ok(gcoms::sdk::CatalogHttpResponse { status, body });
         }
-        gcoms_routing::catalog::validate(method, url.as_str(), &body).map_err(|e| e.to_string())?;
+        gcoms::runtime::contacts::validate_catalog_request(method, url.as_str(), &body)
+            .map_err(|e| e.to_string())?;
         let mut origins: Vec<String> = self
             .0
             .catalog_urls
@@ -568,7 +516,7 @@ impl ClientHandle {
             .map_err(|e| e.to_string())?;
         self.0
             .sdk
-            .catalog_request(gcoms_sdk::CatalogHttpRequest {
+            .catalog_request(gcoms::sdk::CatalogHttpRequest {
                 method: method.into(),
                 url: url.into(),
                 body,
@@ -1110,94 +1058,36 @@ impl ClientHandle {
     /// Owner: mint a single-use invite link for a channel this node owns. The
     /// link carries the owner's public contact card so a friend can redeem it
     /// over the relay with no hand-carried key package. `ttl_secs` bounds how
-    /// long the invite is valid. Hosted runtime only (an IPC/daemon-attached
-    /// client has no in-process node and returns "client uses an IPC runtime").
+    /// long the invite is valid. Available through either application backend.
     pub async fn create_invite(&self, id: ChannelId, ttl_secs: u64) -> Result<String, String> {
         let channel = self
             .channel_protocol_name(id)
             .ok_or("channel is not active")?;
-        let embedded = self.sdk_client()?;
-        let node = embedded.node();
-        let (invite_id, secret, expiry) = node
-            .create_channel_invite(&channel, ttl_secs)
+        self.0
+            .sdk
+            .create_channel_invitation(&channel, ttl_secs)
             .await
-            .map_err(|e| e.to_string())?;
-        let owner = node.current_info().await.map_err(|e| e.to_string())?;
-        let invite = gcoms_node::channel_invite::ChannelInvite {
-            owner,
-            channel,
-            id: invite_id,
-            secret,
-            expiry,
-        };
-        let link = if node.uses_onion_routing() {
-            invite.to_link_with_bootstrap(node.routing_bootstrap()?)
-        } else {
-            invite.to_link()
-        };
-        link.ok_or_else(|| "invite is too large to encode".into())
+            .map(|i| i.link)
+            .map_err(|e| e.to_string())
     }
 
     /// Friend: redeem an invite link. Prepares a key package, contacts the
     /// owner over the relay (waiting up to `timeout_secs` if they are offline),
-    /// and joins the channel on success. Hosted runtime only (see
-    /// `create_invite`).
+    /// and joins the channel on success. Available through either application backend.
     pub async fn join_with_invite(
         &self,
         link: &str,
         display: &str,
         timeout_secs: u64,
     ) -> Result<String, String> {
-        let envelope = gcoms_node::channel_invite::InviteEnvelope::from_link(link.trim())
-            .ok_or("that does not look like a valid invite link")?;
-        let invite = envelope.invite;
-        let remaining = invite.expiry.saturating_sub(now_unix()).min(timeout_secs);
-        if remaining == 0 {
-            return Err("invite expired or join deadline elapsed".into());
-        }
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(remaining);
-        let embedded = self.sdk_client()?;
-        let node = embedded.node();
-        if let Some(bootstrap) = envelope.bootstrap {
-            node.install_routing_bootstrap(bootstrap).await?;
-        }
-        node.wait_for_inbox(deadline).await?;
-        tokio::time::timeout_at(deadline, async {
-            // Prepare our own key package for this channel.
-            let request = node
-                .prepare_channel_join(display)
-                .await
-                .map_err(|e| e.to_string())?;
-            let package = node
-                .channel_key_package(request)
-                .await
-                .map_err(|e| e.to_string())?;
-            let welcome = node
-                .redeem_invite_remote(
-                    invite.owner.clone(),
-                    &invite.channel,
-                    display,
-                    &package,
-                    invite.id,
-                    invite.secret,
-                    deadline
-                        .saturating_duration_since(tokio::time::Instant::now())
-                        .as_secs(),
-                )
-                .await?;
-            node.join_channel(
-                request,
-                &invite.channel,
-                gcoms_node::channel::ChannelVisibility::Private,
-                &welcome,
-            )
+        let channel = self
+            .0
+            .sdk
+            .join_channel_invitation(link, display, timeout_secs)
             .await
             .map_err(|e| e.to_string())?;
-            self.reconcile_channels().await?;
-            Ok(invite.channel)
-        })
-        .await
-        .map_err(|_| "invite join deadline elapsed".to_owned())?
+        self.reconcile_channels().await?;
+        Ok(channel)
     }
     pub async fn send_channel(&self, id: ChannelId, text: &str) -> Result<(), String> {
         let channel = self.channel(id).ok_or("channel is not active")?;
@@ -1308,7 +1198,7 @@ impl ClientHandle {
         self.stop_background().await;
         let save = self.save().await;
         match &self.0.persistence {
-            Persistence::Embedded { node, .. } => node.shutdown().await,
+            Persistence::Embedded { runtime } => runtime.clone().shutdown().await?,
             Persistence::Hosted { runtime, .. } => {
                 // Persists node state, then stops the node.
                 runtime.clone().shutdown().await?;
@@ -1560,7 +1450,7 @@ fn spawn_periodic_save(inner: &Arc<Inner>) {
 
 async fn save_inner(inner: &Arc<Inner>) -> Result<(), String> {
     match &inner.persistence {
-        Persistence::Embedded { node, .. } => node.persist_state().await?,
+        Persistence::Embedded { runtime } => runtime.save().await?,
         // The hosted runtime saves its own node state on every event and
         // every 30 s; only the archive is ours here.
         Persistence::Archive(store) | Persistence::Hosted { store, .. } => {
@@ -1588,6 +1478,31 @@ fn now_unix() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |duration| duration.as_secs())
+}
+
+// Keeps the legacy combined encrypted file format while GComs owns protocol lifecycle.
+struct LegacyProtocolStorage {
+    store: Store,
+    archive: Arc<Mutex<ArchiveData>>,
+}
+impl gcoms::runtime::store::ProfileStorage for LegacyProtocolStorage {
+    fn save(&self, data: &gcoms::runtime::store::ProtocolData) -> Result<(), String> {
+        self.store.save(&StoreData {
+            identity_seed: data.identity_seed,
+            node_state: data.node_state.clone(),
+            archive: self
+                .archive
+                .lock()
+                .map_err(|_| "archive lock poisoned")?
+                .clone(),
+        })
+    }
+    fn network_directory(&self) -> std::path::PathBuf {
+        self.store.network_directory()
+    }
+    fn verify_secret(&self, secret: &str) -> Result<(), String> {
+        self.store.verify_secret(secret)
+    }
 }
 
 #[cfg(test)]
@@ -1706,6 +1621,7 @@ mod catalog_tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn fake_catalogs_cover_pages_signatures_cache_publication_and_join() {
         let dir = tempfile::tempdir().unwrap();
+        crate::private_fs::make_private(dir.path(), true).unwrap();
         let owner = ClientHandle::create_profile_fixture(
             &dir.path().join("owner.gcstore"),
             "owner",
@@ -1813,6 +1729,7 @@ mod catalog_tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn catalog_rejects_repeated_and_oversized_cursors_and_http_in_production() {
         let dir = tempfile::tempdir().unwrap();
+        crate::private_fs::make_private(dir.path(), true).unwrap();
         let owner = ClientHandle::create_profile_fixture(
             &dir.path().join("owner.gcstore"),
             "owner",

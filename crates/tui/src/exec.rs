@@ -114,9 +114,7 @@ fn resolve_relay(source: &RelaySource) -> (Option<NodeInfo>, RelayState) {
 }
 
 fn relay_label(card: &NodeInfo) -> String {
-    card.aliases
-        .first()
-        .map_or_else(|| "relay".into(), |alias| alias.target.address.to_string())
+    gcoms::runtime::contacts::relay_label(card).unwrap_or_else(|_| "relay".into())
 }
 
 /// Path of a written outbox file.
@@ -308,9 +306,9 @@ fn spawn_wizard(wizard: WizardCmd, app: &mut App, ctx: &mut RuntimeCtx) {
                         &display,
                         capacity,
                         if public {
-                            gcoms_sdk::ChannelVisibility::Public
+                            gcoms::sdk::ChannelVisibility::Public
                         } else {
-                            gcoms_sdk::ChannelVisibility::Private
+                            gcoms::sdk::ChannelVisibility::Private
                         },
                     )
                     .await;
@@ -639,9 +637,9 @@ pub async fn probe_daemon(socket: &Path) -> bool {
     if cfg!(unix) && !socket.exists() {
         return false;
     }
-    use gcoms_sdk::ipc::Capability;
+    use gcoms::sdk::ipc::Capability;
     let attempt =
-        gcoms_sdk::IpcClient::connect(socket, "gchat-probe", vec![Capability::IdentityRead]);
+        gcoms::sdk::IpcClient::connect(socket, "gchat-probe", vec![Capability::IdentityRead]);
     matches!(
         tokio::time::timeout(std::time::Duration::from_millis(500), attempt).await,
         Ok(Ok(_))

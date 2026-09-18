@@ -12,7 +12,7 @@ use gchat_core::store::ArchiveData;
 use gchat_tui::app::{App, RelayState, RuntimeKind, Unlocked};
 use gchat_tui::form::UnlockMode;
 use gchat_tui::ui::render_to_lines;
-use gcoms_sdk::{
+use gcoms::sdk::{
     ActivityBucket, AutomaticJoinEndpoint, Blob, ChannelId, ChannelMemberSummary, ChannelRole,
     ChannelVisibility, ClientEvent, ContactCard, GcClient, Identity, JoinRequest, JoinedChannel,
     MessageId, PresenceMode, PublicChannelDescriptor, SdkError,
