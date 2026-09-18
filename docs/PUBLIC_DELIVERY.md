@@ -11,8 +11,8 @@ reviewed and integrated in Forgejo before mirroring back to GitHub.
 The existing Linux runner and a Windows 11 VM with native MSVC use the labels
 `gcoms-linux-x64` and `gcoms-windows-x64`. Install the pinned Rust toolchain,
 Node 22, npm 11, Python, native Tauri prerequisites, `gh`, and Gitleaks on release
-runners. The deployment runner additionally needs `rsync`, `ssh`, `gpg`, and the host
-utilities `flock`, `sha256sum`, `diff`, and GNU `mv`.
+runners. The website deployment runner additionally needs `kubectl`, an authenticated
+cluster connection, and `gpg` to verify published downloads.
 Register runners only against the relevant GChat/GComs repositories.
 
 Before using GitHub, create the two public mirrors with the audited source:
@@ -62,8 +62,8 @@ an Apple Development certificate is not a distribution certificate.
 Record actual signer names and certificate/key fingerprints in
 `release/publication.json`. Private security and conduct reports use
 `iggy@gchat.boo`; GitHub private vulnerability reporting is also enabled for both
-public repositories. Retain the required rights/operator reviews. Unconfigured fields remain explicit
-release blockers; scripts never invent identities or passing evidence.
+public repositories. Retain the required rights/operator reviews. Unconfigured
+fields remain explicit release blockers; scripts never invent identities or passing evidence.
 
 ## Build and qualify
 
@@ -130,14 +130,50 @@ python3 scripts/website.py
 python3 -m http.server 8080 --directory dist/website
 ```
 
-The Forgejo deployment runner needs a dedicated website SSH identity and pinned
-host keys. Set `GCHAT_WEB_SSH=user@host` and `GCHAT_WEB_ROOT` to a dedicated website
-directory containing `releases/` and a `current` symlink. Configure only the
-existing gchat.boo virtual host to serve `current`; preserve its TLS/security
-headers and all relay DNS records. No other repository is involved.
+The existing site is in Kubernetes: namespace `ghost-com`, Deployment/Service/
+Ingress `gchat-site`. Nginx serves `/usr/share/nginx/html` from the `content`
+ConfigMap volume. The ingress handles `gchat.boo` and `www.gchat.boo`; the latter
+redirects to the canonical domain. TLS remains in the existing `gchat-site-tls`
+Secret. The deployer does not read or change that Secret, the ingress, service,
+Nginx configuration, container image, or relay settings.
 
-Set `ENABLE_WEBSITE_DEPLOY=true` after a dry-run deployment and public source
-checks. Deployment uploads only the five expected static assets and atomically
-activates a version identified by the source commit and bundle hash. Failed public
-verification restores the previous managed version when one exists. Verify the public `build.json`. On failure, use
-`deploy-website.py --rollback PREVIOUS_VERSION`; old bundles are retained.
+Deployment defaults to that namespace and workload. Override with
+`GCHAT_WEB_NAMESPACE`, `GCHAT_WEB_DEPLOYMENT`, and `GCHAT_KUBE_CONTEXT` when needed.
+Configure `GCHAT_WEB_KUBECONFIG` in Forgejo as the **path** to a protected kubeconfig
+already mounted on the deployment runner, not its contents. With no path/context
+override, kubectl uses its normal configuration. Never commit kubeconfig files or
+copy the workstation's cluster-admin credentials into CI. A dedicated deployment
+identity needs `get` and `patch` on the named Deployment and `get`/`create` on
+ConfigMaps in this namespace; it needs no Secret access. Kubernetes RBAC cannot
+restrict `create` by resource name, so namespace-level ConfigMap creation is the
+remaining permission boundary.
+
+```sh
+python3 scripts/website.py --check-remote
+python3 scripts/deploy-website.py --dry-run
+# After committing the validated changes:
+python3 scripts/deploy-website.py
+```
+
+The dry run validates creation and the guarded Deployment patch with the API
+server without changing cluster state. Each six-file bundle (including the
+existing `robots.txt` and font license) gets an immutable ConfigMap named with
+the source commit and content hash. Only the content volume is changed, allowing
+the existing two-replica rolling update to serve traffic throughout. Once every
+replica is ready, the deployer verifies all six public file hashes over HTTPS.
+It retains the prior Deployment/content snapshot and the successful verification
+report in ignored `test-evidence/website-deploy/`.
+
+Failed rollout or public verification restores the previous content volume,
+unless another operator has since changed the pod template. Generation/UID tests
+prevent overwriting concurrent work. Prior ConfigMaps are retained; subsequent
+versions can be restored and verified with
+`python3 scripts/deploy-website.py --rollback PREVIOUS_CONFIGMAP`. The original
+unversioned `gchat-site` ConfigMap remains available alongside the first migration's
+backup. Set `ENABLE_WEBSITE_DEPLOY=true` in Forgejo once its runner has this
+restricted cluster access and a successful dry run. The existing mirror gate
+must also be enabled for the dependent website job to run.
+
+See Kubernetes' [ConfigMap documentation](https://kubernetes.io/docs/concepts/configuration/configmap/)
+and [RBAC reference](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+for immutable objects and the limits on restricting creation permissions.

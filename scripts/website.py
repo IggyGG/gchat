@@ -129,6 +129,7 @@ def build(output, data):
         raise ValueError('unresolved website template marker')
     (output / 'index.html').write_text(page)
     (output / 'downloads.json').write_text(json.dumps(data, indent=2) + '\n')
+    shutil.copyfile(ROOT / 'website/robots.txt', output / 'robots.txt')
     (output / 'fonts').mkdir(exist_ok=True)
     for name in ('fixedsys-excelsior.ttf', 'LICENSE-CC0'):
         shutil.copyfile(ROOT / 'apps/client/public/fonts' / name, output / 'fonts' / name)
