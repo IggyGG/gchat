@@ -1,0 +1,38 @@
+name: Public source and website
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: public-delivery-main
+  cancel-in-progress: false
+jobs:
+  mirror:
+    if: vars.ENABLE_PUBLIC_MIRROR == 'true'
+    runs-on: gcoms-linux-x64
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Mirror audited source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_MIRROR_TOKEN }}
+        run: python3 scripts/github-mirror.py
+  website:
+    needs: mirror
+    if: vars.ENABLE_WEBSITE_DEPLOY == 'true'
+    runs-on: gcoms-linux-x64
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Validate site and published downloads
+        run: |
+          python3 -m unittest discover -s scripts/tests -p website_test.py
+          python3 scripts/website.py --check-remote
+      - name: Deploy to current GChat web host
+        env:
+          GCHAT_WEB_SSH: ${{ vars.GCHAT_WEB_SSH }}
+          GCHAT_WEB_ROOT: ${{ vars.GCHAT_WEB_ROOT }}
+        run: python3 scripts/deploy-website.py

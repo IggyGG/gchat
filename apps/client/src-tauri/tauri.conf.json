@@ -49,6 +49,17 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      }
+    },
+    "shortDescription": "Secure communication over GComs",
+    "longDescription": "GChat provides encrypted conversations with invitation-based access and signed relay defaults."
   }
 }

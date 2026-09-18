@@ -1,5 +1,6 @@
 use crate::store::{ProtocolData, ProtocolStore};
 use async_trait::async_trait;
+use gchat_api::{NetworkState, NetworkStatus};
 use gcoms_node::node::{NodeConfig, NodeHandle};
 use gcoms_node::proto::NodeInfo;
 use gcoms_sdk::{
@@ -21,6 +22,8 @@ struct Inner {
     save_lock: tokio::sync::Mutex<()>,
     error_sink: std::sync::Mutex<Option<ErrorSink>>,
     network: Option<gcoms_network_client::NetworkClient>,
+    network_status: std::sync::Mutex<NetworkStatus>,
+    uses_installed_network: std::sync::atomic::AtomicBool,
     background: std::sync::Mutex<Option<BackgroundTasks>>,
     recover_now: tokio::sync::Notify,
     names_now: tokio::sync::Notify,
@@ -208,7 +211,13 @@ impl ProtocolRuntime {
             _store: store,
             save_lock: tokio::sync::Mutex::new(()),
             error_sink: std::sync::Mutex::new(None),
+            network_status: std::sync::Mutex::new(NetworkStatus::new(if network.is_some() {
+                NetworkState::Connecting
+            } else {
+                NetworkState::LocalOnly
+            })),
             network,
+            uses_installed_network: std::sync::atomic::AtomicBool::new(true),
             background: std::sync::Mutex::new(Some(BackgroundTasks::default())),
             recover_now: tokio::sync::Notify::new(),
             names_now: tokio::sync::Notify::new(),
@@ -285,12 +294,35 @@ impl ProtocolRuntime {
         self.0.network.clone()
     }
 
+    pub fn network_status(&self) -> NetworkStatus {
+        if let Some(network) = self.0.network.as_ref().filter(|_| {
+            self.0
+                .uses_installed_network
+                .load(std::sync::atomic::Ordering::Relaxed)
+        }) {
+            match network.has_invitation() {
+                Ok(false) if self.0.node.routing_bootstrap().is_err() => {
+                    return NetworkStatus::new(NetworkState::InvitationRequired)
+                }
+                Err(_) => return NetworkStatus::new(NetworkState::Unavailable),
+                _ => {}
+            }
+        }
+        self.0
+            .network_status
+            .lock()
+            .expect("network status lock")
+            .clone()
+    }
+
     pub fn import_network_invitation(&self, code: &str) -> Result<(), String> {
         self.0
             .network
             .as_ref()
             .ok_or("Network invitations are unavailable in a local fixture")?
             .import_invitation(code)?;
+        *self.0.network_status.lock().expect("network status lock") =
+            NetworkStatus::new(NetworkState::Connecting);
         self.0.recover_now.notify_one();
         Ok(())
     }
@@ -334,6 +366,10 @@ impl ProtocolRuntime {
         let mut background = self.0.background.lock().expect("runtime task lock");
         let background = background.as_mut().ok_or("protocol runtime is shut down")?;
         if bootstrap && !background.recovery_started {
+            self.0.uses_installed_network.store(
+                crate::bootstrap::uses_installed_network(&urls),
+                std::sync::atomic::Ordering::Relaxed,
+            );
             background.recovery_started = true;
             background
                 .tasks
@@ -430,19 +466,23 @@ async fn network_bootstrap_loop(weak: std::sync::Weak<Inner>, urls: Vec<String>)
     loop {
         let Some(inner) = weak.upgrade() else { break };
         let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(120);
-        let success = matches!(
-            tokio::time::timeout_at(
-                deadline,
-                crate::bootstrap::recover_network(
-                    &inner.node,
-                    inner.network.as_ref(),
-                    &urls,
-                    deadline
-                )
-            )
-            .await,
-            Ok(Ok(()))
-        );
+        let result = tokio::time::timeout_at(
+            deadline,
+            crate::bootstrap::recover_network(&inner.node, inner.network.as_ref(), &urls, deadline),
+        )
+        .await;
+        let success = matches!(result, Ok(Ok(())));
+        let state = match &result {
+            Ok(Ok(())) => NetworkState::Connected,
+            Ok(Err(error)) if error.contains("invitation expired") => {
+                NetworkState::InvitationExpired
+            }
+            Ok(Err(error)) if error.contains("Enter a network invitation") => {
+                NetworkState::InvitationRequired
+            }
+            _ => NetworkState::Reconnecting,
+        };
+        *inner.network_status.lock().expect("network status lock") = NetworkStatus::new(state);
         failures = if success {
             0
         } else {

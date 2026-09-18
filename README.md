@@ -4,17 +4,16 @@
 application, terminal client and local service built from one repository.
 The Rust API contract drives both native clients and generated TypeScript bindings.
 
-Current development uses the existing [private local Forgejo repository](http://127.0.0.1:3300/ghost-local/gchat)
-and its [companion GComs repository](http://127.0.0.1:3300/ghost-local/gcoms).
-Public publication is deferred by the project owner. Public URLs, reporting contacts
-and publisher accounts are future release decisions, not prerequisites for this
-private development stage. The intended preview version remains 0.1.0. See
-[development and future release status](docs/RELEASE.md).
+Development and release authority remains in the existing local Forgejo repository.
+Public delivery uses [IggyGG/gchat](https://github.com/IggyGG/gchat) and
+[IggyGG/gcoms](https://github.com/IggyGG/gcoms) as GitHub mirrors.
+The first signed release is being prepared for Linux x86_64, Windows x86_64,
+and macOS Apple Silicon/Intel. See [release preparation](docs/RELEASE.md).
 
-Current work is limited to secure connections in GComs and GChat: authentication,
-transport security, local IPC access controls, and disconnect/reconnect behavior.
-Validation uses Linux and the existing Windows VM. macOS is unavailable;
-installer and publication work is deferred.
+For installation and first launch, see [gchat.boo](https://gchat.boo/#downloads)
+and the [installation guide](docs/INSTALL.md). GChat includes signed Hetzner relay
+settings; users import a network invitation and do not configure relay addresses.
+The [website and delivery tooling](docs/PUBLIC_DELIVERY.md) live in this repository.
 
 ## Build and run
 
@@ -68,14 +67,15 @@ recorders and private installer/identity services.
 | `crates/tui` (`gchat-tui`) | `gchat` terminal application and daemon entry point |
 | `ui` | Shared Svelte UI and bound RPC bridge |
 | `apps/client` | Tauri desktop client |
+| `website` | gchat.boo source; built with `scripts/website.py` |
 
 See [TESTING.md](TESTING.md), [integration](docs/INTEGRATION.md),
 [network operation](docs/NETWORK.md) and [SECURITY.md](SECURITY.md).
 GComs provides transport and typed services; GChat owns chat behavior and UI.
 
 MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
-Linux x86_64 and Windows x86_64 are the current preview qualification targets.
-macOS is unavailable and unqualified; mobile is deferred. See the
+The signed preview requires Linux x86_64, Windows 11 x86_64, and macOS on
+Apple Silicon and Intel. GitHub workers provide Mac qualification; mobile is deferred. See the
 [release evidence procedure](docs/RELEASE_EVIDENCE.md).
 
 The preview uses GComs' rustls/XML advisory fixes and disables unused postcard

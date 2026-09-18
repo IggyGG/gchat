@@ -5,6 +5,11 @@ root and signed network defaults. It contains no invitation credential. Generic
 GComs libraries have no built-in operated network. Both new and retained profiles
 use the application's selected trust document and preserve monotonic network state.
 
+The installed providers are `https://bootstrap-hel.gchat.boo/` and
+`https://bootstrap-fsn.gchat.boo/`, backed by the published Hetzner relays. The
+application, daemon and TUI use the same signed preset. No relay credentials are
+shipped in installers, and importing an invitation does not replace the trust root.
+
 Obtain an invitation from the network operator and import it through GChat's
 onboarding flow. The operator's public identity, invitation procedure, capacity,
 acceptable use and status/support contact must be recorded before public launch.

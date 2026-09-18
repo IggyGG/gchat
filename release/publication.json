@@ -2,48 +2,52 @@
   "project": "gchat",
   "channel": "developer-preview",
   "version": "0.1.0",
-  "forgejo_url": null,
-  "companion_url": null,
+  "companion_url": "https://github.com/IggyGG/gcoms",
   "security_contact": null,
   "conduct_contact": null,
-  "maintainers": [],
+  "maintainers": [
+    "IggyGG"
+  ],
   "rights_review": null,
   "operator_acceptance": null,
   "native_qualification": {},
   "publisher_identities": {},
-  "publication_status": "deferred_by_owner",
+  "publication_status": "approved_by_owner",
   "development": {
     "visibility": "private",
     "forgejo_url": "http://127.0.0.1:3300/ghost-local/gchat",
     "companion_url": "http://127.0.0.1:3300/ghost-local/gcoms",
     "git_remote": "ssh://git@ghost-forgejo/ghost-local/gchat.git",
     "native_hosts": {
-      "macos": {
-        "ssh_host": "macbuild",
-        "account": "iggy",
-        "architecture": "arm64",
-        "signing_identity": "Apple Development: Iggy Gullstrand (99T8PLK737)",
-        "purpose": "development; public distribution deferred",
-        "status": "unavailable; excluded from current release effort"
+      "linux": {
+        "kind": "forgejo_runner",
+        "architecture": "x86_64"
       },
       "windows": {
         "kind": "virtual_machine",
         "architecture": "x86_64",
-        "purpose": "private build and test validation",
-        "vm_name": "gcoms-gchat-validation",
-        "operating_system": "Windows 10 build 19045",
-        "execution": "native Windows tests from Linux-cross-built x86_64-pc-windows-gnu executables",
-        "forgejo_runner_registered": false
+        "rust_host": "x86_64-pc-windows-msvc"
+      },
+      "macos": {
+        "kind": "github_hosted",
+        "runners": [
+          "macos-15-intel",
+          "macos-15"
+        ],
+        "local_host": "unavailable"
       }
     },
-    "native_validation_record": "native-validation-2026-09-17.json"
+    "native_validation_record": "native-validation-2026-09-17.json",
+    "authority": "forgejo",
+    "github_role": "public mirror; macOS build workers"
   },
   "qualification_targets": [
     "linux-x86_64",
-    "windows-x86_64"
+    "windows-x86_64",
+    "macos-x86_64",
+    "macos-aarch64"
   ],
-  "unqualified_targets": {
-    "macos-x86_64": "Mac unavailable; excluded from current release effort by owner",
-    "macos-aarch64": "Mac unavailable; excluded from current release effort by owner"
-  }
+  "unqualified_targets": {},
+  "public_repository_url": "https://github.com/IggyGG/gchat",
+  "security_reporting_url": "https://github.com/IggyGG/gchat/security/advisories/new"
 }
