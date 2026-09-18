@@ -43,8 +43,9 @@ async fn channel_roster_transcript_and_scoped_pm_survive_restart() {
     let pm_id = owner.open_scoped_pm(channel_id, remote.id).unwrap();
     owner.send_scoped_pm(pm_id, "scoped history").await.unwrap();
     owner.shutdown().await.unwrap();
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
+    // Shutdown releases every background owner of the profile before returning.
+    // Reopening must not depend on an arbitrary delay for detached tasks to die.
     let reopened = ClientHandle::unlock_fixture(&owner_path, "owner", addr(), None, None)
         .await
         .unwrap();
