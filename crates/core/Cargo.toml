@@ -53,3 +53,8 @@ windows-sys = { version = "0.61", features = [
 
 [dev-dependencies]
 axum = "0.8"
+
+[features]
+# Explicit opt-in: builds the experimental GC/2 carrier profile into this
+# application. Default builds keep the GC/1 production profile.
+gc2-carrier = ["gcoms-node/experimental-gc2"]

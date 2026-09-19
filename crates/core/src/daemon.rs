@@ -51,6 +51,9 @@ pub struct DaemonArgs {
     /// Explicit direct transport for disposable local fixtures.
     #[arg(long, hide = true)]
     pub local_fixture: bool,
+    /// Explicit opt-in for the experimental GC/2 carrier profile.
+    #[arg(long, env = "GC_GC2_CARRIER", conflicts_with = "local_fixture")]
+    pub gc2_carrier: bool,
     /// Local GC listener.
     #[arg(long, default_value = "127.0.0.1:8443")]
     pub listen: SocketAddr,
@@ -238,6 +241,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
         catalog_urls: args.chat_catalog_url.clone(),
         network_recovery: !args.no_network_bootstrap,
         local_fixture: args.local_fixture,
+        gc2_carrier: args.gc2_carrier,
     };
     let create_archive = !config.archive.exists();
     let endpoint = config.chat_endpoint();
