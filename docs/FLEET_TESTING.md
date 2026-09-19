@@ -28,7 +28,12 @@ bytes are still unverified ciphertext until a whole piece passes verification.
 It emits no member, route or share identifiers. Counts reset
 with the engine; PID and time identify each observation interval. Diagnostic
 write failure does not fail a transfer. Ordinary application behavior is unchanged
-when the environment variable is absent.
+when the environment variable is absent. Embedded runtimes also include a
+`protocol` aggregate: admitted/dispatched/failed work, queue and service latency
+histograms, warmup latency and scheduler resource use. This distinguishes a file
+worker timeout from stalled relay admission. No node handle is retained by the
+blocking file worker for these observations; attached IPC-only runtimes report
+`protocol: null`. Counters may omit work before diagnostics were enabled.
 
 For an operator-controlled daemon, `GCHAT_PROTOCOL_METRICS=<private-file>` also
 enables GComs' existing bounded local JSONL metrics writer. The fleet worker sets

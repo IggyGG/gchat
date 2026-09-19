@@ -437,6 +437,17 @@ impl ChatService {
                 // Keep bounded sends alive across receive/tick iterations. A slow
                 // receipt must not block the peer's next piece response.
                 let send_capacity = 4usize.saturating_sub(sends.len());
+                // Copy aggregate counters only; do not retain a node handle in
+                // blocking file work or extend its profile lock lifetime.
+                let protocol_diagnostics = worker
+                    .diagnostics
+                    .then(|| {
+                        client.sdk_client().ok().map(|sdk| {
+                            sdk.node().enable_diagnostics();
+                            sdk.node().diagnostics()
+                        })
+                    })
+                    .flatten();
                 let result = tokio::task::spawn_blocking(move || -> Result<Work, String> {
                     if !worker.enabled.load(Ordering::Acquire) {
                         return Ok(Work {
@@ -494,6 +505,7 @@ impl ChatService {
                             "rejected_pieces": d.rejected_pieces, "retries": d.retries,
                             "buffered_bytes": d.buffered_bytes, "pending_pulls": d.pending_pulls,
                             "pending_actions": backend.pending.len(), "cache_bytes": backend.engine.cache.used(),
+                            "protocol": protocol_diagnostics,
                         });
                         // Optional local aggregates only. A full diagnostic disk
                         // must not turn an observation into a transfer failure.
