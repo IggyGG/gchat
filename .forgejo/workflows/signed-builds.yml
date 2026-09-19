@@ -41,6 +41,7 @@ jobs:
       - name: Build and verify signed installers
         working-directory: gchat
         env:
+          GCHAT_ISOLATED_SIGNING_WORKER: '1'
           WINDOWS_CERTIFICATE_THUMBPRINT: ${{ vars.WINDOWS_CERTIFICATE_THUMBPRINT }}
           WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
           GCHAT_RELEASE_KEY: ${{ vars.GCHAT_RELEASE_KEY }}

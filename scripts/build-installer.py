@@ -51,8 +51,18 @@ def sha(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def signing_policy():
+    publication = json.loads((ROOT / 'release/publication.json').read_text())
+    policy = publication.get('signing_policy', 'publicly-trusted')
+    if policy not in ('publicly-trusted', 'self-signed-preview'):
+        raise ValueError('unknown signing policy')
+    if policy == 'self-signed-preview' and publication.get('channel') != 'developer-preview':
+        raise ValueError('self-signed policy is limited to developer previews')
+    return policy
+
+
 @contextmanager
-def apple_keychain():
+def apple_keychain(policy):
     with tempfile.TemporaryDirectory(prefix='gchat-sign-') as temp:
         temp = Path(temp); keychain = temp / 'release.keychain-db'; cert = temp / 'developer-id.p12'
         cert.write_bytes(base64.b64decode(required('APPLE_CERTIFICATE_BASE64'), validate=True)); cert.chmod(0o600)
@@ -67,34 +77,71 @@ def apple_keychain():
             run(['security', 'import', str(cert), '-k', str(keychain), '-P', required('APPLE_CERTIFICATE_PASSWORD'), '-T', '/usr/bin/codesign', '-T', '/usr/bin/security'], capture_output=True)
             run(['security', 'set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:', '-s', '-k', password, str(keychain)], capture_output=True)
             run(['security', 'list-keychains', '-d', 'user', '-s', str(keychain), *previous], capture_output=True)
-            api_key = temp / 'AuthKey.p8'
-            api_key.write_bytes(base64.b64decode(required('APPLE_API_KEY_BASE64'), validate=True)); api_key.chmod(0o600)
-            environment = dict(os.environ, APPLE_API_KEY_PATH=str(api_key))
-            required('APPLE_API_KEY'); required('APPLE_API_ISSUER')
-            if not required('APPLE_SIGNING_IDENTITY').startswith('Developer ID Application:'):
-                raise ValueError('macOS distribution requires Developer ID Application')
-            team = required('APPLE_TEAM_ID')
-            if not re.fullmatch('[A-Z0-9]{10}', team) or not required('APPLE_SIGNING_IDENTITY').endswith('('+team+')'):
-                raise ValueError('Developer ID identity differs from expected team')
+            environment = dict(os.environ)
+            if policy == 'publicly-trusted':
+                api_key = temp / 'AuthKey.p8'
+                api_key.write_bytes(base64.b64decode(required('APPLE_API_KEY_BASE64'), validate=True)); api_key.chmod(0o600)
+                environment['APPLE_API_KEY_PATH'] = str(api_key)
+                required('APPLE_API_KEY'); required('APPLE_API_ISSUER')
+            else:
+                # Self-signed previews cannot be notarized. Do not accidentally
+                # consume unrelated developer credentials from the runner.
+                for name in ('APPLE_API_KEY', 'APPLE_API_KEY_PATH', 'APPLE_API_ISSUER',
+                             'APPLE_API_KEY_BASE64', 'APPLE_ID', 'APPLE_PASSWORD',
+                             'APPLE_TEAM_ID', 'APPLE_PROVIDER_SHORT_NAME'):
+                    environment.pop(name, None)
             yield environment
         finally:
             subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', *previous], capture_output=True)
             subprocess.run(['security', 'delete-keychain', str(keychain)], capture_output=True)
 
 
-def verify_windows(path):
+def verify_windows(path, policy):
     script = ROOT / 'scripts/verify-windows-signature.ps1'
-    run(['powershell.exe', '-NoProfile', '-NonInteractive', '-File', str(script), '-Artifact', str(path), '-Thumbprint', fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,))])
+    command = ['powershell.exe', '-NoProfile', '-NonInteractive', '-File', str(script), '-Artifact', str(path), '-Thumbprint', fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,))]
+    if policy == 'self-signed-preview':
+        command.append('-SelfSignedPreview')
+    run(command)
 
 
-def bundle(target, output, environment):
+def configured_identity(system):
+    publishers = json.loads((ROOT / 'release/publication.json').read_text())['publisher_identities']
+    identity = publishers[{'Linux':'linux', 'Windows':'windows', 'Darwin':'macos'}[system]]
+    if not isinstance(identity.get('name'), str) or not identity['name'].strip():
+        raise ValueError('configure the public publisher name')
+    configured = identity.get('certificate_fingerprint')
+    if not isinstance(configured, str) or not re.fullmatch(r'(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})', configured.replace(' ', '')):
+        raise ValueError('configure a verified public signing fingerprint for '+system)
+    expected = configured.replace(' ', '').upper()
+    if system == 'Windows' and fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,)).upper() != expected:
+        raise ValueError('Windows signing identity differs from publication configuration')
+    if system == 'Linux' and fingerprint('GCHAT_RELEASE_KEY').upper() != expected:
+        raise ValueError('Linux signing identity differs from publication configuration')
+    if system == 'Darwin':
+        if signing_policy() == 'self-signed-preview':
+            if required('APPLE_SIGNING_IDENTITY').replace(' ', '').upper() != expected:
+                raise ValueError('self-signed Apple identity must be the pinned certificate fingerprint')
+            return identity
+        team = required('APPLE_TEAM_ID')
+        if not re.fullmatch('[A-Z0-9]{10}', team):
+            raise ValueError('invalid Apple team identifier')
+        # The human publisher name is distinct from Apple's certificate CN.
+        expected_name = f"Developer ID Application: {identity['name']} ({team})"
+        if required('APPLE_SIGNING_IDENTITY') != expected_name:
+            raise ValueError('Apple signing identity differs from publication configuration')
+    return identity
+
+
+def bundle(target, output, environment, identity, policy):
     system, arch, triple, bundles = TARGETS[target]
-    config = {'bundle': {}}
+    config = {'bundle': {'publisher': identity['name']}}
     if system == 'Windows':
-        timestamp = required('WINDOWS_TIMESTAMP_URL')
-        if not timestamp.startswith('https://'):
-            raise ValueError('Windows timestamp service must use HTTPS')
-        config['bundle']['windows'] = {'certificateThumbprint':fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,)), 'digestAlgorithm':'sha256', 'timestampUrl':timestamp, 'tsp':True}
+        config['bundle']['windows'] = {'certificateThumbprint':fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,)), 'digestAlgorithm':'sha256'}
+        if policy == 'publicly-trusted':
+            timestamp = required('WINDOWS_TIMESTAMP_URL')
+            if not timestamp.startswith('https://'):
+                raise ValueError('Windows timestamp service must use HTTPS')
+            config['bundle']['windows'].update(timestampUrl=timestamp, tsp=True)
     if system == 'Linux':
         key = fingerprint('GCHAT_RELEASE_KEY')
         # Provision an unlocked signing subkey into the protected runner's GNUPGHOME.
@@ -117,9 +164,20 @@ def bundle(target, output, environment):
                 raise ValueError('expected one signed application')
             run(['codesign', '--verify', '--deep', '--strict', '--verbose=2', str(apps[0])])
             details = subprocess.run(['codesign', '-d', '--verbose=4', str(apps[0])], capture_output=True, text=True, check=True)
-            if 'TeamIdentifier='+required('APPLE_TEAM_ID') not in details.stderr.splitlines() or 'Authority='+required('APPLE_SIGNING_IDENTITY') not in details.stderr.splitlines():
-                raise ValueError('signed application publisher differs from configured identity')
-            run(['spctl', '--assess', '--type', 'execute', '--verbose=2', str(apps[0])])
+            if policy == 'publicly-trusted':
+                if 'TeamIdentifier='+required('APPLE_TEAM_ID') not in details.stderr.splitlines() or 'Authority='+required('APPLE_SIGNING_IDENTITY') not in details.stderr.splitlines():
+                    raise ValueError('signed application publisher differs from configured identity')
+            elif 'Authority='+identity['name'] not in details.stderr.splitlines():
+                raise ValueError('self-signed application publisher differs from configured identity')
+            certificate_prefix = Path(temp) / 'signer-'
+            run(['codesign', '-d', '--extract-certificates', str(certificate_prefix), str(apps[0])], capture_output=True)
+            certificate = Path(str(certificate_prefix)+'0').read_bytes()
+            expected = identity['certificate_fingerprint'].replace(' ', '').upper()
+            actual = hashlib.new('sha256' if len(expected) == 64 else 'sha1', certificate).hexdigest().upper()
+            if actual != expected:
+                raise ValueError('signed application certificate differs from configured fingerprint')
+            if policy == 'publicly-trusted':
+                run(['spctl', '--assess', '--type', 'execute', '--verbose=2', str(apps[0])])
         patterns = {'deb':'deb/*.deb', 'appimage':'appimage/*.AppImage', 'nsis':'nsis/*.exe', 'dmg':'dmg/*.dmg'}
         files = []
         for kind in bundles:
@@ -127,8 +185,10 @@ def bundle(target, output, environment):
             if len(matches) != 1:
                 raise ValueError('expected exactly one artifact per bundle format')
             path = matches[0]
-            if system == 'Windows': verify_windows(path)
-            if system == 'Darwin': run(['xcrun', 'stapler', 'validate', str(path)])
+            if system == 'Windows': verify_windows(path, policy)
+            if system == 'Darwin':
+                run(['codesign', '--verify', '--strict', str(path)])
+                if policy == 'publicly-trusted': run(['xcrun', 'stapler', 'validate', str(path)])
             destination = output / path.name; shutil.copyfile(path, destination)
             if system == 'Linux':
                 run(['gpg', '--batch', '--yes', '--pinentry-mode', 'loopback', '--passphrase-fd', '0', '--local-user', required('GCHAT_RELEASE_KEY'), '--armor', '--detach-sign', str(destination)], input=required('GCHAT_RELEASE_PASSPHRASE').encode(), env=environment)
@@ -146,26 +206,19 @@ def main():
         raise ValueError('release builds require the selected native OS, architecture, and Rust host')
     if os.environ.get('GC_DEFAULT_RELAY_BOOTSTRAP'):
         raise ValueError('official installers must use the signed bundled relay defaults')
-    publisher = json.loads((ROOT / 'release/publication.json').read_text())['publisher_identities']
-    platform_key = {'Linux':'linux', 'Windows':'windows', 'Darwin':'macos'}[system]
-    identity = publisher[platform_key]
-    if system == 'Windows' and fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,)).upper() != identity['certificate_fingerprint'].replace(' ', '').upper():
-        raise ValueError('Windows signing identity differs from publication configuration')
-    if system == 'Linux' and fingerprint('GCHAT_RELEASE_KEY').upper() != identity['certificate_fingerprint'].replace(' ', '').upper():
-        raise ValueError('Linux signing identity differs from publication configuration')
-    if system == 'Darwin' and required('APPLE_SIGNING_IDENTITY') != identity['name']:
-        raise ValueError('Apple signing identity differs from publication configuration')
+    identity = configured_identity(system)
+    policy = signing_policy()
     sources={}
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip(): raise ValueError('release source must be clean')
         sources[name]=subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()
     output=a.output.resolve();output.mkdir(parents=True,exist_ok=False)
     if system=='Darwin':
-        with apple_keychain() as environment: files=bundle(a.target,output,environment)
-    else: files=bundle(a.target,output,dict(os.environ))
+        with apple_keychain(policy) as environment: files=bundle(a.target,output,environment,identity,policy)
+    else: files=bundle(a.target,output,dict(os.environ),identity,policy)
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip() or subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()!=sources[name]: raise ValueError('build changed source inputs')
-    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'files':files},indent=2)+'\n')
+    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'publisher':identity,'signing_policy':policy,'public_ca_trust':policy=='publicly-trusted','apple_notarization':system=='Darwin' and policy=='publicly-trusted','files':files},indent=2)+'\n')
     print('Signed bundle report: '+str(output/'build.json'))
 
 

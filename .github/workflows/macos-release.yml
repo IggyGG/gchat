@@ -70,7 +70,7 @@ jobs:
           python3 gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --output native-evidence
           python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
           python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
-      - name: Build, sign, notarize, and verify
+      - name: Build and verify the configured signing policy
         working-directory: gchat
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
