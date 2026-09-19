@@ -2,7 +2,11 @@
 export const API_VERSION = 2;
 export const MAX_INPUT_BYTES = 12000;
 export const MAX_NETWORK_INVITATION_BYTES = 174778;
-export type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number, completed_by: number, error: string | null, };
+export type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,
+/**
+ * Peers contributing verified pieces since this process opened the cache.
+ */
+verified_sources: number, completed_by: number, error: string | null, };
 export type FileRequest = { "action": "list", conversation: string | null, } | { "action": "prepare", id: string, conversation: string, name: string, size_bytes: string, } | { "action": "commit", id: string, } | { "action": "accept", id: string, } | { "action": "pause", id: string, } | { "action": "resume", id: string, } | { "action": "cancel", id: string, } | { "action": "configure", quota_bytes: string, retention_days: number, };
 export type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };
 export type FileState = "offered" | "importing" | "downloading" | "waiting_for_peers" | "paused" | "complete" | "failed" | "cancelled";
@@ -36,3 +40,7 @@ export type Request = { "kind": "files", request: FileRequest, } | { "kind": "id
 export type Response = { "kind": "files", snapshot: FileSnapshot, } | { "kind": "network_status", status: NetworkStatus, } | { "kind": "instance", instance: InstanceInfo, } | { "kind": "snapshot", snapshot: Snapshot, } | { "kind": "history", page: HistoryPage, } | { "kind": "completed", items: Array<Completion>, } | { "kind": "catalogue", commands: Array<CommandSpec>, } | { "kind": "projection", conversations: Array<Conversation>, revision: string, } | { "kind": "output", conversation: string | null, output: CommandOutput, } | { "kind": "applied", conversation: string | null, notice: string | null, } | { "kind": "changed", revision: string, } | { "kind": "error", code: string, message: string, };
 export type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };
 export type ResponseEnvelope = { version: number, instance_id: string, response: Response, };
+
+export type ChatError = { code: string, message: string, };
+export type Applied = { conversation: string | null, notice: string | null, };
+export type SubmitOutcome = { "kind": "applied", conversation: string | null, notice: string | null, } | { "kind": "output", conversation: string | null, output: CommandOutput, };

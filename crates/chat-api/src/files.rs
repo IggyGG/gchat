@@ -59,6 +59,9 @@ pub struct FileInfo {
     pub verified_bytes: String,
     pub state: FileState,
     pub sources: u16,
+    /// Peers contributing verified pieces since this process opened the cache.
+    #[serde(default)]
+    pub verified_sources: u16,
     pub completed_by: u16,
     pub error: Option<String>,
 }

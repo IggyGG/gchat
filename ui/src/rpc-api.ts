@@ -5,7 +5,11 @@ import * as guards from './rpc-validators.js';
 export const API_VERSION = 2;
 export const MAX_INPUT_BYTES = 12000;
 export const MAX_NETWORK_INVITATION_BYTES = 174778;
-export type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number, completed_by: number, error: string | null, };
+export type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,
+/**
+ * Peers contributing verified pieces since this process opened the cache.
+ */
+verified_sources: number, completed_by: number, error: string | null, };
 export type FileRequest = { "action": "list", conversation: string | null, } | { "action": "prepare", id: string, conversation: string, name: string, size_bytes: string, } | { "action": "commit", id: string, } | { "action": "accept", id: string, } | { "action": "pause", id: string, } | { "action": "resume", id: string, } | { "action": "cancel", id: string, } | { "action": "configure", quota_bytes: string, retention_days: number, };
 export type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };
 export type FileState = "offered" | "importing" | "downloading" | "waiting_for_peers" | "paused" | "complete" | "failed" | "cancelled";

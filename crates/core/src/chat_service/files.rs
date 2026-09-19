@@ -1,7 +1,8 @@
 use super::*;
 use gchat_api::{FileInfo, FileRequest, FileSnapshot, FileState};
 use gcoms_file_transfer::swarm::{
-    Action, Cache, CacheConfig, Engine, Manifest, Peer, Scope, ShareId, Status, CONTENT_TYPE,
+    Action, Cache, CacheConfig, Engine, Manifest, Peer, Scope, SendOutcome, SendToken, ShareId,
+    Status, CONTENT_TYPE,
 };
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -140,6 +141,7 @@ fn snapshot(backend: &Backend, archive: &ArchiveData, filter: Option<&str>) -> F
                 verified_bytes: view.state.verified_bytes().to_string(),
                 state,
                 sources: view.sources as u16,
+                verified_sources: view.verified_sources as u16,
                 completed_by: view.delivered as u16,
                 error: view.state.error.clone(),
             })
@@ -173,13 +175,9 @@ fn announce(backend: &mut Backend, manifest: Manifest, archive: &ArchiveData) {
                 member: member.id.0,
             };
             if backend.engine.permits(peer, &manifest.scope) && backend.pending.len() < 128 {
-                backend.pending.push_back(Action {
-                    peer,
-                    message: gcoms_file_transfer::swarm::Message::Offers {
-                        manifests: vec![manifest.clone()],
-                        next: None,
-                    },
-                });
+                backend
+                    .pending
+                    .push_back(Action::offer(peer, manifest.clone()));
             }
         }
     }
@@ -401,14 +399,18 @@ impl ChatService {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_millis(250));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-            let mut sends = tokio::task::JoinSet::new();
+            let mut sends = tokio::task::JoinSet::<(Option<SendToken>, SendOutcome)>::new();
+            let mut completions = Vec::new();
             loop {
-                let event = tokio::select! {
+                let (event, completion) = tokio::select! {
                     _=stop.changed()=>break,
-                    _=interval.tick()=>None,
-                    _=sends.join_next(), if !sends.is_empty()=>None,
-                    event=events.recv()=>match event{Some(event)=>Some(event),None=>break},
+                    _=interval.tick()=>(None, None),
+                    result=sends.join_next(), if !sends.is_empty()=>(None, result.and_then(Result::ok)),
+                    event=events.recv()=>match event{Some(event)=>(Some(event), None),None=>break},
                 };
+                if let Some(completion) = completion {
+                    completions.push(completion);
+                }
                 let Some(service) = weak.upgrade() else { break };
                 // Ordinary IPC contention must not discard an already-received
                 // authenticated block. Shutdown can still cancel this wait.
@@ -434,6 +436,7 @@ impl ChatService {
                     continue;
                 }
                 let worker = runtime.clone();
+                let completions = std::mem::take(&mut completions);
                 // Keep bounded sends alive across receive/tick iterations. A slow
                 // receipt must not block the peer's next piece response.
                 let send_capacity = 4usize.saturating_sub(sends.len());
@@ -456,6 +459,7 @@ impl ChatService {
                         });
                     }
                     let mut backend = worker.inner.lock().map_err(|_| "File worker unavailable")?;
+                    for (token, outcome) in completions { backend.engine.send_finished(token, outcome, now()); }
                     let mut new = Vec::new();
                     if let Some(gcoms_sdk::ClientEvent::ChannelDirectMessage {
                         channel,
@@ -505,6 +509,7 @@ impl ChatService {
                             "rejected_pieces": d.rejected_pieces, "retries": d.retries,
                             "buffered_bytes": d.buffered_bytes, "pending_pulls": d.pending_pulls,
                             "pending_actions": backend.pending.len(), "cache_bytes": backend.engine.cache.used(),
+                            "hop_accepted": d.hop_accepted, "outcome_unknown": d.outcome_unknown, "not_sent": d.not_sent,
                             "protocol": protocol_diagnostics,
                         });
                         // Optional local aggregates only. A full diagnostic disk
@@ -514,6 +519,8 @@ impl ChatService {
                     for action in new {
                         if backend.pending.len() < 128 {
                             backend.pending.push_back(action);
+                        } else {
+                            backend.engine.send_finished(action.send_token(), SendOutcome::DefinitelyNotSent, now());
                         }
                     }
                     let mut ready = Vec::new();
@@ -522,7 +529,11 @@ impl ChatService {
                             if let Some(name) = backend.routes.get(&action.peer.channel) {
                                 if backend.engine.action_allowed(&action) {
                                     ready.push((name.clone(), action));
+                                } else {
+                                    backend.engine.send_finished(action.send_token(), SendOutcome::DefinitelyNotSent, now());
                                 }
+                            } else {
+                                backend.engine.send_finished(action.send_token(), SendOutcome::DefinitelyNotSent, now());
                             }
                         }
                     }
@@ -585,39 +596,46 @@ impl ChatService {
                         #[cfg(test)]
                         let receipt_gate = service.file_receipt_gate.lock().unwrap().clone();
                         sends.spawn(async move {
+                            let token = action.send_token();
+                            let _payload_guard = action.payload_guard();
                             if let Ok(bytes) = action.message.encode() {
-                                let outcome =
-                                    tokio::time::timeout(Duration::from_secs(20), async {
-                                        let result = sdk
-                                            .send_channel_application(
-                                                &channel,
-                                                action.peer.member,
-                                                CONTENT_TYPE,
-                                                &bytes,
-                                            )
-                                            .await;
-                                        // Simulate a delayed receipt after the peer
-                                        // has received a request and can answer it.
-                                        #[cfg(test)]
-                                        if let Some(gate) = receipt_gate {
-                                            gate.entered.fetch_add(1, Ordering::SeqCst);
-                                            let _permit = gate.release.acquire().await;
-                                        }
-                                        result
-                                    })
-                                    .await;
-                                let counter = match outcome {
-                                    Ok(Ok(_)) => None,
-                                    Ok(Err(_)) => Some(&counters.send_failures),
-                                    Err(_) => Some(&counters.send_timeouts),
+                                let send = async {
+                                    let result = sdk
+                                        .send_channel_application(
+                                            &channel,
+                                            action.peer.member,
+                                            CONTENT_TYPE,
+                                            &bytes,
+                                        )
+                                        .await;
+                                    // Simulate a delayed receipt after the peer
+                                    // has received a request and can answer it.
+                                    #[cfg(test)]
+                                    if let Some(gate) = receipt_gate {
+                                        gate.entered.fetch_add(1, Ordering::SeqCst);
+                                        let _permit = gate.release.acquire().await;
+                                    }
+                                    result
                                 };
-                                if let Some(counter) = counter {
-                                    let _ = counter.fetch_update(
-                                        Ordering::Relaxed,
-                                        Ordering::Relaxed,
-                                        |value| Some(value.saturating_add(1)),
-                                    );
-                                }
+                                tokio::pin!(send);
+                                let outcome = tokio::select! {
+                                    outcome = &mut send => outcome,
+                                    _ = tokio::time::sleep(Duration::from_secs(20)) => {
+                                        counters.send_timeouts.fetch_add(1, Ordering::Relaxed);
+                                        // Observe a slow receipt without canceling ownership.
+                                        // The request stays pending until the actual attempt ends.
+                                        send.await
+                                    }
+                                };
+                                let outcome = if outcome.is_ok() {
+                                    SendOutcome::HopAccepted
+                                } else {
+                                    counters.send_failures.fetch_add(1, Ordering::Relaxed);
+                                    SendOutcome::OutcomeUnknown
+                                };
+                                (token, outcome)
+                            } else {
+                                (token, SendOutcome::DefinitelyNotSent)
                             }
                         });
                     }
