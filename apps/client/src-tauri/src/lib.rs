@@ -133,22 +133,30 @@ pub fn run() {
             #[cfg(target_os = "android")]
             let home = Some(app.path().app_data_dir()?.join("files").join("instance"));
             #[cfg(not(target_os = "android"))]
-            let home = {
+            let (home, gc2_carrier) = {
                 let mut args = std::env::args().skip(1);
                 let mut home = None;
+                let mut gc2_carrier = false;
                 while let Some(arg) = args.next() {
                     if arg == "--home" {
                         home = Some(std::path::PathBuf::from(
                             args.next().ok_or("--home requires a directory")?,
                         ));
+                    } else if arg == "--gc2-carrier" {
+                        gc2_carrier = true;
                     } else {
                         return Err(format!("unknown client argument: {arg}").into());
                     }
                 }
-                home
+                (home, gc2_carrier)
             };
             let config =
                 InstanceConfig::from_home(home.as_deref()).map_err(std::io::Error::other)?;
+            #[cfg(not(target_os = "android"))]
+            let config = InstanceConfig {
+                gc2_carrier,
+                ..config
+            };
             app.manage(Attachment {
                 client: Mutex::new(None),
                 config,
