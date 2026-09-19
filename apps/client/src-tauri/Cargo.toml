@@ -11,6 +11,13 @@ description = "GChat desktop application for GComs"
 name = "gchat_native"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Make the explicit carrier option available in native installers. Selecting
+# the runtime profile still requires --gc2-carrier; existing instances keep
+# their current startup policy until an explicit migration is selected.
+default = ["gc2-carrier"]
+gc2-carrier = ["gchat-core/gc2-carrier"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

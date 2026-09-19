@@ -466,6 +466,9 @@ pub async fn ensure_running(
     if config.local_fixture {
         command.arg("--local-fixture");
     }
+    if config.gc2_carrier {
+        command.arg("--gc2-carrier");
+    }
     if !config.network_recovery {
         command.arg("--no-network-bootstrap");
     }

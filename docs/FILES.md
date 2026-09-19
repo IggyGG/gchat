@@ -65,3 +65,15 @@ without preventing access to chat history; it leaves the cache intact for recove
 See GComs' `docs/PRIVATE_FILES.md` for wire/storage details and transport limitations.
 Local tests do not establish production GC/2 Bulk fairness, privacy qualification,
 or native desktop/mobile release acceptance.
+# Selecting the desktop carrier
+
+Native installers include the carrier implementation. Starting a new desktop
+instance with `gchat-desktop --home /path/to/instance --gc2-carrier` explicitly
+selects the file-transfer profile (fixed interactive cover, observable bulk).
+The automatically started service receives that selection too. The option
+controls service startup; stop an already running service before changing its
+startup configuration. Existing GC/1 sessions require the protocol's explicit
+authenticated migration and must not be silently reopened as GC/2 sessions.
+
+This option does not constitute a production migration decision or privacy
+qualification. Mobile qualification remains deferred.

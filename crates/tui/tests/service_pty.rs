@@ -286,6 +286,9 @@ async fn automatically_started_instance_survives_its_terminal_session() {
     command.arg(home.path());
     command.arg("--listen");
     command.arg("127.0.0.1:0");
+    command.arg("--no-relay");
+    #[cfg(feature = "gc2-carrier")]
+    command.arg("--gc2-carrier");
     command.env("TERM", "xterm-256color");
     command.env_remove("GC_RELAY_BOOTSTRAP_URLS");
     command.env_remove("GCHAT_HOME");
@@ -396,4 +399,40 @@ async fn automatically_started_instance_survives_its_terminal_session() {
     };
     assert!(!snapshot.instance.locked);
     assert!(!snapshot.instance.protocol_locked);
+    #[cfg(feature = "gc2-carrier")]
+    {
+        // A UI-selected carrier must survive the subprocess boundary and be
+        // persisted. Reopening through the legacy profile must fail closed.
+        client.request(Request::Disconnect).await.unwrap();
+        let profile = gchat_core::paths::resolve(Some(home.path()))
+            .unwrap()
+            .profile;
+        let legacy = gchat_core::runtime::ProtocolRuntime::unlock(
+            &profile,
+            "terminal-lifetime-fixture",
+            "127.0.0.1:0".parse().unwrap(),
+            None,
+            None,
+            &[],
+        )
+        .await;
+        match legacy {
+            Err(error) => assert!(error.contains("GC/2"), "unexpected restore error: {error}"),
+            Ok(runtime) => {
+                runtime.shutdown().await.unwrap();
+                panic!("automatic service ignored the selected carrier profile");
+            }
+        }
+        let restored = gchat_core::runtime::ProtocolRuntime::unlock_protected(
+            &profile,
+            "terminal-lifetime-fixture",
+            "127.0.0.1:0".parse().unwrap(),
+            None,
+            None,
+            &[],
+        )
+        .await
+        .unwrap();
+        restored.shutdown().await.unwrap();
+    }
 }
