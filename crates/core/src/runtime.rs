@@ -39,6 +39,13 @@ struct BackgroundTasks {
 #[derive(Clone)]
 pub struct ProtocolRuntime(Arc<Inner>);
 
+/// Deployment-shaped GC/2 carrier profile for this instance. The durable
+/// directory lives beside the other private network state.
+#[cfg(feature = "gc2-carrier")]
+fn protected_profile(store: &ProtocolStore) -> gcoms_node::node::NodeProfile {
+    gcoms_node::node::NodeProfile::gc2_carrier_production(Some(store.network_directory()), 2)
+}
+
 type CentralPartition = (Vec<[u8; 16]>, Vec<[u8; 16]>);
 
 #[derive(Clone)]
@@ -93,6 +100,45 @@ impl ProtocolRuntime {
         .await
     }
 
+    /// Create an instance that selects the explicit GC/2 carrier profile:
+    /// production transport behaviour with the durable directory under this
+    /// instance's network directory. Requires the `gc2-carrier` feature.
+    #[cfg(feature = "gc2-carrier")]
+    pub async fn create_protected(
+        store_path: &std::path::Path,
+        passphrase: &str,
+        listen: SocketAddr,
+        advertise: Option<SocketAddr>,
+        inbox_relay: Option<NodeInfo>,
+        allow_frwd_private_cidrs: &[String],
+    ) -> Result<Self, String> {
+        let (store, data) = ProtocolStore::create(store_path, passphrase)?;
+        let profile = protected_profile(&store);
+        Self::boot(
+            store,
+            data,
+            listen,
+            advertise,
+            inbox_relay,
+            allow_frwd_private_cidrs,
+            profile,
+        )
+        .await
+    }
+
+    /// Without the `gc2-carrier` feature this build cannot select the profile.
+    #[cfg(not(feature = "gc2-carrier"))]
+    pub async fn create_protected(
+        _store_path: &std::path::Path,
+        _passphrase: &str,
+        _listen: SocketAddr,
+        _advertise: Option<SocketAddr>,
+        _inbox_relay: Option<NodeInfo>,
+        _allow_frwd_private_cidrs: &[String],
+    ) -> Result<Self, String> {
+        Err("this build does not include the GC/2 carrier profile".into())
+    }
+
     pub async fn unlock(
         store_path: &std::path::Path,
         passphrase: &str,
@@ -137,6 +183,42 @@ impl ProtocolRuntime {
         .await
     }
 
+    /// Reopen an instance created with the explicit GC/2 carrier profile.
+    #[cfg(feature = "gc2-carrier")]
+    pub async fn unlock_protected(
+        store_path: &std::path::Path,
+        passphrase: &str,
+        listen: SocketAddr,
+        advertise: Option<SocketAddr>,
+        inbox_relay: Option<NodeInfo>,
+        allow_frwd_private_cidrs: &[String],
+    ) -> Result<Self, String> {
+        let (store, data) = ProtocolStore::open(store_path, passphrase)?;
+        let profile = protected_profile(&store);
+        Self::boot(
+            store,
+            data,
+            listen,
+            advertise,
+            inbox_relay,
+            allow_frwd_private_cidrs,
+            profile,
+        )
+        .await
+    }
+
+    #[cfg(not(feature = "gc2-carrier"))]
+    pub async fn unlock_protected(
+        _store_path: &std::path::Path,
+        _passphrase: &str,
+        _listen: SocketAddr,
+        _advertise: Option<SocketAddr>,
+        _inbox_relay: Option<NodeInfo>,
+        _allow_frwd_private_cidrs: &[String],
+    ) -> Result<Self, String> {
+        Err("this build does not include the GC/2 carrier profile".into())
+    }
+
     #[allow(clippy::too_many_arguments)]
     async fn boot(
         store: ProtocolStore,
@@ -149,7 +231,7 @@ impl ProtocolRuntime {
     ) -> Result<Self, String> {
         let identity_seed = data.identity_seed;
         let node_state = data.node_state;
-        let network = if matches!(profile, gcoms_node::node::NodeProfile::Production) {
+        let network = if profile.is_production() {
             Some(gcoms_network_client::NetworkClient::open(
                 &store.network_directory(),
                 crate::network::installed()?,
@@ -976,6 +1058,60 @@ fn central_reserved(ownership: &Option<CentralPartition>, body: &[u8]) -> bool {
 
 #[cfg(test)]
 mod shutdown_tests;
+
+#[cfg(all(test, feature = "gc2-carrier"))]
+mod protected_profile_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn protected_profile_creates_and_reopens_the_carrier_instance() {
+        let dir = tempfile::tempdir().unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let profile = dir.path().join("carrier.gcprotocol");
+        let listen: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let first = ProtocolRuntime::create_protected(
+            &profile,
+            "carrier-passphrase",
+            listen,
+            None,
+            None,
+            &[],
+        )
+        .await
+        .unwrap();
+        let first_info = first
+            .sdk_client()
+            .embedded()
+            .node()
+            .current_info()
+            .await
+            .unwrap();
+        first.shutdown().await.unwrap();
+        let second = ProtocolRuntime::unlock_protected(
+            &profile,
+            "carrier-passphrase",
+            listen,
+            None,
+            None,
+            &[],
+        )
+        .await
+        .unwrap();
+        let second_info = second
+            .sdk_client()
+            .embedded()
+            .node()
+            .current_info()
+            .await
+            .unwrap();
+        assert_eq!(first_info.identity_pk, second_info.identity_pk);
+        second.shutdown().await.unwrap();
+    }
+}
 
 #[cfg(test)]
 mod frwd_policy_tests {

@@ -26,6 +26,8 @@ pub struct InstanceConfig {
     pub network_recovery: bool,
     /// Explicit disposable loopback fixtures only; never inferred from an address.
     pub local_fixture: bool,
+    /// Explicit opt-in for the GC/2 carrier profile. Never inferred.
+    pub gc2_carrier: bool,
     pub catalog_urls: Vec<String>,
 }
 
@@ -42,6 +44,7 @@ impl InstanceConfig {
             relay_urls: crate::bootstrap::default_provider_urls(),
             network_recovery: true,
             local_fixture: false,
+            gc2_carrier: false,
             catalog_urls: Vec::new(),
         })
     }
@@ -140,6 +143,26 @@ impl InstanceHost {
             .await?
         } else if self.config.local_fixture {
             ProtocolRuntime::unlock_fixture(
+                &self.config.profile,
+                &passphrase,
+                self.config.listen,
+                self.config.advertise,
+                relay,
+                &[],
+            )
+            .await?
+        } else if create && self.config.gc2_carrier {
+            ProtocolRuntime::create_protected(
+                &self.config.profile,
+                &passphrase,
+                self.config.listen,
+                self.config.advertise,
+                relay,
+                &[],
+            )
+            .await?
+        } else if self.config.gc2_carrier {
+            ProtocolRuntime::unlock_protected(
                 &self.config.profile,
                 &passphrase,
                 self.config.listen,
@@ -546,6 +569,7 @@ mod retained_scope_tests {
             relay_urls: Vec::new(),
             network_recovery: false,
             local_fixture: true,
+            gc2_carrier: false,
             catalog_urls: Vec::new(),
         };
         let host = InstanceHost::new(config.clone()).unwrap();

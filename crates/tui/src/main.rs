@@ -92,6 +92,9 @@ struct UiArgs {
     /// Explicit direct transport for disposable local fixtures.
     #[arg(long, hide = true)]
     local_fixture: bool,
+    /// Explicit opt-in for the experimental GC/2 carrier profile.
+    #[arg(long, env = "GC_GC2_CARRIER", conflicts_with = "local_fixture")]
+    gc2_carrier: bool,
     /// Local listener. Defaults to an ephemeral loopback port; a daemon uses
     /// 127.0.0.1:8443.
     #[arg(long)]
@@ -336,6 +339,7 @@ async fn run_shared(args: UiArgs) -> Result<(), String> {
     config.advertise = args.advertise;
     config.network_recovery = !args.no_relay;
     config.local_fixture = args.local_fixture;
+    config.gc2_carrier = args.gc2_carrier;
     config.relay_file = args.inbox_relay_file.clone();
     config.relay_urls = match relay_source(&args)? {
         RelaySource::Bootstrap(urls) => urls,
@@ -442,6 +446,7 @@ async fn run(mut args: UiArgs) -> Result<(), String> {
         paths: Some(paths.clone()),
         listen,
         local_fixture: args.local_fixture,
+        gc2_carrier: args.gc2_carrier,
         advertise: args.advertise,
         catalog_urls: args.catalog_urls.clone(),
         relay,

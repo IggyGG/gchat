@@ -36,3 +36,6 @@ path = "src/lib.rs"
 name = "gchat"
 path = "src/main.rs"
 test = false
+
+[features]
+gc2-carrier = ["gchat-core/gc2-carrier"]

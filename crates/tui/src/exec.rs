@@ -85,6 +85,7 @@ pub struct RuntimeCtx {
     pub paths: Option<AppPaths>,
     pub listen: SocketAddr,
     pub local_fixture: bool,
+    pub gc2_carrier: bool,
     pub advertise: Option<SocketAddr>,
     pub catalog_urls: Vec<String>,
     pub relay: RelaySource,
@@ -400,6 +401,7 @@ fn spawn_unlock(create: bool, pass: String, app: &mut App, ctx: &mut RuntimeCtx)
     let mode = ctx.mode.clone();
     let listen = ctx.listen;
     let local_fixture = ctx.local_fixture;
+    let gc2_carrier = ctx.gc2_carrier;
     let advertise = ctx.advertise;
     let catalog_urls = ctx.catalog_urls.clone();
     let pass = Zeroizing::new(pass);
@@ -430,6 +432,16 @@ fn spawn_unlock(create: bool, pass: String, app: &mut App, ctx: &mut RuntimeCtx)
                             &[],
                         )
                         .await
+                    } else if gc2_carrier {
+                        ProtocolRuntime::create_protected(
+                            profile,
+                            &pass,
+                            listen,
+                            advertise,
+                            relay_card,
+                            &[],
+                        )
+                        .await
                     } else {
                         ProtocolRuntime::create(profile, &pass, listen, advertise, relay_card, &[])
                             .await
@@ -437,6 +449,16 @@ fn spawn_unlock(create: bool, pass: String, app: &mut App, ctx: &mut RuntimeCtx)
                 } else {
                     if local_fixture {
                         ProtocolRuntime::unlock_fixture(
+                            profile,
+                            &pass,
+                            listen,
+                            advertise,
+                            relay_card,
+                            &[],
+                        )
+                        .await
+                    } else if gc2_carrier {
+                        ProtocolRuntime::unlock_protected(
                             profile,
                             &pass,
                             listen,
