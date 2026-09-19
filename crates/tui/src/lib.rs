@@ -4,6 +4,7 @@
 pub mod app;
 pub mod clipboard;
 pub mod exec;
+mod files;
 pub mod form;
 pub mod input;
 pub mod service_ui;

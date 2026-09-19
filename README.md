@@ -15,6 +15,14 @@ and the [installation guide](docs/INSTALL.md). GChat includes signed Hetzner rel
 settings; users import a network invitation and do not configure relay addresses.
 The [website and delivery tooling](docs/PUBLIC_DELIVERY.md) live in this repository.
 
+Current validation covers secure connections, authentication, transport security,
+local IPC access controls, disconnect/reconnect behavior, and private file sharing.
+Validation uses Linux and the existing Windows VM. macOS is unavailable;
+installer and publication work is deferred.
+
+[Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
+authorized sources, explicit download acceptance and a bounded encrypted cache.
+
 ## Build and run
 
 Install Rust 1.98, Node 22, npm 11 and the platform's Tauri v2 prerequisites.

@@ -39,11 +39,14 @@ struct BackgroundTasks {
 #[derive(Clone)]
 pub struct ProtocolRuntime(Arc<Inner>);
 
-/// Deployment-shaped GC/2 carrier profile for this instance. The durable
+/// GChat file carrier profile with fixed chat cover and observable bulk. The durable
 /// directory lives beside the other private network state.
 #[cfg(feature = "gc2-carrier")]
 fn protected_profile(store: &ProtocolStore) -> gcoms_node::node::NodeProfile {
-    gcoms_node::node::NodeProfile::gc2_carrier_production(Some(store.network_directory()), 2)
+    gcoms_node::node::NodeProfile::gchat_file_transfer_production(
+        Some(store.network_directory()),
+        2,
+    )
 }
 
 type CentralPartition = (Vec<[u8; 16]>, Vec<[u8; 16]>);

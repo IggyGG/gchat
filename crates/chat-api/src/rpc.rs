@@ -80,6 +80,9 @@ impl From<SubmitOutcome> for Response {
 
 #[gcoms_rpc::service(name = "ghost.chat", version = 1)]
 pub trait Chat {
+    /// Idempotent controls over a separately journaled file handle.
+    #[rpc(id = "files", kind = "session")]
+    async fn files(&self, request: FileRequest) -> Result<FileSnapshot, ChatError>;
     #[rpc(id = "identify", kind = "query")]
     async fn identify(&self) -> Result<InstanceInfo, ChatError>;
     #[rpc(id = "unlock", kind = "session")]

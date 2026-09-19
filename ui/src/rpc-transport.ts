@@ -49,6 +49,7 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
   const request = async (request: Request): Promise<Response> => {
     try {
       switch (request.kind) {
+        case 'files': return { kind: 'files', snapshot: await client.files({ request: request.request }) };
         case 'identify': return { kind: 'instance', instance: await client.identify({}) };
         case 'snapshot': return { kind: 'snapshot', snapshot: await client.snapshot({}) };
         case 'unlock': return { kind: 'snapshot', snapshot: await client.unlock({ passphrase: request.passphrase, create: request.create }) };

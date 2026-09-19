@@ -36,7 +36,9 @@ describe('chat typed attachment', () => {
     expect(handles.list()).toHaveLength(0);
   });
   it('generated contracts validate every error and reject wrong result shapes', () => {
-    expect(Object.keys(methods)).toHaveLength(14);
+    expect(Object.keys(methods)).toHaveLength(15);
+    expect(methods.files.args({ request: { action: "list", conversation: null } })).toBe(true);
+    expect(methods.files.args({ request: { action: "prepare", id: "share", conversation: "channel", name: "file", size_bytes: "1", path: "/remote/path" } })).toBe(false);
     for (const method of Object.values(methods)) {
       expect(method.error({ code: 'locked', message: 'Unlock this archive' })).toBe(true);
       expect(method.error({ code: 12, message: 'wrong' })).toBe(false);

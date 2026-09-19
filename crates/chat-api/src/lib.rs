@@ -3,6 +3,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+pub mod files;
+pub use files::{FileInfo, FileRequest, FileSnapshot, FileState};
+
 pub const VERSION: u16 = 2;
 pub const MAX_FRAME_BYTES: usize = 16 * 1024 * 1024;
 /// Complete submitted text, including slash-command arguments, measured in UTF-8 bytes.
@@ -248,6 +251,9 @@ pub struct Completion {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Request {
+    Files {
+        request: FileRequest,
+    },
     Identify,
     Unlock {
         passphrase: String,
@@ -296,6 +302,9 @@ pub enum Request {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Response {
+    Files {
+        snapshot: FileSnapshot,
+    },
     NetworkStatus {
         status: NetworkStatus,
     },
@@ -371,6 +380,8 @@ impl std::error::Error for ChatError {}
 #[cfg(feature = "native")]
 mod legacy;
 #[cfg(feature = "native")]
+mod native_files;
+#[cfg(feature = "native")]
 mod rpc_compat;
 #[cfg(feature = "native")]
 pub use legacy::ChatClient;
@@ -378,6 +389,10 @@ pub mod rpc;
 
 pub fn typescript() -> String {
     let declarations = [
+        FileInfo::decl(),
+        FileRequest::decl(),
+        FileSnapshot::decl(),
+        FileState::decl(),
         NetworkState::decl(),
         NetworkStatus::decl(),
         InstanceInfo::decl(),

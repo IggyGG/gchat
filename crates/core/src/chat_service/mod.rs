@@ -1,5 +1,6 @@
 //! One archive owner and one command implementation for every UI attachment.
 mod extensions;
+mod files;
 pub mod host;
 pub mod rpc;
 
@@ -43,6 +44,8 @@ struct UiState {
     command_history: Vec<String>,
     input_history: Vec<gchat_api::InputHistoryEntry>,
     operations: BTreeMap<String, OperationRecord>,
+    file_key: Option<[u8; 32]>,
+    file_config: gcoms_file_transfer::swarm::CacheConfig,
 }
 #[derive(Clone, Serialize, Deserialize)]
 struct OperationRecord {
@@ -53,6 +56,8 @@ struct OperationRecord {
     rpc: Option<rpc::RecordBinding>,
 }
 struct Unlocked {
+    files: Option<Arc<files::FileRuntime>>,
+    file_error: Option<String>,
     ui_locked: bool,
     client: ClientHandle,
     store: ChatServiceStore,
@@ -75,6 +80,9 @@ pub struct ChatService {
     projection_refresh: Mutex<()>,
     provider_error: std::sync::RwLock<Option<gchat_api::ProviderStatus>>,
     stopped: watch::Sender<bool>,
+    file_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    #[cfg(test)]
+    file_receipt_gate: std::sync::Mutex<Option<Arc<files::TestReceiptGate>>>,
     catalog_urls: std::sync::RwLock<Vec<String>>,
 }
 
@@ -188,6 +196,9 @@ impl ChatService {
             projection_refresh: Mutex::new(()),
             provider_error: std::sync::RwLock::new(None),
             stopped: watch::channel(false).0,
+            file_worker: std::sync::Mutex::new(None),
+            #[cfg(test)]
+            file_receipt_gate: std::sync::Mutex::new(None),
             catalog_urls: std::sync::RwLock::new(Vec::new()),
         });
         if service.command_extension.is_some() {
@@ -217,6 +228,8 @@ impl ChatService {
                 }
             });
         }
+        *service.file_worker.lock().expect("file worker handle") =
+            Some(Self::spawn_file_worker(&service));
         Ok(service)
     }
 
@@ -304,6 +317,7 @@ impl ChatService {
                 .iter()
                 .map(|c| format!("{c:?}"))
                 .chain(self.command_extension.as_ref().map(|_| "cmd".into()))
+                .chain(std::iter::once(gchat_api::files::CAPABILITY.into()))
                 .collect(),
         }
     }
@@ -355,6 +369,12 @@ impl ChatService {
 
     async fn handle_mode(&self, request: Request, admitted: bool) -> Result<Response, String> {
         let request = lifecycle_request(request);
+        if let Request::Files { request } = request {
+            return self
+                .files_request(request)
+                .await
+                .map(|snapshot| Response::Files { snapshot });
+        }
         let (request, search) = match request {
             Request::Search {
                 conversation,
@@ -435,8 +455,22 @@ impl ChatService {
                 }
                 state.instance_id = self.id.clone();
                 state.safety_number = safety;
+                let file_key = *state.file_key.get_or_insert_with(rand::random);
                 store.save(&state)?;
+                let cache_path = self.archive.with_extension("pieces");
+                let cache_config = state.file_config.clone();
+                let files = tokio::task::spawn_blocking(move || {
+                    files::FileRuntime::open(&cache_path, file_key, cache_config)
+                })
+                .await
+                .unwrap_or_else(|_| Err("File cache recovery stopped".into()));
+                let (files, file_error) = match files {
+                    Ok(files) => (Some(files), None),
+                    Err(error) => (None, Some(format!("File cache unavailable: {error}. Chat history remains available; preserve the cache for recovery."))),
+                };
                 *session = Some(Unlocked {
+                    files,
+                    file_error,
                     ui_locked: false,
                     client,
                     store,
@@ -447,6 +481,9 @@ impl ChatService {
                 if current.ui_locked {
                     current.store.verify_passphrase(&passphrase)?;
                     current.ui_locked = false;
+                    if let Some(files) = &current.files {
+                        files.enabled(true);
+                    }
                 }
             }
             return Ok(Response::Snapshot {
@@ -457,6 +494,9 @@ impl ChatService {
             if let Some(current) = session.as_mut() {
                 current.client.save().await?;
                 current.store.save(&current.state)?;
+                if let Some(files) = &current.files {
+                    files.enabled(false);
+                }
                 current.ui_locked = true;
             }
             return Ok(Response::Instance {
@@ -1405,8 +1445,26 @@ impl ChatService {
 
     pub async fn disconnect(&self) -> Result<(), String> {
         self.stopped.send_replace(true);
+        if let Some(current) = self.session.lock().await.as_ref() {
+            if let Some(files) = &current.files {
+                files.enabled(false);
+            }
+        }
+        let worker = self
+            .file_worker
+            .lock()
+            .map_err(|_| "File worker handle unavailable")?
+            .take();
+        if let Some(worker) = worker {
+            worker
+                .await
+                .map_err(|_| "File worker stopped unexpectedly")?;
+        }
         let mut session = self.session.lock().await;
         let result = if let Some(current) = session.as_ref() {
+            if let Some(files) = &current.files {
+                files.enabled(false);
+            }
             current.client.stop_background().await;
             current
                 .client
@@ -1805,6 +1863,15 @@ async fn serve_legacy<S: ChatEndpoint>(
                     let _permit = permit;
                     let operation = async {
                         let bytes = gcoms_sdk::local_rpc::read(&mut stream, MAX_FRAME_BYTES).await?;
+                        if bytes.starts_with(gchat_api::files::IO_MAGIC) {
+                            let mut response = match service.clone().file_io(bytes).await {
+                                Ok(data) => { let mut out = vec![0]; out.extend(data); out },
+                                Err(error) => { let mut out = vec![1]; out.extend(error.bytes().take(512)); out },
+                            };
+                            let result = gcoms_sdk::local_rpc::write(&mut stream, &response, gchat_api::files::IO_LIMIT).await;
+                            use zeroize::Zeroize; response.zeroize();
+                            return result;
+                        }
                         let request = serde_json::from_slice::<RequestEnvelope>(&bytes)
                             .map_err(|e| gcoms_sdk::SdkError::Protocol(e.to_string()))?;
                         let response = service.dispatch(request).await;
@@ -1830,6 +1897,13 @@ pub trait ChatEndpoint: Send + Sync + 'static {
     async fn rpc_service(self: Arc<Self>) -> Option<Arc<ChatService>>;
     async fn dispatch(&self, request: RequestEnvelope) -> ResponseEnvelope;
     async fn flush(&self) -> Result<(), String>;
+    async fn file_io(self: Arc<Self>, bytes: Vec<u8>) -> Result<Vec<u8>, String> {
+        let service = self
+            .rpc_service()
+            .await
+            .ok_or("Unlock the selected service to use files")?;
+        service.file_piece_io(bytes).await
+    }
 }
 
 #[async_trait::async_trait]
