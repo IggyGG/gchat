@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 from release_signatures import verify
+from paired_sources import prepare_pair, verify_derived_inputs, verify_resolved_protocol
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = {
@@ -25,7 +26,7 @@ TARGETS = {
 
 
 def run(args, **kwargs):
-    result = subprocess.run(args, cwd=ROOT, **kwargs)
+    result = subprocess.run(args, cwd=kwargs.pop('cwd', ROOT), **kwargs)
     if result.returncode:
         # Never stringify command arguments: keychain tools accept secret arguments.
         raise RuntimeError(f'{Path(args[0]).name} failed ({result.returncode})')
@@ -132,7 +133,7 @@ def configured_identity(system):
     return identity
 
 
-def bundle(target, output, environment, identity, policy):
+def bundle(target, output, environment, identity, policy, checkout):
     system, arch, triple, bundles = TARGETS[target]
     config = {'bundle': {'publisher': identity['name']}}
     if system == 'Windows':
@@ -154,9 +155,14 @@ def bundle(target, output, environment, identity, policy):
         if build_root.exists():
             raise ValueError('use a new output directory for each build')
         environment['CARGO_TARGET_DIR'] = str(build_root)
-        run([sys.executable, 'scripts/collect-notices.py'], env=environment)
+        run([sys.executable, 'scripts/collect-notices.py'], env=environment, cwd=checkout)
         npm = 'npm.cmd' if system == 'Windows' else 'npm'
-        run([npm, 'run', 'tauri', '-w', '@gchat/client', '--', 'build', '--target', triple, '--bundles', ','.join(bundles), '--config', str(config_path)], env=environment)
+        run([npm, 'run', 'tauri', '-w', '@gchat/client', '--', 'build', '--target', triple, '--bundles', ','.join(bundles), '--config', str(config_path)], env=environment, cwd=checkout)
+        graph = json.loads(subprocess.check_output(
+            ['cargo', 'metadata', '--manifest-path', 'apps/client/src-tauri/Cargo.toml',
+             '--locked', '--filter-platform', triple, '--format-version=1'],
+            cwd=checkout, env=environment))
+        verify_resolved_protocol(graph, checkout.parent / 'gcoms')
         bundle_dir = build_root / triple / 'release/bundle'
         if system == 'Darwin':
             apps = list(bundle_dir.glob('macos/*.app'))
@@ -213,12 +219,14 @@ def main():
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip(): raise ValueError('release source must be clean')
         sources[name]=subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()
     output=a.output.resolve();output.mkdir(parents=True,exist_ok=False)
+    checkout, dependency_inputs = prepare_pair(ROOT, a.gcoms, output, triple, dict(os.environ))
     if system=='Darwin':
-        with apple_keychain(policy) as environment: files=bundle(a.target,output,environment,identity,policy)
-    else: files=bundle(a.target,output,dict(os.environ),identity,policy)
+        with apple_keychain(policy) as environment: files=bundle(a.target,output,environment,identity,policy,checkout)
+    else: files=bundle(a.target,output,dict(os.environ),identity,policy,checkout)
+    verify_derived_inputs(checkout, dependency_inputs)
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip() or subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()!=sources[name]: raise ValueError('build changed source inputs')
-    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'publisher':identity,'signing_policy':policy,'public_ca_trust':policy=='publicly-trusted','apple_notarization':system=='Darwin' and policy=='publicly-trusted','files':files},indent=2)+'\n')
+    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'publisher':identity,'signing_policy':policy,'public_ca_trust':policy=='publicly-trusted','apple_notarization':system=='Darwin' and policy=='publicly-trusted','dependency_inputs':dependency_inputs,'files':files},indent=2)+'\n')
     print('Signed bundle report: '+str(output/'build.json'))
 
 

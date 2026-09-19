@@ -46,3 +46,19 @@ Key creation and Linux detached-signature verification have been exercised
 locally. Windows Authenticode, macOS signing, actual installer prompts, and
 installation/upgrade tests require their native workers and remain release
 requirements. Creating signers does not qualify or publish a desktop release.
+
+## Installer dependency inputs
+
+The installer builder exports the exact clean GChat and GComs commits into its
+new output directory. It resolves Rust against that GComs snapshot and JavaScript
+against npm archives built from the same snapshot. It checks dependency sources,
+archive integrity, and the derived lockfiles before producing a successful build
+report. The provenance/inputs.json report travels with the installer artifacts.
+Original checkout manifests and lockfiles stay unchanged. Retain the local inputs
+directory when diagnosing a failed build.
+
+Before publication, run native GChat CI with
+`python3 scripts/ci.py --gcoms ../gcoms`. This prepares the same source pair in
+an isolated checkout and executes the complete CI entrypoint there. The derived
+locks and source identities are retained under target/paired-ci. This qualifies
+source integration; the separate published-registry consumer gate still applies.

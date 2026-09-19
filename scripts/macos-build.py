@@ -43,6 +43,14 @@ def main():
     for report in output.glob('macos-*/build.json'):
         data=json.loads(report.read_text())
         if data['sources']!=expected or data['target'] in targets: raise ValueError('Mac artifact source binding mismatch')
+        inputs=data.get('dependency_inputs', {})
+        if (inputs.get('kind') != 'frozen_source_pair' or
+            inputs.get('rust_sources_verified') is not True or
+            inputs.get('npm_sources_verified') is not True or
+            {name:value.get('commit') for name,value in inputs.get('sources',{}).items()} != expected):
+            raise ValueError('Mac dependency inputs do not bind the frozen source pair')
+        if json.loads((report.parent/'provenance/inputs.json').read_text()) != inputs:
+            raise ValueError('Mac retained dependency provenance mismatch')
         targets.add(data['target'])
         evidence = report.parent / 'evidence'
         candidate = json.loads((evidence / 'candidate.json').read_text())
