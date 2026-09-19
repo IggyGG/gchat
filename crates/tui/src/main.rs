@@ -254,13 +254,8 @@ async fn print_paths(args: &UiArgs) -> Result<(), String> {
             println!("relay     saved routing information or an invite (--no-relay)");
         }
         RelaySource::None => {
-            // No relay was requested and none is compiled in: say what that
-            // means and how to fix it, rather than a bare "none" the user has
-            // to decode. Printed once, only from `gchat paths`.
-            println!("relay     none");
-            println!("          without a relay you can only reach friends on this same machine.");
-            println!("          to reach others: gchat --relay-bootstrap-url https://<relay>/");
-            println!("          (or rebuild with GC_DEFAULT_RELAY_BOOTSTRAP set)");
+            println!("relay     not configured");
+            println!("          use the GChat network defaults and import a network invitation.");
         }
         RelaySource::Card(_) => println!("relay     card file"),
         RelaySource::Bootstrap(urls) => println!("relay     {}", urls.join(", ")),

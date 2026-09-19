@@ -6,6 +6,7 @@
   import GhostMark from './GhostMark.svelte';
   import FilePanel from './FilePanel.svelte';
   import type { FileAccess } from './files';
+  import NetworkSetup from './NetworkSetup.svelte';
   import MessageResult from './MessageResult.svelte';
   import { chatError, type ChatError, type Transport } from './transport';
   import { MAX_INPUT_BYTES } from './api';
@@ -437,6 +438,7 @@
       {/each}
     </aside>
     <main class="conversation" inert={channelsOpen || membersOpen}>
+      {#if !locked}<NetworkSetup {transport} />{/if}
       {#if !locked && snapshot?.providerErrors?.length}<div class="provider-errors" role="status">{#each snapshot.providerErrors as error}<p>{error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>{/each}<button onclick={() => void send('/refresh')}>Reconnect provider</button></div>{/if}
       {#if offline && connectionError?.retryable}<details class="connection-details"><summary>Connection details</summary><p>{connectionError.message}</p><button onclick={() => void refreshInBackground()}>Reconnect</button></details>{/if}
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
@@ -452,19 +454,19 @@
       {/if}
       {#if locked}
         <div class="welcome">
-          <h1>{creating ? 'Set up this instance' : snapshot?.instance.protocolLocked ? 'Reconnect this instance' : 'Unlock chat'}</h1>
-          <p>{creating ? 'Choose a passphrase for this instance’s private profile and archive.' : snapshot?.instance.protocolLocked ? 'Receiving has stopped. Enter this instance’s passphrase to reconnect.' : 'Receiving continues. Unlocking makes the archive available to attached views.'}</p>
+          <h1>{creating ? 'Create your GChat identity' : snapshot?.instance.protocolLocked ? 'Reconnect this instance' : 'Unlock chat'}</h1>
+          <p>{creating ? 'Choose a passphrase to protect your identity and message history. Keep it safe: there is no passphrase reset.' : snapshot?.instance.protocolLocked ? 'Receiving has stopped. Enter this instance’s passphrase to reconnect.' : 'Receiving continues. Unlocking makes the archive available to attached views.'}</p>
           <form onsubmit={unlock}>
             <label for="gchat-password">{creating ? 'Choose a passphrase' : snapshot?.instance.protocolLocked ? 'Instance passphrase' : 'Archive passphrase'}</label>
             <input id="gchat-password" type="password" autocomplete={creating ? 'new-password' : 'current-password'} bind:value={password} minlength={creating ? 8 : undefined} maxlength="4096" required disabled={busy} />
-            <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Opening…' : creating ? 'Create instance' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
+            <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Opening…' : creating ? 'Create identity' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
           </form>
         </div>
       {:else if !selected}
         <div class="welcome status">
           {#if !snapshot?.conversations.length}
           <h1>Your channels. Your conversations.</h1>
-          <p>Join a channel, choose a nickname, and start talking.</p>
+          <p>After connecting to the network, join a channel with a conversation invitation and choose a nickname.</p>
           <p>Select a nick to open a private chat in that channel.</p>
           {:else}<h1>Status</h1><p>{offline ? 'Reconnecting to the selected instance. You can keep drafting.' : 'Attached to this instance. Closing this view keeps receiving messages.'}</p>{/if}
           <dl><dt>/join</dt><dd>Join with an invitation</dd><dt>/query nick</dt><dd>Open a private chat</dd><dt>/help</dt><dd>All commands available here</dd></dl>

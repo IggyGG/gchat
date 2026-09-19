@@ -311,6 +311,20 @@ impl<S: ChatEndpoint> Chat for Handlers<S> {
     async fn snapshot(&self) -> Result<Snapshot, ChatError> {
         expect_response!(self, Request::Snapshot, Snapshot, snapshot)
     }
+    async fn network_status(&self) -> Result<gchat_api::NetworkStatus, ChatError> {
+        expect_response!(self, Request::NetworkStatus, NetworkStatus, status)
+    }
+    async fn import_network_invitation(
+        &self,
+        code: String,
+    ) -> Result<gchat_api::NetworkStatus, ChatError> {
+        expect_response!(
+            self,
+            Request::ImportNetworkInvitation { code },
+            NetworkStatus,
+            status
+        )
+    }
     async fn catalogue(&self, conversation: Option<String>) -> Result<Vec<CommandSpec>, ChatError> {
         expect_response!(
             self,
@@ -437,6 +451,12 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
         args: serde_json::Value,
     ) -> Result<serde_json::Value, RpcError> {
         let value = self.0.validate(method, args)?;
+        if method == "import_network_invitation"
+            && args_size(&value) > gchat_api::MAX_NETWORK_INVITATION_BYTES
+        {
+            return Err(RpcError::invalid("network invitation exceeds size limit"));
+        }
+
         if method == "submit" {
             let args: ChatSubmitArgs = serde_json::from_value(value.clone())
                 .map_err(|e| RpcError::invalid(e.to_string()))?;
@@ -506,4 +526,11 @@ pub fn status_request(instance: &str, operation_id: gcoms_rpc::OperationId) -> g
         method: "submit".into(),
         invocation: Invocation::Status { operation_id },
     }
+}
+
+fn args_size(value: &serde_json::Value) -> usize {
+    value
+        .get("code")
+        .and_then(|v| v.as_str())
+        .map_or(0, str::len)
 }

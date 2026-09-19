@@ -61,6 +61,10 @@ pub async fn recover_routing(
     node.wait_for_inbox(deadline).await
 }
 
+pub(crate) fn uses_installed_network(urls: &[String]) -> bool {
+    urls.is_empty() || urls.iter().all(|url| default_provider_urls().contains(url))
+}
+
 /// Shared signed-network recovery for current and retained combined stores.
 pub async fn recover_network(
     node: &gcoms_node::node::NodeHandle,
@@ -68,8 +72,7 @@ pub async fn recover_network(
     urls: &[String],
     deadline: tokio::time::Instant,
 ) -> Result<(), String> {
-    let installed = urls.is_empty() || urls.iter().all(|url| default_provider_urls().contains(url));
-    if !installed {
+    if !uses_installed_network(urls) {
         return recover_routing(node, &parse_bootstrap_urls(urls, false)?, deadline).await;
     }
     let cached = deadline.min(tokio::time::Instant::now() + std::time::Duration::from_secs(30));

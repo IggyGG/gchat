@@ -36,7 +36,7 @@ describe('chat typed attachment', () => {
     expect(handles.list()).toHaveLength(0);
   });
   it('generated contracts validate every error and reject wrong result shapes', () => {
-    expect(Object.keys(methods)).toHaveLength(13);
+    expect(Object.keys(methods)).toHaveLength(15);
     expect(methods.files.args({ request: { action: "list", conversation: null } })).toBe(true);
     expect(methods.files.args({ request: { action: "prepare", id: "share", conversation: "channel", name: "file", size_bytes: "1", path: "/remote/path" } })).toBe(false);
     for (const method of Object.values(methods)) {
@@ -55,4 +55,20 @@ describe('chat typed attachment', () => {
     const malformed: RpcTransport = { destination: '/rpc', limit: 16000, async exchange(r) { return reply(r, { id: instance.id }); } };
     await expect(attachRpc(legacy, malformed, instance.id)).rejects.toMatchObject({ code: 'protocol' });
   });
+});
+
+it('imports network invitations through a transient session without operation handles', async () => {
+  const calls: RpcRequest[] = []; const handles = new MemoryHandles();
+  const status = { state: 'connecting', message: 'Connecting' };
+  const transport: RpcTransport = { destination: '/rpc', limit: 262144, async exchange(r) {
+    calls.push(r); return reply(r, r.method === 'identify' ? instance : status);
+  } };
+  const client = await attachRpc(legacy, transport, instance.id, handles);
+  await client.request({ kind: 'import_network_invitation', code: 'GCNI1-private-fixture' });
+  expect(calls.at(-1)?.method).toBe('import_network_invitation');
+  expect(calls.at(-1)?.invocation).toMatchObject({ action: 'call', operation: null });
+  await client.request({ kind: 'submit', operation_id: 'invite-operation-12345', conversation: 'extension/cmd/remote', text: '/NETWORK join GCNI1-private-fixture' });
+  expect(calls.at(-1)?.method).toBe('import_network_invitation');
+  expect(handles.list()).toHaveLength(0);
+  expect(calls.some(r => r.method === 'submit')).toBe(false);
 });

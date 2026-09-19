@@ -49,6 +49,15 @@ pub(super) async fn request<T: gcoms_rpc::Transport>(
         Request::Snapshot => Response::Snapshot {
             snapshot: client.snapshot().await.map_err(error)?,
         },
+        Request::NetworkStatus => Response::NetworkStatus {
+            status: client.network_status().await.map_err(error)?,
+        },
+        Request::ImportNetworkInvitation { code } => Response::NetworkStatus {
+            status: client
+                .import_network_invitation(code)
+                .await
+                .map_err(error)?,
+        },
         Request::Catalogue { conversation } => Response::Catalogue {
             commands: client.catalogue(conversation).await.map_err(error)?,
         },
@@ -85,6 +94,15 @@ pub(super) async fn request<T: gcoms_rpc::Transport>(
             } else if matches!(text.trim(), "/disconnect" | "/quit") {
                 Response::Snapshot {
                     snapshot: client.disconnect().await.map_err(error)?,
+                }
+            } else if let Some(code) = network_invitation(&text) {
+                client
+                    .import_network_invitation(code.into())
+                    .await
+                    .map_err(error)?;
+                Response::Applied {
+                    conversation: None,
+                    notice: Some("Network invitation saved. Connecting in the background.".into()),
                 }
             } else {
                 let mut prepared = client
@@ -190,4 +208,11 @@ fn handle<T: gcoms_rpc::Transport>(
             deadline: gcoms_rpc::DecimalU64(0),
         },
     })
+}
+
+fn network_invitation(text: &str) -> Option<&str> {
+    let (command, args) = text.trim().split_once(char::is_whitespace)?;
+    let (action, code) = args.trim().split_once(char::is_whitespace)?;
+    (command.eq_ignore_ascii_case("/network") && action.eq_ignore_ascii_case("join"))
+        .then_some(code.trim())
 }

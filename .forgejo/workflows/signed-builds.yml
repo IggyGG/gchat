@@ -1,0 +1,76 @@
+name: Signed release builds
+on:
+  workflow_dispatch:
+    inputs:
+      gcoms_commit:
+        description: Full qualified GComs main commit
+        required: true
+concurrency:
+  group: signed-release-builds
+  cancel-in-progress: false
+jobs:
+  native:
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: gcoms-linux-x64
+            target: linux-x86_64
+          - runner: gcoms-windows-x64
+            target: windows-x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: ghost-local/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Qualify both native workspaces with retained evidence
+        run: |
+          python3 gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --output native-evidence
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
+      - name: Build and verify signed installers
+        working-directory: gchat
+        env:
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ vars.WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+          GCHAT_RELEASE_KEY: ${{ vars.GCHAT_RELEASE_KEY }}
+          GCHAT_RELEASE_PASSPHRASE: ${{ secrets.GCHAT_RELEASE_PASSPHRASE }}
+        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --output ../signed
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            signed/*.deb
+            signed/*.AppImage
+            signed/*.asc
+            signed/*.exe
+            signed/build.json
+            native-evidence/**
+          if-no-files-found: error
+  macos:
+    if: github.ref == 'refs/heads/main'
+    runs-on: gcoms-linux-x64
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Dispatch and collect GitHub macOS builds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_MACOS_TOKEN }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+        run: python3 scripts/dispatch-macos.py
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e
+        with:
+          name: macos-builds
+          path: signed-macos/
+          if-no-files-found: error

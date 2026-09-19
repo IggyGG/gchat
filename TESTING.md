@@ -1,11 +1,9 @@
 # Validation
 
-Current work covers secure connections in GComs and GChat only, in their existing
-private local Forgejo repositories. Validate peer authentication, transport security,
-IPC access controls and connection recovery on Linux and the existing Windows VM.
-macOS is unavailable and excluded. Installer qualification and publication are
-deferred; the broader checks below remain guidance for future release work.
-The private candidate gate is documented in [release evidence](docs/RELEASE_EVIDENCE.md).
+Current release work covers GComs/GChat source, signed installers, and GChat's
+website/onboarding. Validate secure connections on Linux, the native MSVC Windows
+VM, and GitHub-hosted macOS Apple Silicon/Intel runners. The local Mac remains
+unavailable. Historical results below do not qualify these new release inputs.
 
 Use Rust 1.98, Node 22, npm 11 and the platform's Tauri v2 prerequisites.
 After GComs packages have been published:
@@ -42,11 +40,12 @@ attachment binding and pending-operation recovery. Run both after changing a sha
 contract. A generated schema must agree with Rust and its checked-in TypeScript.
 
 The desktop is a separate Cargo workspace. Build installers with Tauri on native
-Linux x86_64 and Windows x86_64 runners. On every target, qualify
+Linux x86_64, Windows 11 x86_64 and both macOS architecture runners. On every target, qualify
 fresh install, invite/unlock, two-peer messaging, disconnect/reconnect, restart,
 upgrade with retained identity/archive and uninstall without deleting user data.
-Public Windows installers need an approved distribution signature. macOS is
-unavailable and is not included in this release qualification.
+Public installers require the configured distribution signatures. The two
+GitHub-hosted Mac architectures must pass the same native and installer gates;
+the unavailable local Mac is not used.
 
 The release manifest must record hashes, signatures, toolchain and exact source
 commits. Mobile builds and production security/privacy claims are deferred.
@@ -85,7 +84,7 @@ This checks Windows runtime behavior, including named pipes and file permissions
 It does not establish MSVC compilation, native compiler UI tests, desktop installer
 behavior, signing or a configured Forgejo runner. Those require the corresponding
 Windows build dependencies and separate acceptance evidence when release work
-resumes. Public publication remains deferred.
+resumes. Public release preparation is active; required evidence must still be completed.
 
 The [2026-09-17 runtime record](release/native-validation-2026-09-17.json) contains
 584 passing GComs Windows cases (five ignored) and 121 passing GChat Windows cases.

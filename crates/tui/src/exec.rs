@@ -14,13 +14,6 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use zeroize::Zeroizing;
 
-/// Relay bootstrap endpoint compiled into this build (`GC_DEFAULT_RELAY_BOOTSTRAP`
-/// at build time). Overridable at runtime; see `RelaySource`.
-pub const DEFAULT_RELAY_BOOTSTRAP: Option<&str> = match option_env!("GC_DEFAULT_RELAY_BOOTSTRAP") {
-    Some(value) if !value.is_empty() => Some(value),
-    _ => Some("https://bootstrap-hel.gchat.boo/"),
-};
-
 /// How long a minted invite link stays valid.
 const INVITE_TTL_SECS: u64 = 3600;
 /// How long the friend's app waits for the owner to service a redeem before

@@ -1590,3 +1590,89 @@ async fn native_file_paths_stay_local_and_export_never_clobbers() {
     service.disconnect().await.unwrap();
     runtime.shutdown().await.unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn typed_network_import_is_private_bounded_and_requires_unlock() {
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    use gchat_api::{rpc::ChatClient as TypedChat, NetworkState};
+    use gcoms_rpc::{Caller, Client, EmbeddedTransport};
+    let dir = tempfile::tempdir().unwrap();
+    gchat_core::private_fs::make_private(dir.path(), true).unwrap();
+    let profile = dir.path().join("profile.gcprotocol");
+    let runtime = ProtocolRuntime::create(
+        &profile,
+        PASS,
+        "127.0.0.1:0".parse().unwrap(),
+        None,
+        None,
+        &[],
+    )
+    .await
+    .unwrap();
+    let service = make_service(dir.path(), runtime.clone());
+    let id = service.snapshot().await.unwrap().instance.id;
+    let client = TypedChat::new(Client::new(
+        EmbeddedTransport {
+            router: chat_service::rpc::router(service.clone()).unwrap(),
+            caller: Caller {
+                principal: "local-owner".into(),
+            },
+            destination: "network-test".into(),
+        },
+        id,
+    ));
+    assert_eq!(
+        client.network_status().await.unwrap().state,
+        NetworkState::Locked
+    );
+    assert!(client
+        .import_network_invitation("GCNI1-invalid".into())
+        .await
+        .is_err());
+    unlock(&service, true).await;
+    assert_eq!(
+        client.network_status().await.unwrap().state,
+        NetworkState::InvitationRequired
+    );
+    let before = service.snapshot().await.unwrap();
+    let grant = URL_SAFE_NO_PAD.encode([81u8; 32]);
+    let invitation = |network: &str, expires: u64| {
+        format!("GCNI1-{}", URL_SAFE_NO_PAD.encode(serde_json::to_vec(&serde_json::json!({
+        "version": 1, "network_id": network, "provider_urls": gchat_core::bootstrap::default_provider_urls(),
+        "grant": grant, "expires_at": expires,
+    })).unwrap()))
+    };
+    let code = invitation("gchat.boo", gcoms_network_client::now_unix() + 3600);
+    assert_eq!(
+        client
+            .import_network_invitation(code.clone())
+            .await
+            .unwrap()
+            .state,
+        NetworkState::Connecting
+    );
+    let state_file = profile.with_extension("network").join("network.json");
+    let saved = std::fs::read(&state_file).unwrap();
+    for invalid in [
+        invitation("another.example", gcoms_network_client::now_unix() + 3600),
+        invitation("gchat.boo", 1),
+        "x".repeat(gchat_api::MAX_NETWORK_INVITATION_BYTES + 1),
+    ] {
+        assert!(client.import_network_invitation(invalid).await.is_err());
+        assert_eq!(std::fs::read(&state_file).unwrap(), saved);
+    }
+    let after = service.snapshot().await.unwrap();
+    assert_eq!(before.command_history, after.command_history);
+    assert_eq!(
+        serde_json::to_value(&before.input_history).unwrap(),
+        serde_json::to_value(&after.input_history).unwrap()
+    );
+    assert_eq!(before.instance.safety_number, after.instance.safety_number);
+    assert!(!serde_json::to_string(&after).unwrap().contains(&grant));
+    assert!(client.inner.handles().list().unwrap().is_empty());
+    gchat_core::private_fs::validate_private_file(&state_file, "network state").unwrap();
+    client.lock().await.unwrap();
+    assert!(client.import_network_invitation(code).await.is_err());
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}

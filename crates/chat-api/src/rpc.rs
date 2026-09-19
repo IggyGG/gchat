@@ -93,6 +93,10 @@ pub trait Chat {
     async fn disconnect(&self) -> Result<Snapshot, ChatError>;
     #[rpc(id = "snapshot", kind = "query")]
     async fn snapshot(&self) -> Result<Snapshot, ChatError>;
+    #[rpc(id = "network_status", kind = "query")]
+    async fn network_status(&self) -> Result<NetworkStatus, ChatError>;
+    #[rpc(id = "import_network_invitation", kind = "session")]
+    async fn import_network_invitation(&self, code: String) -> Result<NetworkStatus, ChatError>;
     #[rpc(id = "catalogue", kind = "query")]
     async fn catalogue(&self, conversation: Option<String>) -> Result<Vec<CommandSpec>, ChatError>;
     #[rpc(id = "history", kind = "query")]
