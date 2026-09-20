@@ -5,6 +5,11 @@ fn main() {
             serde_json::to_string_pretty(&gchat_api::rpc::export()).expect("chat schemas")
         );
     } else {
-        print!("{}", gchat_api::typescript());
+        print!(
+            "{}",
+            gchat_api::rpc::export()["typescript"]
+                .as_str()
+                .expect("chat TypeScript contract")
+        );
     }
 }
