@@ -96,6 +96,25 @@ fail an actual atomic profile replacement, recover storage and reopen the profil
 overrun a slow observer during failure, and report normal observer lag. The
 existing shutdown test now holds the common event barrier in flight.
 
+## Validation receipt
+
+The complete Rust workspace test run at GChat `dc7b73e`, paired with GComs
+`eb2b77c`, passed 156 tests with no failures or ignored tests. Strict Clippy
+passed for the workspace with all features and all targets (`-D warnings`).
+Both checks exported the paired sources and verified that neither source tree
+changed during the check. The retained receipts in the paired GComs checkout
+are `target/gchat-source-check/reports/test-gc-chat-rpn6mt2w.json` and
+`target/gchat-source-check/reports/clippy-gc-chat-vojz4kai.json`.
+
+The same compiled test executable also passed the existing private-channel
+file test with `GCHAT_FILE_DIAGNOSTICS=1`: two local GChat peers import, offer,
+accept and byte-verify a 32,779-byte export while exchanging chat. All three
+periodic diagnostic samples contained the new persistence counters. The
+executable hash, paired source receipt and log hash are retained in
+`target/protocol-plan-persistence-file-observation-01/receipt.json`. This checks
+the opt-in diagnostic path during an actual file workload; the periodic samples
+are not a complete transfer cost measurement or a protected fleet benchmark.
+
 A separate pre-existing archive issue remains: `ClientHandle::spawn_archiver` logs
 a failed archive save and still emits its UI event. That needs its own recovery
 and failure-policy repair; neither successful protocol saves nor these counters
