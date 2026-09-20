@@ -122,3 +122,13 @@ uses a writable handle when flushing the preserved encrypted bytes to disk.
 GChat's portable service, archive-reopen and standalone-daemon suites now run on
 Windows too. Their readiness probes use IPC connections, since named pipes have
 no socket-file entry. Unix PTY tests remain platform-specific.
+
+## Protocol persistence
+
+See [the persistence audit](docs/PERSISTENCE.md) for event ownership and local
+write counters. The runtime regression verifies one completed encrypted profile
+replacement per event for 0, 1 and 4 SDK subscribers. It also tests publication
+ordering, an actual failed replacement, subscriber closure under backpressure,
+lag notification and reopening after recovery. Existing shutdown and archive/file
+continuity tests remain required. Run the paired all-feature Rust tests and strict
+Clippy using GComs `scripts/check-gchat.py`; retain both source hashes.

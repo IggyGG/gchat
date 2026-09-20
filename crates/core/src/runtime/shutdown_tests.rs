@@ -19,12 +19,13 @@ async fn shutdown_cancels_in_flight_save_before_releasing_profile() {
     let previous_owner = Arc::downgrade(&runtime.0);
     let retained = runtime.clone();
 
-    // Hold a save in flight through the real event-forwarding path. The worker
-    // upgrades its weak capture before waiting for the save lock, so merely
-    // dropping the host cannot release its encrypted profile.
+    // Hold the shared event barrier in flight. Its worker upgrades a weak
+    // capture before waiting for the save lock, so merely dropping the host
+    // cannot release its encrypted profile.
     let save = retained.0.save_lock.lock().await;
     let (source, events) = mpsc::channel(1);
-    let subscriber = runtime.forward_events(events, None);
+    runtime.spawn_event_persistence_from(events);
+    let subscriber = runtime.forward_events(None);
     source
         .send(ClientEvent::EventsLagged { skipped: 1 })
         .await
