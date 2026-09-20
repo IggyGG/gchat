@@ -11,23 +11,11 @@ if (-not $SelfSignedPreview) {
 }
 
 # This is a native build-runner verification step, never an installer action.
-# WinVerifyTrust must check the PE digest, not just expose a matching certificate.
-# Temporarily trust exactly the pinned self-signed leaf and always remove our
-# insertion. Existing certificates are left intact. Run on an isolated worker.
+# WinVerifyTrust checks the PE digest and signature using process-local trust.
+# No persistent trust store is changed, including on headless signing workers.
 if ($env:GCHAT_ISOLATED_SIGNING_WORKER -ne '1') { throw 'Self-signed verification requires an isolated signing worker' }
 if ($Signature.SignerCertificate.Subject -ne $Signature.SignerCertificate.Issuer) { throw 'Preview certificate is not self-issued' }
-$RootPath = 'Cert:\CurrentUser\Root\' + $Thumbprint
-$Existing = Test-Path -LiteralPath $RootPath
-$Store = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'CurrentUser')
-try {
-    $Store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-    if (-not $Existing) { $Store.Add($Signature.SignerCertificate) }
-    $Verified = Get-AuthenticodeSignature -LiteralPath $Artifact
-    if ($Verified.Status -ne 'Valid' -or $Verified.SignerCertificate.Thumbprint -ne $Thumbprint) {
-        throw 'Self-signed Authenticode integrity verification failed'
-    }
-    Write-Output 'Authenticode integrity verified against pinned preview certificate; public trust is not established'
-} finally {
-    if (-not $Existing) { $Store.Remove($Signature.SignerCertificate) }
-    $Store.Close()
-}
+if ($null -ne $Signature.TimeStamperCertificate) { throw 'Preview verification requires an untimestamped signature' }
+Add-Type -Path (Join-Path $PSScriptRoot 'PreviewAuthenticode.cs')
+[PreviewAuthenticode]::Verify((Resolve-Path -LiteralPath $Artifact).ProviderPath, $Signature.SignerCertificate)
+Write-Output 'Authenticode integrity verified against pinned preview certificate; public trust is not established'

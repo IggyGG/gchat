@@ -37,6 +37,9 @@ def run(args):
     subprocess.run(args,cwd=root,check=True)
 run([sys.executable,'scripts/check-source.py'])
 run([sys.executable,'-m','unittest','discover','-s','scripts/tests','-p','*_test.py'])
+if sys.platform=='win32':
+    run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','RemoteSigned',
+         '-File','scripts/test-windows-signature.ps1'])
 run(['cargo','fmt','--all','--','--check'])
 run(['cargo','test','--workspace','--all-features','--locked','--','--test-threads=1'])
 run(['cargo','clippy','--workspace','--all-targets','--all-features','--locked','--','-D','warnings'])

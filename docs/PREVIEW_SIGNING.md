@@ -31,21 +31,35 @@ must explicitly select `publicly-trusted` and satisfy its enrollment, publisher,
 timestamp, notarization and trust checks.
 
 The Windows verification script runs only on an isolated signing worker. It
-temporarily adds the pinned public certificate to that worker's current-user
-root store, asks Windows to verify the Authenticode digest, and removes only its
-own insertion in `finally`. It never installs a trust root on an end user's
-machine. Native validation must verify rejection of a modified installer and
-confirm that temporary trust is removed after successful and failed checks.
+uses Windows' Authenticode digest/signature verification and an exclusive,
+memory-only chain engine containing the pinned certificate. It checks the
+signer's code-signing usage, current validity and exact identity. It never
+changes a current-user or machine trust store. This also works on headless
+workers where adding a root certificate would require an unavailable UI.
+The native API contracts are
+[WinVerifyTrust](https://learn.microsoft.com/en-us/windows/win32/api/wintrust/nf-wintrust-winverifytrust)
+and [exclusive certificate chain trust](https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-cert_chain_engine_config).
 
-Self-signed preview timestamps are not required. Verification must therefore
-also account for certificate expiry; these certificates are valid for two years.
+Self-signed preview artifacts use untimestamped signatures. The preview verifier
+rejects timestamped signatures instead of applying an unqualified timestamp
+policy. Verification accounts for certificate expiry; the release certificates
+are valid for two years.
 macOS verification checks the code signature and certificate pin and records
 notarization as absent. It must not report a passing Gatekeeper assessment.
 
 Key creation and Linux detached-signature verification have been exercised
-locally. Windows Authenticode, macOS signing, actual installer prompts, and
-installation/upgrade tests require their native workers and remain release
-requirements. Creating signers does not qualify or publish a desktop release.
+locally. Native Windows 10 verification of a test PE signed with the pinned Gh0st
+certificate passed, including modified bytes, wrong pin, unsigned input and
+unchanged trust stores. `scripts/test-windows-signature.ps1` additionally passed
+with disposable test keys, including rejection after actual certificate expiry,
+rejection of a preview as publicly trusted, and private-key cleanup. Native
+Windows CI runs this regression automatically; it never needs release keys.
+The first root-store-based implementation and the expired-before-signing test
+fixture failed; their logs remain in `target/gc2-requalification`.
+
+These are verifier checks, not installer acceptance. Windows 11/MSVC builds,
+macOS signing, actual installer prompts, and installation/upgrade tests remain
+release requirements. Creating signers does not qualify or publish a release.
 
 ## Installer dependency inputs
 
