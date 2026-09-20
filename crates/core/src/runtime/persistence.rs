@@ -18,18 +18,18 @@ pub struct PersistenceDiagnostics {
     pub profile: crate::store::StoreSaveDiagnostics,
     pub calls: BTreeMap<&'static str, PersistenceCalls>,
     pub events: BTreeMap<&'static str, u64>,
+    pub publication_attempts: u64,
 }
 
 #[derive(Clone, Copy)]
 pub(super) enum SaveCause {
     Explicit,
     Event,
-    Subscriber,
     Periodic,
     Shutdown,
 }
 
-const CAUSES: [&str; 5] = ["explicit", "event", "subscriber", "periodic", "shutdown"];
+const CAUSES: [&str; 4] = ["explicit", "event", "periodic", "shutdown"];
 const EVENTS: [&str; 14] = [
     "identity",
     "session",
@@ -57,11 +57,16 @@ struct CallCounters {
 
 #[derive(Default)]
 pub(super) struct PersistenceCounters {
-    calls: [CallCounters; 5],
+    calls: [CallCounters; 4],
     events: [AtomicU64; 14],
+    publication_attempts: AtomicU64,
 }
 
 impl PersistenceCounters {
+    pub(super) fn published(&self) {
+        self.publication_attempts.fetch_add(1, Ordering::Relaxed);
+    }
+
     pub(super) fn begin(&self, cause: SaveCause) {
         self.calls[cause as usize]
             .requested
@@ -103,6 +108,7 @@ impl PersistenceCounters {
     ) -> PersistenceDiagnostics {
         PersistenceDiagnostics {
             profile,
+            publication_attempts: self.publication_attempts.load(Ordering::Relaxed),
             calls: CAUSES
                 .into_iter()
                 .zip(self.calls.iter().map(|calls| PersistenceCalls {

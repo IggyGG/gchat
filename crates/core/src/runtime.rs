@@ -10,7 +10,7 @@ use gcoms_sdk::{
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc, watch};
 
 mod persistence;
 pub use persistence::PersistenceDiagnostics;
@@ -24,6 +24,8 @@ struct Inner {
     node: NodeHandle,
     _store: Arc<ProtocolStore>,
     persistence: PersistenceCounters,
+    events: broadcast::Sender<ClientEvent>,
+    event_failures: watch::Sender<u64>,
     save_lock: tokio::sync::Mutex<()>,
     error_sink: std::sync::Mutex<Option<ErrorSink>>,
     network: Option<gcoms_network_client::NetworkClient>,
@@ -300,6 +302,8 @@ impl ProtocolRuntime {
             node,
             _store: store,
             persistence: PersistenceCounters::default(),
+            events: broadcast::channel(256).0,
+            event_failures: watch::channel(0).0,
             save_lock: tokio::sync::Mutex::new(()),
             error_sink: std::sync::Mutex::new(None),
             network_status: std::sync::Mutex::new(NetworkStatus::new(if network.is_some() {
@@ -526,23 +530,33 @@ impl ProtocolRuntime {
                 let Some(inner) = inner.upgrade() else { break };
                 let runtime = ProtocolRuntime(inner);
                 runtime.0.persistence.event(&event);
-                if let Err(error) = runtime.save_for(SaveCause::Event).await {
-                    runtime.report(format!("protocol event save failed: {error}"));
+                match runtime.save_for(SaveCause::Event).await {
+                    Ok(()) => {
+                        // One completed barrier covers this event for every
+                        // hosted subscriber present at publication.
+                        let _ = runtime.0.events.send(event);
+                        runtime.0.persistence.published();
+                    }
+                    Err(error) => {
+                        // A separate watch cannot be lost when a slow consumer
+                        // overruns the bounded event bus. Existing subscribers
+                        // close; a new subscription may observe later saves.
+                        runtime.0.event_failures.send_modify(|generation| {
+                            *generation = generation.wrapping_add(1);
+                        });
+                        runtime.report(format!("protocol event save failed: {error}"));
+                    }
                 }
             }
         });
     }
 
-    fn forward_events(
-        &self,
-        source: mpsc::Receiver<ClientEvent>,
-        ownership: Option<CentralPartition>,
-    ) -> mpsc::Receiver<ClientEvent> {
+    fn forward_events(&self, ownership: Option<CentralPartition>) -> mpsc::Receiver<ClientEvent> {
         let (sender, receiver) = mpsc::channel(256);
         self.spawn_background(forward_protocol_events(
-            source,
+            self.0.events.subscribe(),
             sender,
-            Arc::downgrade(&self.0),
+            self.0.event_failures.subscribe(),
             ownership,
         ));
         receiver
@@ -703,13 +717,9 @@ impl GcClient for ProtocolClient {
     }
 
     fn subscribe_events(&self) -> mpsc::Receiver<ClientEvent> {
-        let source = self.embedded.subscribe_events();
-        // Weak: a strong handle here would keep the node (and the profile
-        // lock) alive for as long as the node keeps this stream open, which
-        // is exactly as long as the node lives. Hosted runtimes must be able
-        // to shut down and release the profile within one process.
-        self.runtime
-            .forward_events(source, self.central_primary.clone())
+        // Forward only events published after the runtime's shared barrier.
+        // Subscriber workers hold no runtime/profile handle.
+        self.runtime.forward_events(self.central_primary.clone())
     }
 
     async fn list_channels(&self) -> Result<Vec<JoinedChannel>, SdkError> {
@@ -1056,30 +1066,32 @@ pub fn build_frwd_policy(
 }
 
 async fn forward_protocol_events(
-    mut source: mpsc::Receiver<ClientEvent>,
+    mut source: broadcast::Receiver<ClientEvent>,
     sender: mpsc::Sender<ClientEvent>,
-    runtime: std::sync::Weak<Inner>,
+    mut failures: watch::Receiver<u64>,
     ownership: Option<CentralPartition>,
 ) {
-    while let Some(event) = tokio::select! {
-        biased;
-        _ = sender.closed() => None,
-        event = source.recv() => event,
-    } {
+    loop {
+        let event = tokio::select! {
+            biased;
+            _ = sender.closed() => break,
+            _ = failures.changed() => break,
+            event = source.recv() => match event {
+                Ok(event) => event,
+                Err(broadcast::error::RecvError::Lagged(skipped)) => ClientEvent::EventsLagged { skipped },
+                Err(broadcast::error::RecvError::Closed) => break,
+            },
+        };
         if matches!(&event, ClientEvent::DirectMessage { body, .. } if central_reserved(&ownership, body))
         {
             continue;
         }
-        let Some(inner) = runtime.upgrade() else {
-            break;
-        };
-        if ProtocolRuntime(inner)
-            .save_for(SaveCause::Subscriber)
-            .await
-            .is_err()
-            || sender.send(event).await.is_err()
-        {
-            break;
+        // Failure also interrupts a backpressured subscriber. Never leave it
+        // waiting for the UI to drain before observing the failed barrier.
+        tokio::select! {
+            biased;
+            _ = failures.changed() => break,
+            result = sender.send(event) => if result.is_err() { break; },
         }
     }
 }

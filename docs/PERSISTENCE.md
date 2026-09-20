@@ -61,16 +61,43 @@ SDK forwarding paths while using the real encrypted profile sink:
 | 1 | 2 | 45,968 |
 | 4 | 5 | 114,920 |
 
+The shared-barrier run completed exactly one replacement for all three observer
+counts. Its independently created fixture wrote 22,986 bytes per replacement;
+fixture identity/certificate encoding can vary the profile length. Atomic-write
+time in the four-observer samples was 85,191 microseconds before and 17,744 after.
+These are single local observations, not latency percentiles or a throughput SLA.
+
+The four focused persistence tests passed. Their source-bound receipt is
+`target/gchat-source-check/reports/test-gc-chat-_l4ofp77.json`, with measurements
+in `target/protocol-plan-persistence-fanout-01.log` in the paired GComs checkout.
+
 This establishes duplicate writes in the small local fixture, not an end-to-end
 file-throughput improvement. Baseline source hashes, timings and output are
 retained in the paired GComs checkout's
 `target/protocol-plan-persistence-baseline-01.log` and
 `target/gchat-source-check/reports/test-gc-chat-ldoskyui.json`.
 
-The next optimization consolidates subscriber barriers at the event publisher:
-save once, then distribute that event. It must preserve every event class,
-failed-save refusal, bounded queues and lag notifications, reserved-component
-filtering, cancellation, immediate profile reopening, explicit API saves,
-periodic checkpoints, and the final shutdown save. No debounce interval or
-wire/cover setting is required. Skipping individual event classes or outgoing
-file saves is a separate change requiring corresponding recovery evidence.
+The runtime now consolidates subscriber barriers at the event publisher: save
+once, then distribute that event. Every event class still crosses this barrier.
+A separate failure watch closes existing subscribers even when the bounded event
+queue overruns or their output is blocked. New subscribers can observe later
+successful saves. Slow observers receive explicit lag notifications; a lag never
+causes another save. The reserved-component filter still applies per subscriber.
+
+Explicit API saves, periodic checkpoints, the final shutdown save, archive saves
+and piece-journal durability remain separate. Workers are canceled and joined
+before releasing the profile. No debounce interval or wire/cover setting was
+introduced. Skipping individual event classes or outgoing file saves remains a
+separate change requiring corresponding recovery evidence.
+
+The regression measures completed encrypted replacements with 0, 1 and 4 SDK
+subscribers. Additional tests block the common barrier before event publication,
+fail an actual atomic profile replacement, recover storage and reopen the profile,
+overrun a slow observer during failure, and report normal observer lag. The
+existing shutdown test now holds the common event barrier in flight.
+
+A separate pre-existing archive issue remains: `ClientHandle::spawn_archiver` logs
+a failed archive save and still emits its UI event. That needs its own recovery
+and failure-policy repair; neither successful protocol saves nor these counters
+prove that the chat body reached its archive. This change does not alter that
+archive path, and the coordinating release worker has been notified.
