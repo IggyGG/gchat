@@ -37,6 +37,15 @@ per attached UI. The file worker subscribes directly to the embedded stream.
 Every outgoing file application still traverses the explicit
 `ProtocolClient::send_channel_direct` save; that is a separate optimization lead.
 
+For ordinary channel text, the native node commits its exact MLS ciphertext
+and recipient outbox before attempting the first hop. When that persistent
+outbox covers the complete, nonempty recipient roster, a failed first hop
+retains local acceptance and the same wire remains eligible for retry after
+reopen. This is distinct from `ChannelDelivered`, which still requires the
+authenticated recipient ACKs. The real-runtime offline-hop/reopen regression
+exercises GChat's existing `send_channel` entrypoint; its explicit save and
+the event barriers remain in place.
+
 ## Instrumentation and baseline
 
 `ProtocolRuntime::persistence_diagnostics()` returns process-local aggregate

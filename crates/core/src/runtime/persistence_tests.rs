@@ -1,6 +1,142 @@
 use super::*;
 use std::time::Duration;
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn channel_text_survives_a_failed_hop_and_sender_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    crate::private_fs::make_private(dir.path(), true).unwrap();
+    let allow = vec!["127.0.0.0/8".to_owned()];
+    let create = |name: &str| {
+        let path = dir.path().join(name);
+        let allow = allow.clone();
+        async move {
+            ProtocolRuntime::create_fixture(
+                &path,
+                "test-only-passphrase",
+                "127.0.0.1:0".parse().unwrap(),
+                None,
+                None,
+                &allow,
+            )
+            .await
+            .unwrap()
+        }
+    };
+    let mut sender = create("sender").await;
+    let mut receiver = create("receiver").await;
+    let sender_addr = sender.listen_label().parse().unwrap();
+    let receiver_addr = receiver.listen_label().parse().unwrap();
+    let mut a = sender.sdk_client();
+    let mut b = receiver.sdk_client();
+    a.create_channel("offline-hop", "sender", 8, ChannelVisibility::Private)
+        .await
+        .unwrap();
+    let join = b.prepare_channel_join("receiver").await.unwrap();
+    let package = b.channel_key_package(join).await.unwrap();
+    let welcome = a
+        .admit_channel("offline-hop", &package, "receiver")
+        .await
+        .unwrap();
+    b.join_channel(join, "offline-hop", ChannelVisibility::Private, &welcome)
+        .await
+        .unwrap();
+    let mut sent = a.subscribe_events();
+    let mut received = b.subscribe_events();
+    let warm_id = a
+        .send_channel_tracked("offline-hop", b"before disconnect")
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if matches!(received.recv().await.unwrap(), ClientEvent::ChannelMessage { message_id, .. } if message_id == warm_id) {
+                break;
+            }
+        }
+        loop {
+            if matches!(sent.recv().await.unwrap(), ClientEvent::ChannelDelivered { message_id, .. } if message_id == warm_id) {
+                break;
+            }
+        }
+    }).await.expect("membership routes and authenticated warmup ACK");
+    drop(b);
+    drop(received);
+    receiver.shutdown().await.unwrap();
+
+    // This is the untracked runtime entrypoint used by GChat text sending.
+    // Its native persistent outbox must distinguish acceptance from a hop ACK.
+    let body = b"retained through an offline first hop";
+    tokio::time::timeout(Duration::from_secs(30), a.send_channel("offline-hop", body))
+        .await
+        .expect("bounded initial attempt")
+        .expect("durable local acceptance");
+    drop(sent);
+    drop(a);
+    sender.shutdown().await.unwrap();
+    sender = ProtocolRuntime::unlock_fixture(
+        &dir.path().join("sender"),
+        "test-only-passphrase",
+        sender_addr,
+        None,
+        None,
+        &allow,
+    )
+    .await
+    .unwrap();
+    a = sender.sdk_client();
+    sent = a.subscribe_events();
+    receiver = ProtocolRuntime::unlock_fixture(
+        &dir.path().join("receiver"),
+        "test-only-passphrase",
+        receiver_addr,
+        None,
+        None,
+        &allow,
+    )
+    .await
+    .unwrap();
+    b = receiver.sdk_client();
+    received = b.subscribe_events();
+    let id = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if let ClientEvent::ChannelMessage {
+                message_id,
+                body: text,
+                ..
+            } = received.recv().await.unwrap()
+            {
+                if text == body {
+                    break message_id;
+                }
+            }
+        }
+    })
+    .await
+    .expect("retained wire retries after both profiles reopen");
+    assert_ne!(id, warm_id);
+    tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if matches!(sent.recv().await.unwrap(), ClientEvent::ChannelDelivered { message_id, .. } if message_id == id) {
+                break;
+            }
+        }
+    }).await.expect("authenticated delivery for the restored message");
+    let duplicate = tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(received.recv().await.unwrap(), ClientEvent::ChannelMessage { message_id, .. } if message_id == id) {
+                break;
+            }
+        }
+    }).await;
+    assert!(
+        duplicate.is_err(),
+        "retries must not repeat the received message"
+    );
+    drop(a);
+    drop(b);
+    sender.shutdown().await.unwrap();
+    receiver.shutdown().await.unwrap();
+}
+
 async fn fixture() -> (tempfile::TempDir, ProtocolRuntime) {
     let dir = tempfile::tempdir().unwrap();
     crate::private_fs::make_private(dir.path(), true).unwrap();
