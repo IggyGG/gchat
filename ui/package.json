@@ -15,17 +15,19 @@
     "svelte": "^5.56.1"
   },
   "devDependencies": {
+    "@gcoms/rpc-codegen": "0.1.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22",
     "svelte": "^5.56.1",
     "svelte-check": "^4.6.0",
     "typescript": "^6.0.3",
-    "@types/node": "^22",
-    "vitest": "^4.1.8",
-    "@gcoms/rpc-codegen": "0.1.0"
+    "vitest": "^4.1.8"
   },
   "scripts": {
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "generate:rpc": "node scripts/generate-rpc.mjs"
+    "generate:rpc": "node scripts/generate-rpc.mjs",
+    "test:browser": "playwright test --config browser/playwright.config.ts"
   },
   "dependencies": {
     "@gcoms/rpc": "0.1.0"

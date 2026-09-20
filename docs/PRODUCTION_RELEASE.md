@@ -19,3 +19,13 @@ Production executables are bound to GComs 726172785baacc25781d427c75faada5f8849d
 ## 0.1.1 desktop startup correction
 
 Automatic desktop listening previously passed a wildcard bind address into relay metadata, rejecting first unlock with `unusable relay address`. The companion Node now resolves a concrete candidate before attaching the service. Offline startup keeps an unpublished loopback candidate; only independent reachability verification can publish it. The bound listener, identity, protected routing and address validation are preserved. Creation and retained reopen are checked using the desktop default `0.0.0.0:0` configuration. A profile created before the failed startup must be reopened, not replaced.
+
+## 0.1.2 workspace refinement
+
+The desktop keeps one application header with the selected conversation, Network, Help and user/file counters. Join/Create move to the channel list footer; Users and Files share an initially closed panel. The composer has a paperclip and no self-nickname. `/font [fixedsys|readable]` and `/find [text]` are view-local commands, documented with existing `/lock` and `/disconnect` in Help. Native window decorations and the default IRC font remain.
+
+First network setup is required before the desktop workspace becomes available. Only service-confirmed invitation import or authenticated retained configuration satisfies setup; browser storage cannot grant access. Established profiles retain their workspace while reconnecting or replacing an invitation. This is onboarding presentation, not a replacement for protocol authentication. The invitation text is cleared on submit/dismissal. The single status indicator distinguishes local service availability from the actual network state.
+
+File operations belong to the unlocked attachment rather than the visible Files panel. Closing a panel or changing conversations keeps the original import ID/destination. Locking the view stops further import writes without claiming cancellation of an already submitted operation; retained imports remain available for explicit resume. No protocol, cryptography, daemon or relay behavior changes in this release.
+
+UI validation: `npm run check`, `npm test`, and `npm run test:browser -w @gchat/ui`. Install the pinned Chromium test browser with `npm exec -w @gchat/ui -- playwright install chromium`. Browser fixtures are loopback-only, use synthetic profiles/transport, and are excluded from the production frontend entrypoint. They cover invitation rejection/acceptance, retained offline access, commands, focus and panels, import continuity and responsive layouts. Native Linux CI includes this suite before producing signed packages.
