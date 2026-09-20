@@ -285,6 +285,7 @@ async fn production_journey() {
         .map(|r| r.service_id)
         .collect();
     first.shutdown().await.unwrap();
+    drop(node);
     state.downgrade.store(true, Ordering::SeqCst);
     let calls = state.requests.lock().unwrap().len();
     let reopened = ProtocolRuntime::unlock_protected(
@@ -328,6 +329,7 @@ async fn production_journey() {
     assert_eq!(node.current_info().await.unwrap().identity_pk, identity);
     assert_current_ready(&node);
     reopened.shutdown().await.unwrap();
+    drop(node);
     let recovery = ProtocolRuntime::create_protected(
         &directory.path().join("recover.gcprotocol"),
         "bootstrap-test",
@@ -368,6 +370,7 @@ async fn production_journey() {
         .iter()
         .all(|r| r["supported_versions"] == serde_json::json!([3])));
     recovery.shutdown().await.unwrap();
+    drop(node);
     provider_task.abort();
     for relay in relays {
         relay.shutdown().await;
