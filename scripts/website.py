@@ -25,7 +25,7 @@ TARGETS = {
 
 
 def validate(data):
-    if data.get('schema') != 1 or data.get('channel') != 'developer-preview':
+    if data.get('schema') != 1 or data.get('channel') not in ('developer-preview', 'production'):
         raise ValueError('unsupported download manifest')
     artifacts = data.get('artifacts')
     if not isinstance(artifacts, list):
@@ -59,7 +59,8 @@ def validate(data):
             raise ValueError('missing matching signature checksum')
         if artifact.get('signing_verified') is not True:
             raise ValueError('unverified artifact cannot be advertised')
-    if seen != set(TARGETS):
+    required = {key for key in TARGETS if key[0] == 'linux-x86_64'} if data['channel'] == 'production' else set(TARGETS)
+    if seen != required:
         raise ValueError('the complete signed platform set is required')
     return data
 
@@ -97,7 +98,7 @@ def downloads(data):
     if data['version'] is None:
         links = '<p>Signed installers are being prepared for Windows, macOS, and Linux. Downloads will appear here after installation and signing checks pass.</p>'
     else:
-        links = '<p>Developer preview ' + escape(data['version']) + '</p><ul>'
+        links = '<p>' + ('Production ' if data['channel'] == 'production' else 'Developer preview ') + escape(data['version']) + '</p><ul>'
         for a in data['artifacts']:
             links += f'<li><a href="{escape(a["url"])}">Download {TARGETS[(a["target"], a["format"])]}</a> · <a href="{escape(a["signature_url"])}">Signature</a></li>'
         links += '</ul><p><a href="' + escape(data['release_key']['url']) + '">Release signing key</a> · Fingerprint: <code>' + escape(data['release_key']['fingerprint']) + '</code></p>'
@@ -124,7 +125,7 @@ def build(output, data):
     if page.count('@@DOWNLOADS@@') != 1 or page.count('@@CLIENT_STATUS@@') != 1:
         raise ValueError('website template must contain both content slots exactly once')
     page = page.replace('@@DOWNLOADS@@', downloads(data)).replace('@@CLIENT_STATUS@@',
-        'Signed desktop developer preview available above.' if data['version'] else 'Desktop application and TUI. Signed public installers are being prepared.')
+        ('Signed Linux production release available above. Privacy improvements are documented in the release notes; Windows and macOS packages are deferred.' if data['channel'] == 'production' else 'Signed desktop developer preview available above.') if data['version'] else 'Desktop application and TUI. Signed public installers are being prepared.')
     if '@@' in page:
         raise ValueError('unresolved website template marker')
     (output / 'index.html').write_text(page)

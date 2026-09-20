@@ -55,7 +55,7 @@ def sha(path):
 def signing_policy():
     publication = json.loads((ROOT / 'release/publication.json').read_text())
     policy = publication.get('signing_policy', 'publicly-trusted')
-    if policy not in ('publicly-trusted', 'self-signed-preview'):
+    if policy not in ('publicly-trusted', 'self-signed-preview', 'self-signed'):
         raise ValueError('unknown signing policy')
     if policy == 'self-signed-preview' and publication.get('channel') != 'developer-preview':
         raise ValueError('self-signed policy is limited to developer previews')
@@ -100,7 +100,7 @@ def apple_keychain(policy):
 def verify_windows(path, policy):
     script = ROOT / 'scripts/verify-windows-signature.ps1'
     command = ['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File', str(script), '-Artifact', str(path), '-Thumbprint', fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,))]
-    if policy == 'self-signed-preview':
+    if policy in ('self-signed-preview', 'self-signed'):
         command.append('-SelfSignedPreview')
     run(command)
 
@@ -119,7 +119,7 @@ def configured_identity(system):
     if system == 'Linux' and fingerprint('GCHAT_RELEASE_KEY').upper() != expected:
         raise ValueError('Linux signing identity differs from publication configuration')
     if system == 'Darwin':
-        if signing_policy() == 'self-signed-preview':
+        if signing_policy() in ('self-signed-preview', 'self-signed'):
             if required('APPLE_SIGNING_IDENTITY').replace(' ', '').upper() != expected:
                 raise ValueError('self-signed Apple identity must be the pinned certificate fingerprint')
             return identity

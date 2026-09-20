@@ -40,3 +40,11 @@ class WebsiteTests(unittest.TestCase):
         data=site.validate(self.manifest()); page=site.downloads(data)
         self.assertEqual(page.count('>Download '), 5)
         self.assertEqual(page.count('>Signature</a>'), 5)
+
+    def test_production_linux_scope_is_explicit_and_keeps_signature_checks(self):
+        data=self.manifest();data['channel']='production'
+        data['artifacts']=[a for a in data['artifacts'] if a['target']=='linux-x86_64']
+        site.validate(data)
+        self.assertIn('Production 0.1.0',site.downloads(data))
+        data['artifacts'][0]['signing_verified']=False
+        with self.assertRaises(ValueError):site.validate(data)

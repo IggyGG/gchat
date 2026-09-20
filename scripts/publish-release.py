@@ -84,7 +84,7 @@ def main():
     # Every binary also has a detached signature made by the canonical release key.
     key = candidate['artifacts'].get('gchat-release-key.asc')
     if not key or key['project'] != 'gchat' or key['kind'] != 'inventory': raise ValueError('register the public release key as gchat-release-key.asc')
-    downloads={'schema':1,'version':version,'channel':'developer-preview','artifacts':[], 'release_key':{'fingerprint':key_fingerprint, 'sha256':key['sha256'], 'url':f'https://github.com/IggyGG/gchat/releases/download/{tag}/gchat-release-key.asc'}}
+    downloads={'schema':1,'version':version,'channel':candidate['channel'],'artifacts':[], 'release_key':{'fingerprint':key_fingerprint, 'sha256':key['sha256'], 'url':f'https://github.com/IggyGG/gchat/releases/download/{tag}/gchat-release-key.asc'}}
     for name,item in candidate['artifacts'].items():
         if name in ('.', '..') or not re.fullmatch(r'[A-Za-z0-9_.+-]+',name): raise ValueError('unsafe release asset name')
         if item['kind'] != 'signature':
@@ -117,7 +117,7 @@ def main():
             try: source=forgejo.request(local+'/tags/'+tag)
             except HTTPError as error:
                 if error.code!=404: raise
-                source=forgejo.request(local,'POST',{'tag_name':tag,'target_commitish':candidate['sources'][project]['commit'],'name':tag,'body':notes,'draft':True,'prerelease':True})
+                source=forgejo.request(local,'POST',{'tag_name':tag,'target_commitish':candidate['sources'][project]['commit'],'name':tag,'body':notes,'draft':True,'prerelease':candidate['channel'] != 'production'})
             if source['tag_name']!=tag: raise ValueError('unexpected Forgejo release')
             existing={x['name']:x for x in source.get('assets',[])}
             for name,item in candidate['artifacts'].items():
@@ -134,7 +134,7 @@ def main():
             forgejo.request(local+'/'+str(source['id']),'PATCH',{'draft':False})
             release_list=github(remote+'?per_page=100');destination=next((r for r in release_list if r['tag_name']==tag),None)
             if destination is None:
-                destination=github(remote,'POST',{'tag_name':tag,'target_commitish':candidate['sources'][project]['commit'],'name':tag,'body':notes,'draft':True,'prerelease':True})
+                destination=github(remote,'POST',{'tag_name':tag,'target_commitish':candidate['sources'][project]['commit'],'name':tag,'body':notes,'draft':True,'prerelease':candidate['channel'] != 'production'})
             existing={x['name']:x for x in destination['assets']}
             for name,item in candidate['artifacts'].items():
                 if item['project']!=project: continue
