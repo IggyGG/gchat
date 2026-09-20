@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
@@ -28,6 +28,28 @@ def fixture():
 
 
 class KubernetesWebsiteTests(unittest.TestCase):
+    def test_public_check_retries_whole_bundle_after_stale_upstream(self):
+        def response(data):
+            value = MagicMock()
+            value.__enter__.return_value.status = 200
+            value.__enter__.return_value.read.return_value = data
+            return value
+        hashes = {name: hashlib.sha256(data).hexdigest()
+                  for name, data in [('index.html', b'page'), ('downloads.json', b'new')]}
+        replies = [response(b'page'), response(b'old'), response(b'page'), response(b'new')]
+        with patch.object(deploy, 'urlopen', side_effect=replies) as request, patch.object(deploy.time, 'sleep'):
+            deploy.verify_public(hashes)
+        self.assertEqual(request.call_count, 4)
+        self.assertNotEqual(request.call_args_list[0].args[0].full_url,
+                            request.call_args_list[2].args[0].full_url)
+
+    def test_public_check_never_accepts_persistent_digest_mismatch(self):
+        response = MagicMock()
+        response.__enter__.return_value.status = 200
+        response.__enter__.return_value.read.return_value = b'old'
+        with patch.object(deploy, 'urlopen', return_value=response), self.assertRaisesRegex(ValueError, 'digest mismatch'):
+            deploy.verify_public({'downloads.json': hashlib.sha256(b'new').hexdigest()}, timeout=0)
+
     def test_self_consistent_but_stale_output_cannot_claim_current_source(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

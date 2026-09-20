@@ -15,3 +15,7 @@ GC/2 uses profile 22 explicitly. Start the desktop with `gchat-desktop --gc2-car
 ## Receipt scope
 
 Production executables are bound to GComs 726172785baacc25781d427c75faada5f8849d6b and GChat 0b599cfaa880828b5b0a04c99467c5616afc5b2c. Later policy/documentation/tooling commits do not relabel the frozen native CI or artifact source. The original signing receipt calls its trust policy `self-signed-preview`; the key and signed bytes are unchanged, while this owner decision changes deployment status to production.
+
+## 0.1.1 desktop startup correction
+
+Automatic desktop listening previously passed a wildcard bind address into relay metadata, rejecting first unlock with `unusable relay address`. The companion Node now resolves a concrete candidate before attaching the service. Offline startup keeps an unpublished loopback candidate; only independent reachability verification can publish it. The bound listener, identity, protected routing and address validation are preserved. Creation and retained reopen are checked using the desktop default `0.0.0.0:0` configuration. A profile created before the failed startup must be reopened, not replaced.

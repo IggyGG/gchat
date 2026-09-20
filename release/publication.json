@@ -1,7 +1,7 @@
 {
   "project": "gchat",
   "channel": "production",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "companion_url": "https://github.com/IggyGG/gcoms",
   "security_contact": "iggy@gchat.boo",
   "conduct_contact": "iggy@gchat.boo",

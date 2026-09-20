@@ -142,13 +142,24 @@ def wait_ready(kube, expected, timeout=180):
         time.sleep(2)
 
 
-def verify_public(hashes):
-    for path, expected in hashes.items():
-        route = '/' if path == 'index.html' else '/' + path
-        request = Request(ORIGIN + route + '?gchat-build=' + expected[:16], headers={'Cache-Control': 'no-cache'})
-        with urlopen(request, timeout=30) as response:
-            if response.status != 200 or hashlib.sha256(response.read()).hexdigest() != expected:
-                raise ValueError('public website digest mismatch: ' + path)
+def verify_public(hashes, timeout=30):
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            for path, expected in hashes.items():
+                route = '/' if path == 'index.html' else '/' + path
+                request = Request(ORIGIN + route + '?gchat-build=' + expected[:16] + '&probe=' + uuid.uuid4().hex,
+                                  headers={'Cache-Control': 'no-cache', 'Connection': 'close'})
+                with urlopen(request, timeout=max(1, min(10, deadline - time.monotonic()))) as response:
+                    if response.status != 200 or hashlib.sha256(response.read()).hexdigest() != expected:
+                        raise ValueError('public website digest mismatch: ' + path)
+            return
+        except (OSError, ValueError):
+            # Ingress may briefly retain an old upstream after the new pods are
+            # ready. Require a complete matching bundle within the same bound.
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(max(0, min(2, deadline - time.monotonic())))
 
 
 def activate(kube, previous, volume, hashes):

@@ -9,6 +9,47 @@ use std::{path::Path, sync::Arc, time::Duration};
 
 const PASS: &str = "shared-archive-passphrase";
 
+#[cfg(feature = "gc2-carrier")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn desktop_default_protected_profile_creates_and_reopens() {
+    use chat_service::{
+        host::{InstanceConfig, InstanceHost},
+        ChatEndpoint,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    gchat_core::private_fs::make_private(dir.path(), true).unwrap();
+    let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    assert_eq!(config.listen, "0.0.0.0:0".parse().unwrap());
+    assert!(config.advertise.is_none());
+    config.gc2_carrier = true;
+    // Test desktop startup, independently of provider availability.
+    config.network_recovery = false;
+    let mut identity = None;
+    for create in [true, false] {
+        let host = InstanceHost::new(config.clone()).unwrap();
+        let response = host
+            .dispatch(RequestEnvelope {
+                version: VERSION,
+                instance_id: Some(host.instance_id().into()),
+                request: Request::Unlock {
+                    passphrase: PASS.into(),
+                    create,
+                },
+            })
+            .await;
+        let Response::Snapshot { snapshot } = response.response else {
+            panic!("default desktop unlock failed: {response:?}");
+        };
+        assert!(!snapshot.instance.locked);
+        if let Some(expected) = &identity {
+            assert_eq!(expected, &snapshot.instance.safety_number);
+        } else {
+            identity = Some(snapshot.instance.safety_number.clone());
+        }
+        host.flush().await.unwrap();
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn typed_completion_storage_failure_stays_unknown_live_and_after_reopen() {
     use gcoms_rpc::{CallError, Caller, Client, EmbeddedTransport, ReplyBody};
