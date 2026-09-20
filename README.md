@@ -30,8 +30,10 @@ The [website and delivery tooling](docs/PUBLIC_DELIVERY.md) live in this reposit
 
 Current validation covers secure connections, authentication, transport security,
 local IPC access controls, disconnect/reconnect behavior, and private file sharing.
-Validation uses Linux and the existing Windows VM. macOS is unavailable;
-installer and publication work is deferred.
+The shared Rust integration has a native Linux/macOS test and size matrix; see
+the [GComs integration report](https://github.com/IggyGG/gcoms/blob/main/docs/RUST_INTEGRATIONS.md).
+GChat's desktop release checks are recorded separately in the
+[release evidence procedure](docs/RELEASE_EVIDENCE.md).
 
 [Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
 authorized sources, explicit download acceptance and a bounded encrypted cache.
