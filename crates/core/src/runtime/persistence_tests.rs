@@ -93,6 +93,23 @@ async fn channel_text_admission_reopen(boundary: AdmissionBoundary) {
             .await
             .expect("bounded initial attempt")
             .expect("durable local acceptance and successful wrapper save");
+        // The untracked API returns no ID. Warmup is the only prior send, so
+        // any other delivery notification while the receiver is offline is
+        // premature; consume the queue now, before reopening either profile.
+        let blocked: Result<(), _> = tokio::time::timeout(Duration::from_millis(400), async {
+            loop {
+                match sent.recv().await.expect("sender event stream remains open") {
+                    ClientEvent::ChannelDelivered { message_id, .. } => assert_eq!(
+                        message_id, warm_id,
+                        "sender claimed delivery while receiver was offline"
+                    ),
+                    ClientEvent::EventsLagged { .. } => panic!("sender observation lost events"),
+                    _ => {}
+                }
+            }
+        })
+        .await;
+        assert!(blocked.is_err(), "observe the full offline interval");
     } else {
         // Native commits use the real encrypted sink directly. Holding only
         // this wrapper lock lets the native commit/hop attempt finish while
