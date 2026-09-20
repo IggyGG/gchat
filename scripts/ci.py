@@ -47,6 +47,9 @@ run(['cargo','clippy','--workspace','--all-targets','--all-features','--locked',
 run([NPM,'ci','--ignore-scripts'])
 run([NPM,'run','check'])
 run([NPM,'test'])
+if sys.platform=='linux':
+    run([NPM,'exec','--workspace','@gchat/ui','--','playwright','install','chromium'])
+    run([NPM,'run','test:browser','--workspace','@gchat/ui'])
 run([NPM,'run','build'])
 run([sys.executable,'scripts/website.py'])
 run([sys.executable,'scripts/check-generated.py'])

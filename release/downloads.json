@@ -1,30 +1,30 @@
 {
   "schema": 1,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "channel": "production",
   "artifacts": [
     {
       "target": "linux-x86_64",
       "format": "deb",
-      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.1/GChat_0.1.1_amd64.deb",
-      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.1/GChat_0.1.1_amd64.deb.asc",
-      "sha256": "f0b3dc09fa98121537443290d41e048538f194e026defaf1edb937af7de3ba99",
-      "signature_sha256": "b2e9be772ce659f9a749515d8d204f1ad6801748750b07112f13485464d78134",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.2/GChat_0.1.2_amd64.deb",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.2/GChat_0.1.2_amd64.deb.asc",
+      "sha256": "70129caa77506bf94fd0e2fa5ac2d8ac643f20935dd607e071e61bad1d803426",
+      "signature_sha256": "2d901beaf63b5fd08ca41898509ec0d28a7ac460850700b599a2b80b18070182",
       "signing_verified": true
     },
     {
       "target": "linux-x86_64",
       "format": "appimage",
-      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.1/GChat_0.1.1_amd64.AppImage",
-      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.1/GChat_0.1.1_amd64.AppImage.asc",
-      "sha256": "de73484b5574fafd8d39812560aa40164709f7add8c0c9f2c2e024c41be8a65f",
-      "signature_sha256": "609efed3b94c1019a93f60c2f971e3fe3f72f5f5e28c8e067caa3dc272df9e46",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.2/GChat_0.1.2_amd64.AppImage",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.2/GChat_0.1.2_amd64.AppImage.asc",
+      "sha256": "d8b39079e0cc30fde01c3494a61540be58363907042b14918c57573005a7d1c8",
+      "signature_sha256": "177f98b69e72f7dac8b82d7af7de4c8b6fa465de8a3a3551b4577474d4b6e078",
       "signing_verified": true
     }
   ],
   "release_key": {
     "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB",
     "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
-    "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.1/gchat-release-key.asc"
+    "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.2/gchat-release-key.asc"
   }
 }

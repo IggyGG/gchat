@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount, tick, type Snippet } from 'svelte';
   import type { OperationHandle } from '@gcoms/rpc';
-  import type { CommandOutput, Completion, DirectoryEntry, Message, Request, Response, Snapshot } from './api';
+  import type { CommandOutput, CommandSpec, Completion, DirectoryEntry, Message, NetworkStatus, Request, Response, Snapshot } from './api';
   import CommandResult from './CommandResult.svelte';
   import GhostMark from './GhostMark.svelte';
   import FilePanel from './FilePanel.svelte';
   import type { FileAccess } from './files';
   import NetworkSetup from './NetworkSetup.svelte';
+  import { FileController, emptyFiles, type FileViewState } from './file-controller';
+  import { hasNetworkSetup, networkLabel, localCommand, mergeViewCommands, viewCommands, readFont, writeFont, type ChatFont } from './workspace-state';
   import MessageResult from './MessageResult.svelte';
   import { chatError, type ChatError, type Transport } from './transport';
   import { MAX_INPUT_BYTES } from './api';
@@ -44,7 +46,19 @@
   let offline = $state(false);
   let connectionError = $state<ChatError>();
   let channelsOpen = $state(false);
-  let membersOpen = $state(false);
+  let panel = $state<'users' | 'files' | null>(null);
+  let narrow = $state(false);
+  const navigationModal = $derived(channelsOpen || (!!panel && narrow));
+  let utility = $state<'network' | 'help' | 'font' | 'info' | null>(null);
+  let replacingInvitation = $state(false);
+  let networkStatus = $state<NetworkStatus>();
+  let networkAccepted = $state(false), networkError = $state('');
+  let networkPolling = false, networkGeneration = 0;
+  let helpCommands = $state<CommandSpec[]>([]), helpError = $state('');
+  let fileState = $state<FileViewState>(emptyFiles());
+  let fileController = $state<FileController>();
+  let fileInput = $state<HTMLInputElement>();
+  let fileTarget: { conversation: string; resumeId?: string } | undefined;
   let dialog = $state<'join' | 'create' | null>(null);
   let destination = $state('');
   let nickname = $state('');
@@ -57,7 +71,6 @@
   let savedDraft = '';
   let transcript = $state<HTMLDivElement>();
   let composer = $state<HTMLTextAreaElement>();
-  let moreMenu = $state<HTMLDetailsElement>();
   let running = true;
   let generation = 0;
   let snapshotGeneration = 0;
@@ -65,12 +78,68 @@
   let loadingHistory = $state(false);
   let historyStale = false;
   let restoredSelection = false;
-  let readableFont = $state(false);
+  let font = $state<ChatFont>('fixedsys');
   let navigationOpener: HTMLElement | null = null;
   const active = $derived(snapshot?.conversations.find(c => c.id === selected));
   const locked = $derived(snapshot?.instance.locked ?? true);
   const creating = $derived(snapshot?.instance.protocolLocked ? !snapshot.instance.profileExists : !snapshot?.instance.archiveExists);
   const title = $derived(active?.name ?? 'Status');
+  const workspaceReady = $derived(!locked && networkAccepted);
+  const fileIdentity = $derived(workspaceReady && snapshot?.instance.capabilities.includes('files.v1') ? `${snapshot.instance.id}/${snapshot.instance.bootId}` : null);
+  const fileCount = $derived(fileState.snapshot?.files.filter(f => f.conversation === selected && f.state !== 'cancelled').length ?? 0);
+  const connectionLabel = $derived(networkLabel(networkStatus, offline, locked));
+  $effect(() => {
+    if (!fileIdentity) return;
+    const controller = new FileController(transport, fileIdentity.split('/')[0], fileAccess, value => fileState = value);
+    fileController = controller; controller.start();
+    return () => { controller.stop(); if (fileController === controller) fileController = undefined; };
+  });
+  $effect(() => { if (workspaceReady && !restoredSelection) void refreshInBackground(); });
+  async function refreshNetwork() {
+    if (!running || locked || networkPolling) return;
+    networkPolling = true;
+    const revision = networkGeneration;
+    try {
+      const response = await transport.request({ kind: 'network_status' });
+      if (!running || locked || revision !== networkGeneration || response.kind !== 'network_status') return;
+      networkStatus = response.status; networkError = '';
+      if (hasNetworkSetup(response.status)) networkAccepted = true;
+    } catch (error) { if (running && !locked && revision === networkGeneration) networkError = chatError(error).message; }
+    finally { networkPolling = false; }
+  }
+  function imported(status: NetworkStatus) {
+    networkGeneration++; networkStatus = status;
+    if (hasNetworkSetup(status)) networkAccepted = true;
+    replacingInvitation = false; utility = null; void refreshInBackground();
+  }
+  function openUtility(value: typeof utility) { closeNavigation(); utility = value; replacingInvitation = false; }
+  async function showHelp() {
+    openUtility('help'); helpError = '';
+    helpCommands = viewCommands(!!selected);
+    try {
+      const response = await transport.request({ kind: 'catalogue', conversation: workspaceReady ? selected : null });
+      if (utility === 'help' && response.kind === 'catalogue') helpCommands = mergeViewCommands(response.commands, !!selected && workspaceReady);
+    } catch (error) { if (utility === 'help') helpError = chatError(error).message; }
+  }
+  function chooseFont(value: ChatFont) { font = value; writeFont(value); }
+  async function find(text = '') {
+    if (!selected || !workspaceReady) { notice = 'Choose a conversation before using /find.'; return; }
+    searchOpen = true; searchText = text; searchResults = []; searchBefore = null; searchError = '';
+    await tick(); document.getElementById('gchat-search')?.focus();
+    if (text) await search();
+  }
+  function closeSearch() { searchOpen = false; searchGeneration++; searchBusy = false; composer?.focus(); }
+  function chooseFile(resumeId?: string) {
+    if (!selected || !workspaceReady || !fileAccess || active?.kind === 'archive' || fileState.busy) return;
+    fileTarget = { conversation: selected, resumeId }; fileInput?.click();
+  }
+  function pickedFile() {
+    const file = fileInput?.files?.[0], target = fileTarget;
+    fileTarget = undefined; if (fileInput) fileInput.value = '';
+    if (!file || !target || !workspaceReady) return;
+    panel = 'files'; channelsOpen = false;
+    void fileController?.upload(file, target.conversation, target.resumeId);
+  }
   const draftError = $derived(inputError(draft, draft.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES));
   function failureTarget(id: string | null) {
     const conversation = snapshot?.conversations.find(c => c.id === id);
@@ -80,13 +149,14 @@
 
 
   onMount(() => {
-    running = true;
+    running = true; font = readFont(); narrow = window.innerWidth < 1000;
+    const networkTimer = setInterval(() => void refreshNetwork(), 2000);
     void watch();
     const visible = () => { if (!document.hidden && (!connectionError || connectionError.retryable)) void refreshInBackground(); };
     document.addEventListener('visibilitychange', visible);
     const disconnected = () => connectionFailed(new Error('Network unavailable. Drafts and loaded history remain available.'));
     window.addEventListener('online', visible); window.addEventListener('offline', disconnected);
-    return () => { running = false; generation++; password = ''; views.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
+    return () => { running = false; clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
   });
   async function refreshInBackground() {
     try { await refresh(); }
@@ -100,10 +170,11 @@
     const next = response.snapshot;
     const changed = snapshot?.revision !== next.revision;
     if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && snapshot.instance.bootId !== next.instance.bootId)) {
-      generation++; searchGeneration++; views.clear(); outputs = {}; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false;
+      generation++; searchGeneration++; views.clear(); outputs = {}; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
     }
     snapshot = next;
-    if (!next.instance.locked && transport.pendingOperations) {
+    if (!next.instance.locked && !networkStatus) void refreshNetwork();
+    if (workspaceReady && transport.pendingOperations) {
       try {
         savedOperations = transport.pendingOperations();
         for (const handle of savedOperations) {
@@ -112,7 +183,7 @@
         }
       } catch (error) { notice = chatError(error).message; }
     } else savedOperations = [];
-    if (!next.instance.locked && !restoredSelection) {
+    if (workspaceReady && !restoredSelection) {
       restoredSelection = true;
       const remembered = readNavigation(next.instance.id);
       await select(remembered && (remembered.selected === null || next.conversations.some(c => c.id === remembered.selected)) ? remembered.selected : next.conversations[0]?.id ?? null);
@@ -120,7 +191,7 @@
     if (selected && !next.conversations.some(c => c.id === selected)) await select(null);
     views.retain(next.conversations.map(c => c.id));
     for (const id of Object.keys(outputs)) if (id && !next.conversations.some(c => c.id === id)) delete outputs[id];
-    if ((changed || historyStale || offline) && selected && !next.instance.locked) await loadHistory(false, true);
+    if ((changed || historyStale || offline) && selected && workspaceReady) await loadHistory(false, true);
     offline = false;
     connectionError = undefined;
   }
@@ -140,9 +211,10 @@
     }
   }
   async function select(id: string | null) {
-    const fromDrawer = channelsOpen || membersOpen;
+    const fromDrawer = channelsOpen;
     const rememberedPosition = id && snapshot ? readNavigation(snapshot.instance.id)?.positions[id] : undefined;
     rememberPosition();
+    if (!id) panel = null;
     if (id) hidden = hidden.filter(value => value !== id);
     if (id !== selected) {
       searchGeneration++; searchOpen = false; searchResults = []; searchBefore = null; searchText = ''; searchBusy = false; searchError = '';
@@ -155,9 +227,9 @@
       await tick();
       if (transcript) transcript.scrollTop = view.scrollTop;
     }
-    channelsOpen = false; membersOpen = false; completions = [];
+    channelsOpen = false; completions = [];
     if (fromDrawer) { await tick(); composer?.focus(); }
-    if (id && !locked) await loadHistory(false);
+    if (id && workspaceReady) await loadHistory(false);
     if (id && snapshot && !views.has(id)) {
       const position = rememberedPosition;
       if (position && !position.atBottom) {
@@ -169,7 +241,7 @@
     rememberPosition();
   }
   function rememberPosition() {
-    if (!snapshot || locked || !restoredSelection) return;
+    if (!snapshot || !workspaceReady || !restoredSelection) return;
     const value = readNavigation(snapshot.instance.id) ?? { selected, positions: {} };
     value.selected = selected;
     if (selected && transcript) value.positions[selected] = { top: transcript.scrollTop, atBottom, oldest: messages[0]?.id ?? null };
@@ -177,7 +249,7 @@
   }
   async function loadHistory(older: boolean, background = false) {
     const conversation = selected;
-    if (!conversation || (older && !before)) return;
+    if (!conversation || !workspaceReady || (older && !before)) return;
     const revision = ++generation;
     const scrollHeight = transcript?.scrollHeight ?? 0;
     const scrollTop = transcript?.scrollTop ?? 0;
@@ -215,7 +287,7 @@
     finally { if (revision === generation) loadingHistory = false; }
   }
   async function markRead() {
-    if (!selected || !atBottom || document.hidden || !document.hasFocus() || locked) return;
+    if (!selected || !atBottom || document.hidden || !document.hasFocus() || !workspaceReady) return;
     const last = messages.at(-1);
     if (last) try { await transport.request({ kind: 'mark_read', conversation: selected, message_id: last.id }); } catch { /* Read markers retry after the next successful refresh. */ }
   }
@@ -238,7 +310,6 @@
     await refreshInBackground();
   }
   async function operation(request: Request) {
-    if (moreMenu) moreMenu.open = false;
     const scope = request.kind === 'submit' ? request.conversation ?? '' : null;
     if (lifecycleBusy || (scope !== null && pending[scope])) return false;
     const origin = selected;
@@ -251,7 +322,19 @@
     finally { if (scope === null) lifecycleBusy = false; else { const remaining = { ...pending }; delete remaining[scope]; pending = remaining; } }
   }
   async function send(text = draft) {
-    if (!text || busy || locked) return;
+    if (!text || !workspaceReady) return;
+    const local = localCommand(text);
+    if (local) {
+      if (text === draft) draft = '';
+      completions = []; historyPosition = undefined;
+      if (local.name === 'help') await showHelp();
+      else if (local.name === 'find') await find(local.args);
+      else if (!local.args) openUtility('font');
+      else if (local.args === 'fixedsys' || local.args === 'readable') chooseFont(local.args);
+      else notice = 'Use /font, /font fixedsys or /font readable.';
+      return;
+    }
+    if (busy) return;
     const error = inputError(text, text.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES);
     if (error) { notice = error; return; }
     const request: Request = { kind: 'submit', operation_id: crypto.randomUUID(), conversation: selected, text };
@@ -296,14 +379,17 @@
     const text = draft, conversation = selected;
     try {
       const response = await transport.request({ kind: 'complete', text, conversation });
-      if (draft === text && selected === conversation && response.kind === 'completed') completions = response.items;
+      if (draft === text && selected === conversation && response.kind === 'completed') {
+        const local = viewCommands(!!selected).filter(c => c.available && c.name.startsWith(text)).map(c => ({ text: c.name, description: c.description }));
+        completions = [...response.items.filter(c => !local.some(l => l.text === c.text)), ...local];
+      }
     } catch (error) { notice = String(error); }
   }
   function keydown(event: KeyboardEvent) {
     if (event.isComposing) return;
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); }
     else if (shouldComplete(event, draft, completions.length > 0)) { event.preventDefault(); void complete(); }
-    else if (event.key === 'Escape') { completions = []; channelsOpen = false; membersOpen = false; dialog = null; }
+    else if (event.key === 'Escape') { completions = []; channelsOpen = false; panel = null; dialog = null; }
     else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !draft.includes('\n')) {
       const history = snapshot?.inputHistory.filter(item => item.conversation === selected).map(item => item.text) ?? [];
       if (!history.length) return;
@@ -314,38 +400,43 @@
     }
   }
   function cycle(event: KeyboardEvent) {
-    if (channelsOpen || membersOpen) {
+    if (event.isComposing || dialog || utility) return;
+    if (navigationModal) {
       if (event.key === 'Escape') { event.preventDefault(); closeNavigation(); return; }
       if (event.key === 'Tab') {
-        const buttons = [...document.querySelectorAll<HTMLButtonElement>('.gchat aside.open button:not(:disabled)')];
-        const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-        if (index < 0 || (!event.shiftKey && index === buttons.length - 1) || (event.shiftKey && index === 0)) {
-          event.preventDefault(); buttons[event.shiftKey ? buttons.length - 1 : 0]?.focus();
+        const nodes = [...document.querySelectorAll<HTMLElement>('.gchat aside.open button:not(:disabled), .gchat aside.open input:not(:disabled), .gchat aside.open summary')];
+        const index = nodes.indexOf(document.activeElement as HTMLElement);
+        if (nodes.length && (index < 0 || (!event.shiftKey && index === nodes.length - 1) || (event.shiftKey && index === 0))) {
+          event.preventDefault(); nodes[event.shiftKey ? nodes.length - 1 : 0]?.focus();
         }
         return;
       }
     }
-    if (event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    if (event.key === 'Escape' && searchOpen) { event.preventDefault(); closeSearch(); return; }
+    if (event.key === 'Escape' && panel) { closeNavigation(); return; }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f' && selected && workspaceReady) { event.preventDefault(); void find(searchText); return; }
+    if (workspaceReady && event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
       event.preventDefault();
       const ids = [null, ...snapshot?.conversations.filter(c => !hidden.includes(c.id)).map(c => c.id) ?? []];
       const index = ids.indexOf(selected);
       void select(ids[(index + ids.length + (event.key === 'ArrowRight' ? 1 : -1)) % ids.length]);
     }
   }
-  function closeNavigation() { channelsOpen = false; membersOpen = false; void tick().then(() => navigationOpener?.focus()); }
-  async function openNavigation(mode: 'channels' | 'members') {
-    if ((mode === 'channels' && channelsOpen) || (mode === 'members' && membersOpen)) { closeNavigation(); return; }
+  function closeNavigation() { channelsOpen = false; panel = null; void tick().then(() => navigationOpener?.focus()); }
+  async function openNavigation(mode: 'channels' | 'users' | 'files') {
+    if ((mode === 'channels' && channelsOpen) || (mode !== 'channels' && panel === mode)) { closeNavigation(); return; }
     navigationOpener = document.activeElement as HTMLElement | null;
-    channelsOpen = mode === 'channels'; membersOpen = mode === 'members';
-    await tick(); document.querySelector<HTMLButtonElement>(`.gchat .${mode}.open button:not(:disabled)`)?.focus();
+    channelsOpen = mode === 'channels'; panel = mode === 'channels' ? null : mode;
+    await tick(); document.querySelector<HTMLButtonElement>(`.gchat .${mode === 'channels' ? 'channels' : 'inspector'}.open button:not(:disabled)`)?.focus();
   }
   function showModal(node: HTMLDialogElement) {
     const opener = document.activeElement as HTMLElement | null;
-    node.showModal(); node.querySelector<HTMLInputElement>('input')?.focus();
+    node.showModal(); (node.querySelector<HTMLElement>('input, textarea') ?? node.querySelector<HTMLElement>('button:not(:disabled)'))?.focus();
     return { destroy() { opener?.focus(); } };
   }
   function openDialog(mode: 'join' | 'create') {
-    if (moreMenu) moreMenu.open = false;
+    if (!workspaceReady) return;
+    closeNavigation();
     nickname ||= active?.members.find(m => m.isSelf)?.nickname ?? snapshot?.conversations.flatMap(c => c.members).find(m => m.isSelf)?.nickname ?? '';
     if (!joinBusy) { joinError = ''; dialog = mode; } else dialog = joinRequest?.text.startsWith('/create ') ? 'create' : 'join';
   }
@@ -396,36 +487,28 @@
   function time(timestamp: number) { return new Date(timestamp * 1000).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }); }
 </script>
 
-<svelte:window onkeydown={cycle} onfocus={() => void markRead()} onresize={() => { if (window.innerWidth > 760 && (channelsOpen || membersOpen)) closeNavigation(); }} />
-<div class="gchat" class:unavailable={offline} class:readable={readableFont}>
-  <header class="titlebar" inert={channelsOpen || membersOpen}>
-    <span class="brand"><strong>GChat.</strong><GhostMark /></span><span class="instance" title={snapshot?.instance.id}>{snapshot?.instance.label ?? 'Connecting'}</span>
-    <span class="connection" role="status">{offline ? connectionError && !connectionError.retryable ? connectionError.action : 'Reconnecting…' : snapshot?.instance.protocolLocked ? 'Disconnected' : locked ? 'Archive locked' : 'Attached'}</span>
+<svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} onresize={() => { narrow = window.innerWidth < 1000; if (window.innerWidth > 760) channelsOpen = false; }} />
+<div class="gchat" class:unavailable={offline} class:readable={font === 'readable'}>
+  <header class="titlebar" inert={navigationModal}>
+    {#if workspaceReady}<button class="channel-toggle" aria-label="Channels" aria-expanded={channelsOpen} onclick={() => void openNavigation('channels')}>☰</button>{/if}
+    <span class="brand"><strong>GChat.</strong><GhostMark /></span>
+    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}>{title}</button>{:else}<span class="active-title">{locked ? 'Welcome' : 'Connect to GChat'}</span>{/if}
+    <nav class="header-actions" aria-label="Chat actions">
+      <button class="network-button" disabled={locked} title={`Network · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="network-word">Network…</span><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
+      <button class="help-button" title="Help and commands" onclick={() => void showHelp()}>Help</button>
+      {#if workspaceReady && active}
+        <button class="count" aria-label={`Users: ${active.members.length}`} aria-expanded={panel === 'users'} title="Users" onclick={() => void openNavigation('users')}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="7" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m3 11v-3a6 6 0 0 0-2-4" /></svg> {active.members.length}</button>
+        {#if fileCount}<button class="count" aria-label={`Files: ${fileCount}`} aria-expanded={panel === 'files'} title="Files" onclick={() => void openNavigation('files')}><span aria-hidden="true">▤</span> {fileCount}</button>{/if}
+      {/if}
+      {#if tools}{@render tools()}{/if}
+    </nav>
   </header>
-  <nav class="toolbar" aria-label="Chat actions" inert={channelsOpen || membersOpen}>
-    <button class="mobile" onclick={() => void openNavigation('channels')} aria-expanded={channelsOpen}>☰ Windows</button>
-    <button disabled={locked || busy} onclick={() => openDialog('join')}>Join…</button>
-    {#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button class="desktop" disabled={locked || busy} onclick={() => openDialog('create')}>Create…</button>{/if}
-    <button class="desktop" disabled={locked || busy} onclick={() => void send('/help')}>Help</button>
-    <button class="desktop" aria-pressed={readableFont} onclick={() => readableFont = !readableFont}>Readable font</button>
-    <span class="spacer"></span>
-    {#if tools}{@render tools()}{/if}
-    <button class="desktop" disabled={locked || lifecycleBusy} onclick={() => void operation({ kind: 'lock' })}>Lock</button>
-    <button class="desktop" disabled={snapshot?.instance.protocolLocked || lifecycleBusy} onclick={() => void operation({ kind: 'disconnect' })}>Disconnect</button>
-    <button class="mobile" disabled={!active?.members.length} onclick={() => void openNavigation('members')} aria-expanded={membersOpen}>Nicks</button>
-    <details class="mobile more" bind:this={moreMenu}><summary>More</summary><div class="more-items">
-      <button aria-pressed={readableFont} onclick={() => readableFont = !readableFont}>Readable font</button>
-      {#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button disabled={locked || busy} onclick={() => openDialog('create')}>Create channel…</button>{/if}
-      <button disabled={locked || busy} onclick={() => void send('/help')}>Help</button>
-      <button disabled={locked || lifecycleBusy} onclick={() => void operation({ kind: 'lock' })}>Lock</button>
-      <button disabled={!snapshot || snapshot.instance.protocolLocked || lifecycleBusy} onclick={() => void operation({ kind: 'disconnect' })}>Disconnect</button>
-    </div></details>
-  </nav>
+  <input class="file-picker" type="file" aria-label="Choose a file to share" bind:this={fileInput} onchange={pickedFile} />
   <div class="workspace">
-    {#if channelsOpen || membersOpen}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
-    <aside class="channels" class:open={channelsOpen} aria-label="Windows" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
-      {#if channelsOpen}<button onclick={closeNavigation}>Close windows</button>{/if}
-      <div class="pane-label">WINDOWS</div>
+    {#if navigationModal}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
+    {#if workspaceReady}<aside class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
+      {#if channelsOpen}<button onclick={closeNavigation}>Close channels</button>{/if}
+      <div class="channel-entries">
       <button class:chosen={!selected} aria-current={!selected ? 'page' : undefined} onclick={() => void select(null)}><span class="symbol">◈</span> Status</button>
       {#each snapshot?.conversations.filter(c => !hidden.includes(c.id)) ?? [] as conversation (conversation.id)}
         <button class:chosen={selected === conversation.id} aria-current={selected === conversation.id ? 'page' : undefined} class:unread={conversation.unread > 0} onclick={() => void select(conversation.id)} title={conversation.topic || conversation.name}>
@@ -436,16 +519,15 @@
           {#if conversation.kind === 'archive'}<small>read only</small>{/if}
         </button>
       {/each}
-    </aside>
-    <main class="conversation" inert={channelsOpen || membersOpen}>
-      {#if !locked}<NetworkSetup {transport} />{/if}
+      </div>
+      <div class="channel-actions"><button disabled={busy} onclick={() => openDialog('join')}>Join…</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button disabled={busy} onclick={() => openDialog('create')}>Create…</button>{/if}</div>
+    </aside>{/if}
+    <main class="conversation" inert={navigationModal}>
       {#if !locked && snapshot?.providerErrors?.length}<div class="provider-errors" role="status">{#each snapshot.providerErrors as error}<p>{error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>{/each}<button onclick={() => void send('/refresh')}>Reconnect provider</button></div>{/if}
-      {#if offline && connectionError?.retryable}<details class="connection-details"><summary>Connection details</summary><p>{connectionError.message}</p><button onclick={() => void refreshInBackground()}>Reconnect</button></details>{/if}
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
-      <div class="topic"><strong>{title}</strong>{#if selected && !locked}<button aria-expanded={searchOpen} onclick={() => { searchOpen = !searchOpen; }}>Find…</button>{/if}<span>{active?.topic || (active ? `${active.members.length} ${active.members.length === 1 ? 'nick' : 'nicks'}` : 'Welcome to gchat')}</span></div>
       {#if searchOpen && selected && !locked}
         <section class="search" aria-label="Find in conversation">
-          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><input id="gchat-search" bind:value={searchText} required /><button disabled={searchBusy}>Find</button><button type="button" onclick={() => { searchOpen = false; searchGeneration++; searchBusy = false; composer?.focus(); }}>Close search</button></form>
+          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><input id="gchat-search" bind:value={searchText} required /><button disabled={searchBusy}>Find</button><button type="button" onclick={closeSearch}>Close search</button></form>
           {#if searchError}<p role="status">{searchError}</p>{/if}
           {#if searchBefore}<button disabled={searchBusy} onclick={() => void search(true)}>Search earlier messages</button>{/if}
           <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} matches`}</p>
@@ -462,15 +544,22 @@
             <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Opening…' : creating ? 'Create identity' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
           </form>
         </div>
+      {:else if !networkAccepted}
+        <div class="welcome network-gate">
+          <h1>Connect to GChat</h1>
+          <p>A network invitation is required before you can join channels or share messages and files.</p>
+          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} status={networkStatus} {imported} />
+          {:else}<p role="status">{networkError || networkStatus?.message || 'Checking network setup…'}</p><button class="primary" onclick={() => void refreshNetwork()}>Retry</button>{/if}
+        </div>
       {:else if !selected}
         <div class="welcome status">
           {#if !snapshot?.conversations.length}
           <h1>Your channels. Your conversations.</h1>
           <p>After connecting to the network, join a channel with a conversation invitation and choose a nickname.</p>
-          <p>Select a nick to open a private chat in that channel.</p>
+          <p>Select a user to open a private chat in that channel.</p>
           {:else}<h1>Status</h1><p>{offline ? 'Reconnecting to the selected instance. You can keep drafting.' : 'Attached to this instance. Closing this view keeps receiving messages.'}</p>{/if}
           <dl><dt>/join</dt><dd>Join with an invitation</dd><dt>/query nick</dt><dd>Open a private chat</dd><dt>/help</dt><dd>All commands available here</dd></dl>
-          <p class="muted">Tab completes text · Shift+Tab leaves the input · Escape dismisses suggestions · ↑↓ command history · Alt+←/→ switches windows</p>
+          <p class="muted">Tab completes text · Shift+Tab leaves the input · Escape dismisses suggestions · ↑↓ command history · Alt+←/→ switches conversations</p>
           <details><summary>Instance identity</summary><p class="identity">{snapshot?.instance.id}</p><p class="identity">{snapshot?.instance.safetyNumber}</p></details>
         </div>
       {:else}
@@ -488,13 +577,13 @@
         </div>
         {#if !atBottom}<button class="jump" onclick={() => { atBottom = true; if (transcript) transcript.scrollTop = transcript.scrollHeight; void markRead(); }}>Jump to latest</button>{/if}
       {/if}
-      {#if !locked && outputs[selected ?? '']?.length}
+      {#if workspaceReady && outputs[selected ?? '']?.length}
         <div class="results" aria-label="Conversation command results">
           <button onclick={() => { outputs = { ...outputs, [selected ?? '']: [] }; }}>Close results</button>
           {#each outputs[selected ?? ''] as output}<CommandResult {output} choose={chooseChannel} />{/each}
         </div>
       {/if}
-      {#if !locked && (Object.keys(pending).length || joinBusy)}<div class="progress" role="status">{Object.values(pending).map(name => `${name}: waiting for instance`).join(' · ')}{joinBusy ? ' Joining channel…' : ''}</div>{/if}
+      {#if workspaceReady && (Object.keys(pending).length || joinBusy)}<div class="progress" role="status">{Object.values(pending).map(name => `${name}: waiting for instance`).join(' · ')}{joinBusy ? ' Joining channel…' : ''}</div>{/if}
       {#if notice}<div class="notice" role="status"><pre>{notice}</pre><button aria-label="Dismiss notice" onclick={() => notice = ''}>×</button></div>{/if}
       {#each failures as failure (failure.request.operation_id)}
         <div class="retry" role="status"><span>{failureTarget(failure.request.conversation)}: {failure.message} {failure.code === 'rejected' ? 'Command was not accepted.' : 'Outcome not confirmed. Checking uses the original operation.'}</span>{#if failure.code !== 'rejected'}<button disabled={lifecycleBusy || !!pending[failure.request.conversation ?? '']} onclick={() => void checkSaved(failure.request.operation_id)}>Check result</button>{/if}<button onclick={() => void editFailed(failure.request)}>{failure.code === 'rejected' ? 'Edit command' : 'Edit as new'}</button><button aria-label="Dismiss failed operation" onclick={() => dismissFailure(failure.request.operation_id)}>×</button></div>
@@ -505,27 +594,44 @@
         {/each}
       {/if}
       {#if draftError}<p class="input-error" id="gchat-input-error">{draftError}</p>{/if}
-      {#if !locked}
-        {#if selected && snapshot?.instance.capabilities.includes('files.v1')}
-          {#key selected}<FilePanel {transport} conversation={selected} instance={snapshot.instance.id} access={fileAccess} canShare={active?.kind !== 'archive'} />{/key}
-        {/if}
+      {#if workspaceReady}
         <form class="composer" onsubmit={event => { event.preventDefault(); void send(); }}>
           {#if completions.length}<div class="completions" aria-label="Command completions">{#each completions as item}<button type="button" onclick={() => { draft = item.text + ' '; completions = []; composer?.focus(); }}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
-          <span class="prompt">{active?.members.find(m => m.isSelf)?.nickname ?? '>'}</span>
+          {#if selected && fileAccess && fileController && active?.kind !== 'archive'}<button class="attach" type="button" aria-label="Share a file" title="Share a file" disabled={fileState.busy} onclick={() => chooseFile()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a7 7 0 0 1 10 10l-9 9" /></svg></button>{/if}
           <textarea bind:this={composer} bind:value={draft} aria-label="Message or command" aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} oninput={() => { completions = []; historyPosition = undefined; }}></textarea>
-          <button class="send" type="submit" disabled={!draft || !!draftError || busy || offline}>{busy ? '…' : 'Send'}</button>
+          <button class="send" type="submit" disabled={!draft || !!draftError || (busy && !localCommand(draft)) || (offline && !localCommand(draft))}>{busy ? '…' : 'Send'}</button>
         </form>
       {/if}
-      <footer><span>{active?.kind === 'archive' ? 'Read-only history' : title}</span><span>{busy ? 'Working…' : offline ? 'Reconnecting to selected instance…' : 'Enter sends · Shift+Enter new line'}</span></footer>
     </main>
-    {#if active?.members.length}
-      <aside class="members" class:open={membersOpen} aria-label="Channel nicks" role={membersOpen ? 'dialog' : undefined} aria-modal={membersOpen ? true : undefined}>
-        {#if membersOpen}<button onclick={closeNavigation}>Close nicks</button>{/if}
-        <div class="pane-label">NICKS <span>{active.members.length}</span></div>
-        {#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`/query ${member.id}`)} title={member.isSelf ? 'Your channel identity' : 'Open private chat'}><span class="symbol">{member.isSelf ? '›' : '·'}</span>{member.nickname}</button>{/each}
+    {#if workspaceReady && active && panel}
+      <aside class="inspector open" aria-label="Conversation details" role={narrow ? 'dialog' : undefined} aria-modal={narrow ? true : undefined}>
+        <div class="inspector-heading"><div role="tablist" tabindex="-1" aria-label="Conversation details" onkeydown={event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !fileController) return;
+          event.preventDefault(); panel = event.key === 'Home' ? 'users' : event.key === 'End' ? 'files' : panel === 'users' ? 'files' : 'users';
+          void tick().then(() => document.getElementById(`${panel}-tab`)?.focus());
+        }}><button role="tab" id="users-tab" tabindex={panel === 'users' ? 0 : -1} aria-selected={panel === 'users'} aria-controls="users-panel" onclick={() => panel = 'users'}>Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex={panel === 'files' ? 0 : -1} aria-selected={panel === 'files'} aria-controls="files-panel" onclick={() => panel = 'files'}>Files <small>{fileCount}</small></button>{/if}</div><button aria-label="Close details" onclick={closeNavigation}>×</button></div>
+        {#if panel === 'users'}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`/query ${member.id}`)} title={member.isSelf ? 'Your channel identity' : 'Open private chat'}>{member.nickname}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}</div>
+        {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
       </aside>
     {/if}
   </div>
+  {#if utility}
+    <dialog class="modal utility-modal" use:showModal aria-labelledby="utility-title" onclose={() => { utility = null; replacingInvitation = false; }}>
+      <header><h2 id="utility-title">{utility === 'network' ? 'Network' : utility === 'help' ? 'Help' : utility === 'font' ? 'Chat font' : title}</h2><button aria-label="Close dialog" onclick={() => utility = null}>×</button></header>
+      {#if utility === 'network'}
+        <p role="status">{networkStatus?.message || networkError || connectionLabel}</p>
+        {#if networkError}<p role="alert">{networkError}</p>{/if}
+        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} status={networkStatus} {imported} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
+        {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
+      {:else if utility === 'font'}
+        <p>Choose the font for messages and the composer. Saved on this device.</p>
+        <div class="font-options"><button aria-pressed={font === 'fixedsys'} onclick={() => chooseFont('fixedsys')}>Fixedsys <span class="font-fixed">The quick brown fox</span></button><button aria-pressed={font === 'readable'} onclick={() => chooseFont('readable')}>Readable <span class="font-readable">The quick brown fox</span></button></div>
+      {:else if utility === 'help'}
+        {#if helpError}<p role="alert">{helpError}</p>{/if}<CommandResult output={{ kind: 'help', commands: helpCommands }} choose={chooseChannel} />
+        <section class="shortcuts"><h3>Keyboard</h3><p>Enter sends · Shift+Enter adds a line<br />Tab completes · Shift+Tab moves focus<br />↑↓ recalls commands · Alt+←/→ changes conversation<br />Ctrl/Cmd+F finds messages · Escape closes panels</p><p>/lock hides the archive while receiving continues. /disconnect stops this instance in every view.</p></section>
+      {:else}<p>{active?.topic || 'No topic set.'}</p>{#if active?.kind === 'archive'}<p>Read-only history</p>{/if}<p class="muted">{active?.members.length ?? 0} users</p>{/if}
+    </dialog>
+  {/if}
   {#if dialog}
     <dialog class="modal" use:showModal aria-labelledby="gchat-dialog-title" onclose={() => dialog = null}>
       <header><h2 id="gchat-dialog-title">{dialog === 'join' ? 'Join a channel' : 'Create a channel'}</h2><button aria-label="Close dialog" onclick={() => dialog = null}>×</button></header>
@@ -537,105 +643,98 @@
 </div>
 
 <style>
-  .provider-errors { padding:4px 12px; color:var(--muted); }
-  .connection-details { margin:0; padding:4px 12px; }
-  .search { max-height:50%; overflow:auto; padding:8px 12px; border-bottom:1px solid var(--line); }
-  .search p { overflow-wrap:anywhere; white-space:pre-wrap; }
-  .progress { padding:5px 12px; color:var(--muted); }
-  .unread-divider { color:var(--accent); border-top:1px solid var(--accent); text-align:center; margin:10px 0; }
-  .transcript,.composer { font:16px/1.3 GchatFixedsys,'Lucida Console',monospace; }
-  .readable .transcript,.readable .composer { font-family:ui-monospace,'SFMono-Regular',Consolas,monospace; line-height:1.5; }
-  .date { margin:12px 0; color:var(--muted); text-align:center; border-bottom:1px solid var(--line); }
-  .acceptance { font:11px/1.4 ui-sans-serif,system-ui,sans-serif; }
-  .jump { align-self:center; min-height:44px; color:var(--accent); }
-  .results { max-height:45%; overflow:auto; border-top:1px solid var(--line); }
-  @font-face { font-family: GchatFixedsys; src: url('/fonts/fixedsys-excelsior.ttf') format('truetype'); font-display: swap; }
-  .gchat { --bg:#1c1e22; --panel:#25282e; --line:#3e444d; --ink:#e4e7eb; --muted:#a8b0bb; --accent:#b7cbe4; color-scheme:dark; height:100dvh; min-height:260px; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.4 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
+  @font-face { font-family:GchatFixedsys; src:url('/fonts/fixedsys-excelsior.ttf') format('truetype'); font-display:swap; }
+  .gchat { --bg:#1c1e22; --panel:#25282e; --line:#363c44; --ink:#e4e7eb; --muted:#a8b0bb; --accent:#b7cbe4; color-scheme:dark; height:100dvh; min-height:260px; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
   .gchat :global(*) { box-sizing:border-box; }
   button,input,textarea { font:inherit; color:inherit; }
-  button { background:transparent; border:1px solid transparent; padding:5px 10px; cursor:pointer; text-align:left; }
+  button { background:transparent; border:1px solid transparent; padding:6px 10px; cursor:pointer; text-align:left; min-height:36px; }
   button:hover:not(:disabled) { background:#343b46; color:#fff; }
   button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
   button:disabled { color:#818889; cursor:default; }
-  .titlebar { display:flex; gap:14px; align-items:center; padding:8px 12px; background:#17191a; border-bottom:1px solid #353a3c; }
-  .titlebar .brand { display:inline-flex; align-items:center; gap:8px; flex:none; }
-  .titlebar .brand :global(.ghost-mark) { --ghost-mark-size:18px; transform:translateY(0.5px); }
-  .titlebar strong { color:var(--accent); letter-spacing:1px; font-size:20px; line-height:1; }
-  .instance { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   small,.muted { color:var(--muted); }
-  .connection { color:var(--accent); font-size:14px; }
-  .unavailable .connection { color:#efbe88; }
-  .toolbar { display:flex; align-items:center; padding:3px 6px; background:var(--panel); border-bottom:1px solid var(--line); gap:2px; }
-  .spacer { flex:1; }
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .file-picker { display:none; }
+  .titlebar { min-height:52px; display:flex; gap:12px; align-items:center; padding:6px 12px; background:#17191c; border-bottom:1px solid var(--line); }
+  .brand { display:inline-flex; align-items:center; gap:8px; flex:none; }
+  .brand :global(.ghost-mark) { --ghost-mark-size:18px; }
+  .brand strong { color:var(--accent); letter-spacing:1px; font-size:20px; line-height:1; }
+  .active-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .header-actions { display:flex; align-items:center; flex:none; gap:2px; }
+  .header-actions button { white-space:nowrap; }
+  .connection-dot { color:#bd9866; font-size:10px; margin-left:6px; }
+  .connection-dot.connected { color:#91b5a0; }
+  .count { display:inline-flex; align-items:center; gap:5px; font-variant-numeric:tabular-nums; }.count[aria-expanded=true] { background:#343b46; }
+  .channel-toggle { display:none; }
   .workspace { display:flex; flex:1; min-height:0; position:relative; }
-  aside { background:#25282a; flex-shrink:0; overflow:auto; }
-  .channels { width:210px; border-right:1px solid var(--line); display:flex; flex-direction:column; }
-  .pane-label { padding:10px 12px 8px; font-size:12px; color:var(--muted); letter-spacing:1px; display:flex; justify-content:space-between; }
-  aside button { width:100%; padding:7px 10px; display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
-  aside button small { width:100%; font-size:12px; padding-left:23px; overflow:hidden; text-overflow:ellipsis; }
+  .channels { background:#22262b; width:200px; flex-shrink:0; border-right:1px solid var(--line); display:flex; flex-direction:column; padding-top:8px; }
+  .channel-entries { overflow:auto; flex:1; min-height:0; }
+  .channels button { width:100%; display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:8px 12px; }
+  .channels button small { width:100%; padding-left:22px; font-size:12px; overflow:hidden; text-overflow:ellipsis; }
+  .channels .chosen { background:#303741; box-shadow:inset 2px 0 var(--accent); }
   .symbol { width:16px; color:var(--accent); flex-shrink:0; }
   .room-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  aside .chosen { background:#343b46; border-left:2px solid var(--accent); }
-  .unread .room-name { color:var(--accent); }
+  .unread .room-name { color:var(--accent); font-weight:600; }
   .badge { font-size:12px; background:#3b4b62; border-radius:3px; padding:1px 5px; }
+  .channel-actions { display:flex; flex-shrink:0; gap:4px; padding:8px; border-top:1px solid var(--line); }
+  .channel-actions button { justify-content:center; padding:8px; }
   .conversation { flex:1; min-width:0; display:flex; flex-direction:column; }
-  .topic { border-bottom:1px solid var(--line); padding:9px 12px; display:flex; align-items:baseline; gap:16px; background:#25282a; }
-  .topic strong { color:var(--accent); white-space:nowrap; }
-  .topic span { color:var(--muted); font-size:14px; overflow-wrap:anywhere; }
-  .welcome { flex:1; min-height:0; overflow:auto; padding:clamp(18px,4vw,52px); }
-  h1 { font-size:24px; font-weight:normal; color:var(--accent); margin:22px 0 14px; }
+  .welcome { flex:1; min-height:0; overflow:auto; padding:clamp(20px,4vw,48px); }
+  h1 { font-size:24px; font-weight:normal; color:var(--accent); margin:16px 0; }
   p { margin:12px 0; }
-  .welcome form { max-width:400px; margin-top:25px; }
-  label { display:block; margin:15px 0 6px; }
-  input { display:block; width:100%; border:1px solid #626969; background:#16181c; padding:10px; min-height:44px; }
-  .primary { margin-top:16px; border:1px solid #566476; background:#343b46; padding:10px 14px; }
-  dl { display:grid; grid-template-columns:max-content 1fr; gap:8px 18px; margin:28px 0; }
+  .welcome form,.network-gate { width:100%; max-width:640px; }
+  .welcome form { max-width:400px; margin-top:24px; }
+  .network-gate { align-self:center; }
+  label { display:block; margin:12px 0 6px; }
+  input { display:block; width:100%; border:1px solid #626969; background:#16181c; padding:10px; min-height:40px; }
+  .primary { margin-top:12px; border:1px solid #566476; background:#343b46; padding:9px 14px; }
+  dl { display:grid; grid-template-columns:max-content 1fr; gap:8px 18px; margin:24px 0; }
   dt { color:var(--accent); } dd { margin:0; color:var(--muted); }
-  details { margin-top:24px; color:var(--muted); } summary { cursor:pointer; }
+  details { margin-top:20px; color:var(--muted); } summary { cursor:pointer; }
   .identity { overflow-wrap:anywhere; font-size:12px; }
-  .transcript { flex:1; overflow:auto; min-height:0; padding:12px; scrollbar-color:#5a6561 #242728; }
-  .message { display:grid; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:2px 0; align-items:baseline; }
+  .transcript,.composer { font:16px/1.4 GchatFixedsys,'Lucida Console',monospace; }
+  .readable .transcript,.readable .composer { font-family:ui-monospace,'SFMono-Regular',Consolas,monospace; line-height:1.5; }
+  .transcript { flex:1; overflow:auto; min-height:0; padding:16px; scrollbar-color:#5a6561 #242728; }
+  .message { display:grid; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
   time { color:#858f8e; font-size:14px; }
   .nick { color:#a9c7e8; max-width:24ch; overflow-wrap:anywhere; }
   .mine .nick { color:var(--accent); }
   .body { white-space:pre-wrap; overflow-wrap:anywhere; min-width:0; }
   .empty { color:var(--muted); }
+  .date { margin:14px 0; color:var(--muted); text-align:center; border-bottom:1px solid var(--line); }
+  .acceptance { font:11px/1.4 ui-sans-serif,system-ui,sans-serif; }
   .older { display:block; margin:0 auto 12px; border-color:var(--line); color:var(--accent); }
+  .unread-divider { color:var(--accent); border-top:1px solid var(--accent); text-align:center; margin:12px 0; }
+  .jump { align-self:center; min-height:40px; color:var(--accent); }
+  .results { max-height:45%; overflow:auto; border-top:1px solid var(--line); }
   .notice { display:flex; background:#2b3037; border-top:1px solid #566476; max-height:38%; overflow:auto; padding:8px 12px; gap:10px; }
   .notice pre { font:inherit; white-space:pre-wrap; overflow-wrap:anywhere; flex:1; margin:0; min-width:0; }
   .notice button { align-self:flex-start; }
-  .retry { padding:7px 12px; background:#4b3a27; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .retry { padding:8px 12px; background:#4b3a27; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
   .retry button { border-color:#806640; }
-  .composer { position:relative; display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); background:#191d1e; padding:7px 10px; }
-  .prompt { color:var(--accent); max-width:18ch; overflow:hidden; text-overflow:ellipsis; }
+  .provider-errors,.progress { padding:6px 16px; color:var(--muted); }
+  .search { max-height:50%; overflow:auto; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .search p { overflow-wrap:anywhere; white-space:pre-wrap; }.search label { margin-top:0; }
+  .composer { position:relative; display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); background:#191d22; padding:10px 12px; }
   textarea { resize:none; flex:1; width:0; min-height:36px; max-height:160px; padding:8px 3px; border:0; background:transparent; field-sizing:content; }
+  .attach { display:flex; align-items:center; justify-content:center; color:var(--muted); padding:8px; }
   .send { color:var(--accent); border-color:#566476; }
   .completions { position:absolute; bottom:100%; left:0; right:0; z-index:2; background:#303739; border:1px solid #566476; max-height:240px; overflow:auto; }
-  .completions button { display:flex; gap:20px; width:100%; padding:9px 12px; }
-  .completions span { color:var(--muted); }
-  footer { display:flex; justify-content:space-between; gap:10px; font-size:12px; padding:4px 10px; color:var(--muted); background:var(--panel); }
-  .members { width:160px; border-left:1px solid var(--line); }
-  .members button { overflow-wrap:anywhere; }.members .self { color:var(--accent); }
-  .mobile,.scrim { display:none; }
-  .more { position:relative; margin:0; color:var(--ink); }
-  .more summary { padding:12px 10px; list-style:none; }
-  .more-items { position:absolute; right:0; top:100%; width:190px; z-index:8; padding:4px; border:1px solid var(--line); background:var(--panel); box-shadow:0 6px 20px #0008; }
-  .more-items button { display:block; width:100%; }
-
-  .modal::backdrop { background:#0009; }
-  .modal { color:var(--ink); margin:auto; width:min(460px,100%); max-height:90dvh; overflow:auto; background:var(--panel); border:1px solid #566476; padding:18px; box-shadow:0 14px 60px #0008; }
-  .modal header { display:flex; align-items:center; gap:10px; }.modal h2 { flex:1; font-size:20px; font-weight:normal; margin:0; color:var(--accent); }
-  @media(max-width:1000px) and (min-width:761px) { .channels{width:180px}.members{width:135px} }
+  .completions button { display:flex; gap:20px; width:100%; padding:9px 12px; }.completions span { color:var(--muted); }
+  .inspector { width:300px; flex:none; overflow:auto; border-left:1px solid var(--line); background:#22262b; }
+  .inspector-heading { display:flex; align-items:center; gap:4px; padding:8px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#22262b; z-index:1; }
+  .inspector-heading [role=tablist] { flex:1; display:flex; gap:4px; }.inspector-heading [aria-selected=true] { background:#343b46; }
+  .inspector-heading small { margin-left:4px; }.users-list { padding:8px; }.users-list button { display:flex; justify-content:space-between; gap:8px; width:100%; overflow-wrap:anywhere; }.users-list .self { color:var(--accent); }
+  .scrim { position:absolute; inset:0; z-index:3; background:#0008; width:100%;border:0; }
+  .modal::backdrop { background:#0009; }.modal { color:var(--ink); margin:auto; width:min(500px,calc(100% - 24px)); max-height:88dvh; overflow:auto; background:var(--panel); border:1px solid #566476; padding:20px; box-shadow:0 14px 60px #0008; }
+  .modal header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }.modal h2 { flex:1; font-size:20px; font-weight:normal; margin:0; color:var(--accent); }
+  .utility-modal { width:min(560px,calc(100% - 24px)); }.font-options { display:grid; gap:8px; }.font-options button { border:1px solid var(--line); padding:12px; }.font-options [aria-pressed=true] { border-color:var(--accent); }.font-options span { display:block; margin-top:8px; font-size:16px; }.font-fixed { font-family:GchatFixedsys,monospace; }.font-readable { font-family:ui-monospace,monospace; }.shortcuts { padding:12px; color:var(--muted); }.shortcuts h3 { font:inherit; color:var(--ink); }
+  @media(max-width:999px) { .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,90vw); box-shadow:-4px 0 20px #0006; } }
   @media(max-width:760px) {
-    .mobile { display:block; }.desktop { display:none; }.toolbar { gap:0; }.toolbar button { padding:8px; min-height:44px; font-size:14px; white-space:nowrap; }
-    .titlebar { padding:8px 10px; }
-    .channels,.members { display:none; position:absolute; top:0; bottom:0; z-index:4; width:min(280px,85vw); box-shadow:4px 0 20px #0006; }
-    .channels.open { display:flex; }.members.open{display:block;right:0;}.channels button,.members button{min-height:44px;}
-    .scrim { display:block; position:absolute; inset:0; z-index:3; background:#0008; width:100%;border:0; }
-    .topic{padding:8px 10px;flex-wrap:wrap;gap:3px 10px;}.topic span{font-size:12px;}
-    .transcript{padding:10px 8px;}.message{grid-template-columns:6ch 1fr;column-gap:4px;margin:6px 0;}.body{grid-column:2;}.nick{max-width:none;}time{font-size:12px;}
-    .composer{padding:4px 8px;}.composer textarea,.send{min-height:44px;}.prompt{max-width:10ch;font-size:14px;}
-    footer span:last-child{display:none;}footer{padding:4px 8px;}.welcome{padding:20px;}h1{font-size:22px;}
-    .completions button{flex-wrap:wrap;gap:4px;}.completions span{width:100%;font-size:12px;}.notice{max-height:32%;}
+    .channel-toggle { display:block; }.brand strong { display:none; }.titlebar { padding:6px 8px; gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:40px; }
+    .channels { display:none; position:absolute; top:0; bottom:0; left:0; z-index:4; width:min(280px,85vw); box-shadow:4px 0 20px #0006; }.channels.open { display:flex; }.channels button { min-height:44px; }
+    .transcript { padding:12px; }.message { grid-template-columns:6ch 1fr; column-gap:6px; margin:7px 0; }.body { grid-column:2; }.nick { max-width:none; }time { font-size:12px; }
+    .composer { padding:8px; }.composer textarea,.send,.attach { min-height:44px; }.welcome { padding:24px; }h1 { font-size:22px; }
+    .completions button { flex-wrap:wrap; gap:4px; }.completions span { width:100%; font-size:12px; }.notice { max-height:32%; }
   }
+  @media(max-width:440px) { .brand { display:none; }.network-word { display:none; }.connection-dot { margin:0; font-size:12px; }.active-title { padding-left:2px; }.header-actions { gap:0; } }
 </style>
