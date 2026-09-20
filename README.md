@@ -22,6 +22,8 @@ installer and publication work is deferred.
 
 [Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
 authorized sources, explicit download acceptance and a bounded encrypted cache.
+Optional local [persistence diagnostics](docs/PERSISTENCE.md) measure protocol
+profile write counts, bytes and time during file-transfer investigation.
 
 ## Build and run
 

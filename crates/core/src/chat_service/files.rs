@@ -451,6 +451,9 @@ impl ChatService {
                         })
                     })
                     .flatten();
+                let persistence_diagnostics = worker
+                    .diagnostics
+                    .then(|| service.runtime.persistence_diagnostics());
                 let result = tokio::task::spawn_blocking(move || -> Result<Work, String> {
                     if !worker.enabled.load(Ordering::Acquire) {
                         return Ok(Work {
@@ -511,6 +514,7 @@ impl ChatService {
                             "pending_actions": backend.pending.len(), "cache_bytes": backend.engine.cache.used(),
                             "hop_accepted": d.hop_accepted, "outcome_unknown": d.outcome_unknown, "not_sent": d.not_sent,
                             "protocol": protocol_diagnostics,
+                            "persistence": persistence_diagnostics,
                         });
                         // Optional local aggregates only. A full diagnostic disk
                         // must not turn an observation into a transfer failure.

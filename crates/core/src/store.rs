@@ -22,6 +22,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use zeroize::Zeroizing;
 
+mod diagnostics;
+pub use diagnostics::StoreSaveDiagnostics;
+use diagnostics::{elapsed_us, SaveCounters};
+
 const MAGIC: &[u8; 6] = b"GCCST2";
 const ARCHIVE_MAGIC: &[u8; 6] = b"GCCAR2";
 const LEGACY_MAGIC: &[u8; 6] = b"GCCST1";
@@ -117,6 +121,7 @@ struct EncryptedStore {
     key: Zeroizing<[u8; 32]>,
     initialized: AtomicBool,
     save_lock: Mutex<()>,
+    save_counters: SaveCounters,
     _profile_lock: std::fs::File,
 }
 
@@ -141,6 +146,7 @@ impl EncryptedStore {
             key: derive_key(passphrase, &salt)?,
             initialized: AtomicBool::new(false),
             save_lock: Mutex::new(()),
+            save_counters: SaveCounters::default(),
             _profile_lock: profile_lock,
         })
     }
@@ -177,6 +183,7 @@ impl EncryptedStore {
                 key,
                 initialized: AtomicBool::new(true),
                 save_lock: Mutex::new(()),
+                save_counters: SaveCounters::default(),
                 _profile_lock: profile_lock,
             },
             data,
@@ -204,29 +211,46 @@ impl EncryptedStore {
         use aes_gcm::aead::Aead;
         use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
 
-        let _save = self.save_lock.lock().map_err(|_| "store lock poisoned")?;
-        let plain = postcard::to_allocvec(data).map_err(|error| format!("serialize: {error}"))?;
-        let mut nonce = [0u8; 12];
-        rand::thread_rng().fill_bytes(&mut nonce);
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&*self.key));
-        let ciphertext = cipher
-            .encrypt(Nonce::from_slice(&nonce), plain.as_slice())
-            .map_err(|_| "encrypt failed".to_string())?;
-        let mut output = Vec::with_capacity(HEADER_LEN + ciphertext.len());
-        output.extend_from_slice(self.magic);
-        output.extend_from_slice(&ARGON_M_COST.to_be_bytes());
-        output.extend_from_slice(&ARGON_T_COST.to_be_bytes());
-        output.extend_from_slice(&ARGON_P_COST.to_be_bytes());
-        output.extend_from_slice(&self.salt);
-        output.extend_from_slice(&nonce);
-        output.extend_from_slice(&ciphertext);
-        atomic_write(
-            &self.path,
-            &output,
-            !self.initialized.load(Ordering::Acquire),
-        )?;
-        self.initialized.store(true, Ordering::Release);
-        Ok(())
+        let started = std::time::Instant::now();
+        self.save_counters.begin();
+        let mut sample = StoreSaveDiagnostics::default();
+        let result = (|| {
+            let _save = self.save_lock.lock().map_err(|_| "store lock poisoned")?;
+            sample.lock_wait_us = elapsed_us(started);
+            let serialize_started = std::time::Instant::now();
+            let plain = postcard::to_allocvec(data);
+            sample.serialize_us = elapsed_us(serialize_started);
+            let plain = plain.map_err(|error| format!("serialize: {error}"))?;
+            sample.serialized_bytes = plain.len() as u64;
+            let encrypt_started = std::time::Instant::now();
+            let mut nonce = [0u8; 12];
+            rand::thread_rng().fill_bytes(&mut nonce);
+            let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&*self.key));
+            let ciphertext = cipher.encrypt(Nonce::from_slice(&nonce), plain.as_slice());
+            sample.encrypt_us = elapsed_us(encrypt_started);
+            let ciphertext = ciphertext.map_err(|_| "encrypt failed".to_string())?;
+            let mut output = Vec::with_capacity(HEADER_LEN + ciphertext.len());
+            output.extend_from_slice(self.magic);
+            output.extend_from_slice(&ARGON_M_COST.to_be_bytes());
+            output.extend_from_slice(&ARGON_T_COST.to_be_bytes());
+            output.extend_from_slice(&ARGON_P_COST.to_be_bytes());
+            output.extend_from_slice(&self.salt);
+            output.extend_from_slice(&nonce);
+            output.extend_from_slice(&ciphertext);
+            sample.write_attempted_bytes = output.len() as u64;
+            let write_started = std::time::Instant::now();
+            let written = atomic_write(
+                &self.path,
+                &output,
+                !self.initialized.load(Ordering::Acquire),
+            );
+            sample.atomic_write_us = elapsed_us(write_started);
+            written?;
+            self.initialized.store(true, Ordering::Release);
+            Ok(())
+        })();
+        self.save_counters.finish(&sample, started, result.is_ok());
+        result
     }
 }
 
@@ -653,11 +677,56 @@ impl ProtocolStore {
     pub fn save(&self, data: &ProtocolData) -> Result<(), String> {
         self.0.save(data)
     }
+
+    /// Aggregate costs since this process opened the profile; no profile contents.
+    pub fn save_diagnostics(&self) -> StoreSaveDiagnostics {
+        self.0.save_counters.snapshot()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn profile_save_counts_only_successful_replacements_as_committed() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::private_fs::make_private(dir.path(), true).unwrap();
+        let path = dir.path().join("protocol");
+        let (store, mut data) = ProtocolStore::create(&path, "test-passphrase").unwrap();
+        let initial = store.save_diagnostics();
+        assert_eq!(initial.completed, 1);
+        assert_eq!(
+            initial.committed_bytes,
+            std::fs::metadata(&path).unwrap().len()
+        );
+        let retained = dir.path().join("retained");
+        std::fs::rename(&path, &retained).unwrap();
+        std::fs::create_dir(&path).unwrap();
+        data.node_state = Some(vec![7; 1024 * 1024]);
+        assert!(store.save(&data).is_err());
+        let failed = store.save_diagnostics();
+        assert_eq!(failed.attempts, 2);
+        assert_eq!(failed.failed, 1);
+        assert_eq!(failed.completed, 1);
+        assert_eq!(failed.committed_bytes, initial.committed_bytes);
+        assert!(failed.write_attempted_bytes > initial.committed_bytes + 1024 * 1024);
+        std::fs::remove_dir(&path).unwrap();
+        std::fs::rename(retained, &path).unwrap();
+        store.save(&data).unwrap();
+        let succeeded = store.save_diagnostics();
+        assert_eq!(succeeded.attempts, 3);
+        assert_eq!(succeeded.completed, 2);
+        assert_eq!(succeeded.failed, 1);
+        assert_eq!(
+            succeeded.committed_bytes - initial.committed_bytes,
+            std::fs::metadata(&path).unwrap().len()
+        );
+        assert!(succeeded.total_us >= succeeded.atomic_write_us);
+        drop(store);
+        let (_, reopened) = ProtocolStore::open(&path, "test-passphrase").unwrap();
+        assert_eq!(reopened.node_state, data.node_state);
+    }
 
     fn tmpdir(tag: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("gcstore-{tag}-{}", std::process::id()));

@@ -12,6 +12,10 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
+mod persistence;
+pub use persistence::PersistenceDiagnostics;
+use persistence::{PersistenceCounters, SaveCause};
+
 /// Receives non-fatal runtime problems (failed background saves) so a host
 /// with a full-screen UI can show them instead of writing to stderr.
 pub type ErrorSink = Arc<dyn Fn(String) + Send + Sync>;
@@ -19,6 +23,7 @@ pub type ErrorSink = Arc<dyn Fn(String) + Send + Sync>;
 struct Inner {
     node: NodeHandle,
     _store: Arc<ProtocolStore>,
+    persistence: PersistenceCounters,
     save_lock: tokio::sync::Mutex<()>,
     error_sink: std::sync::Mutex<Option<ErrorSink>>,
     network: Option<gcoms_network_client::NetworkClient>,
@@ -294,6 +299,7 @@ impl ProtocolRuntime {
         let runtime = Self(Arc::new(Inner {
             node,
             _store: store,
+            persistence: PersistenceCounters::default(),
             save_lock: tokio::sync::Mutex::new(()),
             error_sink: std::sync::Mutex::new(None),
             network_status: std::sync::Mutex::new(NetworkStatus::new(if network.is_some() {
@@ -356,8 +362,25 @@ impl ProtocolRuntime {
     }
 
     pub async fn save(&self) -> Result<(), String> {
+        self.save_for(SaveCause::Explicit).await
+    }
+
+    async fn save_for(&self, cause: SaveCause) -> Result<(), String> {
+        let started = std::time::Instant::now();
+        self.0.persistence.begin(cause);
         let _save = self.0.save_lock.lock().await;
-        self.0.node.persist_state().await
+        let result = self.0.node.persist_state().await;
+        self.0.persistence.finish(cause, started, result.is_ok());
+        result
+    }
+
+    /// Aggregate caller and actual encrypted-write costs since this runtime opened.
+    /// A canceled/in-flight request may not yet have a completion; snapshots are
+    /// observational counters, not a durability receipt.
+    pub fn persistence_diagnostics(&self) -> PersistenceDiagnostics {
+        self.0
+            .persistence
+            .snapshot(self.0._store.save_diagnostics())
     }
 
     pub async fn shutdown(self) -> Result<(), String> {
@@ -370,7 +393,7 @@ impl ProtocolRuntime {
             while background.tasks.join_next().await.is_some() {}
         }
 
-        let save = self.save().await;
+        let save = self.save_for(SaveCause::Shutdown).await;
         self.0.node.shutdown().await;
         save
     }
@@ -485,7 +508,7 @@ impl ProtocolRuntime {
                 tokio::time::sleep(std::time::Duration::from_secs(30)).await;
                 let Some(inner) = inner.upgrade() else { break };
                 let runtime = ProtocolRuntime(inner);
-                if let Err(error) = runtime.save().await {
+                if let Err(error) = runtime.save_for(SaveCause::Periodic).await {
                     runtime.report(format!("periodic protocol profile save failed: {error}"));
                 }
             }
@@ -493,13 +516,17 @@ impl ProtocolRuntime {
     }
 
     fn spawn_event_persistence(&self) {
-        let mut events = self.sdk_client().embedded.subscribe_events();
+        self.spawn_event_persistence_from(self.sdk_client().embedded.subscribe_events());
+    }
+
+    fn spawn_event_persistence_from(&self, mut events: mpsc::Receiver<ClientEvent>) {
         let inner = Arc::downgrade(&self.0);
         self.spawn_background(async move {
-            while events.recv().await.is_some() {
+            while let Some(event) = events.recv().await {
                 let Some(inner) = inner.upgrade() else { break };
                 let runtime = ProtocolRuntime(inner);
-                if let Err(error) = runtime.save().await {
+                runtime.0.persistence.event(&event);
+                if let Err(error) = runtime.save_for(SaveCause::Event).await {
                     runtime.report(format!("protocol event save failed: {error}"));
                 }
             }
@@ -1046,7 +1073,12 @@ async fn forward_protocol_events(
         let Some(inner) = runtime.upgrade() else {
             break;
         };
-        if ProtocolRuntime(inner).save().await.is_err() || sender.send(event).await.is_err() {
+        if ProtocolRuntime(inner)
+            .save_for(SaveCause::Subscriber)
+            .await
+            .is_err()
+            || sender.send(event).await.is_err()
+        {
             break;
         }
     }
@@ -1059,6 +1091,8 @@ fn central_reserved(ownership: &Option<CentralPartition>, body: &[u8]) -> bool {
     })
 }
 
+#[cfg(test)]
+mod persistence_tests;
 #[cfg(test)]
 mod shutdown_tests;
 
