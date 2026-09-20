@@ -1164,12 +1164,7 @@ impl ClientHandle {
             secret,
             expiry,
         };
-        let link = if node.uses_onion_routing() {
-            invite.to_link_with_bootstrap(node.routing_bootstrap()?)
-        } else {
-            invite.to_link()
-        };
-        link.ok_or_else(|| "invite is too large to encode".into())
+        node.channel_invite_link(&invite)
     }
 
     /// Friend: redeem an invite link. Prepares a key package, contacts the
@@ -1184,7 +1179,7 @@ impl ClientHandle {
     ) -> Result<String, String> {
         let envelope = gcoms_node::channel_invite::InviteEnvelope::from_link(link.trim())
             .ok_or("that does not look like a valid invite link")?;
-        let invite = envelope.invite;
+        let invite = &envelope.invite;
         let remaining = invite.expiry.saturating_sub(now_unix()).min(timeout_secs);
         if remaining == 0 {
             return Err("invite expired or join deadline elapsed".into());
@@ -1192,9 +1187,7 @@ impl ClientHandle {
         let deadline = tokio::time::Instant::now() + Duration::from_secs(remaining);
         let embedded = self.sdk_client()?;
         let node = embedded.node();
-        if let Some(bootstrap) = envelope.bootstrap {
-            node.install_routing_bootstrap(bootstrap).await?;
-        }
+        node.install_invite_bootstrap(&envelope).await?;
         node.wait_for_inbox(deadline).await?;
         tokio::time::timeout_at(deadline, async {
             // Prepare our own key package for this channel.
@@ -1228,7 +1221,7 @@ impl ClientHandle {
             .await
             .map_err(|e| e.to_string())?;
             self.reconcile_channels().await?;
-            Ok(invite.channel)
+            Ok(invite.channel.clone())
         })
         .await
         .map_err(|_| "invite join deadline elapsed".to_owned())?
