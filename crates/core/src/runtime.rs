@@ -413,7 +413,7 @@ impl ProtocolRuntime {
                 .load(std::sync::atomic::Ordering::Relaxed)
         }) {
             match network.has_invitation() {
-                Ok(false) if self.0.node.routing_bootstrap().is_err() => {
+                Ok(false) if !self.0.node.has_routing_bootstrap() => {
                     return NetworkStatus::new(NetworkState::InvitationRequired)
                 }
                 Err(_) => return NetworkStatus::new(NetworkState::Unavailable),

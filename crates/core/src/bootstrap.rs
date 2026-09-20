@@ -14,6 +14,10 @@ use serde::Deserialize;
 const MAX_RESPONSE_BYTES: usize = 128 * 1024;
 const FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
+#[cfg(all(test, feature = "gc2-carrier"))]
+#[path = "bootstrap_gc2_tests.rs"]
+mod gc2_tests;
+
 /// Shared defaults for daemon, UI hosts and installer. Explicit runtime
 /// settings override these origins; authentication remains instance-local.
 pub fn default_provider_urls() -> Vec<String> {
@@ -47,13 +51,34 @@ pub async fn recover_routing(
     endpoints: &[Url],
     deadline: tokio::time::Instant,
 ) -> Result<(), String> {
-    if node.routing_bootstrap().is_ok() {
+    let client = http_builder(true, FETCH_TIMEOUT)
+        .build()
+        .map_err(|_| "build bootstrap client")?;
+    recover_routing_with(node, endpoints, deadline, &client).await
+}
+
+async fn recover_routing_with(
+    node: &gcoms_node::node::NodeHandle,
+    endpoints: &[Url],
+    deadline: tokio::time::Instant,
+    client: &reqwest::Client,
+) -> Result<(), String> {
+    if node.has_routing_bootstrap() {
         let cached_deadline =
             deadline.min(tokio::time::Instant::now() + std::time::Duration::from_secs(30));
         if node.wait_for_inbox(cached_deadline).await.is_ok() {
             return Ok(());
         }
     }
+    #[cfg(feature = "gc2-carrier")]
+    if node.uses_gc2_routing() {
+        let bundle = tokio::time::timeout_at(deadline, fetch_gc2_routing_with(client, endpoints))
+            .await
+            .map_err(|_| "routing bootstrap deadline elapsed")??;
+        node.install_gc2_routing_bootstrap(&bundle)?;
+        return node.wait_for_inbox(deadline).await;
+    }
+    let _ = client;
     let bundle = tokio::time::timeout_at(deadline, fetch_routing_bootstrap(endpoints, false))
         .await
         .map_err(|_| "routing bootstrap deadline elapsed")??;
@@ -76,12 +101,18 @@ pub async fn recover_network(
         return recover_routing(node, &parse_bootstrap_urls(urls, false)?, deadline).await;
     }
     let cached = deadline.min(tokio::time::Instant::now() + std::time::Duration::from_secs(30));
-    if node.routing_bootstrap().is_ok() && node.wait_for_inbox(cached).await.is_ok() {
+    if node.has_routing_bootstrap() && node.wait_for_inbox(cached).await.is_ok() {
         return Ok(());
     }
     let network = network.ok_or("This runtime has no installed network state")?;
     if !network.has_invitation()? {
         return Err("Enter a network invitation to connect.".into());
+    }
+    #[cfg(feature = "gc2-carrier")]
+    if node.uses_gc2_routing() {
+        let bundle = network.fetch_gc2_routing(deadline).await?;
+        node.install_gc2_routing_bootstrap(&bundle)?;
+        return node.wait_for_inbox(deadline).await;
     }
     let bundle = network.fetch_routing(deadline).await?;
     node.install_routing_bootstrap(bundle).await?;
@@ -159,6 +190,63 @@ async fn bounded_body(mut response: reqwest::Response) -> Result<Vec<u8>, String
         bytes.extend_from_slice(&chunk);
     }
     Ok(bytes)
+}
+
+/// Explicitly configured HTTPS providers retain their TLS/origin trust policy,
+/// but current-protocol nodes request only GC/2 introductions, never v1/v2.
+#[cfg(feature = "gc2-carrier")]
+pub async fn fetch_gc2_routing_bootstrap(
+    endpoints: &[Url],
+) -> Result<gcoms_routing::gc2::directory::BootstrapBundle, String> {
+    let client = http_builder(true, FETCH_TIMEOUT)
+        .build()
+        .map_err(|_| "build bootstrap client")?;
+    fetch_gc2_routing_with(&client, endpoints).await
+}
+
+#[cfg(feature = "gc2-carrier")]
+async fn fetch_gc2_routing_with(
+    client: &reqwest::Client,
+    endpoints: &[Url],
+) -> Result<gcoms_routing::gc2::directory::BootstrapBundle, String> {
+    if endpoints.is_empty() {
+        return Err("no relay bootstrap endpoints configured".into());
+    }
+    let request_id = URL_SAFE_NO_PAD.encode(rand::random::<[u8; 16]>());
+    let mut last = String::from("no GC/2 bootstrap endpoint succeeded");
+    for base in endpoints {
+        let url = base
+            .join("v1/relay-provisions")
+            .map_err(|_| "invalid bootstrap base URL")?;
+        let response = match client
+            .post(url)
+            .json(&serde_json::json!({"request_id":request_id,"supported_versions":[3]}))
+            .send()
+            .await
+        {
+            Ok(response) if response.status().is_success() => response,
+            Ok(response) => {
+                last = format!("bootstrap endpoint returned {}", response.status());
+                continue;
+            }
+            Err(_) => {
+                last = "bootstrap endpoint unreachable".into();
+                continue;
+            }
+        };
+        let bytes = match bounded_body(response).await {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                last = error;
+                continue;
+            }
+        };
+        match gcoms_network_client::routing::decode_gc2_response(&bytes) {
+            Ok(bundle) => return Ok(bundle),
+            Err(error) => last = error,
+        }
+    }
+    Err(last)
 }
 
 /// Initial trusted HTTPS discovery carries private relay introductions only.

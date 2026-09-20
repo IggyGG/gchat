@@ -1165,13 +1165,16 @@ dependencies = [
  "hmac 0.12.1",
  "postcard",
  "rand 0.8.8",
+ "rcgen",
  "reqwest",
  "rustix 1.1.4",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
  "tokio",
+ "tokio-rustls",
  "url",
  "uuid",
  "windows-sys 0.61.2",
@@ -1205,7 +1208,7 @@ dependencies = [
 name = "gcoms-core"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cda71c79b6ba94875ead916fa91970e3ed08b10cfcfb10d00b78f7c5e26e998"
+checksum = "abee1ebe63697410343bfbf2638096134376ef690faa48b23567e713afd5048e"
 dependencies = [
  "base64ct",
  "hmac 0.12.1",
@@ -1217,7 +1220,7 @@ dependencies = [
 name = "gcoms-crypto"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70ac9f11091ffe4585c84044d76509f45b79e40400dcc692a7880a5d1c04178c"
+checksum = "96c2929b1ac4f20e8458422374b3a94556c6499e168358099e7f7462ebd667af"
 dependencies = [
  "aes-gcm",
  "hkdf 0.12.4",
@@ -1234,15 +1237,20 @@ dependencies = [
 name = "gcoms-file-transfer"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e248b25a46d34287e469d8ddc554eebd9204dbcfa423661ed410d0033d51a10"
+checksum = "d1b230a42f44a4b974a1c30131bff269138203db457b6acd323fd0701056af2b"
 dependencies = [
+ "aes-gcm",
+ "fs2",
  "gcoms-core",
+ "gcoms-private-fs",
  "hex",
  "hmac 0.12.1",
+ "postcard",
  "rand 0.8.8",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tempfile",
  "thiserror 2.0.20",
  "windows-sys 0.61.2",
  "zeroize",
@@ -1252,7 +1260,7 @@ dependencies = [
 name = "gcoms-gossip"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "869165bb27b73bfb1871c6a49cfab0ceced4decbd149936ae1c431fad03e01f9"
+checksum = "0b3460e6461c5a23e08e77c3980f0b3d6845e89f126c2fb56778f9864c28d0da"
 dependencies = [
  "rand 0.8.8",
 ]
@@ -1261,7 +1269,7 @@ dependencies = [
 name = "gcoms-mls"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05d9a0cdda71621dcc1e1ae757bbfbd3b973177d7856a5c63e2471c9170938fc"
+checksum = "60419af5c09b143d0d76c9bdc63b6822e2f4fbacd403987ddd27c6e4367f4e50"
 dependencies = [
  "aes-gcm",
  "gcoms-crypto",
@@ -1279,7 +1287,7 @@ dependencies = [
 name = "gcoms-network"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8db644eab85199701a8ea4cd1d400fc06d5e76078c97368db81fb838ee6087d4"
+checksum = "bd6d3845bf312fc1975c81492cb172a5677edfed5c583ff96f4582abd59166d7"
 dependencies = [
  "base64",
  "gcoms-crypto",
@@ -1292,7 +1300,7 @@ dependencies = [
 name = "gcoms-network-client"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3b5cc9440ac1faca61a80324f5398c1f2eeab04983d042e04299f5c67ba5b39"
+checksum = "04135de5c645ad75f56eddf17161ca494d2360ca354321dc1033888d37cf2234"
 dependencies = [
  "base64",
  "fs2",
@@ -1314,12 +1322,13 @@ dependencies = [
 name = "gcoms-node"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfa31d74e88914473b67545d63494a6f49a35700b01c6597b9841559f917adce"
+checksum = "8d71d8724f33a3996c568ad1cb8937bad7fe50b6748a9efd97e0a7745ac9e8d4"
 dependencies = [
  "aes-gcm",
  "argon2",
  "bytes",
  "fs2",
+ "futures-util",
  "gcoms-core",
  "gcoms-crypto",
  "gcoms-gossip",
@@ -1330,8 +1339,10 @@ dependencies = [
  "gcoms-protocol",
  "gcoms-routing",
  "gcoms-transport",
+ "h2",
  "hkdf 0.12.4",
  "hmac 0.12.1",
+ "http",
  "libc",
  "quick-xml",
  "rand 0.8.8",
@@ -1353,7 +1364,7 @@ dependencies = [
 name = "gcoms-private-fs"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "955ccece640e5508669eba7dce6f8b875c09414efb1a773c01ada882b2352062"
+checksum = "0b9da05c89d191971250a4046bac28da17dc3a34dc6a9fa361b89bd7c53fd864"
 dependencies = [
  "rustix 1.1.4",
  "windows-sys 0.61.2",
@@ -1363,21 +1374,27 @@ dependencies = [
 name = "gcoms-protocol"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cbecf2c733d90857c9ae30a7398ef6047d1aa66db690867ffc1e7755eff46ba"
+checksum = "4f1d90d00af37cf2111a85365091972bb2cc3b9c9b2328091ad4c91bedc6e0cc"
 dependencies = [
+ "aes-gcm",
  "gcoms-core",
  "gcoms-crypto",
+ "hkdf 0.12.4",
  "hmac 0.12.1",
+ "rand_core 0.6.4",
  "sha2 0.10.9",
+ "zeroize",
 ]
 
 [[package]]
 name = "gcoms-routing"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2fae6a462a4a703c17d159ee8f66fdfc9450c9a36c96d6cb8ced19045626b70"
+checksum = "ff5cc7777165e0ff987ecaafc305a0511a50ee35530f3f94cef436b2828d5d54"
 dependencies = [
  "bytes",
+ "futures-util",
+ "gcoms-core",
  "gcoms-transport",
  "h2",
  "hmac 0.12.1",
@@ -1399,7 +1416,7 @@ dependencies = [
 name = "gcoms-rpc"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23db0b3b123d3720dd8d0b8426a09e0e807c482dc2dc2497c7bffda9a2e77600"
+checksum = "7164924a37c10cfaace6c24da377d89a28fae4dcf29df3eac0d7cb91cab796ac"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -1430,7 +1447,7 @@ dependencies = [
 name = "gcoms-rpc-contract"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c8f27a86878c91d181bdec6ac6a06939c2d8d72d06c85dc149db26aa510918f"
+checksum = "f9aa29e537988657100f271450fcc475931b4a316539a7539620a6bf8e0cf1fe"
 dependencies = [
  "schemars",
  "serde",
@@ -1442,7 +1459,7 @@ dependencies = [
 name = "gcoms-rpc-macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e33a8fa31aa713191b9c809b95e8bb11ecde215f79ee0253cc0eed52843c75e1"
+checksum = "1d0e4129b2188330065e28c8468af5113ac434aefb47be6858c6a0021f4d7ab4"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -1454,7 +1471,7 @@ dependencies = [
 name = "gcoms-sdk"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0363077ae7c924e77f6c46354eb5a89cd2c1a4cf2139898d174b57b773ae294"
+checksum = "2798a4f409830528e96ae2c01fc935f4b6401d2dcd469d58fce34e70476e5476"
 dependencies = [
  "async-trait",
  "gcoms-core",
@@ -1472,7 +1489,7 @@ dependencies = [
 name = "gcoms-transport"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f9d01b5067480eb5e5861f36ce9e071f3176238410a202a5b5221524d671b14"
+checksum = "b66c55a22fcc8ef0846294bbabc644f6d3b462fed950fee40d1c479f9db489be"
 dependencies = [
  "base64ct",
  "bytes",
