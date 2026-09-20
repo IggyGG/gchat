@@ -3,6 +3,27 @@ use std::time::Duration;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn channel_text_survives_a_failed_hop_and_sender_reopen() {
+    channel_text_admission_reopen(AdmissionBoundary::FailedHop).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn channel_text_wrapper_save_failure_stays_an_error_and_reopens_admitted_send() {
+    channel_text_admission_reopen(AdmissionBoundary::FailedWrapperSave).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn channel_text_cancellation_after_admission_retains_send_without_a_success_receipt() {
+    channel_text_admission_reopen(AdmissionBoundary::CanceledWrapperSave).await;
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AdmissionBoundary {
+    FailedHop,
+    FailedWrapperSave,
+    CanceledWrapperSave,
+}
+
+async fn channel_text_admission_reopen(boundary: AdmissionBoundary) {
     let dir = tempfile::tempdir().unwrap();
     crate::private_fs::make_private(dir.path(), true).unwrap();
     let allow = vec!["127.0.0.0/8".to_owned()];
@@ -62,16 +83,100 @@ async fn channel_text_survives_a_failed_hop_and_sender_reopen() {
     drop(received);
     receiver.shutdown().await.unwrap();
 
-    // This is the untracked runtime entrypoint used by GChat text sending.
-    // Its native persistent outbox must distinguish acceptance from a hop ACK.
+    // GChat still uses the untracked API and a separate fallible wrapper save.
+    // Native durable acceptance applies to both tracked/untracked sends when
+    // a successful commit covers the complete nonempty remote roster.
     let body = b"retained through an offline first hop";
-    tokio::time::timeout(Duration::from_secs(30), a.send_channel("offline-hop", body))
+    let mut retained_profile = None;
+    if boundary == AdmissionBoundary::FailedHop {
+        tokio::time::timeout(Duration::from_secs(30), a.send_channel("offline-hop", body))
+            .await
+            .expect("bounded initial attempt")
+            .expect("durable local acceptance and successful wrapper save");
+    } else {
+        // Native commits use the real encrypted sink directly. Holding only
+        // this wrapper lock lets the native commit/hop attempt finish while
+        // keeping the subsequent wrapper save from reaching disk.
+        let before = sender.persistence_diagnostics();
+        let locked = sender.0.save_lock.lock().await;
+        let client = a.clone();
+        let pending = tokio::spawn(async move { client.send_channel("offline-hop", body).await });
+        tokio::time::timeout(Duration::from_secs(30), async {
+            while sender.persistence_diagnostics().calls["explicit"].requested
+                == before.calls["explicit"].requested
+            {
+                tokio::task::yield_now().await;
+            }
+        })
         .await
-        .expect("bounded initial attempt")
-        .expect("durable local acceptance");
+        .expect("native admission completed and wrapper save was requested");
+        assert!(
+            !pending.is_finished(),
+            "wrapper still has no completion receipt"
+        );
+        assert!(sender.persistence_diagnostics().profile.completed > before.profile.completed);
+        assert_eq!(
+            sender.persistence_diagnostics().calls["explicit"].completed,
+            before.calls["explicit"].completed
+        );
+        while let Ok(event) = sent.try_recv() {
+            assert!(
+                !matches!(event, ClientEvent::ChannelDelivered { message_id, .. } if message_id != warm_id)
+            );
+        }
+
+        // Preserve the actual admitted encrypted profile. A directory at its
+        // pathname fails atomic replacement, without a mocked persistence sink.
+        // Leave the fault in place through shutdown: a later successful save
+        // must not accidentally supply the durability this test is proving.
+        let path = dir.path().join("sender");
+        let retained = dir.path().join("sender-admitted");
+        let bytes = std::fs::read(&path).unwrap();
+        std::fs::rename(&path, &retained).unwrap();
+        std::fs::create_dir(&path).unwrap();
+        if boundary == AdmissionBoundary::FailedWrapperSave {
+            drop(locked);
+            let error = tokio::time::timeout(Duration::from_secs(30), pending)
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap_err();
+            assert!(matches!(error, SdkError::Runtime(_)));
+            assert_eq!(
+                sender.persistence_diagnostics().calls["explicit"].failed,
+                before.calls["explicit"].failed + 1
+            );
+        } else {
+            pending.abort();
+            assert!(pending.await.unwrap_err().is_cancelled());
+            drop(locked);
+            let after = sender.persistence_diagnostics();
+            assert_eq!(
+                after.calls["explicit"].failed,
+                before.calls["explicit"].failed
+            );
+            assert_eq!(
+                after.calls["explicit"].completed,
+                before.calls["explicit"].completed
+            );
+        }
+        assert_eq!(std::fs::read(&retained).unwrap(), bytes);
+        retained_profile = Some((path, retained, bytes));
+    }
     drop(sent);
     drop(a);
-    sender.shutdown().await.unwrap();
+    let shutdown = sender.shutdown().await;
+    if let Some((path, retained, bytes)) = retained_profile {
+        assert!(
+            shutdown.is_err(),
+            "failed shutdown save must remain visible"
+        );
+        assert_eq!(std::fs::read(&retained).unwrap(), bytes);
+        std::fs::remove_dir(&path).unwrap();
+        std::fs::rename(retained, path).unwrap();
+    } else {
+        shutdown.unwrap();
+    }
     sender = ProtocolRuntime::unlock_fixture(
         &dir.path().join("sender"),
         "test-only-passphrase",

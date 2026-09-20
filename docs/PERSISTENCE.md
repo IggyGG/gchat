@@ -46,6 +46,44 @@ authenticated recipient ACKs. The real-runtime offline-hop/reopen regression
 exercises GChat's existing `send_channel` entrypoint; its explicit save and
 the event barriers remain in place.
 
+### Channel acceptance contract and later save failure
+
+The durable-outbox rule applies to **both tracked and untracked native sends**.
+It is not a tracked-only change. A failed hop can preserve local acceptance only
+when a successful native commit contains the exact MLS wire and the complete,
+authenticated, nonempty remote recipient roster. A volatile send or a send
+without that complete durable outbox still reports hop failure. The tracked API
+additionally requires persistence and every remote route before preparation,
+and returns the wire's message ID; the untracked API returns no message ID.
+
+GChat's higher-level text sender still uses `ProtocolClient::send_channel`,
+which calls the untracked embedded API and then a separate fallible profile
+save. It has not switched to tracked sending, and this follow-up does not remove
+that save. Its outcomes remain distinct:
+
+| Boundary | Caller outcome and retained obligation |
+| --- | --- |
+| Native commit fails | Error; the new outbox is removed and MLS preparation is rolled back before network enqueue. |
+| Native commit succeeds; first hop fails | Local acceptance survives only with the complete durable outbox; ordinary retries keep its exact ID/wire. |
+| Additional GChat wrapper save fails | Error remains visible even if the native send was already admitted. It is not proof that the send was canceled. |
+| Caller is canceled after native admission | No success receipt; the admitted outbox can remain pending. Cancellation does not establish delivery or rollback. |
+| Authenticated recipient ACKs commit | Delivery can be reported for the original ID; a replayed ACK cannot repeat it. |
+
+The wrapper-failure and cancellation regressions use the real encrypted sink.
+They hold the runtime save lock until native admission has reached the wrapper,
+preserve that encrypted profile, then fail atomic replacement or cancel the
+waiting caller. Shutdown remains unable to save, so reopen cannot be rescued by
+a later successful write. The reopened send must reach the recipient and receive
+an authenticated delivery ACK without another submission. These cases are
+separate from the failed-first-hop test and the native exact-wire/ACK checks.
+
+An error or lost response after admission must not be treated as permission to
+blindly resubmit under a new operation ID. The chat archive is a different store;
+this protocol-profile evidence does not resolve the archive-save issue below.
+These are local fixture checks, not protected consecutive-turnover evidence.
+Source-bound receipts are retained in the paired GComs checkout under
+`target/channel-acceptance-contract-01/`.
+
 ## Instrumentation and baseline
 
 `ProtocolRuntime::persistence_diagnostics()` returns process-local aggregate

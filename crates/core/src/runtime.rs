@@ -974,6 +974,10 @@ impl GcClient for ProtocolClient {
     }
 
     async fn send_channel(&self, channel: &str, body: &[u8]) -> Result<(), SdkError> {
+        // This remains the untracked native API. Its durable-outbox rule may
+        // preserve local acceptance after a failed hop; the additional wrapper
+        // barrier is still fallible. Propagate that error even when the exact
+        // admitted send survives on disk. Neither result means delivery.
         self.embedded.send_channel(channel, body).await?;
         self.persist().await
     }
