@@ -3,7 +3,7 @@
 
 use crate::input::LineEdit;
 use gchat_core::client::b64_decode;
-use gcoms_sdk::ChannelId;
+use gcoms::sdk::ChannelId;
 use std::path::Path;
 
 /// Shortest passphrase accepted when creating a profile or archive.

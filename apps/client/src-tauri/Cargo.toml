@@ -22,7 +22,7 @@ gc2-carrier = ["gchat-core/gc2-carrier"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-gcoms-rpc = { version = "0.1.0" }
+gcoms = { version = "0.1.0" }
 tauri = { version = "2", features = [] }
 gchat-api = { version = "0.1.0", path = "../../../crates/chat-api" }
 gchat-core = { version = "0.1.0", path = "../../../crates/core" }

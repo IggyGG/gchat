@@ -6,7 +6,7 @@ use crate::input::LineEdit;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use gchat_core::client::{b64_encode, ClientHandle, NodeEvent};
 use gchat_core::model::{HomeId, HomeItem, MemberId, ScopedPmId};
-use gcoms_sdk::{ChannelId, ChannelRole, PublicChannelDescriptor};
+use gcoms::sdk::{ChannelId, ChannelRole, PublicChannelDescriptor};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -1308,8 +1308,8 @@ mod tests {
             capacity: 2,
             title: "room".into(),
             description: String::new(),
-            activity: gcoms_sdk::ActivityBucket::None,
-            automatic_join: gcoms_sdk::AutomaticJoinEndpoint {
+            activity: gcoms::sdk::ActivityBucket::None,
+            automatic_join: gcoms::sdk::AutomaticJoinEndpoint {
                 catalog: String::new(),
                 endpoint: String::new(),
             },

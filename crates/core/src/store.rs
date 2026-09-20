@@ -336,6 +336,23 @@ pub(crate) fn atomic_write(
 pub struct Store(EncryptedStore);
 
 impl Store {
+    pub(crate) fn path(&self) -> &std::path::Path {
+        &self.0.path
+    }
+    pub(crate) fn verify_secret(&self, secret: &str) -> Result<(), String> {
+        use hmac::{Hmac, Mac};
+        let key = derive_key(secret, &self.0.salt)?;
+        let mut expected =
+            Hmac::<sha2::Sha256>::new_from_slice(&*self.0.key).map_err(|e| e.to_string())?;
+        expected.update(b"gchat.profile.unlock");
+        let mut supplied =
+            Hmac::<sha2::Sha256>::new_from_slice(&*key).map_err(|e| e.to_string())?;
+        supplied.update(b"gchat.profile.unlock");
+        supplied
+            .verify_slice(&expected.finalize().into_bytes())
+            .map_err(|_| "wrong passphrase".into())
+    }
+
     pub(crate) fn network_directory(&self) -> std::path::PathBuf {
         self.0.path.with_extension("network")
     }
@@ -610,10 +627,6 @@ pub fn migrate_combined(
 }
 
 impl ProtocolStore {
-    pub(crate) fn network_directory(&self) -> std::path::PathBuf {
-        self.0.path.with_extension("network")
-    }
-
     pub fn create(
         path: &std::path::Path,
         passphrase: &str,

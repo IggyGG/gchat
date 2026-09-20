@@ -5,7 +5,7 @@ use gchat_api::{
     rpc::{Applied, Chat, ChatDispatcher, ChatSubmitArgs, SubmitOutcome, SERVICE, SERVICE_VERSION},
     ChatError, CommandSpec,
 };
-use gcoms_rpc::{
+use gcoms::rpc::{
     Admission, CallContext, Dispatch, ErrorCode, Invocation, OperationKey, OperationStore, Outcome,
     ReplyBody, RpcError,
 };
@@ -57,7 +57,7 @@ impl ChatService {
     fn rpc_record(
         key: &OperationKey,
         record: &OperationRecord,
-    ) -> Result<gcoms_rpc::OperationRecord, RpcError> {
+    ) -> Result<gcoms::rpc::OperationRecord, RpcError> {
         if let Some(binding) = &record.rpc {
             if binding.key != *key {
                 return Err(RpcError::new(
@@ -81,19 +81,19 @@ impl ChatService {
                     if matches!(&response, Response::Error { code, .. } if code == "outcome_unknown") {
                         return ReplyBody::OutcomeUnknown;
                     }
-                    let outcome = gcoms_rpc::encode_outcome(SubmitOutcome::try_from(response));
+                    let outcome = gcoms::rpc::encode_outcome(SubmitOutcome::try_from(response));
                     match outcome {
                         Ok(outcome) => ReplyBody::Done { outcome },
                         Err(error) => ReplyBody::Failed { error },
                     }
                 })
             });
-        Ok(gcoms_rpc::OperationRecord {
+        Ok(gcoms::rpc::OperationRecord {
             key: key.clone(),
             digest: record.digest.clone(),
-            admitted_at: gcoms_rpc::DecimalU64(record.at),
-            retain_until: gcoms_rpc::DecimalU64(
-                record.at.saturating_add(gcoms_rpc::DEFAULT_RETENTION_SECS),
+            admitted_at: gcoms::rpc::DecimalU64(record.at),
+            retain_until: gcoms::rpc::DecimalU64(
+                record.at.saturating_add(gcoms::rpc::DEFAULT_RETENTION_SECS),
             ),
             result,
         })
@@ -102,7 +102,7 @@ impl ChatService {
         &self,
         key: &OperationKey,
         at: u64,
-    ) -> Result<Option<gcoms_rpc::OperationRecord>, RpcError> {
+    ) -> Result<Option<gcoms::rpc::OperationRecord>, RpcError> {
         self.check_key(key)?;
         let session = self.session.lock().await;
         let unlocked = session
@@ -113,7 +113,7 @@ impl ChatService {
             .state
             .operations
             .get(&record_id(key))
-            .filter(|r| r.at.saturating_add(gcoms_rpc::DEFAULT_RETENTION_SECS) > at)
+            .filter(|r| r.at.saturating_add(gcoms::rpc::DEFAULT_RETENTION_SECS) > at)
             .map(|r| Self::rpc_record(key, r))
             .transpose()
     }
@@ -135,7 +135,7 @@ impl ChatService {
             .state
             .operations
             .get(&id)
-            .filter(|r| r.at.saturating_add(gcoms_rpc::DEFAULT_RETENTION_SECS) > at)
+            .filter(|r| r.at.saturating_add(gcoms::rpc::DEFAULT_RETENTION_SECS) > at)
         {
             if old.digest != digest {
                 return Err(RpcError::new(
@@ -154,7 +154,7 @@ impl ChatService {
         let mut candidate = unlocked.state.clone();
         candidate
             .operations
-            .retain(|_, r| r.at.saturating_add(gcoms_rpc::DEFAULT_RETENTION_SECS) > at);
+            .retain(|_, r| r.at.saturating_add(gcoms::rpc::DEFAULT_RETENTION_SECS) > at);
         if candidate.operations.len() >= OPERATION_LIMIT {
             return Err(RpcError::new(
                 ErrorCode::Busy,
@@ -242,7 +242,7 @@ impl<S: ChatEndpoint> OperationStore for ChatStore<S> {
         &self,
         key: &OperationKey,
         now: u64,
-    ) -> Result<Option<gcoms_rpc::OperationRecord>, RpcError> {
+    ) -> Result<Option<gcoms::rpc::OperationRecord>, RpcError> {
         self.0
             .clone()
             .rpc_service()
@@ -442,7 +442,7 @@ impl<S: ChatEndpoint> Chat for Handlers<S> {
 struct ChatDispatch<S>(ChatDispatcher<Handlers<S>>);
 #[async_trait::async_trait]
 impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
-    fn descriptor(&self) -> gcoms_rpc::Service {
+    fn descriptor(&self) -> gcoms::rpc::Service {
         self.0.descriptor()
     }
     fn validate(
@@ -503,12 +503,12 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
     }
 }
 
-pub fn router<S: ChatEndpoint>(endpoint: Arc<S>) -> Result<Arc<gcoms_rpc::Router>, RpcError> {
-    let mut router = gcoms_rpc::Router::new(endpoint.instance_id(), 32, MAX_FRAME_BYTES);
+pub fn router<S: ChatEndpoint>(endpoint: Arc<S>) -> Result<Arc<gcoms::rpc::Router>, RpcError> {
+    let mut router = gcoms::rpc::Router::new(endpoint.instance_id(), 32, MAX_FRAME_BYTES);
     router.register(
         Arc::new(ChatDispatch(ChatDispatcher(Handlers(endpoint.clone())))),
         Arc::new(ChatStore(endpoint)),
-        Arc::new(|caller: &gcoms_rpc::Caller, _: &str, _: u16, _: &str| {
+        Arc::new(|caller: &gcoms::rpc::Caller, _: &str, _: u16, _: &str| {
             caller.principal == "local-owner"
         }),
     )?;
@@ -516,10 +516,13 @@ pub fn router<S: ChatEndpoint>(endpoint: Arc<S>) -> Result<Arc<gcoms_rpc::Router
 }
 
 /// Read-only lookup used by compatibility clients retaining old submit IDs.
-pub fn status_request(instance: &str, operation_id: gcoms_rpc::OperationId) -> gcoms_rpc::Request {
-    gcoms_rpc::Request {
-        rpc: gcoms_rpc::WIRE_VERSION,
-        id: gcoms_rpc::new_id(),
+pub fn status_request(
+    instance: &str,
+    operation_id: gcoms::rpc::OperationId,
+) -> gcoms::rpc::Request {
+    gcoms::rpc::Request {
+        rpc: gcoms::rpc::WIRE_VERSION,
+        id: gcoms::rpc::new_id(),
         instance: instance.into(),
         service: SERVICE.into(),
         version: SERVICE_VERSION,

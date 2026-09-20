@@ -1,6 +1,6 @@
 //! Channel-scoped client archive and deterministic navigation ordering.
 
-use gcoms_sdk::{
+use gcoms::sdk::{
     ActivityBucket, ChannelId, ChannelRole, ChannelVisibility, PublicChannelDescriptor,
 };
 use serde::{Deserialize, Serialize};
@@ -311,7 +311,7 @@ mod tests {
                 title: "same".into(),
                 description: String::new(),
                 activity,
-                automatic_join: gcoms_sdk::AutomaticJoinEndpoint {
+                automatic_join: gcoms::sdk::AutomaticJoinEndpoint {
                     catalog: String::new(),
                     endpoint: String::new(),
                 },

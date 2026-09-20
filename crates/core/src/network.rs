@@ -10,3 +10,7 @@ pub fn provider_urls() -> Result<Vec<String>, String> {
         .defaults_at(network.signed_defaults.defaults.issued_at, 0)?
         .provider_urls)
 }
+
+pub(crate) fn installed_json() -> Vec<u8> {
+    include_bytes!("../assets/gchat-network.json").to_vec()
+}

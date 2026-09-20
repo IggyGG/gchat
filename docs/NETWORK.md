@@ -1,9 +1,11 @@
 # Default network and recovery
 
-`crates/core/assets/gchat-network.json` contains GChat's installed public signing
-root and signed network defaults. It contains no invitation credential. Generic
-GComs libraries have no built-in operated network. Both new and retained profiles
-use the application's selected trust document and preserve monotonic network state.
+GChat uses the public signing root and signed network defaults bundled by
+`gcoms-runtime` in `crates/runtime/assets/gchat-network.json`. The `gcoms`
+application facade selects these defaults unless an application supplies its own
+signed configuration through `Application::builder(...).network_config(...)`.
+The configuration contains no invitation credential. Both new and retained
+profiles preserve monotonic network state.
 
 The installed providers are `https://bootstrap-hel.gchat.boo/` and
 `https://bootstrap-fsn.gchat.boo/`, backed by the published Hetzner relays. The

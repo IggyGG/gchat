@@ -1,6 +1,6 @@
 //! Portable service definition shared by Rust, WebAssembly and generated TS.
 use crate::*;
-use gcoms_rpc::CallContext;
+use gcoms::rpc::CallContext;
 
 pub const SERVICE: &str = "ghost.chat";
 pub const SERVICE_VERSION: u16 = 1;
@@ -78,7 +78,7 @@ impl From<SubmitOutcome> for Response {
     }
 }
 
-#[gcoms_rpc::service(name = "ghost.chat", version = 1)]
+#[gcoms::rpc::service(name = "ghost.chat", version = 1)]
 pub trait Chat {
     /// Idempotent controls over a separately journaled file handle.
     #[rpc(id = "files", kind = "session")]

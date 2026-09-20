@@ -10,10 +10,11 @@ publish.workspace = true
 
 [features]
 default = ["native"]
-native = ["dep:gcoms-sdk", "dep:tokio", "gcoms-rpc/file-store", "dep:tempfile"]
-wasm = ["gcoms-rpc/wasm"]
+native = ["gcoms/ipc", "dep:gcoms-sdk", "dep:tokio", "gcoms-rpc/file-store", "dep:tempfile"]
+wasm = ["gcoms/wasm", "gcoms-rpc/wasm"]
 
 [dependencies]
+gcoms = { version = "0.1.0", default-features = false, features = ["rpc"] }
 gcoms-rpc = { version = "0.1.0", default-features = false }
 schemars = "1.2"
 serde = { version = "1", features = ["derive"] }

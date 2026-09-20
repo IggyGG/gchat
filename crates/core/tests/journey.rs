@@ -4,7 +4,7 @@
 
 use gchat_core::client::{ClientHandle, NodeEvent};
 use gchat_core::runtime::ProtocolRuntime;
-use gcoms_sdk::ChannelVisibility;
+use gcoms::sdk::ChannelVisibility;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::time::Duration;
@@ -38,6 +38,7 @@ async fn wait_for<F: Fn() -> bool>(what: &str, ready: F) {
 #[tokio::test(flavor = "multi_thread")]
 async fn first_channel_journey_on_hosted_runtimes() {
     let dir = tempfile::tempdir().unwrap();
+    gchat_core::private_fs::make_private(dir.path(), true).unwrap();
     let owner = open(dir.path(), "owner", "owner-pass-8", true).await;
     let member = open(dir.path(), "member", "member-pass-8", true).await;
     assert_ne!(owner.safety_number(), member.safety_number());

@@ -5,7 +5,7 @@ use gchat_api::{
     ChatClient, InstanceInfo, Request, RequestEnvelope, Response, ResponseEnvelope, Snapshot,
     VERSION,
 };
-use gcoms_sdk::{ipc::Capability, LocalEndpoint};
+use gcoms::sdk::{ipc::Capability, LocalEndpoint};
 use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
@@ -16,6 +16,7 @@ use zeroize::Zeroizing;
 
 #[derive(Clone)]
 pub struct InstanceConfig {
+    pub protocol_backend: gcoms::Backend,
     pub profile: PathBuf,
     pub archive: PathBuf,
     pub protocol_socket: PathBuf,
@@ -35,6 +36,7 @@ impl InstanceConfig {
     pub fn from_home(home: Option<&Path>) -> Result<Self, String> {
         let paths = crate::paths::resolve(home)?;
         Ok(Self {
+            protocol_backend: gcoms::Backend::Embedded,
             profile: paths.profile,
             archive: paths.archive,
             protocol_socket: paths.socket,
@@ -57,7 +59,7 @@ struct Running {
     service: Arc<ChatService>,
     runtime: ProtocolRuntime,
     stop: watch::Sender<bool>,
-    server: tokio::task::JoinHandle<Result<(), gcoms_sdk::SdkError>>,
+    server: tokio::task::JoinHandle<Result<(), gcoms::sdk::SdkError>>,
 }
 pub struct InstanceHost {
     config: InstanceConfig,
@@ -68,6 +70,7 @@ pub struct InstanceHost {
 }
 pub fn capabilities() -> Vec<Capability> {
     vec![
+        Capability::FileSharing,
         Capability::IdentityRead,
         Capability::DirectMessage,
         Capability::ChannelMember,
@@ -131,97 +134,37 @@ impl InstanceHost {
         } else {
             None
         };
-        let runtime = if create && self.config.local_fixture {
-            ProtocolRuntime::create_fixture(
-                &self.config.profile,
-                &passphrase,
-                self.config.listen,
-                self.config.advertise,
-                relay,
-                &[],
-            )
-            .await?
-        } else if self.config.local_fixture {
-            ProtocolRuntime::unlock_fixture(
-                &self.config.profile,
-                &passphrase,
-                self.config.listen,
-                self.config.advertise,
-                relay,
-                &[],
-            )
-            .await?
-        } else if create && self.config.gc2_carrier {
-            ProtocolRuntime::create_protected(
-                &self.config.profile,
-                &passphrase,
-                self.config.listen,
-                self.config.advertise,
-                relay,
-                &[],
-            )
-            .await?
-        } else if self.config.gc2_carrier {
-            ProtocolRuntime::unlock_protected(
-                &self.config.profile,
-                &passphrase,
-                self.config.listen,
-                self.config.advertise,
-                relay,
-                &[],
-            )
-            .await?
-        } else if create {
-            ProtocolRuntime::create(
-                &self.config.profile,
-                &passphrase,
-                self.config.listen,
-                self.config.advertise,
-                relay,
-                &[],
-            )
-            .await?
+        let builder = gcoms::Application::builder("gchat")
+            .network_config(crate::network::installed_json())
+            .profile(&self.config.profile)
+            .unlock_secret(passphrase.to_string())
+            .create(create)
+            .backend(self.config.protocol_backend.clone())
+            .carrier_profile(if self.config.gc2_carrier {
+                gcoms::sdk::CarrierProfile::Gc2
+            } else {
+                gcoms::sdk::CarrierProfile::Legacy
+            })
+            .listen(self.config.listen)
+            .advertise(self.config.advertise)
+            .relay(relay)
+            .receive_messages(false)
+            .network_providers(self.config.relay_urls.clone())
+            .network_recovery(self.config.relay_file.is_none() && self.config.network_recovery);
+        let builder = if self.config.local_fixture {
+            builder.local_fixture().listen(self.config.listen)
         } else {
-            ProtocolRuntime::unlock(
-                &self.config.profile,
-                &passphrase,
-                self.config.listen,
-                self.config.advertise,
-                relay,
-                &[],
-            )
-            .await?
+            builder
         };
-        // Interactive chat cannot turn a retained machine/central profile into
-        // an unscoped personal endpoint. Preserve the native admission boundary
-        // before creating an archive, worker or IPC server.
-        let ownership = async {
-            let sdk = runtime.sdk_client();
-            let embedded = sdk.embedded();
-            let node = embedded.node();
-            if node.central_ownership_required().await?
-                || node.machine_ownership_required().await?
-            {
-                return Err("retained component ownership requires its explicit scoped daemon configuration".to_string());
-            }
-            Ok(())
-        }.await;
-        if let Err(error) = ownership {
-            runtime.shutdown().await?;
-            return Err(error);
-        }
+        let runtime = ProtocolRuntime(builder.open().await?);
         let service =
             ChatService::new(self.config.archive.clone(), runtime.clone(), capabilities())?;
-        runtime.start_network_maintenance(
-            self.config.relay_urls.clone(),
-            self.config.relay_file.is_none() && self.config.network_recovery,
-        )?;
         service.configure_catalogs(self.config.catalog_urls.clone());
         let (stop, receiver) = watch::channel(false);
         let socket = self.config.protocol_socket.clone();
         let sdk = runtime.sdk_client();
         let server = tokio::spawn(async move {
-            gcoms_sdk::ipc::serve_local_until(&socket, sdk, capabilities(), async move {
+            gcoms::sdk::ipc::serve_local_until(&socket, sdk, capabilities(), async move {
                 let mut receiver = receiver;
                 let _ = receiver.changed().await;
             })
@@ -418,7 +361,7 @@ pub async fn ensure_running(
     if let Ok(client) = ChatClient::connect(&endpoint, Some(&metadata.id)).await {
         return Ok(client);
     }
-    if gcoms_sdk::local::connect(&LocalEndpoint::new(&config.protocol_socket))
+    if gcoms::sdk::local::connect(&LocalEndpoint::new(&config.protocol_socket))
         .await
         .is_ok()
     {
@@ -515,7 +458,8 @@ pub async fn ensure_running(
 #[cfg(test)]
 mod retained_scope_tests {
     use super::*;
-    use gcoms_sdk::{
+    use gcoms::runtime::ProtocolRuntime;
+    use gcoms::sdk::{
         machine::{ComponentCredentials, ComponentRegistration, MachineRegistry},
         GcClient,
     };
@@ -563,6 +507,7 @@ mod retained_scope_tests {
         };
         runtime.shutdown().await.unwrap();
         let config = InstanceConfig {
+            protocol_backend: gcoms::Backend::Embedded,
             profile: profile.clone(),
             archive: dir.path().join("personal.gcarchive"),
             protocol_socket: dir.path().join("personal.sock"),

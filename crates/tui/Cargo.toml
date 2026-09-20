@@ -12,7 +12,7 @@ publish.workspace = true
 gchat-api = { version = "0.1.0", path = "../chat-api" }
 rand = "0.8"
 gchat-core = { version = "0.1.0", path = "../core" }
-gcoms-sdk = { version = "0.1.0" }
+gcoms = { version = "0.1.0" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 ratatui = "0.29"
 crossterm = "0.28"
