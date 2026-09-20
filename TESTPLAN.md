@@ -1,9 +1,14 @@
 # Shared GComs Rust integration
 
-GChat is a consumer of the paired GComs facade/runtime consolidation.
-The file UI maps conversation IDs to GComs channel/member scopes. Existing
-archive and encrypted cache formats are preserved. GC/2 selection is explicit.
+GChat now consumes the paired GComs application facade and runtime. The file UI
+maps conversations to GComs channel/member scopes; existing archive and encrypted
+cache formats, cache paths and keys are preserved. Network trust remains owned by
+GChat, and GC/2 selection remains explicit.
 
-Implementation is in progress; compile checks passed before the latest dependency
-cleanup. Full paired tests, generated contracts, desktop checks and native
-platform qualification remain pending. See the paired GComs TESTPLAN.md.
+Linux validation completed on 2026-09-20: 137 Rust tests, strict Clippy, generated
+contracts, 22 frontend tests and the packaged desktop consumer passed against the
+paired GComs sources. Cache reconnect/corruption behavior is covered through both
+GComs backends. Native macOS qualification of the Rust integrations is pending.
+
+See the [GComs integration report](https://github.com/IggyGG/gcoms/blob/main/docs/RUST_INTEGRATIONS.md)
+for exact inputs, sizes and native platform results.
