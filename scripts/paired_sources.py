@@ -9,12 +9,50 @@ import hashlib
 import json
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import tarfile
 import tomllib
 from urllib.parse import unquote
 
-from release_evidence import digest, require, source_identity
+from release_evidence import digest, file_reference, read_json, require, source_identity
+
+
+def dependency_identity(inputs):
+    """Compare effective inputs independently of the temporary checkout path."""
+    require(type(inputs.get('schema')) is int and inputs['schema'] == 1 and inputs.get('kind') == 'frozen_source_pair',
+            'unknown paired dependency input schema')
+    fields = ('schema', 'kind', 'sources', 'source_archive_sha256', 'target',
+              'rust_graphs', 'derived_lock_sha256', 'npm_archives', 'npm_bindings')
+    require(all(inputs.get(name) for name in fields), 'incomplete dependency identity')
+    require(inputs.get('rust_sources_verified') is True and
+            inputs.get('npm_sources_verified') is True, 'dependency sources were not verified')
+    # cargo_config_sha256 contains absolute paths. Each checkout verifies its
+    # own config separately; every effective dependency and lock stays bound.
+    return {name: inputs[name] for name in fields}
+
+
+def verify_native_ci_inputs(report_path, inputs):
+    """A successful CI run must have exercised the installer's exact inputs."""
+    report = read_json(report_path)
+    require(type(report.get('exit_code')) is int and report['exit_code'] == 0 and
+            report.get('source_unchanged') is True, 'paired native CI did not pass unchanged')
+    require(report.get('sources') == inputs['sources'], 'native CI source inputs differ')
+    identity = dependency_identity(inputs)
+    require(dependency_identity(report.get('inputs', {})) == identity,
+            'installer dependencies differ from qualified native CI inputs')
+    return {'report_sha256': digest(report_path),
+            'dependency_identity_sha256': hashlib.sha256(
+                json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
+
+
+def verify_retained_inputs(provenance, inputs):
+    for name, sha in inputs['derived_lock_sha256'].items():
+        file_reference(provenance, {'path': 'derived/' + name, 'sha256': sha})
+    file_reference(provenance, {'path': 'derived/.cargo/config.toml',
+                               'sha256': inputs['cargo_config_sha256']})
+    for name, sha in inputs['npm_archives'].items():
+        file_reference(provenance, {'path': 'npm/' + name, 'sha256': sha})
 
 
 def execute(command, cwd, environment=None):
@@ -137,4 +175,12 @@ def prepare_pair(chat, protocol, output, triple, environment=None):
     for name, root in roots.items():
         require(source_identity(root) == sources[name], 'source changed during dependency preparation')
     (provenance / 'inputs.json').write_text(json.dumps(report, indent=2) + '\n')
+    for name in [*locks, '.cargo/config.toml']:
+        destination = provenance / 'derived' / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(chat / name, destination)
+    (provenance / 'npm').mkdir()
+    for archive in npm_archives:
+        shutil.copyfile(archive, provenance / 'npm' / archive.name)
+    verify_retained_inputs(provenance, report)
     return chat, report

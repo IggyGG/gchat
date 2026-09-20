@@ -2,6 +2,7 @@
 """Native CI gate; runners are disposable and contain the pinned toolchain."""
 import argparse, json, os, shutil, subprocess, sys, uuid
 from pathlib import Path
+NPM = 'npm.cmd' if os.name == 'nt' else 'npm'
 root=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--gcoms', type=Path, help='qualify exact unpublished companion sources in an isolated snapshot')
@@ -43,16 +44,16 @@ if sys.platform=='win32':
 run(['cargo','fmt','--all','--','--check'])
 run(['cargo','test','--workspace','--all-features','--locked','--','--test-threads=1'])
 run(['cargo','clippy','--workspace','--all-targets','--all-features','--locked','--','-D','warnings'])
-run(['npm','ci','--ignore-scripts'])
-run(['npm','run','check'])
-run(['npm','test'])
-run(['npm','run','build'])
+run([NPM,'ci','--ignore-scripts'])
+run([NPM,'run','check'])
+run([NPM,'test'])
+run([NPM,'run','build'])
 run([sys.executable,'scripts/website.py'])
 run([sys.executable,'scripts/check-generated.py'])
 run([sys.executable,'scripts/collect-notices.py'])
 run(['cargo','fmt','--manifest-path','apps/client/src-tauri/Cargo.toml','--','--check'])
 run(['cargo','check','--manifest-path','apps/client/src-tauri/Cargo.toml','--locked'])
-run(['npm','run','tauri','-w','@gchat/client','--','build','--no-bundle'])
+run([NPM,'run','tauri','-w','@gchat/client','--','build','--no-bundle'])
 if sys.platform=='linux':
     run(['cargo','deny','check'])
     run(['cargo','deny','--manifest-path','apps/client/src-tauri/Cargo.toml','--config','deny-desktop.toml','check'])

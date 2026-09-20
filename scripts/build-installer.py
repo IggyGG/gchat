@@ -14,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 from release_signatures import verify
-from paired_sources import prepare_pair, verify_derived_inputs, verify_resolved_protocol
+from paired_sources import prepare_pair, verify_derived_inputs, verify_resolved_protocol, verify_native_ci_inputs, verify_retained_inputs
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = {
@@ -99,7 +99,7 @@ def apple_keychain(policy):
 
 def verify_windows(path, policy):
     script = ROOT / 'scripts/verify-windows-signature.ps1'
-    command = ['powershell.exe', '-NoProfile', '-NonInteractive', '-File', str(script), '-Artifact', str(path), '-Thumbprint', fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,))]
+    command = ['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File', str(script), '-Artifact', str(path), '-Thumbprint', fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,))]
     if policy == 'self-signed-preview':
         command.append('-SelfSignedPreview')
     run(command)
@@ -204,7 +204,9 @@ def bundle(target, output, environment, identity, policy, checkout):
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--target',choices=TARGETS,required=True);p.add_argument('--gcoms',type=Path,required=True);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--target',choices=TARGETS,required=True);p.add_argument('--gcoms',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--native-ci-report', type=Path, required=True, help='successful paired native-ci.json from this target and source pair')
+    a=p.parse_args()
     system,arch,triple,_=TARGETS[a.target]
     actual={'amd64':'x86_64','arm64':'aarch64'}.get(platform.machine().lower(),platform.machine().lower())
     host=subprocess.check_output(['rustc','-vV'],text=True)
@@ -220,13 +222,17 @@ def main():
         sources[name]=subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()
     output=a.output.resolve();output.mkdir(parents=True,exist_ok=False)
     checkout, dependency_inputs = prepare_pair(ROOT, a.gcoms, output, triple, dict(os.environ))
+    ci_report = output / 'provenance/native-ci.json'
+    shutil.copyfile(a.native_ci_report.resolve(), ci_report)
+    native_ci = verify_native_ci_inputs(ci_report, dependency_inputs)
     if system=='Darwin':
         with apple_keychain(policy) as environment: files=bundle(a.target,output,environment,identity,policy,checkout)
     else: files=bundle(a.target,output,dict(os.environ),identity,policy,checkout)
     verify_derived_inputs(checkout, dependency_inputs)
+    verify_retained_inputs(output / 'provenance', dependency_inputs)
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip() or subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()!=sources[name]: raise ValueError('build changed source inputs')
-    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'publisher':identity,'signing_policy':policy,'public_ca_trust':policy=='publicly-trusted','apple_notarization':system=='Darwin' and policy=='publicly-trusted','dependency_inputs':dependency_inputs,'files':files},indent=2)+'\n')
+    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'publisher':identity,'signing_policy':policy,'public_ca_trust':policy=='publicly-trusted','apple_notarization':system=='Darwin' and policy=='publicly-trusted','dependency_inputs':dependency_inputs,'native_ci':native_ci,'files':files},indent=2)+'\n')
     print('Signed bundle report: '+str(output/'build.json'))
 
 

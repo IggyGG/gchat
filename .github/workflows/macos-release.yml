@@ -80,7 +80,7 @@ jobs:
           APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --output ../signed
+        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
       - name: Retain native qualification evidence
         if: always()
         run: |

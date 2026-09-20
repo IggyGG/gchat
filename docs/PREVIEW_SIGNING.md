@@ -76,3 +76,13 @@ Before publication, run native GChat CI with
 an isolated checkout and executes the complete CI entrypoint there. The derived
 locks and source identities are retained under target/paired-ci. This qualifies
 source integration; the separate published-registry consumer gate still applies.
+
+Installer builds require `--native-ci-report PATH` naming the successful paired
+`native-ci.json` for the same target. Preparing a second build may relocate its
+checkout, but its source archives, dependency locks, resolved protocol graph and
+npm archives must match those exercised by native CI. A changed dependency
+resolution fails before signing. Both native workflows pass this receipt
+explicitly; the macOS collector checks it against the retained CI evidence.
+Provenance includes the derived locks, Cargo configuration and npm archives,
+so ephemeral-worker artifacts retain the actual dependency inputs as well as
+hashes. Native verifier fixtures do not satisfy this native-CI requirement.
