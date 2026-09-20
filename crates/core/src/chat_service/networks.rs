@@ -248,7 +248,7 @@ impl ChatService {
                 }
                 let primary = invitation.network.same_network(&self.network_identity()?);
                 if let Some(code) = &invitation.channel_invitation {
-                    if code.len() + nickname.len() + 7 > gchat_api::MAX_INPUT_BYTES as usize {
+                    if code.len() + nickname.len() + 7 > gchat_api::MAX_INPUT_BYTES {
                         return Err("Channel invitation exceeds the join command limit".into());
                     }
                 }
