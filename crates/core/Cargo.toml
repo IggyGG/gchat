@@ -53,8 +53,11 @@ windows-sys = { version = "0.61", features = [
 
 [dev-dependencies]
 axum = "0.8"
+rcgen = { version = "0.13", default-features = false, features = ["aws_lc_rs", "pem"] }
+rustls = { version = "0.23.45", default-features = false, features = ["aws-lc-rs", "std"] }
+tokio-rustls = "0.26"
 
 [features]
 # Explicit opt-in: builds the experimental GC/2 carrier profile into this
 # application. Default builds keep the GC/1 production profile.
-gc2-carrier = ["gcoms-node/experimental-gc2"]
+gc2-carrier = ["gcoms-node/experimental-gc2", "gcoms-network-client/experimental-gc2"]
