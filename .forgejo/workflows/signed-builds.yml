@@ -36,17 +36,19 @@ jobs:
       - name: Qualify both native workspaces with retained evidence
         run: |
           python3 gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --output native-evidence
-          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
           python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
       - name: Build and verify signed installers
         working-directory: gchat
         env:
+          GCHAT_ISOLATED_SIGNING_WORKER: '1'
           WINDOWS_CERTIFICATE_THUMBPRINT: ${{ vars.WINDOWS_CERTIFICATE_THUMBPRINT }}
           WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
           GCHAT_RELEASE_KEY: ${{ vars.GCHAT_RELEASE_KEY }}
           GCHAT_RELEASE_PASSPHRASE: ${{ secrets.GCHAT_RELEASE_PASSPHRASE }}
-        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --output ../signed
+        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
       - uses: https://code.forgejo.org/forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e
+        if: always()
         with:
           name: ${{ matrix.target }}
           path: |
@@ -55,6 +57,7 @@ jobs:
             signed/*.asc
             signed/*.exe
             signed/build.json
+            signed/provenance/**
             native-evidence/**
           if-no-files-found: error
   macos:

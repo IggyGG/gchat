@@ -13,15 +13,18 @@ Relay addresses and the network's public verification key are already included.
 Run the GChat setup executable. It installs for your user and installs Microsoft's
 WebView2 runtime when necessary. Open GChat from the Start menu. Check that the
 installer's digital signature matches the publisher listed in the release notes.
-A new publisher can still receive a Windows reputation prompt; signing does not
-promise immediate SmartScreen reputation.
+This preview uses a self-signed **Gh0st** certificate. Windows will not recognize
+it as a publicly trusted publisher and may block or warn about the installer.
+Verify its detached signature and published fingerprint before approving it.
 
 ## macOS, Apple Silicon and Intel
 
 Choose the download matching About This Mac: Apple chips use Apple Silicon;
 Intel processors use Intel. Open the DMG and drag GChat into Applications, then
-launch it. Releases use Developer ID signing and Apple notarization. Do not use
-an ad-hoc or development-signed build as the public installer.
+launch it. This preview uses a self-signed **Gh0st** certificate and is not
+Apple-notarized. macOS may block its launch. Verify the detached signature and
+published fingerprint before granting a per-application exception; do not disable
+system-wide security controls.
 
 ## Linux, x86_64
 

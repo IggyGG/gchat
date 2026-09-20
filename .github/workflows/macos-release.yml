@@ -68,9 +68,9 @@ jobs:
         run: |
           npm install --global npm@11
           python3 gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --output native-evidence
-          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
           python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
-      - name: Build, sign, notarize, and verify
+      - name: Build and verify the configured signing policy
         working-directory: gchat
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
@@ -80,14 +80,24 @@ jobs:
           APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --output ../signed
+        run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
       - name: Retain native qualification evidence
-        run: cp -R native-evidence signed/evidence
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          if Path('native-evidence').is_dir():
+              Path('signed').mkdir(exist_ok=True)
+              shutil.copytree('native-evidence','signed/evidence',dirs_exist_ok=True)
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: ${{ matrix.target }}
           path: |
             signed/*.dmg
             signed/build.json
+            signed/provenance/**
             signed/evidence/**
           if-no-files-found: error

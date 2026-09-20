@@ -10,6 +10,7 @@ import time
 import uuid
 
 from release_evidence import file_reference, validate_sources, validate_report
+from paired_sources import verify_native_ci_inputs, verify_retained_inputs
 
 REPO='IggyGG/gchat'
 
@@ -43,8 +44,24 @@ def main():
     for report in output.glob('macos-*/build.json'):
         data=json.loads(report.read_text())
         if data['sources']!=expected or data['target'] in targets: raise ValueError('Mac artifact source binding mismatch')
+        inputs=data.get('dependency_inputs', {})
+        if (inputs.get('kind') != 'frozen_source_pair' or
+            inputs.get('rust_sources_verified') is not True or
+            inputs.get('npm_sources_verified') is not True or
+            {name:value.get('commit') for name,value in inputs.get('sources',{}).items()} != expected):
+            raise ValueError('Mac dependency inputs do not bind the frozen source pair')
+        if json.loads((report.parent/'provenance/inputs.json').read_text()) != inputs:
+            raise ValueError('Mac retained dependency provenance mismatch')
+        native_ci = verify_native_ci_inputs(report.parent/'provenance/native-ci.json', inputs)
+        verify_retained_inputs(report.parent/'provenance', inputs)
+        if data.get('native_ci') != native_ci:
+            raise ValueError('Mac build does not bind qualified dependency inputs')
         targets.add(data['target'])
         evidence = report.parent / 'evidence'
+        if verify_native_ci_inputs(evidence/'paired-gchat/native-ci.json', inputs) != native_ci:
+            raise ValueError('Mac build and qualification receipts differ')
+        ci_inputs = json.loads((evidence/'paired-gchat/inputs.json').read_text())
+        verify_retained_inputs(evidence/'paired-gchat', ci_inputs)
         candidate = json.loads((evidence / 'candidate.json').read_text())
         validate_sources(candidate, evidence)
         if {name:value['commit'] for name,value in candidate['sources'].items()} != expected:

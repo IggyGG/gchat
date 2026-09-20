@@ -33,37 +33,30 @@ dependency name followed by `libcrux-sha3` in Cargo lockfiles. New findings stil
 block publication; do not exclude entire lockfiles.
 GitHub private vulnerability reporting is enabled by the mirror setup command.
 
-## Signing enrollment
+## Preview signing
 
-Account enrollment and identity validation are owner steps; a GitHub account or
-an Apple Development certificate is not a distribution certificate.
+The owner selected **Gh0st** self-signed preview releases on 2026-09-20. Follow
+[preview signing](PREVIEW_SIGNING.md) for protected worker setup and key custody.
+The public certificates and OpenPGP key are in `release/signers/`; both projects
+pin their fingerprints in `release/publication.json`. Never commit private keys,
+PKCS#12 archives or passphrases.
 
-- Apple: enroll in the Apple Developer Program, create a **Developer ID
-  Application** certificate, export its certificate/private key as an encrypted
-  P12, and create an App Store Connect API key for notarization. Configure the
-  GChat GitHub environment `release-signing` with `APPLE_CERTIFICATE_BASE64`,
-  `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_API_KEY_BASE64`,
-  `APPLE_API_KEY` (key ID), and `APPLE_API_ISSUER`; set the public `APPLE_TEAM_ID`
-  variable to the expected ten-character team ID. Restrict it to protected main.
-  A temporary keychain is created and removed for each build. The local Mac is
-  not used.
-- Windows: obtain a publicly trusted Authenticode certificate from a CA that
-  supports the publisher's legal identity. Provision its hardware-backed key or
-  provider into the Windows VM's certificate store. Set
-  `WINDOWS_CERTIFICATE_THUMBPRINT` and an HTTPS RFC3161 `WINDOWS_TIMESTAMP_URL`.
-  Tauri uses SignTool with SHA-256; qualification verifies the expected signer
-  and timestamp. Do not substitute a self-signed certificate.
-- Linux: create a dedicated OpenPGP release key with an offline backup, then put
-  only the signing subkey in the protected Linux runner's `GNUPGHOME`. Set
-  `GCHAT_RELEASE_KEY` to its full fingerprint and `GCHAT_RELEASE_PASSPHRASE` as a
-  secret. Publish the public key and fingerprint with releases. This key is
-  separate from the network-defaults signing root.
+This release does not require Apple Developer enrollment or a public Windows CA.
+The macOS worker verifies signatures without notarization or a passing Gatekeeper
+assessment. Windows verifies Authenticode integrity against the pinned certificate
+on an isolated worker; installed users still encounter an untrusted publisher.
+Linux and the artifact manifests use the dedicated OpenPGP release key, separate
+from the network-defaults signing root. Retain an encrypted offline key backup.
 
-Record actual signer names and certificate/key fingerprints in
-`release/publication.json`. Private security and conduct reports use
-`iggy@gchat.boo`; GitHub private vulnerability reporting is also enabled for both
-public repositories. Retain the required rights/operator reviews. Unconfigured
-fields remain explicit release blockers; scripts never invent identities or passing evidence.
+A later publicly trusted release must change the policy explicitly, provision
+Developer ID Application and notarization inputs on macOS, and a publicly trusted
+Authenticode certificate plus HTTPS timestamp service on Windows. The trusted
+policy's checks remain available in the builder; missing credentials never cause
+automatic fallback to self-signing.
+
+Private security and conduct reports use `iggy@gchat.boo`. Retain the required
+rights/operator reviews and native installation evidence. Signer creation alone
+does not qualify or publish a release.
 
 ## Build and qualify
 
@@ -77,7 +70,7 @@ Freeze clean GChat/GComs source commits with `release-candidate.py init`. The
 GitHub Mac workflow. Both public mirror main refs must contain the frozen source;
 the GChat workflow must execute from the exact frozen GChat commit. GitHub workers
 use `macos-15` and `macos-15-intel`, configure disposable test-only loopback aliases,
-run both native CI suites, and sign/notarize each DMG. Forgejo retrieves the exact
+run both native CI suites, and sign and verify each DMG under the recorded policy. Forgejo retrieves the exact
 run and checks both source commits and artifact hashes.
 
 Build output is a fresh directory containing installers and `build.json`. Native
