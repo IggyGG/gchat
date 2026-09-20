@@ -1298,6 +1298,30 @@ impl ClientHandle {
             .await
             .map_err(|e| e.to_string())
     }
+
+    pub async fn channel_topic(&self, id: ChannelId) -> Result<String, String> {
+        let channel = self.channel(id).ok_or("channel is not active")?;
+        self.0
+            .sdk
+            .channel_topic(&channel.protocol_name)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    pub async fn change_channel(
+        &self,
+        id: ChannelId,
+        change: gcoms_sdk::ChannelChange,
+    ) -> Result<(), String> {
+        let channel = self.channel(id).ok_or("channel is not active")?;
+        self.0
+            .sdk
+            .change_channel(&channel.protocol_name, change)
+            .await
+            .map_err(|e| e.to_string())?;
+        self.reconcile_channels().await?;
+        self.save().await
+    }
     pub fn legacy_archive(&self) -> crate::model::LegacyArchive {
         self.0.data.lock().unwrap().legacy.clone()
     }

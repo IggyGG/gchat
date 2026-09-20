@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { MAX_NETWORK_INVITATION_BYTES, type NetworkStatus } from './api';
+  import { MAX_NETWORK_INVITATION_BYTES, type NetworkStatus, type InvitationPreview, type Response } from './api';
   import { chatError, type Transport } from './transport';
-  let { transport, status, imported }: { transport: Transport; status?: NetworkStatus; imported: (status: NetworkStatus) => void } = $props();
+  let { transport, status, imported, combined = false, joined }: { transport: Transport; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void } = $props();
   let invitation = $state(''), error = $state(''), busy = $state(false);
+  let preview = $state<InvitationPreview>(), nickname = $state('');
+  let pendingCode = '', operationId = '';
   let running = true, fileRevision = 0;
-  onDestroy(() => { running = false; fileRevision++; invitation = ''; });
+  onDestroy(() => { running = false; fileRevision++; invitation = ''; pendingCode = ''; nickname = ''; });
   async function readFile(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0]; input.value = '';
@@ -19,6 +21,18 @@
     event.preventDefault();
     if (busy) return;
     const code = invitation.trim();
+    if (combined) {
+      if (!code || new TextEncoder().encode(code).length > MAX_NETWORK_INVITATION_BYTES) { error = 'Use one complete invitation within the size limit.'; return; }
+      busy = true; error = '';
+      try {
+        const response = await transport.request({ kind: 'networks', request: { kind: 'inspect', code } });
+        if (!running) return;
+        if (response.kind !== 'networks' || response.response.kind !== 'preview') throw new Error('Invalid invitation preview');
+        preview = response.response.preview; pendingCode = code; invitation = ''; operationId = crypto.randomUUID();
+      } catch (failure) { if (running) error = chatError(failure).message; }
+      finally { busy = false; }
+      return;
+    }
     if (!code.startsWith('GCNI1-')) { error = 'Use a network invitation beginning with GCNI1-. Conversation invitations are used after connecting.'; return; }
     if (new TextEncoder().encode(code).length > MAX_NETWORK_INVITATION_BYTES) { error = 'This invitation is too large.'; return; }
     busy = true; error = ''; invitation = ''; fileRevision++;
@@ -29,16 +43,38 @@
     } catch (failure) { if (running) error = chatError(failure).message; }
     finally { if (running) busy = false; }
   }
+  async function accept(event: SubmitEvent) {
+    event.preventDefault();
+    if (!preview || busy) return;
+    busy = true; error = '';
+    try {
+      const response = await transport.request({ kind: 'networks', request: { kind: 'join', code: pendingCode, nickname, accepted_network: preview.network.id, operation_id: operationId } });
+      if (!running) return;
+      pendingCode = ''; nickname = ''; preview = undefined;
+      joined?.(response);
+    } catch (failure) { if (running) error = chatError(failure).message; }
+    finally { busy = false; }
+  }
 </script>
 <section class="network" aria-label="Network invitation">
-  <p>Enter a network invitation from the person inviting you. Channel invitations are separate.</p>
+  {#if preview}
+  <form onsubmit={accept}>
+    <p>{preview.channel ? `Join #${preview.channel.replace(/^#/, '')} on ${preview.network.name}` : `Connect to ${preview.network.name}`}</p>
+    {#if preview.newNetwork}<p>This adds a new network. Your existing networks stay connected.</p><details><summary>Network identity</summary><code>{preview.network.fingerprint}</code></details>{/if}
+    {#if preview.channel}<label for="invitation-nickname">Your nickname in this channel</label><input id="invitation-nickname" bind:value={nickname} required maxlength="256" autocomplete="nickname" disabled={busy} />{/if}
+    <p>Expires {new Date(preview.expires * 1000).toLocaleString()}</p>
+    <div><button type="submit" disabled={busy}>{busy ? 'Joining…' : preview.channel ? 'Join' : 'Connect'}</button><button type="button" disabled={busy} onclick={() => { preview = undefined; pendingCode = ''; error = ''; }}>Cancel</button></div>
+  </form>
+  {:else}
+  <p>{combined ? 'Paste an invitation to connect to its network and join its channel.' : 'Enter a network invitation from the person inviting you.'}</p>
   <form onsubmit={connect}>
-    <label for="network-invitation">Network invitation</label>
-    <textarea id="network-invitation" bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} placeholder="GCNI1-…"></textarea>
+    <label for="network-invitation">{combined ? 'Invitation' : 'Network invitation'}</label>
+    <textarea id="network-invitation" bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} placeholder={combined ? 'Paste an invitation' : 'GCNI1-…'}></textarea>
     <label for="network-invitation-file">Or choose an invitation file</label>
     <input id="network-invitation-file" type="file" accept=".txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />
-    <button type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : 'Connect'}</button>
+    <button type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
   </form>
+  {/if}
   {#if error}<p role="alert">{error}</p>{/if}
 </section>
 <style>

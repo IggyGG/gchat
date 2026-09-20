@@ -2,9 +2,12 @@ import { mount } from 'svelte';
 import Workspace from '../src/Workspace.svelte';
 import type { CommandSpec, Conversation, FileInfo, NetworkState, Request, Response, Snapshot } from '../src/api';
 const parameters = new URLSearchParams(location.search);
+const primaryNetwork = 'a'.repeat(64), otherNetwork = 'b'.repeat(64);
+let joinedNetwork = false;
 const instance = { id: 'ui-test-instance', label: 'gchat-production', bootId: 'fixture-boot', locked: false, protocolLocked: false, profileExists: true, archiveExists: true, safetyNumber: 'fixture', capabilities: ['ChannelAdmin', 'files.v1'] };
+if (parameters.has('networks')) instance.capabilities.push('networks.v1');
 const members = [{ id: 'self', nickname: 'Iggy', isSelf: true, capabilities: [] }, { id: 'peer', nickname: 'Ada', isSelf: false, capabilities: [] }];
-const conversations: Conversation[] = ['general', 'design', 'archive'].map((name, index) => ({ provider: null, id: `channel/${name}`, channelId: name, kind: index === 2 ? 'archive' : 'channel', name: `#${name}`, topic: index === 0 ? 'A little more room to talk.' : '', active: true, owner: true, members, unread: index === 1 ? 2 : 0, lastMessageId: null, inputLimitBytes: 12000, commands: [] }));
+const conversations: Conversation[] = ['general', 'design', 'archive'].map((name, index) => ({ provider: null, id: `channel/${name}`, channelId: name, kind: index === 2 ? 'archive' : 'channel', name: `#${name}`, topic: index === 0 ? 'A little more room to talk.' : '', active: true, owner: !parameters.has('member'), members, unread: index === 1 ? 2 : 0, lastMessageId: null, inputLimitBytes: 12000, commands: [] }));
 const commands: CommandSpec[] = ['help', 'lock', 'disconnect', 'quit', 'join', 'create', 'query'].map(name => ({ name: `/${name}`, usage: `/${name}`, description: `Fixture ${name}`, scope: 'instance', capability: null, available: true }));
 let state: NetworkState = parameters.has('fresh') ? 'invitation_required' : 'connected';
 let revision = 1;
@@ -23,6 +26,22 @@ Object.assign(window, { fixture: {
 async function request(req: Request): Promise<Response> {
   if (req.kind !== 'events' && req.kind !== 'snapshot') requests.push(req);
   switch (req.kind) {
+    case 'networks': {
+      const r = req.request;
+      const network = (id: string) => ({ id, name: id === primaryNetwork ? 'home.example' : 'other.example', fingerprint: id, primary: id === primaryNetwork, status: { state: 'connected' as const, message: 'Connected' } });
+      if (r.kind === 'list') return { kind: 'networks', response: { kind: 'list', networks: [network(primaryNetwork), ...(joinedNetwork ? [network(otherNetwork)] : [])] } };
+      if (r.kind === 'inspect') {
+        if (r.code !== 'GCI1-valid-fixture') throw new Error('Invitation signature rejected');
+        return { kind: 'networks', response: { kind: 'preview', preview: { network: network(otherNetwork), channel: 'general', expires: 2000000000, newNetwork: !joinedNetwork } } };
+      }
+      if (r.kind === 'join') {
+        if (r.accepted_network !== otherNetwork) throw new Error('Network was not confirmed');
+        joinedNetwork = true; revision++;
+        return { kind: 'networks', response: { kind: 'result', network: otherNetwork, response: { kind: 'applied', conversation: 'channel/general', notice: null } } };
+      }
+      if (r.kind === 'call') return { kind: 'networks', response: { kind: 'result', network: r.network, response: await request(r.request) } };
+      throw new Error('Unknown network operation');
+    }
     case 'snapshot': return { kind: 'snapshot', snapshot: snapshot() };
     case 'events': await delay(100); return { kind: 'changed', revision: String(revision) };
     case 'network_status': return { kind: 'network_status', status: status() };

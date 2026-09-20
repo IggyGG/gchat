@@ -80,6 +80,18 @@ impl From<SubmitOutcome> for Response {
 
 #[gcoms_rpc::service(name = "ghost.chat", version = 1)]
 pub trait Chat {
+    /// Durable network-scoped admission; status survives a lost UI reply.
+    #[rpc(id = "network_operation", kind = "operation")]
+    async fn network_operation(
+        &self,
+        context: CallContext,
+        request: crate::NetworkRequest,
+    ) -> Result<crate::NetworkResponse, ChatError>;
+    #[rpc(id = "networks", kind = "session")]
+    async fn networks(
+        &self,
+        request: crate::NetworkRequest,
+    ) -> Result<crate::NetworkResponse, ChatError>;
     /// Idempotent controls over a separately journaled file handle.
     #[rpc(id = "files", kind = "session")]
     async fn files(&self, request: FileRequest) -> Result<FileSnapshot, ChatError>;

@@ -2,6 +2,7 @@
 mod extensions;
 mod files;
 pub mod host;
+mod networks;
 pub mod rpc;
 
 use crate::client::ClientHandle;
@@ -38,6 +39,8 @@ struct InstanceMetadata {
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 struct UiState {
+    networks: BTreeMap<String, networks::RetainedNetwork>,
+    topics: BTreeMap<String, String>,
     instance_id: String,
     safety_number: String,
     read: BTreeMap<String, String>,
@@ -66,6 +69,8 @@ struct Unlocked {
 
 /// Hosting the same module in gcd or an Android service does not duplicate logic.
 pub struct ChatService {
+    networks: Mutex<BTreeMap<String, Arc<ChatService>>>,
+    network_operations: Mutex<()>,
     id: String,
     label: String,
     boot: String,
@@ -183,6 +188,8 @@ impl ChatService {
     ) -> Result<Arc<Self>, String> {
         let metadata = instance_metadata(&archive)?;
         let service = Arc::new(Self {
+            networks: Mutex::new(BTreeMap::new()),
+            network_operations: Mutex::new(()),
             id: metadata.id,
             label: metadata.label,
             boot: random_id(),
@@ -318,6 +325,7 @@ impl ChatService {
                 .map(|c| format!("{c:?}"))
                 .chain(self.command_extension.as_ref().map(|_| "cmd".into()))
                 .chain(std::iter::once(gchat_api::files::CAPABILITY.into()))
+                .chain(self.runtime.network_client().map(|_| "networks.v1".into()))
                 .collect(),
         }
     }
@@ -369,6 +377,11 @@ impl ChatService {
 
     async fn handle_mode(&self, request: Request, admitted: bool) -> Result<Response, String> {
         let request = lifecycle_request(request);
+        if let Request::Networks { request } = request {
+            return Box::pin(self.networks_request(request))
+                .await
+                .map(|response| Response::Networks { response });
+        }
         if let Request::Files { request } = request {
             return self
                 .files_request(request)
@@ -407,6 +420,11 @@ impl ChatService {
             }
         }
         // Acquire mutation ordering before the short-lived archive-state lock.
+        let _network_lifecycle = if matches!(request, Request::Lock) {
+            Some(self.network_operations.lock().await)
+        } else {
+            None
+        };
         let _operation = if matches!(request, Request::Submit { .. }) {
             Some(self.operations.lock().await)
         } else {
@@ -486,9 +504,10 @@ impl ChatService {
                     }
                 }
             }
-            return Ok(Response::Snapshot {
-                snapshot: self.project(session.as_ref()),
-            });
+            let snapshot = self.project(session.as_ref());
+            drop(session);
+            Box::pin(self.restore_networks()).await?;
+            return Ok(Response::Snapshot { snapshot });
         }
         if let Request::Lock = request {
             if let Some(current) = session.as_mut() {
@@ -499,11 +518,16 @@ impl ChatService {
                 }
                 current.ui_locked = true;
             }
+            drop(session);
+            self.lock_networks().await?;
             return Ok(Response::Instance {
                 instance: self.info(true),
             });
         }
         if let Request::Snapshot = request {
+            if let Some(current) = session.as_mut().filter(|s| !s.ui_locked) {
+                Self::refresh_channel_topics(current).await?;
+            }
             return Ok(Response::Snapshot {
                 snapshot: self.project(session.as_ref()),
             });
@@ -800,8 +824,31 @@ impl ChatService {
     }
 
     pub async fn snapshot(&self) -> Result<Snapshot, String> {
-        let session = self.session.lock().await;
+        let mut session = self.session.lock().await;
+        if let Some(current) = session.as_mut().filter(|s| !s.ui_locked) {
+            Self::refresh_channel_topics(current).await?;
+        }
         Ok(self.project(session.as_ref()))
+    }
+
+    async fn refresh_channel_topics(current: &mut Unlocked) -> Result<(), String> {
+        let mut candidate = current.state.clone();
+        for channel in current
+            .client
+            .archive_snapshot()
+            .channels
+            .iter()
+            .filter(|c| c.active)
+        {
+            if let Ok(topic) = current.client.channel_topic(channel.id).await {
+                candidate.topics.insert(channel_key(channel.id), topic);
+            }
+        }
+        if candidate.topics != current.state.topics {
+            current.store.save(&candidate)?;
+            current.state = candidate;
+        }
+        Ok(())
     }
 
     fn project(&self, session: Option<&Unlocked>) -> Snapshot {
@@ -825,7 +872,12 @@ impl ChatService {
                         ConversationKind::Archive
                     },
                     name: format!("#{}", channel.title),
-                    topic: String::new(),
+                    topic: session
+                        .state
+                        .topics
+                        .get(&channel_key(channel.id))
+                        .cloned()
+                        .unwrap_or_default(),
                     active: channel.active,
                     owner: channel.role == ChannelRole::Owner,
                     members: channel
@@ -1005,6 +1057,48 @@ impl ChatService {
             context_channel(&archive, conversation)?;
         }
         match name.as_str() {
+            "/owner" => {
+                self.require(Capability::ChannelAdmin)?;
+                let channel = context_channel(&archive, conversation)?;
+                if channel.role != ChannelRole::Owner {
+                    return Err("Only the channel owner can transfer ownership".into());
+                }
+                let member = resolve_member(channel, args)?;
+                if channel.self_member_id == Some(member) {
+                    return Err("Choose another channel member".into());
+                }
+            }
+            "/part" => {
+                let channel = context_channel(&archive, conversation)?;
+                if channel.role == ChannelRole::Owner {
+                    self.require(Capability::ChannelAdmin)?;
+                    if args != "--close" {
+                        let target = args.strip_prefix("--transfer ").ok_or(
+                            "Choose /part --transfer nickname-or-member-id or /part --close",
+                        )?;
+                        if channel.self_member_id == Some(resolve_member(channel, target)?) {
+                            return Err("Choose another channel member".into());
+                        }
+                    }
+                } else if !args.is_empty() {
+                    return Err("Usage: /part".into());
+                }
+            }
+            "/nick" => {
+                gcoms_node::channel::ChannelChange::Nickname(args.into()).validate()?;
+            }
+            "/topic" if !args.is_empty() => {
+                self.require(Capability::ChannelAdmin)?;
+                if context_channel(&archive, conversation)?.role != ChannelRole::Owner {
+                    return Err("Only the channel owner can change the topic".into());
+                }
+                gcoms_node::channel::ChannelChange::Topic(if args == "--clear" {
+                    String::new()
+                } else {
+                    args.into()
+                })
+                .validate()?;
+            }
             "/query" | "/msg" | "/kick" => {
                 resolve_member(context_channel(&archive, conversation)?, split_head(args).0)?;
             }
@@ -1156,7 +1250,39 @@ impl ChatService {
             "status" => Ok(Response::Output { conversation: None, output: gchat_api::CommandOutput::Status { text: format!("{} joined channels. Closing a view keeps receiving; /lock hides the archive in every view; /quit stops this instance.", archive.channels.iter().filter(|c| c.active).count()) } }),
             "list" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Directory { channels: archive.channels.iter().filter(|c| c.active).map(|c| gchat_api::DirectoryEntry { name: format!("#{}", c.title), joined: true, conversation: Some(channel_key(c.id)) }).chain(archive.public_descriptors.iter().map(|d| gchat_api::DirectoryEntry { name: format!("#{}", d.descriptor.title), joined: false, conversation: None })).chain(self.projection.read().expect("projection lock").0.iter().map(|c| gchat_api::DirectoryEntry { name: c.name.clone(), joined: c.active, conversation: Some(c.id.clone()) })).collect() } }),
             "close" | "hide" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Close { conversation: conversation.ok_or("Select a conversation to close")?.into() } }),
-            "nick" | "part" | "topic" => Err(format!("/{name} is not supported by this protocol version. /hide hides a channel but does not leave it; /quit disconnects this instance.")),
+            "nick" => {
+                let channel = context_channel(&archive, conversation)?;
+                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Nickname(args.into())).await?;
+                applied(conversation.map(str::to_owned), Some("Channel nickname updated. Your identity and history are unchanged.".into()))
+            }
+            "topic" => {
+                let channel = context_channel(&archive, conversation)?;
+                if args.is_empty() {
+                    return Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: format!("Topic for #{}", channel.title), text: client.channel_topic(channel.id).await? } });
+                }
+                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Topic(if args == "--clear" { String::new() } else { args.into() })).await?;
+                applied(conversation.map(str::to_owned), Some("Topic updated.".into()))
+            }
+            "owner" => {
+                let channel = context_channel(&archive, conversation)?;
+                let member = resolve_member(channel, args)?;
+                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Transfer(member.0)).await?;
+                applied(conversation.map(str::to_owned), Some("Ownership transferred; the channel and history are unchanged.".into()))
+            }
+            "part" => {
+                let channel = context_channel(&archive, conversation)?;
+                if args == "--close" {
+                    client.change_channel(channel.id, gcoms_sdk::ChannelChange::Close).await?;
+                    let history = client.archive_snapshot().channels.iter().find(|c| c.id == channel.id).map(record_key);
+                    return applied(history, Some("Channel closed. Offline members receive the closure when they reconnect. History is retained; unconfirmed sends are not marked delivered.".into()));
+                }
+                if channel.role == ChannelRole::Owner {
+                    let member = resolve_member(channel, args.strip_prefix("--transfer ").ok_or("Choose the next owner")?)?;
+                    client.change_channel(channel.id, gcoms_sdk::ChannelChange::Transfer(member.0)).await?;
+                }
+                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Leave).await?;
+                applied(conversation.map(str::to_owned), Some("Leave request saved. Membership ends when the owner processes it; your history is retained.".into()))
+            }
             "me" => {
                 self.require(Capability::ChannelMember)?;
                 if args.is_empty() { return Err("Usage: /me action".into()); }
@@ -1266,6 +1392,14 @@ impl ChatService {
                     let ip = alias.target.address.ip();
                     ip.is_loopback() || ip.is_unspecified()
                 });
+                let link = if let Some(network) = self.runtime.network_client() {
+                    gcoms_network::JoinInvitation {
+                        version: 1,
+                        network: network.shareable_identity()?,
+                        network_invitation: None,
+                        channel_invitation: Some(link),
+                    }.encode_at(now())?
+                } else { link };
                 Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Invitation { channel: channel.title.clone(), link, expires: invitation.expiry, local_only } })
             }
             "kick" => {
@@ -1328,13 +1462,15 @@ impl ChatService {
     }
 
     fn command_specs(&self) -> Vec<gchat_api::CommandSpec> {
-        let mut commands = self
+        let commands = self
             .commands()
             .into_iter()
             .map(|c| {
                 let capability = match c.text.as_str() {
-                    "/create" | "/invite" | "/kick" => Some("ChannelAdmin".into()),
-                    "/join" | "/query" | "/msg" | "/say" | "/me" => Some("ChannelMember".into()),
+                    "/create" | "/invite" | "/kick" | "/owner" => Some("ChannelAdmin".into()),
+                    "/join" | "/query" | "/msg" | "/say" | "/me" | "/nick" => {
+                        Some("ChannelMember".into())
+                    }
                     _ => None,
                 };
                 gchat_api::CommandSpec {
@@ -1350,6 +1486,10 @@ impl ChatService {
                             | "/me"
                             | "/close"
                             | "/hide"
+                            | "/nick"
+                            | "/topic"
+                            | "/owner"
+                            | "/part"
                     ) {
                         "conversation"
                     } else {
@@ -1363,9 +1503,6 @@ impl ChatService {
                 }
             })
             .collect::<Vec<_>>();
-        for name in ["/nick", "/part", "/topic"] {
-            commands.push(gchat_api::CommandSpec { name: name.into(), usage: name.into(), scope: "channel".into(), capability: None, available: false, description: "Not supported by this protocol version. Hiding a channel does not leave its membership.".into() });
-        }
         commands
     }
 
@@ -1444,7 +1581,9 @@ impl ChatService {
     }
 
     pub async fn disconnect(&self) -> Result<(), String> {
+        let _network_lifecycle = self.network_operations.lock().await;
         self.stopped.send_replace(true);
+        let network_result = self.stop_networks().await;
         if let Some(current) = self.session.lock().await.as_ref() {
             if let Some(files) = &current.files {
                 files.enabled(false);
@@ -1475,7 +1614,7 @@ impl ChatService {
             Ok(())
         };
         *session = None;
-        result
+        result.and(network_result)
     }
 
     pub async fn flush(&self) -> Result<(), String> {
@@ -1484,6 +1623,8 @@ impl ChatService {
             session.client.save().await?;
             session.store.save(&session.state)?;
         }
+        drop(session);
+        self.flush_networks().await?;
         Ok(())
     }
 }
@@ -1637,6 +1778,15 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
         ("/list", "List channels"),
         ("/names", "List this channel's members"),
         (
+            "/part",
+            "Leave this channel through its owner; keep your history",
+        ),
+        (
+            "/nick",
+            "Change your nickname in this channel; keep your identity and history",
+        ),
+        ("/topic", "Show the topic; owners can set it or use --clear"),
+        (
             "/join",
             "Open a channel or redeem an invitation: /join link nickname",
         ),
@@ -1663,6 +1813,10 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
             ),
             ("/invite", "Create a single-use invitation"),
             ("/kick", "Remove a channel member"),
+            (
+                "/owner",
+                "Transfer ownership to another member without changing the channel",
+            ),
         ]);
     }
     commands
@@ -1683,6 +1837,10 @@ fn command_usage(name: &str) -> &str {
         "/say" => "/say text",
         "/me" => "/me action",
         "/kick" => "/kick nickname-or-member-id",
+        "/owner" => "/owner nickname-or-member-id",
+        "/part" => "/part [--transfer nickname-or-member-id | --close]",
+        "/nick" => "/nick nickname",
+        "/topic" => "/topic [text | --clear]",
         "/cmd" => "/cmd #channel addressed-command",
         _ => name,
     }

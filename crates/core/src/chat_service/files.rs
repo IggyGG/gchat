@@ -285,9 +285,27 @@ impl ChatService {
     }
     pub(super) async fn file_piece_io(&self, frame: Vec<u8>) -> Result<Vec<u8>, String> {
         self.require(Capability::ChannelMember)?;
-        let (header, bytes) = gchat_api::files::decode_io(&frame)?;
+        let (mut header, bytes) = gchat_api::files::decode_io(&frame)?;
         if header.instance != self.id {
             return Err("File request belongs to another instance".into());
+        }
+        if let Some((network, handle)) = header.id.split_once(':') {
+            let child = {
+                let session = self.session.lock().await;
+                if session.as_ref().is_none_or(|s| s.ui_locked) {
+                    return Err("Unlock this instance to use files".into());
+                }
+                self.networks
+                    .lock()
+                    .await
+                    .get(network)
+                    .cloned()
+                    .ok_or("Network unavailable")?
+            };
+            header.id = handle.to_string();
+            header.instance = child.id.clone();
+            let routed = gchat_api::files::encode_io(&header, bytes)?;
+            return Box::pin(child.file_piece_io(routed)).await;
         }
         if !header.upload && !bytes.is_empty() {
             return Err("Download request contains unexpected bytes".into());

@@ -95,9 +95,7 @@ async fn chat_file_save(
     id: String,
 ) -> Result<String, String> {
     let client = attached(&state).await?;
-    let snapshot = client
-        .files(gchat_api::FileRequest::List { conversation: None })
-        .await?;
+    let snapshot = client.files_for(&id).await?;
     let file = snapshot
         .files
         .iter()

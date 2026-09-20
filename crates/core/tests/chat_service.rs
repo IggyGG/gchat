@@ -9,6 +9,274 @@ use std::{path::Path, sync::Arc, time::Duration};
 
 const PASS: &str = "shared-archive-passphrase";
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn channel_owner_can_transfer_and_leave_without_replacing_channel_identity() {
+    if let Ok(path) = std::env::var("GCHAT_TEST_METRICS") {
+        gcoms_node::metrics::init(std::path::Path::new(&path)).unwrap();
+    }
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    let c = tempfile::tempdir().unwrap();
+    let ar = open_runtime(a.path(), true).await;
+    let br = open_runtime(b.path(), true).await;
+    let cr = open_runtime(c.path(), true).await;
+    let service = make_service(a.path(), ar.clone());
+    unlock(&service, true).await;
+    let Response::Applied {
+        conversation: Some(channel),
+        ..
+    } = submit(
+        &service,
+        "ownership-create1",
+        None,
+        "/create #handoff original",
+    )
+    .await
+    else {
+        panic!("create");
+    };
+    let owner = ar.sdk_client();
+    let next = br.sdk_client();
+    let newcomer = cr.sdk_client();
+    let id = owner.list_channels().await.unwrap()[0].id;
+    let join = next.prepare_channel_join("successor").await.unwrap();
+    let package = next.channel_key_package(join).await.unwrap();
+    let welcome = owner
+        .admit_channel("handoff", &package, "successor")
+        .await
+        .unwrap();
+    next.join_channel(join, "handoff", ChannelVisibility::Private, &welcome)
+        .await
+        .unwrap();
+    let next_service = make_service(b.path(), br.clone());
+    unlock(&next_service, true).await;
+    assert!(matches!(
+        submit(&service, "ownership-refresh", None, "/refresh").await,
+        Response::Applied { .. }
+    ));
+    let response = submit(
+        &service,
+        "ownership-part-01",
+        Some(&channel),
+        "/part --transfer successor",
+    )
+    .await;
+    assert!(matches!(response, Response::Applied { .. }), "{response:?}");
+    eprintln!("handoff: accepted transfer and leave");
+    tokio::time::timeout(Duration::from_secs(25), async {
+        loop {
+            let old = owner.list_channels().await.unwrap();
+            let current = next.list_channels().await.unwrap();
+            if old.is_empty() && current[0].role == gcoms_sdk::ChannelRole::Owner {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .unwrap_or_else(|error| panic!("authenticated leave is processed by successor: {error}"));
+    assert_eq!(next.list_channels().await.unwrap()[0].id, id);
+    let join = newcomer.prepare_channel_join("newcomer").await.unwrap();
+    let package = newcomer.channel_key_package(join).await.unwrap();
+    let welcome = next
+        .admit_channel("handoff", &package, "newcomer")
+        .await
+        .unwrap();
+    newcomer
+        .join_channel(join, "handoff", ChannelVisibility::Private, &welcome)
+        .await
+        .unwrap();
+    assert_eq!(newcomer.list_channels().await.unwrap()[0].id, id);
+    assert_eq!(next.channel_roster("handoff").await.unwrap().len(), 2);
+    let mut incoming = next.subscribe_events();
+    newcomer
+        .send_channel("handoff", b"after ownership transfer")
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop { if matches!(incoming.recv().await, Some(gcoms_sdk::ClientEvent::ChannelMessage { body, .. }) if body == b"after ownership transfer") { break; } }
+    }).await.unwrap();
+    let archive = service.snapshot().await.unwrap();
+    assert!(!archive.conversations[0].active);
+    assert_eq!(
+        archive.conversations[0].kind,
+        gchat_api::ConversationKind::Archive
+    );
+    assert!(
+        newcomer
+            .change_channel("handoff", gcoms_sdk::ChannelChange::Close)
+            .await
+            .is_err(),
+        "members cannot close the channel"
+    );
+    let current = next_service.snapshot().await.unwrap();
+    let channel = current
+        .conversations
+        .iter()
+        .find(|c| c.active)
+        .unwrap()
+        .id
+        .clone();
+    let response = submit(
+        &next_service,
+        "ownership-close01",
+        Some(&channel),
+        "/part --close",
+    )
+    .await;
+    assert!(matches!(response, Response::Applied { .. }), "{response:?}");
+    tokio::time::timeout(Duration::from_secs(15), async {
+        while !newcomer.list_channels().await.unwrap().is_empty()
+            || !next.list_channels().await.unwrap().is_empty()
+        {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("authenticated closure reaches all members");
+    assert!(next.send_channel("handoff", b"after close").await.is_err());
+    assert!(newcomer
+        .send_channel("handoff", b"after close")
+        .await
+        .is_err());
+    service.disconnect().await.unwrap();
+    next_service.disconnect().await.unwrap();
+    drop(service);
+    drop(next_service);
+    drop(owner);
+    drop(next);
+    drop(newcomer);
+    drop(incoming);
+    ar.shutdown().await.unwrap();
+    br.shutdown().await.unwrap();
+    cr.shutdown().await.unwrap();
+    let reopened = open_runtime(b.path(), false).await;
+    assert!(
+        reopened
+            .sdk_client()
+            .list_channels()
+            .await
+            .unwrap()
+            .is_empty(),
+        "closure survives restart"
+    );
+    reopened.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn channel_topic_and_nickname_are_authenticated_shared_and_retained() {
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    let ar = open_runtime(a.path(), true).await;
+    let br = open_runtime(b.path(), true).await;
+    let service = make_service(a.path(), ar.clone());
+    unlock(&service, true).await;
+    let Response::Applied {
+        conversation: Some(channel),
+        ..
+    } = submit(
+        &service,
+        "metadata-create-01",
+        None,
+        "/create #metadata owner",
+    )
+    .await
+    else {
+        panic!("create");
+    };
+    let original = service.snapshot().await.unwrap();
+    let stable_id = original.conversations[0].members[0].id.clone();
+    for (operation, text) in [
+        ("metadata-topic-01", "/topic A shared topic"),
+        ("metadata-nick-001", "/nick Host"),
+    ] {
+        let response = submit(&service, operation, Some(&channel), text).await;
+        assert!(matches!(response, Response::Applied { .. }), "{response:?}");
+    }
+    let owner = ar.sdk_client();
+    let peer = br.sdk_client();
+    let join = peer.prepare_channel_join("participant").await.unwrap();
+    let key = peer.channel_key_package(join).await.unwrap();
+    let welcome = owner
+        .admit_channel("metadata", &key, "participant")
+        .await
+        .unwrap();
+    peer.join_channel(join, "metadata", ChannelVisibility::Private, &welcome)
+        .await
+        .unwrap();
+    let receiver = make_service(b.path(), br.clone());
+    unlock(&receiver, true).await;
+    let receiver_channel = receiver.snapshot().await.unwrap().conversations[0]
+        .id
+        .clone();
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            let state = receiver.snapshot().await.unwrap();
+            let row = &state.conversations[0];
+            if row.topic == "A shared topic"
+                && row
+                    .members
+                    .iter()
+                    .any(|m| m.id == stable_id && m.nickname == "Host")
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("newly admitted member receives existing metadata");
+    assert!(
+        matches!(submit(&receiver, "metadata-forged-01", Some(&receiver_channel), "/topic forged").await, Response::Error { code, .. } if code == "rejected")
+    );
+    assert!(matches!(
+        submit(
+            &receiver,
+            "metadata-peer-nick",
+            Some(&receiver_channel),
+            "/nick Guest"
+        )
+        .await,
+        Response::Applied { .. }
+    ));
+    assert_eq!(
+        owner.channel_topic("metadata").await.unwrap(),
+        "A shared topic"
+    );
+    let state = service.snapshot().await.unwrap();
+    assert_eq!(
+        state.conversations[0]
+            .members
+            .iter()
+            .find(|m| m.is_self)
+            .unwrap()
+            .id,
+        stable_id
+    );
+    receiver.disconnect().await.unwrap();
+    service.disconnect().await.unwrap();
+    drop(owner);
+    drop(peer);
+    drop(receiver);
+    drop(service);
+    ar.shutdown().await.unwrap();
+    br.shutdown().await.unwrap();
+    let reopened = open_runtime(a.path(), false).await;
+    let service = make_service(a.path(), reopened.clone());
+    unlock(&service, false).await;
+    let state = service.snapshot().await.unwrap();
+    assert_eq!(state.conversations[0].topic, "A shared topic");
+    let own = state.conversations[0]
+        .members
+        .iter()
+        .find(|m| m.is_self)
+        .unwrap();
+    assert_eq!(own.nickname, "Host");
+    assert_eq!(own.id, stable_id);
+    service.disconnect().await.unwrap();
+    reopened.shutdown().await.unwrap();
+}
+
 #[cfg(feature = "gc2-carrier")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn desktop_default_protected_profile_creates_and_reopens() {

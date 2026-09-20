@@ -1,6 +1,50 @@
 import { test, expect, type Page } from '@playwright/test';
 async function ready(page: Page, suffix = '') { await page.goto('/' + suffix); await expect(page.locator('.active-title')).toHaveText('#general'); }
 async function command(page: Page, text: string) { const input = page.getByRole('textbox', { name: 'Message or command' }); await input.fill(text); await input.press('Enter'); }
+test('channel details expose real topic, nickname and explicit owner departure choices', async ({ page }) => {
+  await ready(page);
+  await page.locator('.active-title').click();
+  await page.getByLabel('Topic', { exact: true }).fill('Planning together');
+  await page.getByRole('button', { name: 'Save topic', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').at(-1))).toMatchObject({ conversation: 'channel/general', text: '/topic Planning together' });
+  await page.locator('.active-title').click();
+  await page.getByLabel('Your nickname here').fill('Iggy II');
+  await page.getByRole('button', { name: 'Save nickname', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').at(-1))).toMatchObject({ conversation: 'channel/general', text: '/nick Iggy II' });
+  await page.locator('.active-title').click();
+  await page.getByRole('button', { name: 'Leave channel…', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Unconfirmed sends may not arrive');
+  await expect(page.getByRole('button', { name: 'Close for everyone', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Transfer and leave', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').at(-1))).toMatchObject({ conversation: 'channel/general', text: '/part --transfer peer' });
+});
+
+test('members get a real leave request without owner controls', async ({ page }) => {
+  await ready(page, '?member');
+  await page.locator('.active-title').click();
+  await expect(page.getByRole('button', { name: 'Save topic', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Leave channel…', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Membership removal waits for the owner');
+  await expect(page.getByRole('button', { name: 'Close for everyone', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Leave channel', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').at(-1))).toMatchObject({ conversation: 'channel/general', text: '/part' });
+});
+
+test('one invitation previews the other network and channel before joining', async ({ page }) => {
+  await ready(page, '?networks');
+  await page.getByRole('button', { name: 'Join…', exact: true }).click();
+  await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Join #general on other.example');
+  expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
+  await page.getByLabel('Your nickname in this channel', { exact: true }).fill('New guest');
+  await page.getByRole('button', { name: 'Join', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.network-group')).toHaveCount(2);
+  await expect(page.locator('.network-group')).toContainText(['home.example', 'other.example']);
+  await command(page, 'hello on this network');
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'networks' && r.request.kind === 'call' && r.request.request.kind === 'submit').at(-1)?.request)).toMatchObject({ network: 'b'.repeat(64), request: { conversation: 'channel/general', text: 'hello on this network' } });
+});
 test('one header, quiet default workspace, counters and keyboard-accessible tabs', async ({ page }) => {
   await ready(page);
   await expect(page.locator('.titlebar')).toHaveCount(1);

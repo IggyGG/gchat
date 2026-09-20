@@ -21,6 +21,7 @@ gcoms-crypto = { version = "0.1.0" }
 gcoms-transport = { version = "0.1.0" }
 gcoms-routing = { version = "0.1.0" }
 gcoms-network-client = { version = "0.1.0" }
+gcoms-network = { version = "0.1.0" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal", "net", "process", "io-util"] }
 clap = { version = "4", features = ["derive", "env"] }
 ed25519-dalek = { version = "2", default-features = false, features = ["fast", "zeroize"] }

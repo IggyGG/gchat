@@ -43,12 +43,28 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
       if (h.method === 'mark_read') {
         const result = await rpc.resume(methods.mark_read, h); forget(h); return { kind: 'applied', ...result };
       }
+      if (h.method === 'network_operation') {
+        const response = await rpc.resume(methods.network_operation, h); forget(h); return { kind: 'networks', response };
+      }
       throw new ChatError('protocol', 'Unknown saved operation method');
     } catch (failure) { throw error(failure); }
   };
   const request = async (request: Request): Promise<Response> => {
     try {
       switch (request.kind) {
+        case 'networks': {
+          const inner = request.request;
+          const mutating = inner.kind === 'join' || (inner.kind === 'call' && ['submit', 'mark_read'].includes(inner.request.kind));
+          if (!mutating) return { kind: 'networks', response: await client.networks({ request: inner }) };
+          const p = client.prepare_network_operation({ request: inner });
+          const operationId = inner.kind === 'join' ? inner.operation_id : inner.kind === 'call' && inner.request.kind === 'submit' ? inner.request.operation_id : undefined;
+          if (operationId) {
+            p.handle.operation.id = operationId;
+            const retained = find(operationId);
+            if (retained) p.handle = retained;
+          }
+          const response = await rpc.startAndWait(p); forget(p.handle); return { kind: 'networks', response };
+        }
         case 'files': return { kind: 'files', snapshot: await client.files({ request: request.request }) };
         case 'identify': return { kind: 'instance', instance: await client.identify({}) };
         case 'snapshot': return { kind: 'snapshot', snapshot: await client.snapshot({}) };

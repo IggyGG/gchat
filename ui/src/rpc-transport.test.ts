@@ -8,6 +8,23 @@ const legacy = async () => ({ version: API_VERSION, instance_id: instance.id, re
 function reply(r: RpcRequest, value: unknown) { const { invocation: _, ...binding } = r; return { ...binding, body: { state: 'done', outcome: { kind: 'ok', value } } }; }
 
 describe('chat typed attachment', () => {
+  it('recovers a network join without retaining its invitation or issuing another join', async () => {
+    const calls: RpcRequest[] = [], handles = new MemoryHandles();
+    const network = 'b'.repeat(64);
+    const transport: RpcTransport = { destination: '/rpc', limit: 262144, async exchange(r) {
+      calls.push(r);
+      if (r.method === 'identify') return reply(r, instance);
+      if (r.invocation.action === 'call') throw new Error('reply lost');
+      return reply(r, { kind: 'result', network, response: { kind: 'applied', conversation: 'channel/a', notice: null } });
+    } };
+    const client = await attachRpc(legacy, transport, instance.id, handles);
+    await expect(client.request({ kind: 'networks', request: { kind: 'join', code: 'GCI1-private-token', nickname: 'private-name', accepted_network: network, operation_id: 'network-join-123456789' } })).rejects.toThrow('reply lost');
+    expect(JSON.stringify(handles.list())).not.toMatch(/private-token|private-name/);
+    const reopened = await attachRpc(legacy, transport, instance.id, handles);
+    await expect(reopened.checkOperation?.('network-join-123456789')).resolves.toMatchObject({ kind: 'networks', response: { network } });
+    expect(calls.filter(r => r.method === 'network_operation').map(r => r.invocation.action)).toEqual(['call', 'status']);
+    expect(handles.list()).toHaveLength(0);
+  });
   it('recovers original handles after reload without retaining text or resubmitting', async () => {
     const calls: RpcRequest[] = []; const handles = new MemoryHandles();
     const transport: RpcTransport = { destination: '/api/gchat-rpc', limit: 16000, async exchange(r) {
@@ -36,7 +53,7 @@ describe('chat typed attachment', () => {
     expect(handles.list()).toHaveLength(0);
   });
   it('generated contracts validate every error and reject wrong result shapes', () => {
-    expect(Object.keys(methods)).toHaveLength(15);
+    expect(Object.keys(methods)).toHaveLength(17);
     expect(methods.files.args({ request: { action: "list", conversation: null } })).toBe(true);
     expect(methods.files.args({ request: { action: "prepare", id: "share", conversation: "channel", name: "file", size_bytes: "1", path: "/remote/path" } })).toBe(false);
     for (const method of Object.values(methods)) {

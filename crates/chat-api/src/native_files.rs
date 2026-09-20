@@ -4,6 +4,48 @@ use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 impl ChatClient {
+    /// File IDs passed to native export can explicitly select a joined network.
+    pub async fn files_for(&self, id: &str) -> Result<FileSnapshot, String> {
+        if let Some((network, handle)) = id.split_once(':') {
+            if network.len() != 64
+                || !network.bytes().all(|b| b.is_ascii_hexdigit())
+                || handle.len() != 32
+                || !handle.bytes().all(|b| b.is_ascii_hexdigit())
+            {
+                return Err("Invalid network file handle".into());
+            }
+            let response = self
+                .request(Request::Networks {
+                    request: crate::NetworkRequest::Call {
+                        network: network.into(),
+                        request: Box::new(Request::Files {
+                            request: FileRequest::List { conversation: None },
+                        }),
+                    },
+                })
+                .await?;
+            if let Response::Networks {
+                response:
+                    crate::NetworkResponse::Result {
+                        network: actual,
+                        response,
+                    },
+            } = response
+            {
+                if actual != network {
+                    return Err("File response belongs to another network".into());
+                }
+                if let Response::Files { mut snapshot } = *response {
+                    for file in &mut snapshot.files {
+                        file.id = format!("{network}:{}", file.id);
+                    }
+                    return Ok(snapshot);
+                }
+            }
+            return Err("Invalid network file response".into());
+        }
+        self.files(FileRequest::List { conversation: None }).await
+    }
     pub async fn files(&self, request: FileRequest) -> Result<FileSnapshot, String> {
         match self.request(Request::Files { request }).await? {
             Response::Files { snapshot } => Ok(snapshot),
@@ -82,7 +124,7 @@ impl ChatClient {
     }
     /// Materialize a verified copy atomically; never overwrite an existing path.
     pub async fn save_file(&self, id: &str, path: &Path) -> Result<(), String> {
-        let snapshot = self.files(FileRequest::List { conversation: None }).await?;
+        let snapshot = self.files_for(id).await?;
         let info = snapshot
             .files
             .iter()

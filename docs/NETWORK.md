@@ -8,7 +8,32 @@ use the application's selected trust document and preserve monotonic network sta
 The installed providers are `https://bootstrap-hel.gchat.boo/` and
 `https://bootstrap-fsn.gchat.boo/`, backed by the published Hetzner relays. The
 application, daemon and TUI use the same signed preset. No relay credentials are
-shipped in installers, and importing an invitation does not replace the trust root.
+shipped in installers. An invitation never replaces an existing network's trust
+root or identity.
+
+## One invitation for a network and a channel
+
+Use **Invite someone** in channel details (or `/invite`) to copy a combined
+`GCI1-` invitation. It includes the network's signed public configuration and relay
+addresses plus access to that channel. It does not copy your personal provisioning
+grant. A separately issued network grant can also be included by an operator.
+
+The recipient uses **Join**, pastes the invitation, checks the network identity
+and starting channel, and confirms. An unfamiliar network opens as a separate
+network with its own identity, encrypted history and file storage. Existing
+networks remain available in the channel list. A familiar name with a different
+signing root is rejected; a name alone is not proof of network identity.
+
+Joined networks are retained in the encrypted profile and reopen with the same
+identities. Locking or disconnecting closes access to every joined network.
+Files and commands stay bound to the network where they were started, even if
+you switch channels while an operation is pending.
+
+Legacy channel-only invitations remain usable within the selected network.
+An operator's network-only invitation connects a profile but does not grant
+membership of a private channel. See [channel commands](CHANNELS.md).
+
+## Installed network provisioning
 
 Obtain an invitation from the network operator and import it through GChat's
 onboarding flow. The operator's public identity, invitation procedure, capacity,

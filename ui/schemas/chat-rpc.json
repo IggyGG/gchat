@@ -164,6 +164,3358 @@
                   "type": "object"
                 }
               ]
+            },
+            "NetworkRequest": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "list",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "inspect",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "accepted_network": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "join",
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "operation_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code",
+                    "nickname",
+                    "accepted_network",
+                    "operation_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "call",
+                      "type": "string"
+                    },
+                    "network": {
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/Request"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "network",
+                    "request"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "Request": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "networks",
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/NetworkRequest"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "request"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "files",
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/FileRequest"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "request"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "identify",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "create": {
+                      "type": "boolean"
+                    },
+                    "kind": {
+                      "const": "unlock",
+                      "type": "string"
+                    },
+                    "passphrase": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "passphrase",
+                    "create"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "lock",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "disconnect",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "snapshot",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "network_status",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "import_network_invitation",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "catalogue",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "before": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "history",
+                      "type": "string"
+                    },
+                    "limit": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation",
+                    "limit"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "before": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "search",
+                      "type": "string"
+                    },
+                    "limit": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation",
+                    "text",
+                    "limit"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "submit",
+                      "type": "string"
+                    },
+                    "operation_id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "operation_id",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "complete",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "mark_read",
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation",
+                    "message_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "after": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "events",
+                      "type": "string"
+                    },
+                    "wait_ms": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "after",
+                    "wait_ms"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/NetworkRequest"
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "title": "ChatNetworkOperationArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ request: NetworkRequest, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "network_operation",
+        "kind": "operation",
+        "output_schema": {
+          "$defs": {
+            "ActionResult": {
+              "properties": {
+                "artifacts": {
+                  "items": {
+                    "$ref": "#/$defs/Artifact"
+                  },
+                  "type": "array"
+                },
+                "details": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "messageId": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "outputBase64": {
+                  "description": "Exact signed bytes, base64 encoded; views decode only for display.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "type": "string"
+                },
+                "stderr": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "state",
+                "stderr",
+                "details",
+                "artifacts"
+              ],
+              "type": "object"
+            },
+            "Artifact": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "url"
+              ],
+              "type": "object"
+            },
+            "CommandOutput": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "help",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channels": {
+                      "items": {
+                        "$ref": "#/$defs/DirectoryEntry"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "directory",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channels"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channel": {
+                      "type": "string"
+                    },
+                    "expires": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "const": "invitation",
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    },
+                    "localOnly": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channel",
+                    "link",
+                    "expires"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "text",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "title",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "status",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "close",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "CommandSpec": {
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "capability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "usage",
+                "description",
+                "scope",
+                "available"
+              ],
+              "type": "object"
+            },
+            "Completion": {
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text",
+                "description"
+              ],
+              "type": "object"
+            },
+            "Conversation": {
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "channelId": {
+                  "type": "string"
+                },
+                "commands": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/CommandSpec"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "inputLimitBytes": {
+                  "default": 12000,
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "$ref": "#/$defs/ConversationKind"
+                },
+                "lastMessageId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "members": {
+                  "items": {
+                    "$ref": "#/$defs/Member"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "unread": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "channelId",
+                "kind",
+                "name",
+                "topic",
+                "active",
+                "owner",
+                "members",
+                "unread"
+              ],
+              "type": "object"
+            },
+            "ConversationKind": {
+              "enum": [
+                "channel",
+                "query",
+                "archive"
+              ],
+              "type": "string"
+            },
+            "Delivery": {
+              "enum": [
+                "local_accepted"
+              ],
+              "type": "string"
+            },
+            "DirectoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "joined": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "joined"
+              ],
+              "type": "object"
+            },
+            "FileInfo": {
+              "additionalProperties": false,
+              "properties": {
+                "completed_by": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "conversation": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "type": "string"
+                },
+                "sources": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "$ref": "#/$defs/FileState"
+                },
+                "verified_bytes": {
+                  "type": "string"
+                },
+                "verified_sources": {
+                  "default": 0,
+                  "description": "Peers contributing verified pieces since this process opened the cache.",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversation",
+                "name",
+                "size_bytes",
+                "verified_bytes",
+                "state",
+                "sources",
+                "completed_by"
+              ],
+              "type": "object"
+            },
+            "FileSnapshot": {
+              "additionalProperties": false,
+              "properties": {
+                "files": {
+                  "items": {
+                    "$ref": "#/$defs/FileInfo"
+                  },
+                  "type": "array"
+                },
+                "quota_bytes": {
+                  "type": "string"
+                },
+                "retention_days": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "used_bytes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "files",
+                "quota_bytes",
+                "used_bytes",
+                "retention_days"
+              ],
+              "type": "object"
+            },
+            "FileState": {
+              "enum": [
+                "offered",
+                "importing",
+                "downloading",
+                "waiting_for_peers",
+                "paused",
+                "complete",
+                "failed",
+                "cancelled"
+              ],
+              "type": "string"
+            },
+            "HistoryPage": {
+              "properties": {
+                "before": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "messages": {
+                  "items": {
+                    "$ref": "#/$defs/Message"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "messages"
+              ],
+              "type": "object"
+            },
+            "InputHistoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "type": "object"
+            },
+            "InstanceInfo": {
+              "properties": {
+                "archiveExists": {
+                  "type": "boolean"
+                },
+                "bootId": {
+                  "type": "string"
+                },
+                "capabilities": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "profileExists": {
+                  "type": "boolean"
+                },
+                "protocolLocked": {
+                  "type": "boolean"
+                },
+                "safetyNumber": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "bootId",
+                "locked",
+                "protocolLocked",
+                "profileExists",
+                "archiveExists",
+                "safetyNumber",
+                "capabilities"
+              ],
+              "type": "object"
+            },
+            "InvitationPreview": {
+              "properties": {
+                "channel": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "expires": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "network": {
+                  "$ref": "#/$defs/JoinedNetwork"
+                },
+                "newNetwork": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "network",
+                "newNetwork",
+                "expires"
+              ],
+              "type": "object"
+            },
+            "JoinedNetwork": {
+              "properties": {
+                "fingerprint": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "primary": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "$ref": "#/$defs/NetworkStatus"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "fingerprint",
+                "primary",
+                "status"
+              ],
+              "type": "object"
+            },
+            "Member": {
+              "properties": {
+                "capabilities": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "isSelf": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "nickname",
+                "isSelf"
+              ],
+              "type": "object"
+            },
+            "Message": {
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "conversationId": {
+                  "type": "string"
+                },
+                "delivery": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Delivery"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Local archive acceptance is the only fact currently available for outgoing text."
+                },
+                "id": {
+                  "type": "string"
+                },
+                "memberId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mine": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                },
+                "result": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ActionResult"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversationId",
+                "nickname",
+                "body",
+                "timestamp",
+                "mine"
+              ],
+              "type": "object"
+            },
+            "NetworkState": {
+              "description": "Public connection progress; never contains invitations or private routing cards.",
+              "enum": [
+                "locked",
+                "local_only",
+                "invitation_required",
+                "connecting",
+                "connected",
+                "reconnecting",
+                "invitation_expired",
+                "unavailable"
+              ],
+              "type": "string"
+            },
+            "NetworkStatus": {
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "state": {
+                  "$ref": "#/$defs/NetworkState"
+                }
+              },
+              "required": [
+                "state",
+                "message"
+              ],
+              "type": "object"
+            },
+            "ProviderStatus": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "message",
+                "retryable"
+              ],
+              "type": "object"
+            },
+            "Response": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "networks",
+                      "type": "string"
+                    },
+                    "response": {
+                      "$ref": "#"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "response"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "files",
+                      "type": "string"
+                    },
+                    "snapshot": {
+                      "$ref": "#/$defs/FileSnapshot"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "snapshot"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "network_status",
+                      "type": "string"
+                    },
+                    "status": {
+                      "$ref": "#/$defs/NetworkStatus"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "instance": {
+                      "$ref": "#/$defs/InstanceInfo"
+                    },
+                    "kind": {
+                      "const": "instance",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "instance"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "snapshot",
+                      "type": "string"
+                    },
+                    "snapshot": {
+                      "$ref": "#/$defs/Snapshot"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "snapshot"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "history",
+                      "type": "string"
+                    },
+                    "page": {
+                      "$ref": "#/$defs/HistoryPage"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "page"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "$ref": "#/$defs/Completion"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "completed",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "items"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "catalogue",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversations": {
+                      "items": {
+                        "$ref": "#/$defs/Conversation"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "projection",
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversations",
+                    "revision"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "output",
+                      "type": "string"
+                    },
+                    "output": {
+                      "$ref": "#/$defs/CommandOutput"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "output"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "applied",
+                      "type": "string"
+                    },
+                    "notice": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "changed",
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "revision"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "error",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "Snapshot": {
+              "properties": {
+                "commandHistory": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "conversations": {
+                  "items": {
+                    "$ref": "#/$defs/Conversation"
+                  },
+                  "type": "array"
+                },
+                "inputHistory": {
+                  "items": {
+                    "$ref": "#/$defs/InputHistoryEntry"
+                  },
+                  "type": "array"
+                },
+                "instance": {
+                  "$ref": "#/$defs/InstanceInfo"
+                },
+                "providerErrors": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ProviderStatus"
+                  },
+                  "type": "array"
+                },
+                "revision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "instance",
+                "revision",
+                "conversations",
+                "commandHistory",
+                "inputHistory"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "oneOf": [
+            {
+              "properties": {
+                "kind": {
+                  "const": "list",
+                  "type": "string"
+                },
+                "networks": {
+                  "items": {
+                    "$ref": "#/$defs/JoinedNetwork"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "networks"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "preview",
+                  "type": "string"
+                },
+                "preview": {
+                  "$ref": "#/$defs/InvitationPreview"
+                }
+              },
+              "required": [
+                "kind",
+                "preview"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "result",
+                  "type": "string"
+                },
+                "network": {
+                  "type": "string"
+                },
+                "response": {
+                  "$ref": "#/$defs/Response"
+                }
+              },
+              "required": [
+                "kind",
+                "network",
+                "response"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "NetworkResponse"
+        },
+        "output_typescript": "{ \"kind\": \"list\", networks: Array<JoinedNetwork>, } | { \"kind\": \"preview\", preview: InvitationPreview, } | { \"kind\": \"result\", network: string, response: Response, }"
+      },
+      {
+        "args_schema": {
+          "$defs": {
+            "FileRequest": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "list",
+                      "type": "string"
+                    },
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "prepare",
+                      "type": "string"
+                    },
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "size_bytes": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id",
+                    "conversation",
+                    "name",
+                    "size_bytes"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "commit",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "accept",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "pause",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "resume",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "cancel",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "configure",
+                      "type": "string"
+                    },
+                    "quota_bytes": {
+                      "type": "string"
+                    },
+                    "retention_days": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "quota_bytes",
+                    "retention_days"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "NetworkRequest": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "list",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "inspect",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "accepted_network": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "join",
+                      "type": "string"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "operation_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code",
+                    "nickname",
+                    "accepted_network",
+                    "operation_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "call",
+                      "type": "string"
+                    },
+                    "network": {
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/Request"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "network",
+                    "request"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "Request": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "networks",
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/NetworkRequest"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "request"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "files",
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/FileRequest"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "request"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "identify",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "create": {
+                      "type": "boolean"
+                    },
+                    "kind": {
+                      "const": "unlock",
+                      "type": "string"
+                    },
+                    "passphrase": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "passphrase",
+                    "create"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "lock",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "disconnect",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "snapshot",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "network_status",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "import_network_invitation",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "catalogue",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "before": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "history",
+                      "type": "string"
+                    },
+                    "limit": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation",
+                    "limit"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "before": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "search",
+                      "type": "string"
+                    },
+                    "limit": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation",
+                    "text",
+                    "limit"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "submit",
+                      "type": "string"
+                    },
+                    "operation_id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "operation_id",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "complete",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "mark_read",
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation",
+                    "message_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "after": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "events",
+                      "type": "string"
+                    },
+                    "wait_ms": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "after",
+                    "wait_ms"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/NetworkRequest"
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "title": "ChatNetworksArgs",
+          "type": "object"
+        },
+        "args_typescript": "{ request: NetworkRequest, }",
+        "error_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ChatError",
+          "type": "object"
+        },
+        "error_typescript": "{ code: string, message: string, }",
+        "id": "networks",
+        "kind": "session",
+        "output_schema": {
+          "$defs": {
+            "ActionResult": {
+              "properties": {
+                "artifacts": {
+                  "items": {
+                    "$ref": "#/$defs/Artifact"
+                  },
+                  "type": "array"
+                },
+                "details": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "messageId": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "outputBase64": {
+                  "description": "Exact signed bytes, base64 encoded; views decode only for display.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "type": "string"
+                },
+                "stderr": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "state",
+                "stderr",
+                "details",
+                "artifacts"
+              ],
+              "type": "object"
+            },
+            "Artifact": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "url"
+              ],
+              "type": "object"
+            },
+            "CommandOutput": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "help",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channels": {
+                      "items": {
+                        "$ref": "#/$defs/DirectoryEntry"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "directory",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channels"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channel": {
+                      "type": "string"
+                    },
+                    "expires": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "const": "invitation",
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    },
+                    "localOnly": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channel",
+                    "link",
+                    "expires"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "text",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "title",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "status",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "close",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "CommandSpec": {
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "capability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "usage",
+                "description",
+                "scope",
+                "available"
+              ],
+              "type": "object"
+            },
+            "Completion": {
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text",
+                "description"
+              ],
+              "type": "object"
+            },
+            "Conversation": {
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "channelId": {
+                  "type": "string"
+                },
+                "commands": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/CommandSpec"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "inputLimitBytes": {
+                  "default": 12000,
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "$ref": "#/$defs/ConversationKind"
+                },
+                "lastMessageId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "members": {
+                  "items": {
+                    "$ref": "#/$defs/Member"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "unread": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "channelId",
+                "kind",
+                "name",
+                "topic",
+                "active",
+                "owner",
+                "members",
+                "unread"
+              ],
+              "type": "object"
+            },
+            "ConversationKind": {
+              "enum": [
+                "channel",
+                "query",
+                "archive"
+              ],
+              "type": "string"
+            },
+            "Delivery": {
+              "enum": [
+                "local_accepted"
+              ],
+              "type": "string"
+            },
+            "DirectoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "joined": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "joined"
+              ],
+              "type": "object"
+            },
+            "FileInfo": {
+              "additionalProperties": false,
+              "properties": {
+                "completed_by": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "conversation": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "type": "string"
+                },
+                "sources": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "$ref": "#/$defs/FileState"
+                },
+                "verified_bytes": {
+                  "type": "string"
+                },
+                "verified_sources": {
+                  "default": 0,
+                  "description": "Peers contributing verified pieces since this process opened the cache.",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversation",
+                "name",
+                "size_bytes",
+                "verified_bytes",
+                "state",
+                "sources",
+                "completed_by"
+              ],
+              "type": "object"
+            },
+            "FileSnapshot": {
+              "additionalProperties": false,
+              "properties": {
+                "files": {
+                  "items": {
+                    "$ref": "#/$defs/FileInfo"
+                  },
+                  "type": "array"
+                },
+                "quota_bytes": {
+                  "type": "string"
+                },
+                "retention_days": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "used_bytes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "files",
+                "quota_bytes",
+                "used_bytes",
+                "retention_days"
+              ],
+              "type": "object"
+            },
+            "FileState": {
+              "enum": [
+                "offered",
+                "importing",
+                "downloading",
+                "waiting_for_peers",
+                "paused",
+                "complete",
+                "failed",
+                "cancelled"
+              ],
+              "type": "string"
+            },
+            "HistoryPage": {
+              "properties": {
+                "before": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "messages": {
+                  "items": {
+                    "$ref": "#/$defs/Message"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "messages"
+              ],
+              "type": "object"
+            },
+            "InputHistoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "type": "object"
+            },
+            "InstanceInfo": {
+              "properties": {
+                "archiveExists": {
+                  "type": "boolean"
+                },
+                "bootId": {
+                  "type": "string"
+                },
+                "capabilities": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "profileExists": {
+                  "type": "boolean"
+                },
+                "protocolLocked": {
+                  "type": "boolean"
+                },
+                "safetyNumber": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "bootId",
+                "locked",
+                "protocolLocked",
+                "profileExists",
+                "archiveExists",
+                "safetyNumber",
+                "capabilities"
+              ],
+              "type": "object"
+            },
+            "InvitationPreview": {
+              "properties": {
+                "channel": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "expires": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "network": {
+                  "$ref": "#/$defs/JoinedNetwork"
+                },
+                "newNetwork": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "network",
+                "newNetwork",
+                "expires"
+              ],
+              "type": "object"
+            },
+            "JoinedNetwork": {
+              "properties": {
+                "fingerprint": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "primary": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "$ref": "#/$defs/NetworkStatus"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "fingerprint",
+                "primary",
+                "status"
+              ],
+              "type": "object"
+            },
+            "Member": {
+              "properties": {
+                "capabilities": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "isSelf": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "nickname",
+                "isSelf"
+              ],
+              "type": "object"
+            },
+            "Message": {
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "conversationId": {
+                  "type": "string"
+                },
+                "delivery": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Delivery"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Local archive acceptance is the only fact currently available for outgoing text."
+                },
+                "id": {
+                  "type": "string"
+                },
+                "memberId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mine": {
+                  "type": "boolean"
+                },
+                "nickname": {
+                  "type": "string"
+                },
+                "result": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ActionResult"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversationId",
+                "nickname",
+                "body",
+                "timestamp",
+                "mine"
+              ],
+              "type": "object"
+            },
+            "NetworkState": {
+              "description": "Public connection progress; never contains invitations or private routing cards.",
+              "enum": [
+                "locked",
+                "local_only",
+                "invitation_required",
+                "connecting",
+                "connected",
+                "reconnecting",
+                "invitation_expired",
+                "unavailable"
+              ],
+              "type": "string"
+            },
+            "NetworkStatus": {
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "state": {
+                  "$ref": "#/$defs/NetworkState"
+                }
+              },
+              "required": [
+                "state",
+                "message"
+              ],
+              "type": "object"
+            },
+            "ProviderStatus": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "message",
+                "retryable"
+              ],
+              "type": "object"
+            },
+            "Response": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "networks",
+                      "type": "string"
+                    },
+                    "response": {
+                      "$ref": "#"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "response"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "files",
+                      "type": "string"
+                    },
+                    "snapshot": {
+                      "$ref": "#/$defs/FileSnapshot"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "snapshot"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "network_status",
+                      "type": "string"
+                    },
+                    "status": {
+                      "$ref": "#/$defs/NetworkStatus"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "instance": {
+                      "$ref": "#/$defs/InstanceInfo"
+                    },
+                    "kind": {
+                      "const": "instance",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "instance"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "snapshot",
+                      "type": "string"
+                    },
+                    "snapshot": {
+                      "$ref": "#/$defs/Snapshot"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "snapshot"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "history",
+                      "type": "string"
+                    },
+                    "page": {
+                      "$ref": "#/$defs/HistoryPage"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "page"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "$ref": "#/$defs/Completion"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "completed",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "items"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "catalogue",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversations": {
+                      "items": {
+                        "$ref": "#/$defs/Conversation"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "projection",
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversations",
+                    "revision"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "output",
+                      "type": "string"
+                    },
+                    "output": {
+                      "$ref": "#/$defs/CommandOutput"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "output"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "const": "applied",
+                      "type": "string"
+                    },
+                    "notice": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "changed",
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "revision"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "error",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "code",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "Snapshot": {
+              "properties": {
+                "commandHistory": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "conversations": {
+                  "items": {
+                    "$ref": "#/$defs/Conversation"
+                  },
+                  "type": "array"
+                },
+                "inputHistory": {
+                  "items": {
+                    "$ref": "#/$defs/InputHistoryEntry"
+                  },
+                  "type": "array"
+                },
+                "instance": {
+                  "$ref": "#/$defs/InstanceInfo"
+                },
+                "providerErrors": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ProviderStatus"
+                  },
+                  "type": "array"
+                },
+                "revision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "instance",
+                "revision",
+                "conversations",
+                "commandHistory",
+                "inputHistory"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "oneOf": [
+            {
+              "properties": {
+                "kind": {
+                  "const": "list",
+                  "type": "string"
+                },
+                "networks": {
+                  "items": {
+                    "$ref": "#/$defs/JoinedNetwork"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "networks"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "preview",
+                  "type": "string"
+                },
+                "preview": {
+                  "$ref": "#/$defs/InvitationPreview"
+                }
+              },
+              "required": [
+                "kind",
+                "preview"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "result",
+                  "type": "string"
+                },
+                "network": {
+                  "type": "string"
+                },
+                "response": {
+                  "$ref": "#/$defs/Response"
+                }
+              },
+              "required": [
+                "kind",
+                "network",
+                "response"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "NetworkResponse"
+        },
+        "output_typescript": "{ \"kind\": \"list\", networks: Array<JoinedNetwork>, } | { \"kind\": \"preview\", preview: InvitationPreview, } | { \"kind\": \"result\", network: string, response: Response, }"
+      },
+      {
+        "args_schema": {
+          "$defs": {
+            "FileRequest": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "list",
+                      "type": "string"
+                    },
+                    "conversation": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "prepare",
+                      "type": "string"
+                    },
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "size_bytes": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id",
+                    "conversation",
+                    "name",
+                    "size_bytes"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "commit",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "accept",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "pause",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "resume",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "cancel",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "configure",
+                      "type": "string"
+                    },
+                    "quota_bytes": {
+                      "type": "string"
+                    },
+                    "retention_days": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "quota_bytes",
+                    "retention_days"
+                  ],
+                  "type": "object"
+                }
+              ]
             }
           },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2494,5 +5846,5 @@
     "name": "ghost.chat",
     "version": 1
   },
-  "typescript": "// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = 2;\nexport const MAX_INPUT_BYTES = 12000;\nexport const MAX_NETWORK_INVITATION_BYTES = 174778;\nexport type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,\n/**\n * Peers contributing verified pieces since this process opened the cache.\n */\nverified_sources: number, completed_by: number, error: string | null, };\nexport type FileRequest = { \"action\": \"list\", conversation: string | null, } | { \"action\": \"prepare\", id: string, conversation: string, name: string, size_bytes: string, } | { \"action\": \"commit\", id: string, } | { \"action\": \"accept\", id: string, } | { \"action\": \"pause\", id: string, } | { \"action\": \"resume\", id: string, } | { \"action\": \"cancel\", id: string, } | { \"action\": \"configure\", quota_bytes: string, retention_days: number, };\nexport type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };\nexport type FileState = \"offered\" | \"importing\" | \"downloading\" | \"waiting_for_peers\" | \"paused\" | \"complete\" | \"failed\" | \"cancelled\";\nexport type NetworkState = \"locked\" | \"local_only\" | \"invitation_required\" | \"connecting\" | \"connected\" | \"reconnecting\" | \"invitation_expired\" | \"unavailable\";\nexport type NetworkStatus = { state: NetworkState, message: string, };\nexport type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };\nexport type Member = { id: string, nickname: string, isSelf: boolean, capabilities: Array<string>, };\nexport type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };\nexport type ConversationKind = \"channel\" | \"query\" | \"archive\";\nexport type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,\n/**\n * Local archive acceptance is the only fact currently available for outgoing text.\n */\ndelivery: Delivery | null, result: ActionResult | null, };\nexport type ActionResult = { id: string, messageId: string | null, state: string,\n/**\n * Exact signed bytes, base64 encoded; views decode only for display.\n */\noutputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };\nexport type Artifact = { name: string, url: string, };\nexport type Delivery = \"local_accepted\";\nexport type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };\nexport type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };\nexport type CommandOutput = { \"kind\": \"help\", commands: Array<CommandSpec>, } | { \"kind\": \"directory\", channels: Array<DirectoryEntry>, } | { \"kind\": \"invitation\", channel: string, link: string, expires: number, localOnly: boolean, } | { \"kind\": \"text\", title: string, text: string, } | { \"kind\": \"status\", text: string, } | { \"kind\": \"close\", conversation: string, };\nexport type InputHistoryEntry = { conversation: string | null, text: string, };\nexport type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };\nexport type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, };\nexport type HistoryPage = { messages: Array<Message>, before: string | null, };\nexport type Completion = { text: string, description: string, };\nexport type Request = { \"kind\": \"files\", request: FileRequest, } | { \"kind\": \"identify\" } | { \"kind\": \"unlock\", passphrase: string, create: boolean, } | { \"kind\": \"lock\" } | { \"kind\": \"disconnect\" } | { \"kind\": \"snapshot\" } | { \"kind\": \"network_status\" } | { \"kind\": \"import_network_invitation\", code: string, } | { \"kind\": \"catalogue\", conversation: string | null, } | { \"kind\": \"history\", conversation: string, before: string | null, limit: number, } | { \"kind\": \"search\", conversation: string, text: string, before: string | null, limit: number, } | { \"kind\": \"submit\", operation_id: string, conversation: string | null, text: string, } | { \"kind\": \"complete\", conversation: string | null, text: string, } | { \"kind\": \"mark_read\", conversation: string, message_id: string, } | { \"kind\": \"events\", after: string, wait_ms: number, };\nexport type Response = { \"kind\": \"files\", snapshot: FileSnapshot, } | { \"kind\": \"network_status\", status: NetworkStatus, } | { \"kind\": \"instance\", instance: InstanceInfo, } | { \"kind\": \"snapshot\", snapshot: Snapshot, } | { \"kind\": \"history\", page: HistoryPage, } | { \"kind\": \"completed\", items: Array<Completion>, } | { \"kind\": \"catalogue\", commands: Array<CommandSpec>, } | { \"kind\": \"projection\", conversations: Array<Conversation>, revision: string, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, } | { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"changed\", revision: string, } | { \"kind\": \"error\", code: string, message: string, };\nexport type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };\nexport type ResponseEnvelope = { version: number, instance_id: string, response: Response, };\n\nexport type ChatError = { code: string, message: string, };\nexport type Applied = { conversation: string | null, notice: string | null, };\nexport type SubmitOutcome = { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, };\n"
+  "typescript": "// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = 2;\nexport const MAX_INPUT_BYTES = 12000;\nexport const MAX_NETWORK_INVITATION_BYTES = 174778;\nexport type JoinedNetwork = { id: string, name: string, fingerprint: string, primary: boolean, status: NetworkStatus, };\nexport type InvitationPreview = { network: JoinedNetwork, channel: string | null, newNetwork: boolean, expires: number, };\nexport type NetworkRequest = { \"kind\": \"list\" } | { \"kind\": \"inspect\", code: string, } | { \"kind\": \"join\", code: string, nickname: string, accepted_network: string, operation_id: string, } | { \"kind\": \"call\", network: string, request: Request, };\nexport type NetworkResponse = { \"kind\": \"list\", networks: Array<JoinedNetwork>, } | { \"kind\": \"preview\", preview: InvitationPreview, } | { \"kind\": \"result\", network: string, response: Response, };\nexport type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,\n/**\n * Peers contributing verified pieces since this process opened the cache.\n */\nverified_sources: number, completed_by: number, error: string | null, };\nexport type FileRequest = { \"action\": \"list\", conversation: string | null, } | { \"action\": \"prepare\", id: string, conversation: string, name: string, size_bytes: string, } | { \"action\": \"commit\", id: string, } | { \"action\": \"accept\", id: string, } | { \"action\": \"pause\", id: string, } | { \"action\": \"resume\", id: string, } | { \"action\": \"cancel\", id: string, } | { \"action\": \"configure\", quota_bytes: string, retention_days: number, };\nexport type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };\nexport type FileState = \"offered\" | \"importing\" | \"downloading\" | \"waiting_for_peers\" | \"paused\" | \"complete\" | \"failed\" | \"cancelled\";\nexport type NetworkState = \"locked\" | \"local_only\" | \"invitation_required\" | \"connecting\" | \"connected\" | \"reconnecting\" | \"invitation_expired\" | \"unavailable\";\nexport type NetworkStatus = { state: NetworkState, message: string, };\nexport type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };\nexport type Member = { id: string, nickname: string, isSelf: boolean, capabilities: Array<string>, };\nexport type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };\nexport type ConversationKind = \"channel\" | \"query\" | \"archive\";\nexport type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,\n/**\n * Local archive acceptance is the only fact currently available for outgoing text.\n */\ndelivery: Delivery | null, result: ActionResult | null, };\nexport type ActionResult = { id: string, messageId: string | null, state: string,\n/**\n * Exact signed bytes, base64 encoded; views decode only for display.\n */\noutputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };\nexport type Artifact = { name: string, url: string, };\nexport type Delivery = \"local_accepted\";\nexport type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };\nexport type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };\nexport type CommandOutput = { \"kind\": \"help\", commands: Array<CommandSpec>, } | { \"kind\": \"directory\", channels: Array<DirectoryEntry>, } | { \"kind\": \"invitation\", channel: string, link: string, expires: number, localOnly: boolean, } | { \"kind\": \"text\", title: string, text: string, } | { \"kind\": \"status\", text: string, } | { \"kind\": \"close\", conversation: string, };\nexport type InputHistoryEntry = { conversation: string | null, text: string, };\nexport type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };\nexport type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, };\nexport type HistoryPage = { messages: Array<Message>, before: string | null, };\nexport type Completion = { text: string, description: string, };\nexport type Request = { \"kind\": \"networks\", request: NetworkRequest, } | { \"kind\": \"files\", request: FileRequest, } | { \"kind\": \"identify\" } | { \"kind\": \"unlock\", passphrase: string, create: boolean, } | { \"kind\": \"lock\" } | { \"kind\": \"disconnect\" } | { \"kind\": \"snapshot\" } | { \"kind\": \"network_status\" } | { \"kind\": \"import_network_invitation\", code: string, } | { \"kind\": \"catalogue\", conversation: string | null, } | { \"kind\": \"history\", conversation: string, before: string | null, limit: number, } | { \"kind\": \"search\", conversation: string, text: string, before: string | null, limit: number, } | { \"kind\": \"submit\", operation_id: string, conversation: string | null, text: string, } | { \"kind\": \"complete\", conversation: string | null, text: string, } | { \"kind\": \"mark_read\", conversation: string, message_id: string, } | { \"kind\": \"events\", after: string, wait_ms: number, };\nexport type Response = { \"kind\": \"networks\", response: NetworkResponse, } | { \"kind\": \"files\", snapshot: FileSnapshot, } | { \"kind\": \"network_status\", status: NetworkStatus, } | { \"kind\": \"instance\", instance: InstanceInfo, } | { \"kind\": \"snapshot\", snapshot: Snapshot, } | { \"kind\": \"history\", page: HistoryPage, } | { \"kind\": \"completed\", items: Array<Completion>, } | { \"kind\": \"catalogue\", commands: Array<CommandSpec>, } | { \"kind\": \"projection\", conversations: Array<Conversation>, revision: string, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, } | { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"changed\", revision: string, } | { \"kind\": \"error\", code: string, message: string, };\nexport type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };\nexport type ResponseEnvelope = { version: number, instance_id: string, response: Response, };\n\nexport type ChatError = { code: string, message: string, };\nexport type Applied = { conversation: string | null, notice: string | null, };\nexport type SubmitOutcome = { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, };\n"
 }

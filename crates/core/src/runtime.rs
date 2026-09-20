@@ -239,12 +239,84 @@ impl ProtocolRuntime {
         allow_frwd_private_cidrs: &[String],
         profile: gcoms_node::node::NodeProfile,
     ) -> Result<Self, String> {
+        Self::boot_network(
+            store,
+            data,
+            listen,
+            advertise,
+            inbox_relay,
+            allow_frwd_private_cidrs,
+            profile,
+            crate::network::installed()?,
+        )
+        .await
+    }
+
+    /// One isolated protected runtime per explicitly accepted network.
+    #[cfg(feature = "gc2-carrier")]
+    pub(crate) async fn open_network(
+        path: &std::path::Path,
+        passphrase: &str,
+        create: bool,
+        network: gcoms_network::NetworkIdentity,
+    ) -> Result<Self, String> {
+        network.verify_at(
+            if create {
+                gcoms_network_client::now_unix()
+            } else {
+                network.signed_defaults.defaults.issued_at
+            },
+            0,
+        )?;
+        let (store, data) = if create {
+            ProtocolStore::create(path, passphrase)?
+        } else {
+            ProtocolStore::open(path, passphrase)?
+        };
+        let profile = protected_profile(&store);
+        Self::boot_network(
+            store,
+            data,
+            "0.0.0.0:0".parse().expect("static listen"),
+            None,
+            None,
+            &[],
+            profile,
+            gcoms_network_client::InstalledNetwork {
+                trusted_key_b64: network.trusted_key_b64,
+                signed_defaults: network.signed_defaults,
+            },
+        )
+        .await
+    }
+
+    #[cfg(not(feature = "gc2-carrier"))]
+    pub(crate) async fn open_network(
+        _path: &std::path::Path,
+        _passphrase: &str,
+        _create: bool,
+        _network: gcoms_network::NetworkIdentity,
+    ) -> Result<Self, String> {
+        Err("this build does not include the GC/2 carrier profile".into())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn boot_network(
+        store: ProtocolStore,
+        data: ProtocolData,
+        listen: SocketAddr,
+        advertise: Option<SocketAddr>,
+        inbox_relay: Option<NodeInfo>,
+        allow_frwd_private_cidrs: &[String],
+        profile: gcoms_node::node::NodeProfile,
+        installed: gcoms_network_client::InstalledNetwork,
+    ) -> Result<Self, String> {
         let identity_seed = data.identity_seed;
         let node_state = data.node_state;
         let network = if profile.is_production() {
             Some(gcoms_network_client::NetworkClient::open(
                 &store.network_directory(),
-                crate::network::installed()?,
+                installed,
             )?)
         } else {
             None
@@ -728,6 +800,20 @@ impl GcClient for ProtocolClient {
 
     async fn channel_roster(&self, channel: &str) -> Result<Vec<ChannelMemberSummary>, SdkError> {
         self.embedded.channel_roster(channel).await
+    }
+
+    async fn channel_topic(&self, channel: &str) -> Result<String, SdkError> {
+        self.embedded.channel_topic(channel).await
+    }
+
+    async fn change_channel(
+        &self,
+        channel: &str,
+        change: gcoms_sdk::ChannelChange,
+    ) -> Result<gcoms_sdk::MessageId, SdkError> {
+        // The native transaction checkpoints metadata, ratchets and the exact
+        // recipient outbox before acceptance, just like tracked text.
+        self.embedded.change_channel(channel, change).await
     }
 
     async fn public_channel_descriptor(

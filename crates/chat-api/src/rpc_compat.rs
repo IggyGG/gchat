@@ -49,6 +49,9 @@ pub(super) async fn request<T: gcoms_rpc::Transport>(
         Request::Snapshot => Response::Snapshot {
             snapshot: client.snapshot().await.map_err(error)?,
         },
+        Request::Networks { request } => Response::Networks {
+            response: client.networks(request).await.map_err(error)?,
+        },
         Request::NetworkStatus => Response::NetworkStatus {
             status: client.network_status().await.map_err(error)?,
         },

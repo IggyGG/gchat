@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub mod files;
+pub mod networks;
 pub use files::{FileInfo, FileRequest, FileSnapshot, FileState};
+pub use networks::{InvitationPreview, JoinedNetwork, NetworkRequest, NetworkResponse};
 
 pub const VERSION: u16 = 2;
 pub const MAX_FRAME_BYTES: usize = 16 * 1024 * 1024;
@@ -251,6 +253,9 @@ pub struct Completion {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Request {
+    Networks {
+        request: NetworkRequest,
+    },
     Files {
         request: FileRequest,
     },
@@ -302,6 +307,9 @@ pub enum Request {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Response {
+    Networks {
+        response: NetworkResponse,
+    },
     Files {
         snapshot: FileSnapshot,
     },
@@ -389,6 +397,10 @@ pub mod rpc;
 
 pub fn typescript() -> String {
     let declarations = [
+        JoinedNetwork::decl(),
+        InvitationPreview::decl(),
+        NetworkRequest::decl(),
+        NetworkResponse::decl(),
         FileInfo::decl(),
         FileRequest::decl(),
         FileSnapshot::decl(),

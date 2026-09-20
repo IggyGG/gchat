@@ -45,7 +45,10 @@ impl ChatService {
             || key.instance != self.id
             || key.service != SERVICE
             || key.version != SERVICE_VERSION
-            || !matches!(key.method.as_str(), "submit" | "mark_read")
+            || !matches!(
+                key.method.as_str(),
+                "submit" | "mark_read" | "network_operation"
+            )
         {
             return Err(RpcError::new(
                 ErrorCode::Unauthorized,
@@ -314,6 +317,55 @@ impl<S: ChatEndpoint> Chat for Handlers<S> {
     async fn network_status(&self) -> Result<gchat_api::NetworkStatus, ChatError> {
         expect_response!(self, Request::NetworkStatus, NetworkStatus, status)
     }
+    async fn networks(
+        &self,
+        request: gchat_api::NetworkRequest,
+    ) -> Result<gchat_api::NetworkResponse, ChatError> {
+        expect_response!(self, Request::Networks { request }, Networks, response)
+    }
+    async fn network_operation(
+        &self,
+        context: CallContext,
+        mut request: gchat_api::NetworkRequest,
+    ) -> Result<gchat_api::NetworkResponse, ChatError> {
+        let operation = context
+            .operation
+            .ok_or_else(|| domain("operation token missing".into()))?;
+        match &mut request {
+            gchat_api::NetworkRequest::Join { operation_id, .. } => {
+                *operation_id = operation.id.as_str().into()
+            }
+            gchat_api::NetworkRequest::Call { request, .. } => match request.as_mut() {
+                Request::Submit { operation_id, .. } => {
+                    *operation_id = operation.id.as_str().into()
+                }
+                Request::MarkRead { .. } => {}
+                _ => {
+                    return Err(domain(
+                        "This network request is not a durable operation".into(),
+                    ))
+                }
+            },
+            _ => {
+                return Err(domain(
+                    "This network request is not a durable operation".into(),
+                ))
+            }
+        }
+        let result = self.networks(request).await.map_err(|error| ChatError {
+            code: "outcome_unknown".into(),
+            message: error.message,
+        })?;
+        if let gchat_api::NetworkResponse::Result { response, .. } = &result {
+            if let Response::Error { code, message } = response.as_ref() {
+                return Err(ChatError {
+                    code: code.clone(),
+                    message: message.clone(),
+                });
+            }
+        }
+        Ok(result)
+    }
     async fn import_network_invitation(
         &self,
         code: String,
@@ -489,7 +541,7 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
         args: serde_json::Value,
     ) -> Result<Outcome, RpcError> {
         let outcome = self.0.invoke(context, method, args).await?;
-        if method == "submit"
+        if matches!(method, "submit" | "network_operation")
             && matches!(&outcome, Outcome::Error(value) if value["code"] == "outcome_unknown")
         {
             // Keep the admitted operation uncertain; an execution/storage

@@ -16,6 +16,8 @@ import sys
 import time
 
 TEST = "bootstrap::gc2_tests::production_bootstrap_fresh_reopen_and_recovery"
+NETWORK_TEST = "chat_service::networks::tests::joined_network_registry_is_private_isolated_and_reopens"
+INVITE_TEST = "chat_service::networks::journey::combined_invitation_joins_another_network_and_retains_chat_and_file"
 ADDRESSES = [f"93.184.216.{n}/32" for n in range(71, 75)]
 
 
@@ -51,9 +53,9 @@ def worker(args):
         os.setgid(args.gid)
         os.setuid(args.uid)
 
-    command = [str(args.binary), TEST, "--ignored", "--exact", "--nocapture", "--test-threads=1"]
+    command = [str(args.binary), args.test, "--ignored", "--exact", "--nocapture", "--test-threads=1"]
     print(json.dumps({"namespace": namespace(), "addresses": ADDRESSES,
-                      "test_uid": args.uid, "test": TEST}), flush=True)
+                      "test_uid": args.uid, "test": args.test}), flush=True)
     process = subprocess.Popen(command, env=environment, start_new_session=True,
                                preexec_fn=unprivileged)
     try:
@@ -76,6 +78,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--test", choices=[TEST, NETWORK_TEST, INVITE_TEST], default=TEST)
     parser.add_argument("--timeout", type=int, default=420)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--uid", type=int, help=argparse.SUPPRESS)
@@ -100,7 +103,7 @@ def main():
     command = ["sudo", "-n", "timeout", "--signal=TERM", "--kill-after=5s",
                str(args.timeout + 15), "unshare", "--net", "--", sys.executable,
                str(Path(__file__).resolve()), "--worker", "--binary", str(args.binary),
-               "--output", str(output), "--timeout", str(args.timeout),
+               "--output", str(output), "--timeout", str(args.timeout), "--test", args.test,
                "--uid", str(os.getuid()), "--gid", str(os.getgid()),
                "--host-namespace", host, "--scratch", str(scratch)]
     started = time.monotonic()
@@ -108,8 +111,8 @@ def main():
         result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=False)
     content = (output / "test.log").read_text()
     report = {
-        "scope": "local production-profile HTTPS bootstrap; no fleet or privacy qualification",
-        "test": TEST, "binary_sha256": binary_hash,
+        "scope": "disconnected protected-runtime fixture; no fleet or privacy qualification",
+        "test": args.test, "binary_sha256": binary_hash,
         "script_sha256": digest(Path(__file__)), "exit_code": result.returncode,
         "seconds": time.monotonic() - started,
         "test_passed": "test result: ok. 1 passed; 0 failed;" in content,
