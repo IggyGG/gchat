@@ -1,6 +1,30 @@
 {
   "schema": 1,
-  "version": null,
-  "channel": "developer-preview",
-  "artifacts": []
+  "version": "0.1.0",
+  "channel": "production",
+  "artifacts": [
+    {
+      "target": "linux-x86_64",
+      "format": "deb",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.0/GChat_0.1.0_amd64.deb",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.0/GChat_0.1.0_amd64.deb.asc",
+      "sha256": "13577d472d5397657886e8b4c357e5038667cfecfe6376c2e5b11f812aa6c3ca",
+      "signature_sha256": "63fbdc6c3da70cc53a6a855a2003bd0fa146270cfa96def369b4df648f631c51",
+      "signing_verified": true
+    },
+    {
+      "target": "linux-x86_64",
+      "format": "appimage",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.0/GChat_0.1.0_amd64.AppImage",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.0/GChat_0.1.0_amd64.AppImage.asc",
+      "sha256": "0c677eca4c366aa776da05ba153c84d3f33cd10902e93f78461e4a030b1ddaa9",
+      "signature_sha256": "13aaf173d3441b733fd8736e76875843a945e33bd21ea0412217e948d3c7aead",
+      "signing_verified": true
+    }
+  ],
+  "release_key": {
+    "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB",
+    "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
+    "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.0/gchat-release-key.asc"
+  }
 }
