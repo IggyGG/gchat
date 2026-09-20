@@ -198,6 +198,7 @@ async fn production_journey() {
     use std::os::unix::fs::PermissionsExt;
     let directory = tempfile::tempdir().unwrap();
     std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    retained_bootstrap_without_invitation_obeys_deadline(directory.path()).await;
     let mut relays = Vec::new();
     for n in 71..75u8 {
         let config = NodeConfig {
@@ -375,4 +376,51 @@ async fn production_journey() {
     for relay in relays {
         relay.shutdown().await;
     }
+}
+
+#[cfg(target_os = "linux")]
+async fn retained_bootstrap_without_invitation_obeys_deadline(directory: &std::path::Path) {
+    // No relay listens here. The disconnected namespace makes this a real
+    // unavailable retained route without contacting an operated provider.
+    let profile = directory.join("retained-unavailable.gcprotocol");
+    let runtime = ProtocolRuntime::create_protected(
+        &profile,
+        "bootstrap-test",
+        "127.0.0.1:24493".parse().unwrap(),
+        None,
+        None,
+        &[],
+    )
+    .await
+    .unwrap();
+    let node = runtime.sdk_client().embedded().node().clone();
+    let bundle = BootstrapBundle {
+        relays: vec![gcoms_routing::service::gc2_introduction_from(
+            "93.184.216.71:4433".parse().unwrap(),
+            [89; 32],
+            &[90; 32],
+            now_unix(),
+        )],
+    };
+    node.install_gc2_routing_bootstrap(&bundle).unwrap();
+    assert!(node.has_routing_bootstrap());
+    let network = runtime.network_client().unwrap();
+    assert!(!network.has_invitation().unwrap());
+    let identity = node.current_info().await.unwrap().identity_pk;
+    let started = tokio::time::Instant::now();
+    let deadline = started + Duration::from_secs(35);
+    let error = recover_network(&node, Some(&network), &[], deadline)
+        .await
+        .unwrap_err();
+    let elapsed = started.elapsed();
+    assert_eq!(error, "inbox routing is recovering", "elapsed={elapsed:?}");
+    assert!(
+        tokio::time::Instant::now() >= deadline,
+        "retained re-entry abandoned the caller's budget: {elapsed:?}"
+    );
+    assert!(node.has_routing_bootstrap());
+    assert!(!node.transport_status().routing_ready);
+    assert_eq!(node.current_info().await.unwrap().identity_pk, identity);
+    runtime.shutdown().await.unwrap();
+    drop(node);
 }

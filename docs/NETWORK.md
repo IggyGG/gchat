@@ -31,6 +31,10 @@ adding the client feature does not upgrade an operated provider.
 Signed defaults, invitation grants and normal HTTPS verification remain required
 for the installed network. Retained current-protocol directory state is tried
 before provider recovery and is also used when reporting invitation requirements.
+If a retained profile has no invitation grant, re-entry may use the caller's
+full recovery deadline. The 30-second provider-fallback interval does not erase
+retained authority or turn slow reconnection into an invitation requirement.
+An unavailable route still fails at the original deadline.
 
 The source regression `bootstrap::gc2_tests::production_bootstrap_fresh_reopen_and_recovery`
 runs the production profile against authenticated local TLS and four relays in a
@@ -38,6 +42,8 @@ disconnected namespace. Run its compiled all-feature `gchat_core` test binary vi
 `python3 scripts/test-bootstrap-namespace.py --binary <path> --output <new directory>`.
 It checks fresh import, both subscription classes, retained identity/directory,
 cached installed-network re-entry and retry after downgrade refusal. The separate
+unavailable-route check exercises a 35-second caller deadline without an
+invitation, so it exceeds the provider-fallback interval. The
 GComs network-client TLS suite checks signed-default/grant provisioning.
 These source checks do not qualify an installed artifact against operated providers
 or establish client-observer privacy. The ordinary Rust suite leaves the namespace

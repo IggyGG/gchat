@@ -1,9 +1,8 @@
-//! Trusted HTTPS bootstrap of private inbox-relay provisions.
+//! Trusted HTTPS bootstrap for the explicitly selected routing protocol.
 //!
-//! A fresh client hands this module one or more operator-configured
-//! credential-free HTTPS base URLs. Each endpoint is asked for a relay
-//! provision; the first structurally valid private card wins. Private card
-//! material stays in RAM and is never persisted by this module.
+//! Configured HTTPS endpoints supply typed introductions for node validation
+//! and retained re-entry. Legacy private-card provisioning remains a separate
+//! compatibility API; it cannot replace current-protocol routing authority.
 
 use crate::client::NodeInfo;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -101,11 +100,18 @@ pub async fn recover_network(
         return recover_routing(node, &parse_bootstrap_urls(urls, false)?, deadline).await;
     }
     let cached = deadline.min(tokio::time::Instant::now() + std::time::Duration::from_secs(30));
-    if node.has_routing_bootstrap() && node.wait_for_inbox(cached).await.is_ok() {
+    let retained = node.has_routing_bootstrap();
+    if retained && node.wait_for_inbox(cached).await.is_ok() {
         return Ok(());
     }
     let network = network.ok_or("This runtime has no installed network state")?;
     if !network.has_invitation()? {
+        // Thirty seconds decides when an authorized provider fallback may
+        // help. Without a grant, retained re-entry still owns the caller's
+        // remaining budget; slow readiness does not erase its authority.
+        if retained {
+            return node.wait_for_inbox(deadline).await;
+        }
         return Err("Enter a network invitation to connect.".into());
     }
     #[cfg(feature = "gc2-carrier")]
