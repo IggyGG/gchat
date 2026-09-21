@@ -124,37 +124,21 @@ async fn chat_file_save(
 #[cfg(target_os = "android")]
 mod android;
 
+#[cfg(not(target_os = "android"))]
+mod startup;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             #[cfg(target_os = "android")]
             let home = Some(app.path().app_data_dir()?.join("files").join("instance"));
-            #[cfg(not(target_os = "android"))]
-            let (home, gc2_carrier) = {
-                let mut args = std::env::args().skip(1);
-                let mut home = None;
-                let mut gc2_carrier = false;
-                while let Some(arg) = args.next() {
-                    if arg == "--home" {
-                        home = Some(std::path::PathBuf::from(
-                            args.next().ok_or("--home requires a directory")?,
-                        ));
-                    } else if arg == "--gc2-carrier" {
-                        gc2_carrier = true;
-                    } else {
-                        return Err(format!("unknown client argument: {arg}").into());
-                    }
-                }
-                (home, gc2_carrier)
-            };
+            #[cfg(target_os = "android")]
             let config =
                 InstanceConfig::from_home(home.as_deref()).map_err(std::io::Error::other)?;
             #[cfg(not(target_os = "android"))]
-            let config = InstanceConfig {
-                gc2_carrier,
-                ..config
-            };
+            let config =
+                startup::configuration(std::env::args_os()).map_err(std::io::Error::other)?;
             app.manage(Attachment {
                 client: Mutex::new(None),
                 config,

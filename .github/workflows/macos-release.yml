@@ -3,6 +3,16 @@ run-name: Forgejo macOS ${{ inputs.request_id }}
 on:
   workflow_dispatch:
     inputs:
+      gchat_ref:
+        description: Protected main/release branch or approved version tag, exactly at gchat_commit
+        required: true
+        type: string
+        default: main
+      gcoms_ref:
+        description: Protected main/release branch containing gcoms_commit, or an exact approved version tag
+        required: true
+        type: string
+        default: main
       gchat_commit:
         required: true
         type: string
@@ -17,7 +27,12 @@ permissions:
 jobs:
   macos:
     environment: release-signing
-    timeout-minutes: 350
+    timeout-minutes: 360
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      HOMEBREW_NO_AUTO_UPDATE: '1'
     strategy:
       fail-fast: false
       matrix:
@@ -41,36 +56,54 @@ jobs:
           path: gcoms
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12'
       - name: Verify protected source commits
         env:
           GCHAT_COMMIT: ${{ inputs.gchat_commit }}
           GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+          GCHAT_REF: ${{ inputs.gchat_ref }}
+          GCOMS_REF: ${{ inputs.gcoms_ref }}
+        run: >-
+          python3 gchat/scripts/macos-build.py --verify-checkouts
+          --gchat gchat --gcoms gcoms
+          --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT"
+          --gchat-ref "$GCHAT_REF" --gcoms-ref "$GCOMS_REF"
+      - name: Install pinned Rust, build tools and test loopback aliases
+        timeout-minutes: 15
         run: |
           python3 - <<'PY'
-          import os, re, subprocess
-          if os.environ['GITHUB_SHA'] != os.environ['GCHAT_COMMIT']:
-              raise SystemExit('workflow must run from the frozen GChat commit')
-          for name in ('gchat', 'gcoms'):
-              commit = os.environ[name.upper() + '_COMMIT']
-              if not re.fullmatch('[0-9a-f]{40}', commit):
-                  raise SystemExit('full commit required')
-              actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=name, text=True).strip()
-              if actual != commit:
-                  raise SystemExit('checkout differs from source input')
-              subprocess.run(['git', 'merge-base', '--is-ancestor', commit, 'origin/main'], cwd=name, check=True)
+          import os, subprocess, tempfile, tomllib
+          from pathlib import Path
+          toolchains = [tomllib.loads(Path(name, 'rust-toolchain.toml').read_text())['toolchain'] for name in ('gchat', 'gcoms')]
+          if toolchains[0] != toolchains[1]:
+              raise SystemExit('paired sources must select the same pinned Rust toolchain')
+          toolchain = toolchains[0]
+          subprocess.run(['rustup', 'toolchain', 'install', toolchain['channel'], '--profile', toolchain.get('profile', 'minimal'),
+                          '--component', ','.join(toolchain['components'])], check=True)
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write('RUSTUP_TOOLCHAIN=' + toolchain['channel'] + '\n')
+              # Darwin's default /var/folders path exceeds Unix socket limits.
+              scratch = Path(tempfile.mkdtemp(prefix='gc-', dir='/private/tmp')).resolve()
+              scratch.chmod(0o700)
+              for name in ('TMPDIR', 'TMP', 'TEMP'):
+                  output.write(name + '=' + str(scratch) + '\n')
           PY
-      - name: Install build tools and test loopback aliases
-        run: |
-          brew install node@22
+          xcrun --sdk macosx --show-sdk-path
+          clang --version
+          brew install node@22 cmake
           echo "$(brew --prefix node@22)/bin" >> "$GITHUB_PATH"
           python3 gchat/scripts/macos-loopback.py
       - name: Qualify both native workspaces with retained evidence
+        timeout-minutes: 275
         run: |
           npm install --global npm@11
-          python3 gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --output native-evidence
-          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
-          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.${{ matrix.target }} --timeout 18000 -- python3 scripts/ci.py
+          python3 gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --target ${{ matrix.target }} --output native-evidence
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.${{ matrix.target }} --timeout 9000 -- python3 scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
+          python3 gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.${{ matrix.target }} --timeout 7200 -- python3 scripts/ci.py
       - name: Build and verify the configured signing policy
+        timeout-minutes: 45
         working-directory: gchat
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
@@ -81,6 +114,14 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
+      - name: Verify copied DMG application lifecycle and cleanup
+        timeout-minutes: 15
+        working-directory: gchat
+        run: >-
+          python3 scripts/test-macos-bundle.py
+          --build-manifest ../signed/build.json
+          --native-receipt ../signed/provenance/native-ci.json
+          --output ../signed/application-smoke --temp-parent /private/tmp --timeout 30
       - name: Retain native qualification evidence
         if: always()
         run: |
@@ -100,4 +141,5 @@ jobs:
             signed/build.json
             signed/provenance/**
             signed/evidence/**
+            signed/application-smoke/**
           if-no-files-found: error

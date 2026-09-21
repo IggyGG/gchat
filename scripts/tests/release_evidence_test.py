@@ -117,6 +117,43 @@ class EvidenceTests(unittest.TestCase):
                 self.reports[check] = {**original, key: value}; self.save(check)
                 self.assertTrue(self.errors())
 
+    def test_production_mac_keeps_native_installer_and_signing_requirements(self):
+        self.candidate.update(channel="production", release_policy="production-minutes-v1",
+                              targets=["macos-aarch64", "macos-x86_64"], privacy_qualified=False,
+                              privacy_improvements=["Traffic analysis remains open"])
+        self.assertEqual(self.errors(), [])
+        checks = release.required_checks(self.candidate, "preflight")
+        self.assertIn("signing.macos", checks)
+        self.assertNotIn("signing.windows", checks)
+        self.assertNotIn("signing.linux", checks)
+        for target in self.candidate["targets"]:
+            self.assertIn("native.gcoms." + target, checks)
+            self.assertIn("native.gchat." + target, checks)
+            self.assertIn("installer.gchat." + target, checks)
+        self.candidate["checks"].pop("native.gchat.macos-aarch64")
+        self.assertTrue(any("native.gchat.macos-aarch64" in error for error in self.errors()))
+
+    def test_production_rejects_empty_duplicate_and_unknown_targets(self):
+        self.candidate.update(channel="production", release_policy="production-minutes-v1",
+                              privacy_qualified=False, privacy_improvements=["Traffic analysis remains open"])
+        for targets in ([], ["macos-aarch64", "macos-aarch64"], ["ios"]):
+            with self.subTest(targets=targets):
+                self.candidate["targets"] = targets
+                self.assertTrue(any("invalid candidate targets" in error for error in self.errors()))
+
+    def test_native_gchat_keeps_explicit_namespace_exclusion_scope(self):
+        check = "native.gchat.macos-aarch64"
+        report = self.reports[check]
+        report["tests"].update(ignored=1, excluded=[{
+            "name": "chat_service::networks::tests::joined_network_registry_is_private_isolated_and_reopens",
+            "reason": "requires the disconnected namespace helper; creates independent protected runtimes",
+        }])
+        self.save(check)
+        self.assertEqual(self.errors(), [])
+        report["tests"]["excluded"][0]["name"] = "unexpected_ignored_test"
+        self.save(check)
+        self.assertTrue(any("reviewed qualification policy" in error for error in self.errors()))
+
     def test_changed_log_and_artifact_bytes_block_release(self):
         (self.base / "native.gcoms.linux-x86_64.log").write_text("altered")
         self.assertTrue(any("hash mismatch" in error for error in self.errors()))

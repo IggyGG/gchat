@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 fn main() {
     use clap::Parser;
-    if std::env::args().any(|arg| arg == "--interactive") {
+    if std::env::args_os().any(|arg| arg == "--interactive") {
         #[derive(Parser)]
         struct ServiceArgs {
             #[command(flatten)]

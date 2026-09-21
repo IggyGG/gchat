@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import plistlib
 import re
 import shutil
 import subprocess
@@ -164,6 +165,7 @@ def bundle(target, output, environment, identity, policy, checkout):
             cwd=checkout, env=environment))
         verify_resolved_protocol(graph, checkout.parent / 'gcoms')
         bundle_dir = build_root / triple / 'release/bundle'
+        executables = []
         if system == 'Darwin':
             apps = list(bundle_dir.glob('macos/*.app'))
             if len(apps) != 1:
@@ -184,6 +186,16 @@ def bundle(target, output, environment, identity, policy, checkout):
                 raise ValueError('signed application certificate differs from configured fingerprint')
             if policy == 'publicly-trusted':
                 run(['spctl', '--assess', '--type', 'execute', '--verbose=2', str(apps[0])])
+            metadata = plistlib.loads((apps[0] / 'Contents/Info.plist').read_bytes())
+            name = metadata.get('CFBundleExecutable')
+            if not isinstance(name, str) or Path(name).name != name or name in ('', '.', '..'):
+                raise ValueError('unsafe application executable name')
+            executable = apps[0] / 'Contents/MacOS' / name
+            executables.append({'name': name, 'sha256': sha(executable), 'size': executable.stat().st_size})
+        elif system == 'Windows':
+            executable = build_root / triple / 'release/gchat-desktop.exe'
+            verify_windows(executable, policy)
+            executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
         patterns = {'deb':'deb/*.deb', 'appimage':'appimage/*.AppImage', 'nsis':'nsis/*.exe', 'dmg':'dmg/*.dmg'}
         files = []
         for kind in bundles:
@@ -200,7 +212,7 @@ def bundle(target, output, environment, identity, policy, checkout):
                 run(['gpg', '--batch', '--yes', '--pinentry-mode', 'loopback', '--passphrase-fd', '0', '--local-user', required('GCHAT_RELEASE_KEY'), '--armor', '--detach-sign', str(destination)], input=required('GCHAT_RELEASE_PASSPHRASE').encode(), env=environment)
                 verify(str(destination)+'.asc', destination, required('GCHAT_RELEASE_KEY'))
             files.append({'name':destination.name,'format':kind,'sha256':sha(destination),'signing_verified':True})
-        return files
+        return files, executables
 
 
 def main():
@@ -226,13 +238,13 @@ def main():
     shutil.copyfile(a.native_ci_report.resolve(), ci_report)
     native_ci = verify_native_ci_inputs(ci_report, dependency_inputs)
     if system=='Darwin':
-        with apple_keychain(policy) as environment: files=bundle(a.target,output,environment,identity,policy,checkout)
-    else: files=bundle(a.target,output,dict(os.environ),identity,policy,checkout)
+        with apple_keychain(policy) as environment: files,executables=bundle(a.target,output,environment,identity,policy,checkout)
+    else: files,executables=bundle(a.target,output,dict(os.environ),identity,policy,checkout)
     verify_derived_inputs(checkout, dependency_inputs)
     verify_retained_inputs(output / 'provenance', dependency_inputs)
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip() or subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()!=sources[name]: raise ValueError('build changed source inputs')
-    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'publisher':identity,'signing_policy':policy,'public_ca_trust':policy=='publicly-trusted','apple_notarization':system=='Darwin' and policy=='publicly-trusted','dependency_inputs':dependency_inputs,'native_ci':native_ci,'files':files},indent=2)+'\n')
+    (output/'build.json').write_text(json.dumps({'schema':1,'target':a.target,'sources':sources,'publisher':identity,'signing_policy':policy,'public_ca_trust':policy=='publicly-trusted','apple_notarization':system=='Darwin' and policy=='publicly-trusted','dependency_inputs':dependency_inputs,'native_ci':native_ci,'files':files,'executables':executables},indent=2)+'\n')
     print('Signed bundle report: '+str(output/'build.json'))
 
 

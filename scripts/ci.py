@@ -50,12 +50,16 @@ run([NPM,'test'])
 if sys.platform=='linux':
     run([NPM,'exec','--workspace','@gchat/ui','--','playwright','install','chromium'])
     run([NPM,'run','test:browser','--workspace','@gchat/ui'])
+elif sys.platform=='darwin':
+    run([NPM,'exec','--workspace','@gchat/ui','--','playwright','install','webkit'])
+    run([NPM,'run','test:browser','--workspace','@gchat/ui','--','--browser=webkit'])
 run([NPM,'run','build'])
 run([sys.executable,'scripts/website.py'])
 run([sys.executable,'scripts/check-generated.py'])
 run([sys.executable,'scripts/collect-notices.py'])
 run(['cargo','fmt','--manifest-path','apps/client/src-tauri/Cargo.toml','--','--check'])
 run(['cargo','check','--manifest-path','apps/client/src-tauri/Cargo.toml','--locked'])
+run(['cargo','test','--manifest-path','apps/client/src-tauri/Cargo.toml','--lib','--locked'])
 run([NPM,'run','tauri','-w','@gchat/client','--','build','--no-bundle'])
 if sys.platform=='linux':
     run(['cargo','deny','check'])

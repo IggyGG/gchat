@@ -1,7 +1,7 @@
 {
   "project": "gchat",
   "channel": "production",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "companion_url": "https://github.com/IggyGG/gcoms",
   "security_contact": "iggy@gchat.boo",
   "conduct_contact": "iggy@gchat.boo",
@@ -60,9 +60,9 @@
     "linux-x86_64"
   ],
   "unqualified_targets": {
-    "windows-x86_64": "Deferred by owner for Linux-first production rollout; no installer qualification claimed.",
-    "macos-x86_64": "Deferred by owner for Linux-first production rollout; no installer qualification claimed.",
-    "macos-aarch64": "Deferred by owner for Linux-first production rollout; no installer qualification claimed."
+    "windows-x86_64": "Cross-platform application implementation is authorized; native installer qualification remains pending.",
+    "macos-x86_64": "Version 0.1.4 native application qualification is in progress; no installer pass claimed yet.",
+    "macos-aarch64": "Version 0.1.4 native application qualification is in progress; no installer pass claimed yet."
   },
   "public_repository_url": "https://github.com/IggyGG/gchat",
   "security_reporting_url": "https://github.com/IggyGG/gchat/security/advisories/new",

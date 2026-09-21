@@ -1,6 +1,6 @@
 [package]
 name = "gchat-desktop"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
@@ -12,9 +12,9 @@ name = "gchat_native"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-# Make the explicit carrier option available in native installers. Selecting
-# the runtime profile still requires --gc2-carrier; existing instances keep
-# their current startup policy until an explicit migration is selected.
+# Official desktop builds select GC/2 by default. --legacy-carrier explicitly
+# selects compatibility mode; retained profile mismatches are never migrated
+# or retried automatically. Builds without this feature retain the legacy default.
 default = ["gc2-carrier"]
 gc2-carrier = ["gchat-core/gc2-carrier"]
 

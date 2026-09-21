@@ -49,6 +49,14 @@ EXCLUSIONS = {
     "native_c_deadline_bounds_stalled_and_trickling_peers": "private external TLS probe",
     "native_c_http2_uses_existing_tp1_post_and_stream_paths": "private external TLS probe",
 }
+# These installed-network fixtures require the separate Linux namespace runner.
+# Native package tests record the exclusion; they never imply installed coverage.
+GCHAT_EXCLUSIONS = {
+    "bootstrap_gc2_tests::production_bootstrap_fresh_reopen_and_recovery",
+    "bootstrap::gc2_tests::production_bootstrap_fresh_reopen_and_recovery",
+    "chat_service::networks::journey::combined_invitation_joins_another_network_and_retains_chat_and_file",
+    "chat_service::networks::tests::joined_network_registry_is_private_isolated_and_reopens",
+}
 
 
 class EvidenceError(ValueError):
@@ -185,8 +193,7 @@ def validate_report(check, report, candidate, base, artifacts):
         for exclusion in counts["excluded"]:
             require(isinstance(exclusion, dict) and nonempty(exclusion.get("name")) and nonempty(exclusion.get("reason")), "unexplained test exclusion")
             require((check.startswith("native.gcoms.") and exclusion["name"] in EXCLUSIONS) or
-                    (candidate.get("wire_profile") == "GC/2" and check.startswith("native.gchat.") and
-                     exclusion["name"] == "bootstrap_gc2_tests::production_bootstrap_fresh_reopen_and_recovery"),
+                    (check.startswith("native.gchat.") and exclusion["name"] in GCHAT_EXCLUSIONS),
                     "test exclusion is not in the reviewed qualification policy")
         require(len({entry["name"] for entry in counts["excluded"]}) == len(counts["excluded"]), "duplicate test exclusions")
     if check in INSTALLERS:
@@ -253,14 +260,16 @@ def required_checks(candidate, stage):
     if candidate["wire_profile"] == "GC/2":
         required = required | gc2.CHECKS
     if candidate.get("channel") == "production":
-        # Owner decision 2026-09-20: Linux production, bounded acceptance;
+        # Owner production policy: qualify each selected platform independently;
         # statistical/privacy matrices and timed campaigns are not release gates.
         deferred = {"security.fuzz", "soak.application", "privacy.gc2-client",
                     "fleet.gc2-files", "integration.gc2-turnover"}
         targets = set(candidate["targets"])
         required = {check for check in required if check not in deferred and
                     not any(check.endswith("." + target) for target in set(TARGETS) - targets)}
-        required -= {"signing.windows", "signing.macos"}
+        for system in ("linux", "windows", "macos"):
+            if not any(target.startswith(system + "-") for target in targets):
+                required.discard("signing." + system)
     return required
 
 
@@ -301,7 +310,10 @@ def validate(candidate, base, stage="candidate", repositories=None, publication=
             gc2.contract(candidate, base, require, file_reference, read_json)
         require(nonempty(candidate.get("version")), "missing candidate version")
         require(candidate.get("signing_policy", "publicly-trusted") in {"publicly-trusted", "self-signed-preview", "self-signed"}, "unsupported candidate signing policy")
-        require(candidate.get("targets") == (["linux-x86_64"] if candidate["channel"] == "production" else list(TARGETS)), "candidate targets differ from release policy (preview requires Linux, Windows, and both macOS qualification targets)")
+        targets = candidate.get("targets")
+        require(isinstance(targets, list) and bool(targets) and all(isinstance(target, str) for target in targets)
+                and len(set(targets)) == len(targets) and set(targets) <= set(TARGETS), "invalid candidate targets")
+        require(candidate["channel"] == "production" or targets == list(TARGETS), "preview requires Linux, Windows, and both macOS qualification targets")
         validate_sources(candidate, base, repositories)
         artifacts = candidate.get("artifacts")
         require(isinstance(artifacts, dict) and artifacts, "no release artifacts recorded")

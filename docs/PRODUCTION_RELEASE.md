@@ -2,7 +2,7 @@
 
 On 2026-09-20 the owner selected production rollout and removed statistical privacy thresholds and mandatory 24-hour campaigns as release gates. Releases use bounded delivery, authentication, persistence/reopen, artifact-signature and rollback checks. Reuse source-bound completed checks for unchanged code; extended research and soak campaigns run separately and never impose a minimum release duration. Failed historical evidence stays failed.
 
-Linux is the current released desktop platform. Windows, macOS and mobile qualification are deferred. Gh0st signs Linux artifacts with the pinned release key; this is self-signed distribution, not public-CA certification.
+Linux is the current released desktop platform. macOS, Windows and mobile application delivery is now in progress, with separate native and installed-app checks before publishing each target. See CROSS_PLATFORM.md. Gh0st signs desktop artifacts with pinned release keys; self-signed distribution does not imply public-CA certification or Apple notarization.
 
 ## Privacy improvements still outstanding
 

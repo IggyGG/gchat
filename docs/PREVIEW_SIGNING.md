@@ -1,7 +1,8 @@
-# Gh0st preview signing
+# Gh0st self-signed desktop distribution
 
-The owner selected **Gh0st** and self-signed distribution on 2026-09-20. Both
-repositories record `signing_policy: self-signed-preview`. The desktop bundle
+The owner selected **Gh0st** and self-signed distribution on 2026-09-20. The
+current production policy records `signing_policy: self-signed`; older preview
+receipts retain their original `self-signed-preview` policy. The desktop bundle
 publisher is Gh0st. This policy verifies signed bytes against pinned keys; it
 does not assert public certificate-authority trust, Windows reputation, or Apple
 notarization. Native installer acceptance must include the resulting OS prompts.
