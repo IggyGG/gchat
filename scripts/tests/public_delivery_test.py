@@ -50,7 +50,7 @@ class GnuPGFixturePathTests(unittest.TestCase):
             self.assertEqual(gpg_fixture_path(source, '/git/usr/bin/gpg.exe', True),
                              '/c/Users/Test User/keyring')
         self.assertEqual(run.call_args.args[0],
-                         ['/git/usr/bin/cygpath.exe', '--unix', '--absolute', source])
+                         [str(Path('/git/usr/bin/cygpath.exe')), '--unix', '--absolute', source])
 
     def test_native_tool_paths_are_not_rewritten(self):
         with patch.object(Path, 'is_file', return_value=False), \
