@@ -474,9 +474,10 @@
     }
   }
   function closeNavigation() { channelsOpen = false; panel = null; void tick().then(() => navigationOpener?.focus()); }
-  async function openNavigation(mode: 'channels' | 'users' | 'files') {
+  async function openNavigation(mode: 'channels' | 'users' | 'files', opener: HTMLElement | null = document.activeElement as HTMLElement | null) {
     if ((mode === 'channels' && channelsOpen) || (mode !== 'channels' && panel === mode)) { closeNavigation(); return; }
-    navigationOpener = document.activeElement as HTMLElement | null;
+    // Safari may not focus a clicked button. Preserve the actual opener.
+    navigationOpener = opener;
     channelsOpen = mode === 'channels'; panel = mode === 'channels' ? null : mode;
     await tick(); document.querySelector<HTMLButtonElement>(`.gchat .${mode === 'channels' ? 'channels' : 'inspector'}.open button:not(:disabled)`)?.focus();
   }
@@ -541,15 +542,15 @@
 <svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} onresize={() => { narrow = window.innerWidth < 1000; if (window.innerWidth > 760) channelsOpen = false; }} />
 <div class="gchat" class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
   <header class="titlebar" inert={navigationModal}>
-    {#if workspaceReady}<button class="channel-toggle" aria-label="Channels" aria-expanded={channelsOpen} onclick={() => void openNavigation('channels')}>☰</button>{/if}
+    {#if workspaceReady}<button class="channel-toggle" aria-label="Channels" aria-expanded={channelsOpen} onclick={event => void openNavigation('channels', event.currentTarget)}>☰</button>{/if}
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
     {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}>{title}</button>{:else}<span class="active-title">{locked ? 'Welcome' : 'Connect to GChat'}</span>{/if}
     <nav class="header-actions" aria-label="Chat actions">
       <button class="network-button" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
       <button class="help-button" title="Help and commands" onclick={() => void showHelp()}>Help</button>
       {#if workspaceReady && active}
-        <button class="count" aria-label={`Users: ${active.members.length}`} aria-expanded={panel === 'users'} title="Users" onclick={() => void openNavigation('users')}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="7" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m3 11v-3a6 6 0 0 0-2-4" /></svg> {active.members.length}</button>
-        {#if fileCount}<button class="count" aria-label={`Files: ${fileCount}`} aria-expanded={panel === 'files'} title="Files" onclick={() => void openNavigation('files')}><span aria-hidden="true">▤</span> {fileCount}</button>{/if}
+        <button class="count" aria-label={`Users: ${active.members.length}`} aria-expanded={panel === 'users'} title="Users" onclick={event => void openNavigation('users', event.currentTarget)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="7" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m3 11v-3a6 6 0 0 0-2-4" /></svg> {active.members.length}</button>
+        {#if fileCount}<button class="count" aria-label={`Files: ${fileCount}`} aria-expanded={panel === 'files'} title="Files" onclick={event => void openNavigation('files', event.currentTarget)}><span aria-hidden="true">▤</span> {fileCount}</button>{/if}
       {/if}
       {#if tools}{@render tools()}{/if}
     </nav>

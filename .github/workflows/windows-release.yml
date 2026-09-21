@@ -1,0 +1,152 @@
+name: Windows release worker
+run-name: Forgejo Windows ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      gchat_ref:
+        description: Protected main/release branch or approved version tag, exactly at gchat_commit
+        required: true
+        type: string
+        default: main
+      gcoms_ref:
+        description: Protected main/release branch containing gcoms_commit, or exact approved version tag
+        required: true
+        type: string
+        default: main
+      gchat_commit:
+        required: true
+        type: string
+      gcoms_commit:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  windows:
+    environment: release-signing
+    runs-on: windows-2022
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      GCHAT_ISOLATED_SIGNING_WORKER: '1'
+    steps:
+      - name: Keep source bytes and native paths portable
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.longpaths true
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.23.2'
+      - name: Verify frozen release sources and workflow
+        env:
+          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+          GCHAT_REF: ${{ inputs.gchat_ref }}
+          GCOMS_REF: ${{ inputs.gcoms_ref }}
+        run: >-
+          python gchat/scripts/windows-build.py --verify-checkouts
+          --gchat gchat --gcoms gcoms
+          --gchat-commit "$env:GCHAT_COMMIT" --gcoms-commit "$env:GCOMS_COMMIT"
+          --gchat-ref "$env:GCHAT_REF" --gcoms-ref "$env:GCOMS_REF"
+      - name: Install pinned native tools and WebView prerequisites
+        timeout-minutes: 20
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Pinned = python -c "import pathlib,tomllib; a=tomllib.loads(pathlib.Path('gchat/rust-toolchain.toml').read_text())['toolchain']; b=tomllib.loads(pathlib.Path('gcoms/rust-toolchain.toml').read_text())['toolchain']; assert a == b, 'paired Rust toolchains differ'; print(a['channel'])"
+          if ($LASTEXITCODE -ne 0) { throw 'Paired toolchain mismatch' }
+          $Toolchain = $Pinned.Trim() + '-x86_64-pc-windows-msvc'
+          rustup toolchain install $Toolchain --profile minimal --component clippy --component rustfmt
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned MSVC toolchain installation failed' }
+          $env:RUSTUP_TOOLCHAIN = $Toolchain
+          "RUSTUP_TOOLCHAIN=$Toolchain" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          npm.cmd install --global npm@11.6.2
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned npm installation failed' }
+          $VSWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $VS = & $VSWhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $VS) { throw 'Native Visual Studio x64 C++ tools are missing' }
+          $SignTool = Get-ChildItem (Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10/bin/*/x64/signtool.exe') | Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1
+          if (-not $SignTool) { throw 'Native Windows SDK signing tools are missing' }
+          $SignTool.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $NSIS = Join-Path ${env:ProgramFiles(x86)} 'NSIS/makensis.exe'
+          if (-not (Test-Path -LiteralPath $NSIS)) { throw 'NSIS prerequisite is missing from the isolated worker' }
+          & $NSIS /VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS prerequisite is unusable' }
+          cmake --version
+          if ($LASTEXITCODE -ne 0) { throw 'CMake prerequisite is missing' }
+          python gchat/scripts/windows-build.py --prepare-webview --worker-evidence worker-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Windows/WebView prerequisite verification failed' }
+      - name: Qualify both native workspaces
+        timeout-minutes: 265
+        run: |
+          python gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --target windows-x86_64 --output native-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate initialization failed' }
+          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.windows-x86_64 --timeout 8400 -- python scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
+          if ($LASTEXITCODE -ne 0) { throw 'Native GChat qualification failed' }
+          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.windows-x86_64 --timeout 7200 -- python scripts/ci.py
+          if ($LASTEXITCODE -ne 0) { throw 'Native GComs qualification failed' }
+      - name: Import only the existing pinned release certificate
+        timeout-minutes: 5
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: ./gchat/scripts/windows-signing.ps1 -Action Import -StateDirectory signing-evidence
+      - name: Build and verify signed NSIS
+        timeout-minutes: 45
+        working-directory: gchat
+        run: |
+          python scripts/build-installer.py --target windows-x86_64 --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
+          if ($LASTEXITCODE -ne 0) { throw 'Signed NSIS build failed' }
+      - name: Install, reopen, uninstall and clean up the actual application
+        timeout-minutes: 15
+        working-directory: gchat
+        run: |
+          python scripts/test-windows-installer.py --build-manifest ../signed/build.json --native-receipt ../signed/provenance/native-ci.json --output ../signed/application-smoke --timeout 30
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer/service lifecycle failed' }
+      - name: Remove the imported private key and verify untouched trust stores
+        if: always()
+        timeout-minutes: 5
+        run: ./gchat/scripts/windows-signing.ps1 -Action Cleanup -StateDirectory signing-evidence
+      - name: Retain all native, installer and cleanup evidence
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force -Path signed | Out-Null
+          foreach ($Name in @('native-evidence', 'worker-evidence', 'signing-evidence')) {
+            if (Test-Path -LiteralPath $Name) { Copy-Item -LiteralPath $Name -Destination signed -Recurse -Force }
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: windows-x86_64
+          path: |
+            signed/*.exe
+            signed/build.json
+            signed/provenance/**
+            signed/native-evidence/**
+            signed/worker-evidence/**
+            signed/signing-evidence/**
+            signed/application-smoke/**
+          if-no-files-found: error
