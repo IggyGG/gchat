@@ -255,5 +255,87 @@ class SameSourceSimulatorTests(unittest.TestCase):
                 retained.simulator_file(item, root)
 
 
+class OriginalSimulatorLifecycleTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name) / 'ios-lifecycle-output'
+        self.root.mkdir()
+        self.ref = lambda name, value: self.write(name, json.dumps(value).encode())
+        RetainedInputsTests.setUp(self)
+        self.inputs = self.spec | {'run_id': 1, 'artifact_id': 2, 'artifact_sha256': '0' * 64}
+        binary = {'sha256': '3' * 64, 'size': 123}
+        self.original['simulator_executable'] = binary
+        authority = {'scope': 'ios_xcode_linked_simulator_authority', 'passed': True,
+            'device_qualified': False, 'executable': binary, 'host_entitlements': {},
+            'linked_simulator_authority': {'entitlements': {'application-identifier': 'boo.gchat.app'}}}
+        names = ('Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',
+                 'Tests/PluginTests/PushValidationTests.swift', 'Tests/PluginTests/UnlockVaultTests.swift')
+        sources = {name: {'sha256': '4' * 64, 'size': 5} for name in names}
+        self.native = {'scope': 'ios_app_hosted_native_push_validation_and_keychain_tests',
+            'passed': True, 'sources_unchanged': True, 'cleanup_complete': True,
+            'owned_device_removed': True, 'cleanup_errors': [], 'sources': sources,
+            'tests': {'passed': 3, 'failed': 0, 'skipped': 0},
+            'test_summary': self.ref('native-summary.json', {'result': 'Passed',
+                'passedTests': 3, 'failedTests': 0, 'skippedTests': 0}),
+            'log': self.write('native.log', b'3 native tests passed')}
+        self.candidate = {'scope': 'ios_retained_simulator_profile_background_reopen',
+            'passed': True, 'cleanup_complete': True, 'cleanup_errors': [],
+            'application_recompiled': False, 'application_resigned': False,
+            'simulator_keychain_fixture': False, 'original_build_verdict_unchanged': True,
+            'inputs': self.inputs, 'original_build': self.ref('original.json', self.original),
+            'original_build_passed': False, 'application': binary, 'original_application': binary,
+            'linked_verification': self.ref('authority.json', authority),
+            'original_linked_authority': self.ref('original-authority.json', authority),
+            'native_tests': self.ref('native.json', self.native),
+            'original_native_tests': self.ref('failed-native.json', self.native | {'passed': False}),
+            'test_summary': self.ref('summary.json', {'result': 'Passed', 'passedTests': 1,
+                'failedTests': 0, 'skippedTests': 0}), 'xctest_log': self.write('xctest.log', b'1 lifecycle passed')}
+
+    def write(self, name, value):
+        path = self.root / name
+        path.write_bytes(value)
+        return ios.reference(path)
+
+    def validate(self, candidate=None):
+        return retained.validate_original_lifecycle(candidate or self.candidate,
+                                                    self.original, self.inputs, self.root)
+
+    def test_exact_original_simulator_can_reuse_completed_native_and_lifecycle_pass(self):
+        original = copy.deepcopy(self.original)
+        self.validate()
+        self.assertEqual(original, self.original)
+        self.assertFalse(self.original['passed'])
+
+    def test_failed_cleanup_resigning_wrong_artifact_and_early_success_are_rejected(self):
+        for key, value in (('passed', False), ('cleanup_complete', False), ('cleanup_errors', ['leftover']),
+                           ('application_recompiled', True), ('application_resigned', True),
+                           ('simulator_keychain_fixture', True), ('original_build_verdict_unchanged', False),
+                           ('original_build_passed', True), ('inputs', self.inputs | {'artifact_id': 3}),
+                           ('application', {'sha256': '9' * 64, 'size': 123})):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                self.validate(self.candidate | {key: value})
+
+    def test_native_skip_source_change_or_cleanup_failure_cannot_qualify_upload(self):
+        for change in ('skip', 'source', 'cleanup', 'failed'):
+            native = copy.deepcopy(self.native)
+            if change == 'skip':
+                native['test_summary'] = self.ref('skipped.json', {'result': 'Passed',
+                    'passedTests': 2, 'failedTests': 0, 'skippedTests': 1})
+            if change == 'source': native['sources']['Sources/UnlockVault.swift']['sha256'] = '9' * 64
+            if change == 'cleanup': native['owned_device_removed'] = False
+            if change == 'failed': native['passed'] = False
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.validate(self.candidate | {'native_tests': self.ref('changed-native.json', native)})
+
+    def test_missing_or_modified_evidence_and_path_escape_fail(self):
+        (self.root / 'xctest.log').write_bytes(b'modified')
+        with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+            self.validate()
+        outside = {'path': str(self.root / '../outside'), 'sha256': '0' * 64, 'size': 0}
+        with self.assertRaisesRegex(ValueError, 'unsafe lifecycle'):
+            retained.lifecycle_file(outside, self.root)
+
+
 if __name__ == '__main__':
     unittest.main()

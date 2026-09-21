@@ -98,6 +98,9 @@ def simulator_file(item, root):
 
 def validate_linked_upload(report, original):
     """Keep the newly linked simulator proof separate from the unchanged IPA."""
+    if report.get('simulator_reused_from_original') is True:
+        validate_original_simulator_upload(report, original)
+        return
     require(report.get('simulator_relinked_from_same_source') is True,
             'retained upload requires a separately linked same-source simulator')
     binding = report['simulator_binding']
@@ -135,6 +138,142 @@ def validate_linked_upload(report, original):
         require(all(observed[key] == binding['application'][key] for observed in
                     (candidate['executable'], proof['executable'], authority['executable'], lifecycle['application'])),
                 'simulator build, lifecycle or authority executable differs')
+
+
+def lifecycle_file(item, root):
+    parts = PurePosixPath(item['path']).parts
+    require(parts.count('ios-lifecycle-output') == 1, 'unexpected lifecycle evidence location')
+    relative = PurePosixPath(*parts[parts.index('ios-lifecycle-output') + 1:])
+    require(relative.parts and '..' not in relative.parts, 'unsafe lifecycle evidence location')
+    path = root.joinpath(*relative.parts)
+    require(path.is_file() and path.resolve().is_relative_to(root.resolve()) and not path.is_symlink()
+            and ios.digest(path) == item['sha256'] and path.stat().st_size == item['size'],
+            'lifecycle evidence hash mismatch')
+    return path
+
+
+def validate_original_lifecycle(candidate, original, inputs, root):
+    """An unchanged original simulator can qualify through a later completed run."""
+    require(candidate.get('scope') == 'ios_retained_simulator_profile_background_reopen'
+            and candidate.get('passed') is True and candidate.get('cleanup_complete') is True
+            and candidate.get('cleanup_errors') == []
+            and candidate.get('application_recompiled') is False
+            and candidate.get('application_resigned') is False
+            and candidate.get('simulator_keychain_fixture') is False
+            and candidate.get('original_build_verdict_unchanged') is True,
+            'original simulator lifecycle or cleanup did not pass unchanged')
+    require(candidate.get('inputs') == {key: inputs[key] for key in
+            ('run_id', 'artifact_id', 'artifact_sha256', 'gchat_commit', 'gcoms_commit', 'build_number')},
+            'lifecycle original source/artifact binding differs')
+    require(json.loads(lifecycle_file(candidate['original_build'], root).read_text()) == original
+            and candidate.get('original_build_passed') is original.get('passed'),
+            'lifecycle original verdict or build differs')
+    journey.test_result(json.loads(lifecycle_file(candidate['test_summary'], root).read_text()))
+    lifecycle_file(candidate['xctest_log'], root)
+    for key in ('application', 'original_application'):
+        require(all(candidate[key][field] == original['simulator_executable'][field]
+                    for field in ('sha256', 'size')), 'lifecycle executable differs from original')
+    authority = json.loads(lifecycle_file(candidate['linked_verification'], root).read_text())
+    original_authority = json.loads(lifecycle_file(candidate['original_linked_authority'], root).read_text())
+    for proof in (authority, original_authority):
+        require(proof.get('scope') == 'ios_xcode_linked_simulator_authority' and proof.get('passed') is True
+                and proof.get('device_qualified') is False and all(proof['executable'][field]
+                    == original['simulator_executable'][field] for field in ('sha256', 'size')),
+                'original simulator authority mismatch')
+    for key in ('host_entitlements', 'linked_simulator_authority'):
+        require(authority[key] == original_authority[key], 'simulator authority changed')
+    native = json.loads(lifecycle_file(candidate['native_tests'], root).read_text())
+    failed = json.loads(lifecycle_file(candidate['original_native_tests'], root).read_text())
+    require(native.get('scope') == 'ios_app_hosted_native_push_validation_and_keychain_tests'
+            and native.get('passed') is True and native.get('sources_unchanged') is True
+            and native.get('cleanup_complete') is True and native.get('owned_device_removed') is True
+            and native.get('cleanup_errors') == [] and failed.get('passed') is False
+            and failed.get('sources_unchanged') is True and failed.get('cleanup_complete') is True,
+            'native test recovery or cleanup did not pass')
+    expected = {'Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',
+                'Tests/PluginTests/PushValidationTests.swift', 'Tests/PluginTests/UnlockVaultTests.swift'}
+    require(set(native['sources']) == set(failed['sources']) == expected,
+            'native test source inventory differs')
+    require(all(native['sources'][name][field] == failed['sources'][name][field]
+                for name in expected for field in ('sha256', 'size')), 'native source changed')
+    summary = json.loads(lifecycle_file(native['test_summary'], root).read_text())
+    require(summary.get('result') == 'Passed' and summary.get('passedTests') == 3
+            and summary.get('failedTests') == 0 and summary.get('skippedTests') == 0
+            and native.get('tests', {}).get('passed') == 3
+            and native['tests'].get('failed') == 0 and native['tests'].get('skipped') == 0,
+            'all three native tests must pass without exclusions')
+    lifecycle_file(native['log'], root)
+    return authority, native
+
+
+def validate_original_simulator_upload(report, original):
+    require(report.get('simulator_relinked_from_same_source') is False,
+            'original simulator must not be relinked')
+    binding = report['simulator_binding']
+    archive = ios.verify_reference(binding['archive'])
+    require(ios.digest(archive) == report['inputs']['simulator']['artifact_sha256'],
+            'lifecycle archive binding differs')
+    candidate_path = ios.verify_reference(binding['report'])
+    candidate = json.loads(candidate_path.read_text())
+    authority, _ = validate_original_lifecycle(candidate, original, report['inputs'], candidate_path.parent)
+    require(binding['report'] == report['simulator'], 'upload lifecycle receipt differs')
+    checked = json.loads(ios.verify_reference(binding['verification']).read_text())
+    require(checked.get('passed') is True and checked.get('scope') == 'ios_xcode_linked_simulator_authority'
+            and checked.get('device_qualified') is False, 'fresh native verification did not pass')
+    for key in ('host_entitlements', 'linked_simulator_authority'):
+        require(checked[key] == authority[key], 'fresh simulator authority differs')
+    for field in ('sha256', 'size'):
+        require(checked['executable'][field] == original['simulator_executable'][field]
+                == binding['application'][field], 'fresh simulator executable differs')
+    ios.verify_reference(binding['application'])
+
+
+def verify_original_simulator(spec, original, inputs, destination, gchat):
+    run = journey.api('actions/runs/' + str(spec['run_id']))
+    artifact = journey.api('actions/artifacts/' + str(spec['artifact_id']))
+    simulator_run_binding(run, artifact, spec)
+    require(run['conclusion'] == 'success', 'retained lifecycle workflow must succeed')
+    ios.write_json(destination / 'simulator-run.json', run)
+    ios.write_json(destination / 'simulator-artifact.json', artifact)
+    archive = destination / 'simulator-artifact.zip'
+    with archive.open('wb') as stream:
+        subprocess.run(['gh', 'api', 'repos/IggyGG/gchat/actions/artifacts/' + str(spec['artifact_id']) + '/zip'],
+                       stdout=stream, check=True, timeout=600)
+    require(ios.digest(archive) == spec['artifact_sha256'], 'lifecycle artifact digest mismatch')
+    retained = destination / 'simulator-original'
+    with zipfile.ZipFile(archive) as zipped:
+        ios.inspect_zip(zipped)
+        zipped.extractall(retained)
+    root = retained / 'ios-lifecycle-output'
+    nested = root / 'original-artifact.zip'
+    require(ios.digest(nested) == inputs['artifact_sha256'], 'lifecycle original archive differs')
+    with zipfile.ZipFile(nested) as zipped:
+        ios.inspect_zip(zipped)
+        zipped.extractall(root / 'original')
+    receipt = root / 'report.json'
+    candidate = json.loads(receipt.read_text())
+    authority, native = validate_original_lifecycle(candidate, original, inputs, root)
+    for name, item in native['sources'].items():
+        path = gchat / 'apps/client/src-tauri/mobile-platform/ios' / name
+        require(ios.digest(path) == item['sha256'] and path.stat().st_size == item['size'],
+                'native tests differ from original application source')
+    for field, path in (('harness', Path(__file__).with_name('ios-lifecycle.py')),
+                         ('swift_test', Path(__file__).parent / 'fixtures/ios-lifecycle/LifecycleTests.swift')):
+        require(ios.digest(path) == candidate[field]['sha256'], 'lifecycle controller source differs')
+    app_zip = journey.relocated(original['simulator_archive'], destination / 'original/ios-output')
+    app_root = destination / 'simulator-application'
+    ios.run(['ditto', '-x', '-k', app_zip, app_root])
+    apps = list(app_root.glob('*.app'))
+    require(len(apps) == 1, 'original simulator archive must contain one app')
+    helper_spec = importlib.util.spec_from_file_location('simulator_builder', Path(__file__).with_name('ios-simulator-build.py'))
+    helper = importlib.util.module_from_spec(helper_spec)
+    helper_spec.loader.exec_module(helper)
+    verified = helper.verify_app(apps[0], destination / 'simulator-verification')
+    checked = json.loads(Path(verified['path']).read_text())
+    for key in ('host_entitlements', 'linked_simulator_authority'):
+        require(checked[key] == authority[key], 'original simulator verification differs')
+    return {'report': ios.reference(receipt), 'archive': ios.reference(archive),
+            'application': checked['executable'], 'verification': verified}
 
 
 def verify_simulator(spec, original, destination):
@@ -280,9 +419,16 @@ def verify(args):
         # build on the same source pair. Post-link entitlement injection is not
         # a substitute for iOS simulator link authority.
         journey.relocated(original['simulator_archive'], root)
-        binding = verify_simulator(spec['simulator'], original, destination)
-        report.update(simulator_binding=binding, simulator=binding['lifecycle'],
-                      simulator_relinked_from_same_source=True)
+        if spec['simulator'].get('mode') == 'retained_original':
+            binding = verify_original_simulator(spec['simulator'], original, spec, destination, args.gchat)
+            report.update(simulator_binding=binding, simulator=binding['report'],
+                          simulator_relinked_from_same_source=False, simulator_reused_from_original=True)
+            validate_original_simulator_upload(report, original)
+        else:
+            require('mode' not in spec['simulator'], 'unknown simulator verification mode')
+            binding = verify_simulator(spec['simulator'], original, destination)
+            report.update(simulator_binding=binding, simulator=binding['lifecycle'],
+                          simulator_relinked_from_same_source=True)
         require(ios.digest(ipa) == original['application']['ipa']['sha256'], 'original IPA changed')
         require(ios.digest(archive) == spec['artifact_sha256'], 'original artifact archive changed')
         require(ios.digest(original_path) == report['original_build']['sha256'], 'original build receipt changed')
