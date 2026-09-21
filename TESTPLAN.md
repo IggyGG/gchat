@@ -5,6 +5,8 @@ from retained release manifests and publication receipts. Windows16 failed in
 GComs after GChat native CI passed. iOS installed simulator validation passed,
 but the Apple upload was rejected. The workflow reported a false upload success;
 its original evidence remains retained and does not qualify distribution.
+The [compact iOS receipt](docs/evidence/ios-lifecycle-upload-20260921/summary.json)
+binds the passing lifecycle, rejected upload and tested parser correction.
 
 ## Completed release evidence
 

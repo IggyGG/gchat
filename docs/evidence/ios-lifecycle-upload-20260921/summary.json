@@ -1,0 +1,56 @@
+{
+  "scope": "retained iOS native lifecycle pass and corrected upload-failure interpretation",
+  "run_id": 35631610692,
+  "controller": "fabb2f4a3303b1ed617a680c70dd096061ed12ca",
+  "sources": {
+    "gchat": {
+      "commit": "2fe87b960b1009ca4c2d1bd0c4f46d5d48e2662b",
+      "tree": "81818c522c71d3cfa60a87337f8e99ce87457e32"
+    },
+    "gcoms": {
+      "commit": "8c6342a90b2d584eb0925182c96d02de5592aabf",
+      "tree": "d48ea4aededa3590cb754ed963e38c14861bb12b"
+    }
+  },
+  "build_number": "1.0.9",
+  "native_verification_passed": true,
+  "native_lifecycle": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "test_seconds": 75.851,
+    "cleanup_complete": true
+  },
+  "workflow_reported_success": true,
+  "upload_receipt_reported_passed": true,
+  "upload_accepted": false,
+  "upload_error": "409 Invalid Export Compliance Code; altool returned exit0 despite UPLOAD FAILED",
+  "original_receipts_preserved": true,
+  "physical_device_qualified": false,
+  "network_onboarding_qualified": false,
+  "messaging_qualified": false,
+  "push_qualified": false,
+  "apple_processing_qualified": false,
+  "schema": 1,
+  "retained_summary_sha256": "86fb1fb31843c299eec103ce955efe69983eb331d91545c470675269842d7077",
+  "artifact_id": 10654876540,
+  "artifact_sha256": "5276a5aa4956433bbd1c8929fbda5ac0913d51f02b2285a14ac7708b07381ccd",
+  "ipa": {
+    "sha256": "0b9cfddf4d97fec4d1362848f4273d67c0077e2145f43e0771ab13888c5b360b",
+    "size": 17780921
+  },
+  "simulator_executable": {
+    "sha256": "c7abdf2a07226e1eddcd2eb0f314cd4b30f825f2e37262352ce5c1b0164e876f",
+    "size": 27962000
+  },
+  "upload_parser_correction": {
+    "commit": "59b4f5f797c748a0646e3583ef84b449c0cd3744",
+    "tests_passed": 81,
+    "summary_sha256": "6567122e4dfd9290a758abfb9733c4d9fc3fe7a036135b0f4f98d0ad6a7cbaca",
+    "source_hashes": {
+      "scripts/ios-build.py": "52290beba605f56140913adb4c7a3fe9e27164da202e3b1c60e224eb60952fd7",
+      "scripts/tests/ios_release_test.py": "c5c7efa0c4e7f76d994a50a91de2849e2cb827d1addcd6a630c7abae59a1a34c"
+    },
+    "new_upload_performed": false
+  }
+}

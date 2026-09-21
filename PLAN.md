@@ -38,13 +38,14 @@ the individual signed manifests for the completed scope and limits.
    It tested the existing simulator app and reverified signed build 1.0.9 without
    recompiling or resigning the device app. Physical-device and live-network
    behavior remain separate scopes.
-3. Fix the upload helper's false success: `altool` returned process status zero
+3. The upload helper's false success is fixed in `59b4f5f` (81 checks passed): `altool` returned process status zero
    while its structured result contained `product-errors` and Apple error 409,
    Invalid Export Compliance Code. The original workflow/upload receipt remains
    retained as a false positive; no build was accepted into App Store Connect.
    Prepare the first encryption declaration with the owner, then bind the actual
    Apple-approved configuration to a new verified package before retrying.
-   Upload acceptance, Apple processing and tester availability remain distinct.
+   [Retained lifecycle and rejection evidence](docs/evidence/ios-lifecycle-upload-20260921/summary.json)
+   keeps upload acceptance, Apple processing and tester availability distinct.
    See the [iOS release procedure](docs/IOS_RELEASE.md).
 
 Use retained completed native inputs for packaging or harness retries whenever
