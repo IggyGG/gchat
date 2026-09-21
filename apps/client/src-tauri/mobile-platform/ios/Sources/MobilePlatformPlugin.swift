@@ -17,6 +17,7 @@ final class MobilePlatformPlugin: Plugin {
 
     @objc public override func load(webview: WKWebView) {
         guard observers.isEmpty else { return }
+        PushNotifications.shared.restore()
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification,
                                             object: nil, queue: .main) { _ in nativeLifecycle(2) })
@@ -31,6 +32,20 @@ final class MobilePlatformPlugin: Plugin {
     }
 
     deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+
+    @objc public func pushDevice(_ invoke: Invoke) {
+        let args: PushArgs
+        do { args = try invoke.parseArgs(PushArgs.self) }
+        catch { invoke.reject("Invalid notification request", code: "INVALID_ARGUMENT"); return }
+        DispatchQueue.main.async {
+            PushNotifications.shared.configure(args.enabled) { result in
+                switch result {
+                case .success(let reply): invoke.resolve(reply)
+                case .failure: invoke.reject("Notifications are unavailable; chat reconnect is unaffected", code: "PUSH_UNAVAILABLE")
+                }
+            }
+        }
+    }
 
     @objc public func getSecret(_ invoke: Invoke) {
         let args: SlotArgs

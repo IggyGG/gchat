@@ -217,3 +217,58 @@ fn desktop_default_still_uses_the_existing_embedded_attachment() {
     assert!(config.uses_protocol_ipc());
     assert!(!config.gc2_carrier);
 }
+
+#[cfg(feature = "mobile-push")]
+#[tokio::test]
+async fn notification_failure_and_tap_do_not_unlock_or_replace_the_mobile_runtime() {
+    use gcoms::runtime::push_notifications::{PushPlatform, PushRegistrationRequest};
+    let dir = tempfile::tempdir().unwrap();
+    let config = outbound(&dir.path().join("instance"));
+    let host = InstanceHost::new(config.clone()).unwrap();
+    assert!(host.push_networks().await.unwrap_err().contains("Unlock"));
+    assert!(host.running.lock().await.is_none());
+    assert!(!config.profile.exists());
+    let Response::Snapshot { snapshot } = request(
+        &host,
+        Request::Unlock {
+            passphrase: "notification profile fixture".into(),
+            create: true,
+        },
+    )
+    .await
+    else {
+        panic!("fixture failed to unlock");
+    };
+    let safety = snapshot.instance.safety_number;
+    assert_eq!(host.push_networks().await.unwrap(), ["primary"]);
+    let ticket = host
+        .request_push_registration(
+            "primary",
+            PushRegistrationRequest {
+                app_id: "boo.gchat.app".into(),
+                installation_nonce: [9; 32],
+                platform: PushPlatform::Fcm,
+                token: "fixture-provider-token".into(),
+                revision: 1,
+                visible: true,
+            },
+        )
+        .await;
+    assert!(ticket.err().unwrap().contains("inbox relay is not ready"));
+    let Response::Snapshot { snapshot } = request(&host, Request::Snapshot).await else {
+        panic!("lost normal chat after push failure");
+    };
+    assert_eq!(snapshot.instance.safety_number, safety);
+    assert!(!snapshot.instance.locked);
+    let _ = request(&host, Request::Lock).await;
+    assert!(host.push_networks().await.unwrap_err().contains("Unlock"));
+    // A hint only requests normal status; it never supplies a passphrase or
+    // creates a second runtime. The native app leaves this archive locked.
+    let Response::Snapshot { snapshot } = request(&host, Request::Snapshot).await else {
+        panic!("lost locked profile");
+    };
+    assert!(snapshot.instance.locked);
+    assert_eq!(snapshot.instance.safety_number, safety);
+    assert!(!config.protocol_socket.parent().unwrap().exists());
+    host.flush().await.unwrap();
+}

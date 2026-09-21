@@ -64,6 +64,8 @@ pub struct Attachment {
     credentials: Mutex<()>,
     auto_resume: AtomicBool,
     remember_path: PathBuf,
+    push: Mutex<crate::mobile_push::Push>,
+    push_changed: tokio::sync::Notify,
 }
 
 fn remember_enabled(path: &Path) -> bool {
@@ -118,6 +120,8 @@ impl Attachment {
             credentials: Mutex::new(()),
             auto_resume: AtomicBool::new(enabled),
             remember_path,
+            push: Mutex::new(crate::mobile_push::Push::new(home)?),
+            push_changed: tokio::sync::Notify::new(),
         }))
     }
 
@@ -163,8 +167,9 @@ impl Attachment {
         .map_err(|_| "Mobile operation worker stopped".to_string())?
     }
 
-    /// Read-only event polls can end on suspension. Mutating work is never
-    /// cancelled by this path, and no long poll keeps the drain lock occupied.
+    /// Event polls and retryable notification reconciliation can end on
+    /// suspension. Admitted chat operations retain their separate durable path;
+    /// no long poll keeps the checkpoint drain lock occupied.
     async fn poll<T>(&self, future: impl Future<Output = T>) -> Result<T, String> {
         let mut changed = self.changed.subscribe();
         self.require_foreground()?;
@@ -177,10 +182,18 @@ impl Attachment {
 
     /// Stop admitting before draining owned commands. RPC workers retain their
     /// operation IDs on shutdown; cancellation is never reported as delivery.
-    async fn background(&self) -> Result<(), String> {
+    async fn background(&self, app: Option<&tauri::AppHandle>) -> Result<(), String> {
         let _transition = self.transitioning.lock().await;
         self.router.read().await.shutdown().await;
         let _drained = self.activity.write().await;
+        // Existing live aliases get one bounded refresh before shutdown; failure
+        // cannot delay checkpointing indefinitely or imply successful delivery.
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            if let Some(app) = app {
+                self.push.lock().await.reconcile(app, &self.host).await;
+            }
+        })
+        .await;
         self.host.flush().await
     }
 
@@ -233,6 +246,7 @@ impl Attachment {
             self.router.read().await.shutdown().await;
             self.host.flush().await?;
         }
+        self.push_changed.notify_one();
         result
     }
 
@@ -443,6 +457,7 @@ async fn chat_mobile_unlock(
             disabled.and(removed)
         };
         state.auto_resume.store(remember && stored.is_ok(), Ordering::Release);
+        state.push_changed.notify_one();
         Ok(UnlockResult {
             response,
             warning: stored.err().map(|_| if remember {
@@ -452,6 +467,35 @@ async fn chat_mobile_unlock(
             }),
         })
     }).await
+}
+
+#[tauri::command]
+async fn chat_mobile_push_status(
+    state: tauri::State<'_, Arc<Attachment>>,
+) -> Result<crate::mobile_push::Status, String> {
+    Ok(state.push.lock().await.status())
+}
+
+#[tauri::command]
+async fn chat_mobile_push_configure(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<Attachment>>,
+    enabled: bool,
+) -> Result<crate::mobile_push::Status, String> {
+    state
+        .inner()
+        .clone()
+        .admitted(move |state| async move {
+            let status = state
+                .push
+                .lock()
+                .await
+                .configure(&app, &state.host, enabled)
+                .await;
+            state.push_changed.notify_one();
+            status
+        })
+        .await
 }
 
 #[tauri::command]
@@ -491,11 +535,30 @@ pub fn run() {
             });
             app.manage(subscription);
             app.manage(state.clone());
+            let push_state = state.clone();
+            let push_app = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                loop {
+                    tokio::select! { _ = interval.tick() => {}, _ = push_state.push_changed.notified() => {} }
+                    let app = push_app.clone();
+                    let _ = push_state.clone().admitted(move |state| async move {
+                        // Push is opportunistic: a lifecycle transition cancels
+                        // this poll before the profile's checkpoint drain.
+                        let status = state.poll(tokio::time::timeout(std::time::Duration::from_secs(60), async {
+                            state.push.lock().await.reconcile(&app, &state.host).await
+                        })).await?;
+                        if let Ok(status) = status { let _ = app.emit("gchat-push-status", status); }
+                        Ok(())
+                    }).await;
+                }
+            });
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 while let Some((event, revision)) = receiver.recv().await {
                     let result = match event {
-                        LifecycleEvent::Background => state.background().await,
+                        LifecycleEvent::Background => state.background(Some(&handle)).await,
                         LifecycleEvent::Foreground => state.foreground(&handle, revision).await,
                     };
                     if let Err(error) = result {
@@ -512,6 +575,8 @@ pub fn run() {
             chat_file_save,
             chat_mobile_unlock,
             chat_mobile_available,
+            chat_mobile_push_status,
+            chat_mobile_push_configure,
         ])
         .run(tauri::generate_context!())
         .expect("gchat mobile application");
@@ -580,7 +645,7 @@ mod tests {
         assert!(call.await.unwrap_err().is_cancelled());
         state.native_event(LifecycleEvent::Background);
         let draining = state.clone();
-        let drain = tokio::spawn(async move { draining.background().await });
+        let drain = tokio::spawn(async move { draining.background(None).await });
         tokio::task::yield_now().await;
         assert!(!drain.is_finished());
         release.send(()).unwrap();
@@ -616,6 +681,6 @@ mod tests {
                 .unwrap()
                 .is_err()
         );
-        state.background().await.unwrap();
+        state.background(None).await.unwrap();
     }
 }

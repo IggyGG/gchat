@@ -7,7 +7,7 @@
   import GhostMark from './GhostMark.svelte';
   import FilePanel from './FilePanel.svelte';
   import type { FileAccess } from './files';
-  import type { DeviceUnlock } from './device-unlock';
+  import type { DeviceUnlock, MobilePushStatus } from './device-unlock';
   import NetworkSetup from './NetworkSetup.svelte';
   import { FileController, emptyFiles, type FileViewState } from './file-controller';
   import { hasNetworkSetup, networkLabel, localCommand, mergeViewCommands, viewCommands, readFont, writeFont, type ChatFont } from './workspace-state';
@@ -58,6 +58,21 @@
   let narrow = $state(false);
   const navigationModal = $derived(channelsOpen || (!!panel && narrow));
   let utility = $state<'network' | 'help' | 'font' | 'info' | null>(null);
+  let pushStatus = $state<MobilePushStatus>();
+  let pushBusy = $state(false), pushError = $state('');
+  async function refreshPush() {
+    if (utility !== 'network' || !deviceUnlock?.notifications || pushBusy) return;
+    try { pushStatus = await deviceUnlock.notifications.status(); } catch { /* Push never blocks chat. */ }
+  }
+  async function configurePush(enabled: boolean) {
+    if (!deviceUnlock?.notifications || pushBusy) return;
+    pushBusy = true; pushError = '';
+    try { pushStatus = await deviceUnlock.notifications.configure(enabled); }
+    catch (error) { pushError = error instanceof Error ? error.message : String(error); }
+    finally { pushBusy = false; }
+  }
+  $effect(() => { if (utility === 'network') void refreshPush(); });
+
   let channelTopic = $state('');
   let channelNickname = $state('');
   let detailsConversation = $state<string | null>(null);
@@ -291,7 +306,7 @@
 
   onMount(() => {
     running = true; font = readFont(); narrow = window.innerWidth < 1000;
-    const networkTimer = setInterval(() => void refreshNetwork(), 2000);
+    const networkTimer = setInterval(() => { void refreshNetwork(); void refreshPush(); }, 2000);
     void watch();
     const visible = () => { if (!document.hidden && (!connectionError || connectionError.retryable)) void refreshInBackground(); };
     document.addEventListener('visibilitychange', visible);
@@ -799,6 +814,15 @@
         {#if networkError}<p role="alert">{networkError}</p>{/if}
         {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
+        {#if deviceUnlock?.notifications}
+          <section class="notification-settings">
+            <h3>Notifications</h3>
+            <p class="muted">Optional generic activity alerts. Your messages, names and filenames stay out of Apple and Google notifications. Tapping an alert does not unlock GChat.</p>
+            <button disabled={pushBusy || (!pushStatus?.enabled && locked)} onclick={() => void configurePush(!pushStatus?.enabled)}>{pushBusy ? 'Updating…' : pushStatus?.enabled ? 'Turn notifications off' : 'Enable notifications'}</button>
+            {#if pushStatus?.message}<p role="status">{pushStatus.message}</p>{/if}
+            {#if pushError}<p role="alert">{pushError}</p>{/if}
+          </section>
+        {/if}
       {:else if utility === 'font'}
         <p>Choose the font for messages and the composer. Saved on this device.</p>
         <div class="font-options"><button aria-pressed={font === 'fixedsys'} onclick={() => chooseFont('fixedsys')}>Fixedsys <span class="font-fixed">The quick brown fox</span></button><button aria-pressed={font === 'readable'} onclick={() => chooseFont('readable')}>Readable <span class="font-readable">The quick brown fox</span></button></div>

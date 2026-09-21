@@ -65,3 +65,5 @@ tokio-rustls = "0.26"
 # Compile GC/2 without implying relay hosting. Desktop separately enables the
 # embedded backend; Android/iOS keep only the outbound network-client backend.
 gc2-carrier = ["gcoms/network-client"]
+# App-native mobile notifications; no gateway server or relay-host feature.
+mobile-push = ["gc2-carrier", "gcoms/push-notifications"]

@@ -13,6 +13,7 @@ mod lifecycle;
 #[cfg(any(target_os = "android", target_os = "ios"))]
 mod mobile;
 mod models;
+mod push;
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub use desktop::MobilePlatform;
@@ -21,6 +22,7 @@ pub use lifecycle::{on_lifecycle, LifecycleEvent, LifecycleSubscription};
 #[cfg(any(target_os = "android", target_os = "ios"))]
 pub use mobile::MobilePlatform;
 pub use models::{RememberSecret, UnlockSecret};
+pub use push::PushDevice;
 
 pub trait MobilePlatformExt<R: Runtime> {
     fn mobile_platform(&self) -> &MobilePlatform<R>;

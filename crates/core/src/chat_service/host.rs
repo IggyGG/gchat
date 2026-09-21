@@ -93,6 +93,105 @@ pub fn capabilities() -> Vec<Capability> {
 }
 
 impl InstanceHost {
+    /// Uses existing unlocked runtimes; notification work never opens a profile.
+    #[cfg(feature = "mobile-push")]
+    pub async fn push_networks(&self) -> Result<Vec<String>, String> {
+        let running = self.running.lock().await;
+        let current = running
+            .as_ref()
+            .ok_or("Unlock GChat to configure notifications")?;
+        if !current
+            .service
+            .session
+            .lock()
+            .await
+            .as_ref()
+            .is_some_and(|session| !session.ui_locked)
+        {
+            return Err("Unlock GChat to configure notifications".into());
+        }
+        let mut result = vec!["primary".to_owned()];
+        result.extend(current.service.networks.lock().await.keys().cloned());
+        Ok(result)
+    }
+
+    #[cfg(feature = "mobile-push")]
+    async fn push_runtime(&self, network: &str) -> Result<ProtocolRuntime, String> {
+        let running = self.running.lock().await;
+        let current = running
+            .as_ref()
+            .ok_or("Unlock GChat to configure notifications")?;
+        if !current
+            .service
+            .session
+            .lock()
+            .await
+            .as_ref()
+            .is_some_and(|session| !session.ui_locked)
+        {
+            return Err("Unlock GChat to configure notifications".into());
+        }
+        if network == "primary" {
+            return Ok(current.runtime.clone());
+        }
+        let result = current
+            .service
+            .networks
+            .lock()
+            .await
+            .get(network)
+            .map(|child| child.runtime.clone())
+            .ok_or_else(|| "Notification network is unavailable".into());
+        result
+    }
+
+    #[cfg(feature = "mobile-push")]
+    pub async fn request_push_registration(
+        &self,
+        network: &str,
+        request: gcoms::runtime::push_notifications::PushRegistrationRequest,
+    ) -> Result<gcoms::runtime::push_notifications::PushRegistrationTicket, String> {
+        let runtime = self.push_runtime(network).await?;
+        runtime
+            .embedded()
+            .ok_or("Notifications require the in-process runtime")?
+            .node()
+            .request_push_registration(request)
+            .await
+    }
+
+    #[cfg(feature = "mobile-push")]
+    pub async fn request_push_revocation(
+        &self,
+        network: &str,
+        request: gcoms::runtime::push_notifications::PushRegistrationRequest,
+    ) -> Result<gcoms::runtime::push_notifications::PushRegistrationTicket, String> {
+        let runtime = self.push_runtime(network).await?;
+        runtime
+            .embedded()
+            .ok_or("Notifications require the in-process runtime")?
+            .node()
+            .request_push_revocation(request)
+            .await
+    }
+
+    #[cfg(feature = "mobile-push")]
+    pub async fn bind_push_notifications(
+        &self,
+        network: &str,
+        reference: [u8; 32],
+        revision: u64,
+        expires: u64,
+    ) -> Result<(), String> {
+        let runtime = self.push_runtime(network).await?;
+        runtime
+            .embedded()
+            .ok_or("Notifications require the in-process runtime")?
+            .node()
+            .bind_push_notifications(reference, revision, expires)
+            .await
+    }
+
     pub fn new(config: InstanceConfig) -> Result<Arc<Self>, String> {
         #[cfg(any(target_os = "android", target_os = "ios"))]
         if config.uses_protocol_ipc() || !config.gc2_carrier {

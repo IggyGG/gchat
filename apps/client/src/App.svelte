@@ -13,7 +13,13 @@
     let stop: (() => void) | undefined;
     if (isTauri()) void invoke<boolean>('chat_mobile_available').then(available => {
       if (available && active) {
-        deviceUnlock = { unlock: (passphrase, create, remember) => invoke('chat_mobile_unlock', { passphrase, create, remember }) };
+        deviceUnlock = {
+          unlock: (passphrase, create, remember) => invoke('chat_mobile_unlock', { passphrase, create, remember }),
+          notifications: {
+            status: () => invoke('chat_mobile_push_status'),
+            configure: enabled => invoke('chat_mobile_push_configure', { enabled }),
+          },
+        };
         void listen<string>('gchat-lifecycle-error', event => { lifecycleError = event.payload; }).then(unlisten => {
           if (active) stop = unlisten; else unlisten();
         });

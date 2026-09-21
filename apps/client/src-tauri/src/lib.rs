@@ -6,6 +6,9 @@ mod desktop;
 mod mobile;
 #[cfg(any(target_os = "android", target_os = "ios", test))]
 mod mobile_export;
+#[cfg(any(target_os = "android", target_os = "ios", test))]
+#[cfg_attr(not(any(target_os = "android", target_os = "ios")), allow(dead_code))]
+mod mobile_push;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod startup;
 

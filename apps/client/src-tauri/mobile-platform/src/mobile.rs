@@ -41,6 +41,22 @@ struct SecretReply {
 }
 
 impl<R: Runtime> MobilePlatform<R> {
+    /// Only trusted Rust can request permission or obtain a provider token.
+    pub async fn push_device(&self, enabled: Option<bool>) -> Result<crate::PushDevice> {
+        #[derive(Serialize)]
+        struct Args {
+            enabled: Option<bool>,
+        }
+        let handle = self.0.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            handle
+                .run_mobile_plugin("pushDevice", Args { enabled })
+                .map_err(|_| Error::NativeUnavailable)
+        })
+        .await
+        .map_err(|_| Error::NativeUnavailable)?
+    }
+
     pub async fn store_secret(
         &self,
         slot: &str,

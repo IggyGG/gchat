@@ -20,6 +20,7 @@ android {
 
 dependencies {
     implementation(project(":tauri-android"))
+    implementation("com.google.firebase:firebase-messaging:25.1.3")
     implementation("androidx.appcompat:appcompat:1.6.0")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
     testImplementation("junit:junit:4.13.2")

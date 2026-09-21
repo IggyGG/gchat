@@ -1,8 +1,8 @@
 # GChat mobile platform
 
 A native Tauri 2 plugin for GChat (`boo.gchat.app`), Android API 26+ and iOS 15+.
-This plugin does not open network sockets, host relays, send push notifications,
-or start a profile automatically. The application owns opt-in UI, profile IDs,
+This plugin never hosts relays or starts a profile automatically. Optional FCM/APNs
+registration uses the platform notification services after explicit opt-in. The application owns opt-in UI, profile IDs,
 locking, checkpointing and serialized suspend/resume operations.
 
 ## Rust integration
@@ -13,6 +13,7 @@ Import `MobilePlatformExt`, then use `app.mobile_platform()`:
 - `store_secret(slot, UnlockSecret::new(secret)?, RememberSecret::Confirmed).await`
 - `get_secret(slot).await -> Result<Option<UnlockSecret>>`
 - `delete_secret(slot).await -> Result<()>`
+- `push_device(Option<bool>).await -> Result<PushDevice>` (Rust-only permission/token state)
 - `on_lifecycle(callback) -> LifecycleSubscription` (module-level function)
 
 Keep the `LifecycleSubscription` in the application attachment. Its callback
@@ -75,3 +76,17 @@ app-integrated background persistence must be exercised separately.
 The plugin follows the [Tauri mobile plugin API](https://v2.tauri.app/develop/plugins/develop-mobile/),
 [Android Keystore](https://developer.android.com/privacy-and-security/keystore)
 and [Apple Keychain accessibility](https://developer.apple.com/documentation/security/ksecattraccessiblewhenunlockedthisdeviceonly).
+
+## Notification callbacks
+
+Android uses a non-exported FirebaseMessagingService with auto-init disabled by
+default. A generation gate rejects stale permission/token fetch completions after
+opt-out. Data-only activity hints create one fixed generic notification while the
+native policy and OS permission allow it. No hint starts a Rust runtime.
+
+iOS adds only absent optional APNs methods to Tao's delegate; it does not replace
+existing framework methods. A conflicting delegate causes notification setup to
+fail without changing ordinary chat. Native completion handlers return promptly,
+including while keys are unavailable. A tap only records a non-secret activity flag.
+Provider tokens and gateway management receipts never enter webview commands or
+events. The application adds its own bounded, serialized registration coordinator.

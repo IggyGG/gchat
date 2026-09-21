@@ -39,11 +39,35 @@ checks cover the outbound profile lifecycle, cancellation/draining, private
 credential policy, export bounds, and the shared UI. They do not qualify battery
 use or physical-device operation.
 
-APNs and Firebase credentials have been configured for the app operator. Native
-push registration, relay-to-gateway binding and live notification delivery remain
-unfinished. Firebase client configuration in a build does not establish push
-delivery. Provider private keys never belong in application packages or source.
-While push is unfinished, background delivery must not be promised.
+## Optional activity notifications
+
+Network settings expose an explicit notification opt-in on mobile. Android requests
+notification permission and uses a Firebase service; iOS requests APNs alert permission.
+Alerts say only “New activity in GChat.” Names, channels, message contents and file
+names are excluded. Apple/Google can still observe notification timing and device
+metadata; this is an optional convenience, not an anonymity guarantee.
+
+The existing unlocked runtime requests a short-lived owner-authenticated registration
+ticket from an inbox relay. Only the installed `https://push.gchat.boo` origin can
+receive the provider token. Each profile/network retains a random installation nonce,
+monotonic revision and management receipt in device-only OS-protected storage.
+References are rebound to current aliases after reconnect, token rotation and before
+suspension, with bounded work. Notification hints never count as message delivery.
+
+Opt-out persists before native registration stops. Relay bindings are cleared and a
+purpose-bound owner ticket revokes the gateway installation, including after a lost
+registration reply. Incomplete cleanup is retained and retried after ordinary unlock
+and reconnect. A generic hint already submitted to a provider may still arrive.
+Default profile locking is unchanged: an alert tap opens the normal unlock screen;
+callbacks never start another runtime or silently use a passphrase. Notification or
+provider failure leaves foreground messaging and ordinary recovery available.
+
+APNs/Firebase credentials remain operator-side. Source implementation and focused
+local tests do not establish live provider delivery. Native permission/token/tap
+callbacks, actual provider delivery and physical-device/battery behavior require
+separate retained results. Push is best effort, not continuous background networking. Relay bindings never
+outlive the existing inbox lease; suspension does not extend authenticated authority.
+After lease expiry or relay state loss, a normal foreground reconnect restores it.
 
 Statistical privacy and 24-hour campaigns are not release gates under the owner's
 current production policy. This does not assert statistical privacy qualification;
