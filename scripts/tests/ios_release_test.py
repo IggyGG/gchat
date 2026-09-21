@@ -36,8 +36,9 @@ class SimulatorSigningTests(unittest.TestCase):
                      'CFBundleExecutable': 'GChat'}
         (self.app / 'Info.plist').write_bytes(plistlib.dumps(self.info))
         (self.app / 'GChat').write_bytes(b'original compiler executable')
-        self.entitlements = {'application-identifier': ios.BUNDLE,
-                             'keychain-access-groups': [ios.BUNDLE], 'get-task-allow': True}
+        self.entitlements = {'com.apple.security.get-task-allow': True}
+        self.linked = {'entitlements': {'application-identifier': ios.BUNDLE,
+                       'keychain-access-groups': [ios.BUNDLE], 'get-task-allow': True}, 'sections': {}}
         self.calls = []
 
     def command(self, command, **kwargs):
@@ -50,6 +51,7 @@ class SimulatorSigningTests(unittest.TestCase):
         with patch.object(ios.platform, 'system', return_value='Darwin'), \
                 patch.object(ios, 'output', side_effect=['arm64', platform_text, 'Signature=adhoc']), \
                 patch.object(ios, 'run', side_effect=self.command), \
+                patch.object(ios, 'simulator_linked_entitlements', return_value=self.linked), \
                 patch.object(ios.subprocess, 'check_output', return_value=plistlib.dumps(
                     entitlements if entitlements is not None else self.entitlements)):
             return ios.sign_simulator(self.app, self.root / 'signing')
@@ -64,8 +66,8 @@ class SimulatorSigningTests(unittest.TestCase):
         self.assertEqual(ios.verify_reference(report['derived_executable']).read_bytes(), b'derived signed executable')
         self.assertNotIn('aps-environment', report['verified_entitlements'])
         self.assertNotIn('com.apple.developer.team-identifier', report['verified_entitlements'])
-        self.assertEqual(report['verified_entitlements']['keychain-access-groups'], [ios.BUNDLE])
-        self.assertIs(report['verified_entitlements']['get-task-allow'], True)
+        self.assertEqual(report['verified_entitlements'], {'com.apple.security.get-task-allow': True})
+        self.assertEqual(report['linked_simulator_authority'], self.linked)
         self.assertIn(['codesign', '--verify', '--deep', '--strict', self.app], self.calls)
 
     def test_simulator_identity_cannot_satisfy_device_entitlement_policy(self):

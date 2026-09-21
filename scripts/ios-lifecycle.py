@@ -133,6 +133,76 @@ def cleanup_device(device, report):
     report['cleanup_complete'] = report['cleanup_complete'] and not errors
 
 
+def run_application(app, destination):
+    """Exercise an already-built app without compiling or re-signing it."""
+    destination.mkdir(parents=True, exist_ok=False)
+    info = plistlib.loads((app / 'Info.plist').read_bytes())
+    require(info.get('CFBundleIdentifier') == ios.BUNDLE
+            and info.get('CFBundleSupportedPlatforms') == ['iPhoneSimulator'], 'expected GChat simulator app')
+    name = info.get('CFBundleExecutable', '')
+    require(name and Path(name).name == name, 'invalid simulator executable name')
+    binary = app / name
+    swift_source = Path(__file__).with_name('fixtures') / 'ios-lifecycle' / 'LifecycleTests.swift'
+    report = {'schema': 1, 'scope': 'ios_installed_simulator_profile_background_reopen', 'passed': False,
+              'application_recompiled': False, 'application_resigned': False,
+              'application': ios.reference(binary), 'harness': ios.reference(Path(__file__)),
+              'swift_test': ios.reference(swift_source), 'cleanup_complete': False,
+              'network_onboarding_qualified': False, 'messaging_qualified': False,
+              'push_qualified': False, 'physical_device_qualified': False}
+    device = None
+    try:
+        report['xcode'] = ios.output(['xcodebuild', '-version'])
+        require(report['xcode'].splitlines()[0] == 'Xcode 26.2', 'use the original pinned Xcode')
+        runtime = ios.simulator_runtime()
+        types = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
+        devices = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+        phone = ios.simulator_phone(runtime, types, devices)
+        device = ios.output(['xcrun', 'simctl', 'create', 'GChatLifecycle-' + secrets.token_hex(6), phone, runtime])
+        require(re.fullmatch('[0-9A-Fa-f-]{36}', device), 'unexpected created simulator ID')
+        report.update(device=device, runtime=runtime, device_type=phone)
+        ios.run(['xcrun', 'simctl', 'boot', device], timeout=120)
+        ios.run(['xcrun', 'simctl', 'bootstatus', device, '-b'], timeout=180)
+        ios.run(['xcrun', 'simctl', 'install', device, app], timeout=120)
+        runner = destination / 'runner'
+        runner.mkdir()
+        shutil.copyfile(swift_source, runner / swift_source.name)
+        ios.write_json(runner / 'project.json', runner_project())
+        ios.run(['xcodegen', 'generate', '--spec', 'project.json'], cwd=runner, timeout=120)
+        results = destination / 'journey.xcresult'
+        command = ['xcodebuild', 'test', '-project', runner / 'GChatLifecycle.xcodeproj', '-scheme', 'GChatLifecycle',
+            '-destination', 'platform=iOS Simulator,id=' + device, '-derivedDataPath', destination / 'runner-derived',
+            '-resultBundlePath', results, '-parallel-testing-enabled', 'NO', '-maximum-concurrent-test-simulator-destinations', '1',
+            '-only-testing:LifecycleTests/GChatLifecycleTests/' + TEST, 'CODE_SIGNING_ALLOWED=NO']
+        with (destination / 'xctest.log').open('wb') as log:
+            # Artifact access is needed only by the downloader, never the app
+            # or its native UI runner.
+            environment = {key: value for key, value in os.environ.items()
+                           if key not in ('GH_TOKEN', 'GITHUB_TOKEN')}
+            completed = subprocess.run([str(value) for value in command], stdout=log,
+                stderr=subprocess.STDOUT, env=environment, timeout=900)
+        report['xctest_exit_code'] = completed.returncode
+        report['xctest_log'] = ios.reference(destination / 'xctest.log')
+        require(completed.returncode == 0, 'retained application lifecycle XCTest failed; see xctest.log')
+        summary = json.loads(ios.output(['xcrun', 'xcresulttool', 'get', 'test-results', 'summary', '--path', results]))
+        ios.write_json(destination / 'test-summary.json', summary)
+        test_result(summary)
+        report['test_summary'] = ios.reference(destination / 'test-summary.json')
+        require(ios.digest(binary) == report['application']['sha256'], 'application changed during journey')
+        report['passed'] = True
+    except Exception as error:
+        report['error'] = type(error).__name__ + ': ' + str(error)
+        raise
+    finally:
+        if device:
+            cleanup_device(device, report)
+        else:
+            report['cleanup_complete'] = True
+        report['passed'] = report['passed'] and report['cleanup_complete']
+        ios.write_json(destination / 'report.json', report)
+    require(report['passed'], 'lifecycle journey cleanup failed')
+    return ios.reference(destination / 'report.json')
+
+
 def main(args):
     require(platform.system() == 'Darwin' and platform.machine() == 'arm64', 'use an Apple Silicon Mac worker')
     spec = json.loads(args.spec.read_text())

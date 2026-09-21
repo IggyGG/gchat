@@ -20,6 +20,7 @@ import secrets
 import shlex
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
@@ -346,6 +347,46 @@ def configure_project(generated):
     return path
 
 
+def simulator_linked_entitlements(binary):
+    """Read Xcode's simulator authority from Mach-O sections, not its signature."""
+    require(binary.stat().st_size <= 256 * 1024 * 1024, 'unexpected simulator executable size')
+    data = binary.read_bytes()
+    require(len(data) >= 32, 'truncated simulator Mach-O')
+    magic, cpu, _, kind, count, commands, _, _ = struct.unpack_from('<8I', data)
+    require(magic == 0xfeedfacf and cpu == 0x100000c and kind == 2
+            and count <= 4096 and 32 + commands <= len(data), 'expected ARM64 executable Mach-O')
+    position, sections = 32, {}
+    for _ in range(count):
+        require(position + 8 <= 32 + commands, 'truncated Mach-O command')
+        command, size = struct.unpack_from('<II', data, position)
+        require(size >= 8 and position + size <= 32 + commands, 'invalid Mach-O command size')
+        if command == 0x19:
+            require(size >= 72, 'truncated Mach-O segment')
+            segment = struct.unpack_from('<II16s4Q4I', data, position)
+            section_count = segment[-2]
+            require(section_count <= 1024 and 72 + section_count * 80 <= size, 'invalid Mach-O sections')
+            for index in range(section_count):
+                row = struct.unpack_from('<16s16sQQ8I', data, position + 72 + index * 80)
+                name, owner = row[0].rstrip(b'\0'), row[1].rstrip(b'\0')
+                if name not in (b'__entitlements', b'__ents_der'):
+                    continue
+                length, offset = row[3], row[4]
+                require(owner == b'__TEXT' and segment[2].rstrip(b'\0') == b'__TEXT'
+                        and name not in sections and 0 < length <= 65536
+                        and segment[5] <= offset and offset + length <= segment[5] + segment[6]
+                        and offset + length <= len(data), 'invalid simulator entitlement section')
+                sections[name] = data[offset:offset + length]
+        position += size
+    require(position == 32 + commands, 'Mach-O command count mismatch')
+    require(set(sections) == {b'__entitlements', b'__ents_der'},
+            'simulator must be linked with Xcode entitlement sections; post-link signing cannot add them')
+    value = plistlib.loads(sections[b'__entitlements'].rstrip(b'\0'))
+    expected = {'application-identifier': BUNDLE, 'keychain-access-groups': [BUNDLE], 'get-task-allow': True}
+    require(value == expected, 'unexpected linked simulator Keychain or application authority')
+    return {'entitlements': value, 'sections': {name.decode(): {
+        'sha256': hashlib.sha256(raw).hexdigest(), 'size': len(raw)} for name, raw in sections.items()}}
+
+
 def sign_simulator(app, destination):
     """Ad-hoc sign only a derived simulator app, never a device distribution."""
     require(platform.system() == 'Darwin', 'simulator signing requires macOS')
@@ -362,14 +403,12 @@ def sign_simulator(app, destination):
             and not re.search(r'platform\s+IOS\b', settings), 'refusing to ad-hoc sign a device binary')
     require(not (app / 'embedded.mobileprovision').exists()
             and not list(app.glob('PlugIns/*.appex')), 'simulator must not contain device provisioning or extensions')
+    linked = simulator_linked_entitlements(binary)
     destination.mkdir(parents=True, exist_ok=False)
-    # This is a local simulator test identity, not a distribution-team claim.
-    # The SDK's native simulator host uses this app-only authority shape. A
-    # distribution entitlement set on an ad-hoc signature was rejected by
-    # taskgated before dyld in retained lifecycle04. XCTest uses a debuggable
-    # simulator fixture; device validation separately requires this to be false.
-    entitlements = {'application-identifier': BUNDLE,
-                    'keychain-access-groups': [BUNDLE], 'get-task-allow': True}
+    # Simulator iOS authority is embedded by Xcode while linking. The outer
+    # signature is checked by host macOS and must not claim iOS Keychain groups.
+    # Lifecycle04/05 demonstrated taskgated rejection of that invalid shape.
+    entitlements = {'com.apple.security.get-task-allow': True}
     entitlement_file = destination / 'entitlements.plist'
     entitlement_file.write_bytes(plistlib.dumps(entitlements))
     # Preserve the unsigned/ad-hoc compiler output separately. Adding the
@@ -379,7 +418,8 @@ def sign_simulator(app, destination):
     shutil.copyfile(binary, original)
     report = {'schema': 1, 'scope': 'ios_simulator_adhoc_private_keychain_signing',
               'passed': False, 'bundle': BUNDLE, 'device_qualified': False,
-              'original_executable': reference(original), 'entitlements': entitlements}
+              'original_executable': reference(original), 'entitlements': entitlements,
+              'linked_simulator_authority': linked}
     def resources():
         return {str(path.relative_to(app)): digest(path) for path in app.rglob('*')
                 if path.is_file() and path != binary and '_CodeSignature' not in path.relative_to(app).parts}
@@ -391,6 +431,7 @@ def sign_simulator(app, destination):
         actual = plistlib.loads(subprocess.check_output(
             ['codesign', '-d', '--entitlements', ':-', str(app)], stderr=subprocess.DEVNULL, timeout=30))
         require(actual == entitlements, 'simulator signature has unexpected Keychain or application authority')
+        require(simulator_linked_entitlements(binary) == linked, 'signing changed linked simulator authority')
         details = output(['codesign', '-d', '--verbose=2', app], stderr=subprocess.STDOUT, timeout=30)
         require('Signature=adhoc' in details.splitlines(), 'simulator fixture must use ad-hoc signing only')
         require(resources() == before, 'simulator signing changed application resources')

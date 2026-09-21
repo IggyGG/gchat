@@ -30,15 +30,23 @@ on:
         required: false
         default: false
         type: boolean
+      build_simulator:
+        description: Build only the exact-source simulator with normal Xcode signing and run lifecycle
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
   actions: read
 jobs:
   lifecycle:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 110
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+      CARGO_BUILD_JOBS: '3'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -61,6 +69,10 @@ jobs:
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
           python-version: '3.12.10'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        if: ${{ inputs.build_simulator }}
+        with:
+          node-version: '22.23.2'
       - name: Prepare runner only
         env:
           ORIGINAL_RUN_ID: ${{ inputs.original_run_id }}
@@ -80,7 +92,38 @@ jobs:
           value.update(run_id=int(os.environ['ORIGINAL_RUN_ID']), artifact_id=int(os.environ['ARTIFACT_ID']))
           Path('journey-input.json').write_text(json.dumps(value, indent=2) + '\n')
           PY
+      - name: Prepare exact-source simulator compiler only
+        if: ${{ inputs.build_simulator }}
+        run: |
+          test "$(uname -m)" = arm64
+          python3 - <<'PY'
+          import os, subprocess, tomllib
+          from pathlib import Path
+          pins = [tomllib.loads(Path(p, 'rust-toolchain.toml').read_text())['toolchain']
+                  for p in ('source-gchat', 'source-gcoms')]
+          if pins[0] != pins[1]:
+              raise SystemExit('paired sources require the same pinned Rust toolchain')
+          subprocess.run(['rustup', 'toolchain', 'install', pins[0]['channel'], '--profile', pins[0]['profile'],
+                          '--component', ','.join(pins[0]['components'])], check=True)
+          with open(os.environ['GITHUB_ENV'], 'a') as stream:
+              stream.write('RUSTUP_TOOLCHAIN=' + pins[0]['channel'] + '\n')
+          PY
+          npm install --global npm@11.6.2
+          command -v pod >/dev/null || brew install cocoapods
+          python3 -m unittest discover -s runner/scripts/tests -p ios_simulator_test.py
+      - name: Link simulator with Xcode authority and run actual profile lifecycle
+        if: ${{ inputs.build_simulator }}
+        env:
+          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          set -o pipefail
+          python3 runner/scripts/ios-simulator-build.py --gchat source-gchat --gcoms source-gcoms \
+            --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT" --build-number "$BUILD_NUMBER" \
+            --output ios-simulator-output 2>&1 | tee ios-simulator-worker.log
       - name: Run retained application with native XCTest
+        if: ${{ !inputs.build_simulator }}
         env:
           GH_TOKEN: ${{ github.token }}
           SIMULATOR_KEYCHAIN_FIXTURE: ${{ inputs.simulator_keychain_fixture }}
@@ -109,3 +152,20 @@ jobs:
             ios-lifecycle-output/simulator-keychain-signing/
             ios-lifecycle-output/simulator-keychain-app.zip
             ios-lifecycle-output/journey.xcresult/
+            ios-simulator-worker.log
+            ios-simulator-output/report.json
+            ios-simulator-output/ios-config.json
+            ios-simulator-output/simulator-build-settings.json
+            ios-simulator-output/link-settings/
+            ios-simulator-output/xcode-wrapper/
+            ios-simulator-output/authority/
+            ios-simulator-output/features.txt
+            ios-simulator-output/generated-project.pbxproj
+            ios-simulator-output/simulator-app.zip
+            ios-simulator-output/lifecycle/report.json
+            ios-simulator-output/lifecycle/runner/
+            ios-simulator-output/lifecycle/xctest.log
+            ios-simulator-output/lifecycle/test-summary.json
+            ios-simulator-output/lifecycle/journey.xcresult/
+            ios-simulator-output/paired/inputs/*.tar
+            ios-simulator-output/paired/provenance/
