@@ -359,6 +359,17 @@ def installed_package_uid(text):
     return uid
 
 
+def resumed_packages(text):
+    packages = set()
+    for line in text.splitlines():
+        if re.search(r'\b(?:topResumedActivity|mResumedActivity|ResumedActivity)\s*[:=]', line):
+            match = re.search(r'\b([A-Za-z][A-Za-z0-9_.]*)/[A-Za-z0-9_.$]+', line)
+            if match:
+                packages.add(match.group(1))
+    require(packages, 'activity manager did not report any resumed fixture activity')
+    return sorted(packages)
+
+
 def keyboard_shown(text):
     values = re.findall(r'\bmInputShown=(true|false)\b', text)
     require(values, 'input method did not expose fixture keyboard visibility')
@@ -460,6 +471,14 @@ def smoke(args):
             wait_keyboard(shell, False)
             password = wait_node(lambda n: n.attrib.get('password') == 'true')
             require(password.attrib.get('text') == expected, 'fixture passphrase changed during keyboard dismissal')
+        def activity_state(phase, expected_foreground):
+            state = shell('dumpsys', 'activity', 'activities')
+            (dest / (phase + '-activities.txt')).write_text(state)
+            packages = resumed_packages(state)
+            report.setdefault('activity_observations', []).append({
+                'phase': phase, 'resumed_packages': packages, 'monotonic': time.monotonic(),
+            })
+            require((PACKAGE in packages) == expected_foreground, 'app activity did not reach requested foreground/background state')
         def no_listener(phase):
             tcp = shell('cat', '/proc/net/tcp', '/proc/net/tcp6')
             listeners = listener_rows(tcp, uid)
@@ -472,10 +491,13 @@ def smoke(args):
         tap(wait_node(text('Create identity')))
         wait_node(text('Connect to GChat'), timeout=120)
         no_listener('created_unlocked_without_network_invitation')
+        activity_state('created', True)
         shell('input', 'keyevent', '3')
         time.sleep(3)
+        activity_state('background', False)
         no_listener('background')
         launch()
+        activity_state('foreground', True)
         wait_node(text('Reconnect'))
         fill_passphrase()
         tap(wait_node(text('Reconnect')))

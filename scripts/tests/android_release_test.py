@@ -159,6 +159,18 @@ class EmulatorCleanup(unittest.TestCase):
         self.assertEqual(android.listener_rows(row.replace(' 0A ', ' 01 '), 10123), [])
 
 
+class ActivityDriver(unittest.TestCase):
+    def test_resumed_activity_ignores_retained_background_task_records(self):
+        home = ('  topResumedActivity=ActivityRecord{abc u0 com.google.android.apps.nexuslauncher/.NexusLauncher t2}\n'
+                '  * Hist #1: ActivityRecord{def u0 boo.gchat.app/.MainActivity t3}\n')
+        self.assertEqual(android.resumed_packages(home), ['com.google.android.apps.nexuslauncher'])
+        app = (' mResumedActivity: ActivityRecord{def u0 boo.gchat.app/.MainActivity t3}\n'
+               ' topResumedActivity=ActivityRecord{def u0 boo.gchat.app/.MainActivity t3}\n')
+        self.assertEqual(android.resumed_packages(app), [android.PACKAGE])
+        with self.assertRaisesRegex(ValueError, 'resumed'):
+            android.resumed_packages('* Hist #1: ActivityRecord{def u0 boo.gchat.app/.MainActivity t3}')
+
+
 class KeyboardDriver(unittest.TestCase):
     def test_visibility_requires_actual_ime_state(self):
         self.assertTrue(android.keyboard_shown('mRequestedShowExplicitly=false\n mInputShown=true\n'))
