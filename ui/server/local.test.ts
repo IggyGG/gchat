@@ -16,7 +16,13 @@ async function endpoint(reply: Buffer) {
     socket.on('error', () => {});
   });
   resources.push({ directory, server });
-  await new Promise<void>(resolve => server.listen(path, resolve));
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(path, () => {
+      server.removeListener('error', reject);
+      resolve();
+    });
+  });
   await chmod(path, 0o600);
   return { directory, path };
 }
@@ -26,7 +32,21 @@ afterEach(async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
-describe('selected private service bridge', () => {
+it('refuses the browser bridge without Unix peer ownership support', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(process, 'getuid');
+  try {
+    Object.defineProperty(process, 'getuid', { configurable: true, value: undefined });
+    await expect(exchangeLocal(join(tmpdir(), 'nonexistent-gchat-bridge', 'chat.sock'), request))
+      .rejects.toThrow('This browser bridge requires Unix private sockets');
+  } finally {
+    if (descriptor) Object.defineProperty(process, 'getuid', descriptor);
+    else Reflect.deleteProperty(process, 'getuid');
+  }
+});
+
+// The optional Node browser bridge authenticates Unix sockets. Windows desktop
+// clients use gchat-api's separately tested native named-pipe transport.
+describe.skipIf(typeof process.getuid !== 'function')('selected private Unix service bridge', () => {
   it('decodes a framed response without changing its payload', async () => {
     const response = { version: 1, instance_id: 'selected', response: { kind: 'applied', conversation: null, notice: '  λ  ' } };
     const body = Buffer.from(JSON.stringify(response));
