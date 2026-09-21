@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Run an XCTest UI journey against a hash-bound, already-built simulator app.
 
-Only the XCTest runner is compiled. No GChat build, resign, provider provisioning,
-TestFlight submission or host Keychain modification is performed here.
+Only the XCTest runner is compiled. An explicit simulator-only mode signs an
+owned application copy for its private Keychain group; the retained application
+is immutable. No device signing, provisioning or TestFlight submission occurs.
 """
 import argparse
 import hashlib
@@ -82,6 +83,35 @@ def test_result(summary):
             'XCTest must complete exactly one passing lifecycle test with no failure or skip')
 
 
+def application_for_journey(app, destination, keychain_fixture=False):
+    """Retain the exact input; only an explicit simulator fixture may be derived."""
+    info = plistlib.loads((app / 'Info.plist').read_bytes())
+    name = info.get('CFBundleExecutable', '')
+    require(name and Path(name).name == name, 'invalid simulator executable name')
+    original = ios.reference(app / name)
+    binding = {'original_application': original, 'application': original, 'application_resigned': False}
+    if not keychain_fixture:
+        return app, binding
+    before = {str(path.relative_to(app)): ios.digest(path) for path in app.rglob('*') if path.is_file()}
+    derived = destination / 'keychain-fixture' / app.name
+    shutil.copytree(app, derived)
+    signing = ios.sign_simulator(derived, destination / 'simulator-keychain-signing')
+    signed = json.loads(Path(signing['path']).read_text())
+    require(ios.digest(Path(signing['path'])) == signing['sha256']
+            and signed.get('scope') == 'ios_simulator_adhoc_private_keychain_signing'
+            and signed.get('passed') is True and signed.get('device_qualified') is False
+            and signed.get('resources_unchanged') is True, 'simulator signing receipt is incomplete')
+    require(all(signed['original_executable'][key] == original[key] for key in ('sha256', 'size')),
+            'simulator signing did not preserve the original executable binding')
+    actual = ios.reference(derived / name)
+    require(signed.get('derived_executable') == actual, 'derived simulator executable binding mismatch')
+    after = {str(path.relative_to(app)): ios.digest(path) for path in app.rglob('*') if path.is_file()}
+    require(after == before, 'original simulator application changed during fixture signing')
+    binding.update(application=actual, application_resigned=True, simulator_keychain_signing=signing,
+                   original_application_unchanged=True, derived_simulator_only=True)
+    return derived, binding
+
+
 def cleanup_device(device, report):
     errors = []
     for command in (['xcrun', 'simctl', 'terminate', device, ios.BUNDLE],
@@ -116,6 +146,7 @@ def main(args):
     swift_source = Path(__file__).with_name('fixtures') / 'ios-lifecycle' / 'LifecycleTests.swift'
     report = {'schema': 1, 'scope': 'ios_retained_simulator_profile_background_reopen', 'passed': False,
         'application_recompiled': False, 'original_build_verdict_unchanged': True,
+        'simulator_keychain_fixture': args.simulator_keychain_fixture,
         'cryptographic_identity_comparison': False, 'network_onboarding_qualified': False,
         'messaging_qualified': False, 'push_qualified': False, 'physical_device_qualified': False,
         'cleanup_complete': False, 'harness': ios.reference(Path(__file__)),
@@ -170,7 +201,13 @@ def main(args):
         binary = app / executable
         require(ios.digest(binary) == smoke['executable']['sha256']
                 and binary.stat().st_size == smoke['executable']['size'], 'retained executable mismatch')
-        report['application'] = ios.reference(binary)
+        app, binding = application_for_journey(app, destination, args.simulator_keychain_fixture)
+        report.update(binding)
+        binary = app / executable
+        if args.simulator_keychain_fixture:
+            derived_archive = destination / 'simulator-keychain-app.zip'
+            ios.run(['ditto', '-c', '-k', '--keepParent', app, derived_archive])
+            report['derived_simulator_archive'] = ios.reference(derived_archive)
         report['xcode'] = ios.output(['xcodebuild', '-version'])
         require(report['xcode'].splitlines()[0] == 'Xcode 26.2', 'use the original pinned Xcode')
         runtime = ios.simulator_runtime()
@@ -208,6 +245,8 @@ def main(args):
         test_result(summary)
         report['test_summary'] = ios.reference(destination / 'test-summary.json')
         require(ios.digest(binary) == report['application']['sha256'], 'retained application changed during journey')
+        require(ios.digest(Path(report['original_application']['path'])) == report['original_application']['sha256'],
+                'original simulator application changed during journey')
         report['passed'] = True
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
@@ -226,4 +265,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('spec', 'gchat', 'gcoms', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--simulator-keychain-fixture', action='store_true',
+                        help='ad-hoc sign only an owned simulator copy with its private Keychain group')
     main(parser.parse_args())

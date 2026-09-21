@@ -25,6 +25,11 @@ on:
       request_id:
         required: true
         type: string
+      simulator_keychain_fixture:
+        description: Derive an ad-hoc signed simulator copy with its private Keychain group
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
   actions: read
@@ -78,9 +83,13 @@ jobs:
       - name: Run retained application with native XCTest
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          python3 runner/scripts/ios-lifecycle.py --spec journey-input.json
-          --gchat source-gchat --gcoms source-gcoms --output ios-lifecycle-output
+          SIMULATOR_KEYCHAIN_FIXTURE: ${{ inputs.simulator_keychain_fixture }}
+        run: |
+          args=(--spec journey-input.json --gchat source-gchat --gcoms source-gcoms --output ios-lifecycle-output)
+          if [ "$SIMULATOR_KEYCHAIN_FIXTURE" = true ]; then
+            args+=(--simulator-keychain-fixture)
+          fi
+          python3 runner/scripts/ios-lifecycle.py "${args[@]}"
       - name: Retain exact original binding and lifecycle results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -97,4 +106,6 @@ jobs:
             ios-lifecycle-output/runner/
             ios-lifecycle-output/xctest.log
             ios-lifecycle-output/test-summary.json
+            ios-lifecycle-output/simulator-keychain-signing/
+            ios-lifecycle-output/simulator-keychain-app.zip
             ios-lifecycle-output/journey.xcresult/
