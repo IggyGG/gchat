@@ -8,6 +8,7 @@ import io
 import json
 import os
 from pathlib import Path
+import plistlib
 import stat
 import subprocess
 import sys
@@ -105,6 +106,36 @@ class ProfileTests(unittest.TestCase):
                 with ios.signer(Path(temporary), ios.validate_profile(self.profile, PIN), PIN):
                     self.fail('must refuse before import')
             command.assert_not_called()
+
+    def test_ipa_certificate_extraction_uses_codesign_optional_argument_syntax(self):
+        # macOS codesign accepts an optional prefix only joined with '='. A
+        # separate prefix is parsed as an additional code object and fails.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ipa = root / 'fixture.ipa'
+            with zipfile.ZipFile(ipa, 'w') as archive:
+                archive.writestr('Payload/GChat.app/Info.plist', plistlib.dumps({
+                    'CFBundleIdentifier': ios.BUNDLE, 'CFBundleVersion': '1.0.4',
+                    'MinimumOSVersion': '15.0', 'CFBundleExecutable': 'GChat'}))
+                archive.writestr('Payload/GChat.app/GChat', b'fixture executable')
+            entitlements = dict(self.profile['Entitlements'],
+                                **{'keychain-access-groups': [ios.TEAM + '.' + ios.BUNDLE]})
+
+            def native(command):
+                if command[0] == 'ditto':
+                    with zipfile.ZipFile(command[-2]) as archive:
+                        archive.extractall(command[-1])
+                elif command[:2] == ['codesign', '-d']:
+                    self.assertEqual(len(command), 4)
+                    self.assertTrue(command[2].startswith('--extract-certificates='))
+                    Path(command[2].split('=', 1)[1] + '0').write_bytes(b'fixture distribution certificate')
+
+            with patch.object(ios, 'run', side_effect=native), \
+                    patch.object(ios, 'output', side_effect=['arm64', 'platform IOS']), \
+                    patch.object(ios.subprocess, 'check_output', return_value=plistlib.dumps(entitlements)), \
+                    patch.object(ios, 'decode_profile', return_value=self.profile):
+                result = ios.verify_ipa(ipa, root / 'verified', PIN, '1.0.4')
+            self.assertEqual(result['certificate']['sha256'], PIN)
 
     def test_profile_cleanup_failure_still_removes_private_key_and_preserves_build_error(self):
         certificate = b'fixture distribution certificate'

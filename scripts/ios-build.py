@@ -402,7 +402,7 @@ def verify_ipa(ipa, destination, pin, version):
                                                          stderr=subprocess.DEVNULL))
     validate_entitlements(entitlements)
     leaf_prefix = destination / 'signer-'
-    run(['codesign', '-d', '--extract-certificates', leaf_prefix, app])
+    run(['codesign', '-d', '--extract-certificates=' + str(leaf_prefix), app])
     certificate = Path(str(leaf_prefix) + '0')
     require(digest(certificate) == pin, 'IPA signer differs from pinned distribution certificate')
     profile = validate_profile(decode_profile(app / 'embedded.mobileprovision'), pin)
