@@ -52,7 +52,7 @@ retained, then only that simulator is deleted. This gate establishes native
 startup/relaunch, **not** an interactive profile, messaging, file, notification,
 battery or physical-device journey. Those remain separate application checks.
 
-Only after simulator success does the worker build a signed device IPA. It
+Before running the simulator, the worker also builds a signed device IPA. It
 verifies the ARM64/iOS platform, iOS 15 minimum, app/build identity, complete code
 signature, pinned leaf certificate, unexpired App Store profile, disabled
 debugger entitlement, production APNs entitlement and app-scoped Keychain groups.
