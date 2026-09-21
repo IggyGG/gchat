@@ -283,6 +283,24 @@ def simulator_runtime():
     return max(ios, key=lambda item: tuple(int(x) for x in item['version'].split('.')))['identifier']
 
 
+def simulator_phone(runtime, types, devices):
+    # Device type order is not a compatibility order: Xcode 26 lists older
+    # iPhone 6s models after recent phones. Reuse the type of an available
+    # device already instantiated for this runtime, but create our own device.
+    phones = {item['identifier']: item for item in types if item['name'].startswith('iPhone')}
+    for device in devices.get(runtime, []):
+        if not device.get('isAvailable'):
+            continue
+        identifier = device.get('deviceTypeIdentifier')
+        if identifier in phones:
+            return identifier
+        if identifier is None:
+            for identifier, kind in phones.items():
+                if kind['name'] == device.get('name'):
+                    return identifier
+    raise ValueError('no available iPhone device type is known compatible with the selected iOS runtime')
+
+
 def simulator_smoke(app, destination):
     destination.mkdir()
     report = {'schema': 1, 'scope': 'ios_simulator_native_startup_relaunch', 'passed': False,
@@ -295,11 +313,13 @@ def simulator_smoke(app, destination):
         report['executable'] = reference(app / info['CFBundleExecutable'])
         runtime = simulator_runtime()
         types = json.loads(output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
-        phones = [item for item in types if item['name'].startswith('iPhone')]
-        require(phones, 'no iPhone simulator device type installed')
-        device = output(['xcrun', 'simctl', 'create', 'GChat-' + secrets.token_hex(6), phones[-1]['identifier'], runtime])
+        devices = json.loads(output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+        phone = simulator_phone(runtime, types, devices)
+        write_json(destination / 'selection.json', {'runtime': runtime, 'device_type': phone,
+                                                   'device_types': types, 'available_devices': devices})
+        device = output(['xcrun', 'simctl', 'create', 'GChat-' + secrets.token_hex(6), phone, runtime])
         require(re.fullmatch('[0-9A-Fa-f-]{36}', device), 'unexpected created simulator ID')
-        report.update(device=device, runtime=runtime, device_type=phones[-1]['identifier'])
+        report.update(device=device, runtime=runtime, device_type=phone)
         run(['xcrun', 'simctl', 'boot', device], timeout=120)
         run(['xcrun', 'simctl', 'bootstatus', device, '-b'], timeout=180)
         run(['xcrun', 'simctl', 'install', device, app], timeout=120)

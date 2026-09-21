@@ -140,6 +140,20 @@ class ProfileTests(unittest.TestCase):
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_simulator_uses_an_available_runtime_compatible_phone_not_type_list_order(self):
+        types = [{'identifier': 'iphone17', 'name': 'iPhone 17'},
+                 {'identifier': 'iphone6s', 'name': 'iPhone 6s Plus'}]
+        devices = {'ios26': [{'name': 'iPhone 17', 'deviceTypeIdentifier': 'iphone17', 'isAvailable': True}],
+                   'ios15': [{'name': 'iPhone 6s Plus', 'deviceTypeIdentifier': 'iphone6s', 'isAvailable': True}]}
+        self.assertEqual(ios.simulator_phone('ios26', types, devices), 'iphone17')
+        del devices['ios26'][0]['deviceTypeIdentifier']
+        self.assertEqual(ios.simulator_phone('ios26', types, devices), 'iphone17')
+        devices['ios26'][0]['isAvailable'] = False
+        with self.assertRaisesRegex(ValueError, 'compatible'):
+            ios.simulator_phone('ios26', types, devices)
+        with self.assertRaisesRegex(ValueError, 'compatible'):
+            ios.simulator_phone('absent', types, devices)
+
     def test_mobile_graph_rejects_relay_and_desktop_hosts(self):
         graph = 'gcoms v0.1.0|files,ipc,network-client,rpc\ngcoms-node v0.1.0|client-persist\ngcoms-runtime v0.1.0|\n'
         self.assertIn('network-client', ios.feature_graph(graph)['gcoms'])
