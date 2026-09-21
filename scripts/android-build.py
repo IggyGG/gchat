@@ -717,6 +717,18 @@ def bundle_smoke_inputs(root, signed):
     return artifact, archive, paths
 
 
+def screenshot(adb, path):
+    """Retain native screen pixels without rendering, resizing or annotation."""
+    raw = subprocess.check_output([str(x) for x in [*adb, 'exec-out', 'screencap', '-p']], timeout=30)
+    require(33 <= len(raw) <= 20 * 1024 * 1024 and raw[:8] == b'\x89PNG\r\n\x1a\n'
+            and raw[12:16] == b'IHDR', 'Android screenshot is not a bounded PNG')
+    width, height = struct.unpack('>II', raw[16:24])
+    require(320 <= width <= 7680 and 320 <= height <= 7680, 'unexpected screenshot dimensions')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(raw)
+    return reference(path) | {'width': width, 'height': height, 'modified': False}
+
+
 def smoke(args):
     root = args.output.resolve()
     signed_path = root / 'signing.json'
@@ -824,10 +836,14 @@ def smoke(args):
         launch()
         wait_node(text('Create identity'))
         no_listener('fresh_locked')
+        if getattr(args, 'store_screenshots', False):
+            report['screenshots'] = [screenshot(adb, dest / 'store-screenshots/01-create-identity.png')]
         fill_passphrase()
         tap(wait_node(text('Create identity')))
         wait_node(text('Connect to GChat'), timeout=120)
         no_listener('created_unlocked_without_network_invitation')
+        if getattr(args, 'store_screenshots', False):
+            report['screenshots'].append(screenshot(adb, dest / 'store-screenshots/02-connect.png'))
         activity_state('created', True)
         shell('input', 'keyevent', '3')
         time.sleep(3)
@@ -973,7 +989,8 @@ def emulator(args):
                 raise ValueError('emulator failed its bounded boot deadline')
             run([*adb, 'shell', 'input', 'keyevent', '82'], timeout=30)
             smoke(argparse.Namespace(output=root, serial='emulator-5554', probe_picker=getattr(args, 'probe_picker', False),
-                                     from_bundle=getattr(args, 'from_bundle', False)))
+                                     from_bundle=getattr(args, 'from_bundle', False),
+                                     store_screenshots=getattr(args, 'store_screenshots', False)))
             report['passed'] = True
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
@@ -1134,6 +1151,7 @@ def main():
         if name == 'smoke': sub.add_argument('--serial', required=True)
         if name in ('smoke', 'emulator'): sub.add_argument('--probe-picker', action='store_true')
         if name in ('smoke', 'emulator'): sub.add_argument('--from-bundle', action='store_true')
+        if name in ('smoke', 'emulator'): sub.add_argument('--store-screenshots', action='store_true')
     download = commands.add_parser('download-smoke')
     download.add_argument('--output', type=Path, required=True)
     download.add_argument('--build-run', type=int, required=True)

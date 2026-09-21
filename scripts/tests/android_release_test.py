@@ -21,6 +21,23 @@ PIN = 'ab' * 32
 
 
 class MobileLauncher(unittest.TestCase):
+    def test_store_screenshot_preserves_native_pixels(self):
+        raw = b'\x89PNG\r\n\x1a\n' + struct.pack('>I', 13) + b'IHDR' + struct.pack('>II', 1080, 1920) + b'\0' * 9
+        with tempfile.TemporaryDirectory() as tmp, patch.object(android.subprocess, 'check_output', return_value=raw) as call:
+            path = Path(tmp) / 'screens/identity.png'
+            report = android.screenshot(['adb', '-s', 'emulator-5554'], path)
+            self.assertEqual(path.read_bytes(), raw)
+            self.assertFalse(report['modified'])
+            self.assertEqual((report['width'], report['height']), (1080, 1920))
+            self.assertEqual(call.call_args.args[0][-3:], ['exec-out', 'screencap', '-p'])
+
+    def test_bad_screenshot_does_not_create_a_store_image(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(android.subprocess, 'check_output', return_value=b'adb failed'):
+            path = Path(tmp) / 'identity.png'
+            with self.assertRaisesRegex(ValueError, 'bounded PNG'):
+                android.screenshot(['adb'], path)
+            self.assertFalse(path.exists())
+
     def test_selects_windows_command_shim_without_dropping_arguments(self):
         with patch.object(android.os, 'name', 'nt'):
             self.assertEqual(android.tauri_command('android', 'init', '--ci'),
