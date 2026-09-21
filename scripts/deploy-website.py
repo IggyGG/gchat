@@ -16,7 +16,7 @@ import uuid
 import website
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = {'index.html', 'downloads.json', 'build.json', 'robots.txt', 'fonts/fixedsys-excelsior.ttf', 'fonts/LICENSE-CC0'}
+FILES = {'index.html', 'privacy.html', 'downloads.json', 'build.json', 'robots.txt', 'fonts/fixedsys-excelsior.ttf', 'fonts/LICENSE-CC0'}
 ORIGIN = 'https://gchat.boo'
 
 

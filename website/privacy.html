@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy and support · GChat</title>
+<style>body{font:17px/1.65 system-ui,sans-serif;max-width:48rem;margin:3rem auto;padding:0 1.25rem;color:#e5e7eb;background:#111827}a{color:#93c5fd}h1,h2{line-height:1.25}h2{margin-top:2rem}small{color:#bbc3cf}</style>
+<main>
+<a href="/">GChat</a>
+<h1>Privacy and support</h1>
+<p><small>Updated 21 September 2026</small></p>
+<p>This notice covers the GChat application, gchat.boo and the Gh0st-operated notification gateway at push.gchat.boo. GChat is published by Iggy Gullstrand under the Gh0st name. Other network and relay operators may have their own practices; review the network invitation before connecting.</p>
+<h2>Your identity, conversations and files</h2>
+<p>You create an identity on your device. GChat does not require an email address, telephone number or central user account. Your passphrase protects the local profile, identity and conversation state. Optional remembered unlocking uses the operating system's protected credential storage.</p>
+<p>Messages and shared files are encrypted for their recipients. Relays transport encrypted data and retain temporary delivery queues; they do not receive your profile passphrase or conversation decryption keys. Your recipients can read, copy and retain content you send them. Files you export outside GChat are governed by the destination application's storage and backup settings.</p>
+<h2>Network information</h2>
+<p>Network providers and relay operators process connection addresses, timing, encrypted traffic sizes, routing and delivery information to provide the service. Bootstrap providers also process invitation and access-authorisation information. Encryption does not hide all connection metadata. Traffic-analysis resistance and whole-client privacy remain areas for improvement; GChat does not claim independently qualified anonymity.</p>
+<h2>Optional mobile notifications</h2>
+<p>Supported mobile releases let you opt into notifications. Android uses Google's Firebase Cloud Messaging (FCM); iOS uses Apple's Push Notification service (APNs). These services process device or installation identifiers and notification delivery metadata under their own privacy terms. GChat includes no advertising or analytics SDK for measuring your conversations.</p>
+<p>When enabled, our gateway stores a notification token, an opaque installation reference, app/platform identifiers, authorisation expiry and revision information. It uses these to send a generic activity notification. The notification payload contains no message text, sender name or filename. The app fetches actual content through GComs after reconnecting; a notification does not unlock your profile.</p>
+<p>Gateway registrations expire with their authorisation and are removed by expiry cleanup. Disabling notifications requests revocation; if the device is offline or the request fails, server-side expiry still applies. Limited replay and revision records are retained until their expiry to prevent reuse of old requests. Storage journals and infrastructure backups may retain older data beyond removal from the live database. Push delivery is optional and is not guaranteed.</p>
+<p>Provider information: <a href="https://firebase.google.com/support/privacy">Firebase privacy</a> and <a href="https://www.apple.com/legal/privacy/">Apple privacy</a>.</p>
+<h2>Website, diagnostics and support</h2>
+<p>This website uses no analytics scripts, advertising trackers or tracking cookies. Hosting and network infrastructure may process ordinary connection information for operation and abuse prevention. Downloads and source links take you to GitHub, which has its own privacy practices.</p>
+<p>If you send a support request, we receive the contact details and information you choose to include. Do not send passphrases, private keys, notification tokens or private conversations. Diagnostic logs may contain operational metadata; review them before sharing.</p>
+<h2>Control and deletion</h2>
+<p>You can disable notifications in GChat or system settings. Removing the app's local data removes its local profile; separately retained exports, operating-system backups and recipients' copies are not deleted by that action. There is no central GChat account to close and no server-side passphrase recovery.</p>
+<p>For help, privacy questions or a request concerning data held by the Gh0st-operated service, email <a href="mailto:iggy@gchat.boo">iggy@gchat.boo</a>. Describe the issue without including secrets. We may need information that establishes your control of the relevant installation before acting on a request. A request cannot erase another recipient's copy of a conversation.</p>
+</main>
+</html>

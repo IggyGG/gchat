@@ -269,6 +269,7 @@ def build(output, data):
     (output / 'index.html').write_bytes(rendered)
     (output / 'downloads.json').write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8', newline='\n')
     shutil.copyfile(ROOT / 'website/robots.txt', output / 'robots.txt')
+    shutil.copyfile(ROOT / 'website/privacy.html', output / 'privacy.html')
     (output / 'fonts').mkdir(exist_ok=True)
     for name in ('fixedsys-excelsior.ttf', 'LICENSE-CC0'):
         shutil.copyfile(ROOT / 'apps/client/public/fonts' / name, output / 'fonts' / name)
