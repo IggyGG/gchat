@@ -1,5 +1,6 @@
 """iOS release rejects source, signing, entitlement and artifact substitution."""
 import argparse
+import base64
 from datetime import datetime, timedelta, timezone
 import hashlib
 import importlib.util
@@ -93,6 +94,49 @@ class ProfileTests(unittest.TestCase):
                 with ios.signer(Path(temporary), ios.validate_profile(self.profile, PIN), PIN):
                     self.fail('must refuse before import')
             command.assert_not_called()
+
+    def test_profile_cleanup_failure_still_removes_private_key_and_preserves_build_error(self):
+        certificate = b'fixture distribution certificate'
+        pem = b'-----BEGIN CERTIFICATE-----\n' + base64.b64encode(certificate) + b'\n-----END CERTIFICATE-----\n'
+        original = RuntimeError('original build failure')
+        commands = []
+        private_paths = []
+
+        def security(command):
+            commands.append([str(part) for part in command])
+            if command[1] == 'create-keychain':
+                keychain = Path(command[-1])
+                keychain.touch()
+                private_paths.extend((keychain, keychain.parent / 'publisher.p12'))
+            elif command[1] == 'delete-keychain':
+                Path(command[-1]).unlink()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary)
+            residual = {str(destination / (self.profile['UUID'] + '.mobileprovision')): PIN}
+            with patch.dict(os.environ, {'IOS_CERTIFICATE_BASE64': base64.b64encode(b'private fixture').decode(),
+                                         'IOS_CERTIFICATE_PASSWORD': 'fixture password'}), \
+                    patch.object(ios, 'keychains', return_value=['/original/keychain']), \
+                    patch.object(ios, 'profile_files', side_effect=[{}, residual, residual]), \
+                    patch.object(ios, 'secret_command', side_effect=security), \
+                    patch.object(ios.subprocess, 'check_output', return_value=pem), \
+                    patch.object(ios, 'output', return_value=hashlib.sha1(certificate).hexdigest().upper()), \
+                    patch.object(ios, 'decode_profile', side_effect=ValueError('malformed profile')):
+                with self.assertRaises(RuntimeError) as raised:
+                    with ios.signer(destination, ios.validate_profile(self.profile, PIN), PIN):
+                        self.assertTrue(all(path.exists() for path in private_paths))
+                        raise original
+            self.assertIs(raised.exception, original)
+            self.assertIn(['security', 'list-keychains', '-d', 'user', '-s', '/original/keychain'], commands)
+            self.assertTrue(any(command[1] == 'delete-keychain' for command in commands))
+            self.assertTrue(all(not path.exists() for path in private_paths))
+            cleanup = json.loads((destination / 'signing-cleanup.json').read_text())
+            self.assertFalse(cleanup['passed'])
+            self.assertTrue(cleanup['original_keychain_search_restored'])
+            self.assertTrue(cleanup['temporary_keychain_removed'])
+            self.assertTrue(cleanup['private_certificate_removed'])
+            self.assertFalse(cleanup['original_profiles_unchanged'])
+            self.assertEqual(cleanup['errors'], [{'step': 'remove_owned_profile', 'error_type': 'ValueError'}])
 
 
 class ArtifactTests(unittest.TestCase):

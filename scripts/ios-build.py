@@ -21,6 +21,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import time
 import tomllib
@@ -188,7 +189,8 @@ def signer(destination, profile, pin):
     require(not any(Path(path).name == profile['uuid'] + '.mobileprovision' for path in before_profiles),
             'a profile with this UUID already exists; use a fresh isolated worker')
     cleanup = {'passed': False, 'original_keychain_search_restored': False,
-               'temporary_keychain_removed': False, 'original_profiles_unchanged': False}
+               'temporary_keychain_removed': False, 'original_profiles_unchanged': False,
+               'private_certificate_removed': False, 'errors': []}
     with tempfile.TemporaryDirectory(prefix='gchat-ios-sign-') as temporary:
         private = Path(temporary)
         private.chmod(0o700)
@@ -219,24 +221,47 @@ def signer(destination, profile, pin):
             (destination / 'distribution-certificate.der').write_bytes(matching[0])
             yield keychain, sha1
         finally:
-            # Tauri may install the provided UUID; never delete another profile.
-            for path, sha in profile_files().items():
+            original_error = sys.exc_info()[1]
+
+            def attempt(step, action):
+                try:
+                    return action()
+                except BaseException as error:
+                    # Do not serialize subprocess arguments or private material.
+                    cleanup['errors'].append({'step': step, 'error_type': type(error).__name__})
+                    return None
+
+            # Every removal/restore is independent: a malformed profile must not
+            # strand the signing key or prevent a terminal cleanup receipt.
+            current_profiles = attempt('enumerate_profiles', profile_files) or {}
+            for path in current_profiles:
                 if path not in before_profiles and Path(path).name == profile['uuid'] + '.mobileprovision':
                     candidate = Path(path)
-                    value = decode_profile(candidate)
-                    validate_profile(value, pin)
-                    require(value['UUID'] == profile['uuid'], 'temporary profile identity changed')
-                    candidate.unlink()
+
+                    def remove_profile():
+                        value = decode_profile(candidate)
+                        validate_profile(value, pin)
+                        require(value['UUID'] == profile['uuid'], 'temporary profile identity changed')
+                        candidate.unlink()
+
+                    attempt('remove_owned_profile', remove_profile)
             if created:
-                secret_command(['security', 'list-keychains', '-d', 'user', '-s', *before_keys])
-                secret_command(['security', 'delete-keychain', keychain])
-            p12.unlink(missing_ok=True)
-            cleanup['temporary_keychain_removed'] = not keychain.exists()
-            cleanup['original_keychain_search_restored'] = keychains() == before_keys
-            cleanup['original_profiles_unchanged'] = profile_files() == before_profiles
-            cleanup['passed'] = all(cleanup[name] for name in cleanup if name != 'passed')
-            write_json(destination / 'signing-cleanup.json', cleanup)
-            require(cleanup['passed'], 'iOS signer did not restore its keychain/profile boundary')
+                attempt('restore_keychain_search', lambda: secret_command(
+                    ['security', 'list-keychains', '-d', 'user', '-s', *before_keys]))
+                attempt('delete_temporary_keychain', lambda: secret_command(['security', 'delete-keychain', keychain]))
+            attempt('remove_private_certificate', lambda: p12.unlink(missing_ok=True))
+            cleanup['temporary_keychain_removed'] = attempt('verify_keychain_removed', lambda: not keychain.exists()) is True
+            cleanup['private_certificate_removed'] = attempt('verify_certificate_removed', lambda: not p12.exists()) is True
+            cleanup['original_keychain_search_restored'] = attempt('verify_keychain_search', keychains) == before_keys
+            cleanup['original_profiles_unchanged'] = attempt('verify_profiles', profile_files) == before_profiles
+            cleanup['passed'] = not cleanup['errors'] and all(
+                cleanup[name] for name in cleanup if name not in {'passed', 'errors'})
+            attempt('write_cleanup_receipt', lambda: write_json(destination / 'signing-cleanup.json', cleanup))
+            if cleanup['errors'] or not cleanup['passed']:
+                if original_error is not None:
+                    original_error.add_note('iOS signing cleanup also failed; see signing-cleanup.json where writable')
+                else:
+                    raise ValueError('iOS signer did not restore its keychain/profile boundary')
 
 
 def configure_project(generated):
