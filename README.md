@@ -103,9 +103,11 @@ See [TESTING.md](TESTING.md), [integration](docs/INTEGRATION.md),
 GComs provides transport and typed services; GChat owns chat behavior and UI.
 
 MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
-The signed preview requires Linux x86_64, Windows 11 x86_64, and macOS on
-Apple Silicon and Intel. GitHub workers provide Mac qualification; mobile is deferred. See the
-[release evidence procedure](docs/RELEASE_EVIDENCE.md).
+Published downloads currently cover Linux x86_64, macOS Apple Silicon and Android
+ARM64/x86_64. Intel Mac, Windows and iOS releases are being qualified separately.
+Android lifecycle checks run in an emulator; physical-device, battery and live push
+qualification remain deferred. Each download retains its own source and validation
+scope. See the [release evidence procedure](docs/RELEASE_EVIDENCE.md).
 
 The preview uses GComs' rustls/XML advisory fixes and disables unused postcard
 heapless defaults. `deny.toml` records reviewed transitive-version exceptions and
