@@ -18,9 +18,13 @@
       "certificate_sha256": "278e1a15357b464eac55aa16bb47ffb6e7fbdb0d87179ecb000e09d713766352"
     },
     "macos": {
-      "name": "Gh0st",
-      "certificate_fingerprint": "13F505CF5175A8C496D0BB75DF1AA8CE8D2BE942",
-      "certificate_sha256": "8d82f60f90cdeb1b53fbf669f9a91fd9580b13f4601bec9aecc0b8cbc804af59"
+      "name": "Movsai AB",
+      "brand": "Gh0st",
+      "certificate_fingerprint": "680E440D0CD8A9907B7C5F1A3418E7771A2711EF",
+      "certificate_sha256": "80254a1eac9e2f40412bf84762eeddcf084385c19f525262bbf957d643c4ffcb",
+      "team_id": "U93DVTJ3T5",
+      "distribution": "developer-id",
+      "signing_policy": "publicly-trusted"
     },
     "linux": {
       "name": "Gh0st",
