@@ -91,3 +91,14 @@ unchanged. Subsequent uploads explicitly include hidden provenance. Actual build
 executables/installers are retained even if verification fails; their presence
 does not qualify them. Controller provenance never replaces application-native
 provenance or converts the original failed workflow into a passing release.
+
+The retained installer verification workflow reuses the exact signed NSIS from
+packaging run 35662111776 and the unchanged 3e09b2d/7eec615 native input pair.
+That run passed signing, install/uninstall and cleanup, but its temporary profile
+retained explicit foreign Windows ACEs. The fixture now replaces only its owned
+temporary directory's DACL with one current-user rule and verifies that descriptor.
+A separate native foreign-ACE regression precedes the installed create/reopen run.
+No application, authentication, signing policy or native qualification is changed.
+The verification controller and corrected helper are separately hash-bound; the
+original failed lifecycle report remains retained beside the new one. This path
+uses no signing key, compilation or replacement executable.

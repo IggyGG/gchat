@@ -7,6 +7,7 @@ The isolated worker uses the existing pinned signing identity, never a new one.
 import argparse
 import importlib.util
 import json
+import ntpath
 import os
 from pathlib import Path, PureWindowsPath
 import platform
@@ -150,7 +151,11 @@ def verify_signing_cleanup(directory, publisher, source_archive):
         raise ValueError('Windows signing key/trust cleanup did not pass')
 
 
-def verify_installer_smoke(directory, build, source_archive):
+def verify_installer_smoke(directory, build, source_archive, *, lifecycle_source_archive=None):
+    # A packaging recovery may use a separately frozen lifecycle fixture. Its
+    # archive must be authenticated by the caller; it cannot replace any other
+    # application, native, installer or signing source binding below.
+    lifecycle_source = source_archive if lifecycle_source_archive is None else lifecycle_source_archive
     smoke = directory / 'application-smoke'
     report = json.loads((smoke / 'report.json').read_text())
     if (report.get('schema') != 1 or
@@ -199,7 +204,7 @@ def verify_installer_smoke(directory, build, source_archive):
         any(service.get(name) is not True for name in
             ('passed', 'inputs_unchanged', 'children_stopped', 'temporary_profile_removed'))):
         raise ValueError('Windows packaged service lifecycle failed or cleanup is incomplete')
-    source.verify_archived_file(source_archive, 'scripts/test-native-application.py', service.get('harness'))
+    source.verify_archived_file(lifecycle_source, 'scripts/test-native-application.py', service.get('harness'))
     application = report['application_inputs']
     if (service.get('inputs') != application or application.get('sources') != report['sources'] or
         application.get('target') != build['target'] or application.get('native_ci') != build['native_ci'] or
@@ -214,10 +219,16 @@ def verify_installer_smoke(directory, build, source_archive):
         raise ValueError('Windows installed executable differs from signed build manifest')
     installation = PureWindowsPath(report['installation_directory'])
     registration = report.get('registration', {})
+    # NSIS writes quoted registry paths. Match the installer's own comparison,
+    # including Windows case/separator normalization, without accepting another
+    # destination or command-line arguments after the executable path.
+    def windows_path(path):
+        return ntpath.normcase(ntpath.normpath(str(path).strip('"')))
+
     if (not installation.is_absolute() or PureWindowsPath(binary['path']).parent != installation or
         registration.get('root') != 'HKCU' or
-        PureWindowsPath(registration.get('location', '')) != installation or
-        PureWindowsPath(registration.get('uninstall', '')) != installation / 'uninstall.exe' or
+        windows_path(registration.get('location', '')) != windows_path(installation) or
+        windows_path(registration.get('uninstall', '')) != windows_path(installation / 'uninstall.exe') or
         PureWindowsPath(signatures[2][0].get('artifact', {}).get('path', '')) != installation / 'uninstall.exe'):
         raise ValueError('Windows application registration/uninstaller escaped the owned installation')
     identity, steps = service.get('protocol_identity_sha256'), service.get('steps', [])
@@ -253,7 +264,7 @@ def verify_installer_smoke(directory, build, source_archive):
     return report
 
 
-def collect(directory, expected):
+def collect(directory, expected, *, lifecycle_source_archive=None):
     manifest = directory / 'build.json'
     build = json.loads(manifest.read_text())
     if build.get('sources') != expected or build.get('target') != 'windows-x86_64':
@@ -291,7 +302,8 @@ def collect(directory, expected):
         not (directory / name).resolve().is_relative_to(directory.resolve()) or digest(directory / name) != item['sha256']):
         raise ValueError('Windows installer path, digest or signing mismatch')
     archived_source = file_reference(evidence, candidate['sources']['gchat']['archive'])
-    verify_installer_smoke(directory, build, archived_source)
+    verify_installer_smoke(directory, build, archived_source,
+                           lifecycle_source_archive=lifecycle_source_archive)
     verify_signing_cleanup(directory, build['publisher'], archived_source)
     prereqs = json.loads((directory / 'worker-evidence/prerequisites.json').read_text())
     if (prereqs.get('scope') != 'windows_server_2022_x64_prerequisites' or prereqs.get('passed') is not True or

@@ -132,6 +132,24 @@ class BindingTests(BindingFixture, unittest.TestCase):
                 smoke.validate_artifacts(self.binary, self.manifest, self.native)
 
 
+class PrivateDirectoryTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "requires native Windows DACL semantics")
+    def test_replaces_explicit_foreign_aces_before_application_start(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "owned fixture"
+            path.mkdir()
+            subprocess.run(["icacls.exe", str(path), "/grant", "*S-1-1-0:(OI)(CI)F"],
+                           capture_output=True, check=True)
+            # private_directory checks the actual post-write descriptor, so the
+            # prior inheritance-only implementation fails this explicit ACE case.
+            smoke.private_directory(path)
+            output = subprocess.check_output(["icacls.exe", str(path)], text=True)
+            self.assertNotIn("Everyone:", output)
+            child = path / "inherited"
+            child.mkdir()
+            smoke.private_directory(child)
+
+
 @unittest.skipUnless(os.name == "posix", "fake executable fixture uses Unix sockets; native Windows remains a separate gate")
 class LifecycleTests(BindingFixture, unittest.TestCase):
     def run_fixture(self, mode="normal", output="result", timeout="5"):

@@ -1,0 +1,64 @@
+name: Windows retained installer verification
+run-name: Windows retained installer verification ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: powershell
+    env:
+      GCHAT_ISOLATED_SIGNING_WORKER: '1'
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: controller
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 3e09b2db471caf40ce6b0838ecc3000d5adfb644
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Verify retained signed installer and original native receipts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python controller/scripts/windows-verify.py prepare --prior retained --gchat gchat
+      - name: Exercise explicit foreign-ACE removal in the fixture
+        working-directory: controller
+        run: python -m unittest scripts.tests.native_application_test.PrivateDirectoryTests -v
+      - name: Prepare isolated WebView prerequisites
+        run: python gchat/scripts/windows-build.py --prepare-webview --worker-evidence verification-worker
+      - name: Install and reopen the unchanged signed application
+        timeout-minutes: 15
+        run: python controller/scripts/windows-verify.py verify --prior retained --gchat gchat --output verified
+      - name: Retain original failures and new verification bindings
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force -Path verified | Out-Null
+          if (Test-Path retained/verification-inputs.json) { Copy-Item retained/verification-inputs.json verified/verification-inputs.json }
+          if (Test-Path verification-worker) { Copy-Item verification-worker verified/verification-worker -Recurse }
+          git -C controller archive --format=tar -o ../verified/verification-controller.tar HEAD
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: windows-x86_64
+          path: verified/**
+          include-hidden-files: true
+          if-no-files-found: error

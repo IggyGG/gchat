@@ -6,7 +6,7 @@ Gatekeeper, WebView operation or absence of all network egress. It drives the
 actual packaged executable through its owner-only local application API.
 """
 import argparse
-import csv
+import base64
 import datetime
 import hashlib
 import json
@@ -156,12 +156,34 @@ def private_directory(path):
     if os.name != "nt":
         path.chmod(0o700)
         return
-    output = subprocess.check_output(["whoami.exe", "/user", "/fo", "csv", "/nh"], text=True)
-    rows = list(csv.reader(output.strip().splitlines()))
-    require(len(rows) == 1 and len(rows[0]) == 2 and rows[0][1].startswith("S-1-"), "cannot identify Windows account SID")
-    sid = "*" + rows[0][1]
-    for arguments in (["/setowner", sid], ["/inheritance:r", "/grant:r", sid + ":(OI)(CI)F"]):
-        subprocess.run(["icacls.exe", str(path), *arguments], capture_output=True, check=True)
+    # Python's Windows tempfile may install explicit SYSTEM/Administrators ACEs.
+    # Disabling inheritance and granting our SID does not remove those entries.
+    # Replace the DACL on this owned fixture directory, then verify its owner,
+    # protection and sole inheritable allow rule before launching the real app.
+    script = r'''
+$ErrorActionPreference = 'Stop'
+$path = $env:GCHAT_FIXTURE_DIRECTORY
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$acl = New-Object Security.AccessControl.DirectorySecurity
+$acl.SetOwner($sid)
+$acl.SetAccessRuleProtection($true, $false)
+$rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+$acl.AddAccessRule($rule)
+Set-Acl -LiteralPath $path -AclObject $acl
+$actual = Get-Acl -LiteralPath $path
+$rules = @($actual.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
+if ($actual.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value -or
+    -not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
+    $rules[0].IdentityReference.Value -ne $sid.Value -or $rules[0].IsInherited -or
+    $rules[0].AccessControlType -ne 'Allow' -or $rules[0].FileSystemRights -ne 'FullControl' -or
+    $rules[0].InheritanceFlags -ne 'ContainerInherit,ObjectInherit') {
+    throw 'Fixture directory is not exclusively owned by the current account'
+}
+'''
+    environment = dict(os.environ, GCHAT_FIXTURE_DIRECTORY=str(path))
+    subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand",
+                    base64.b64encode(script.encode("utf-16-le")).decode("ascii")],
+                   env=environment, capture_output=True, check=True)
 
 
 def isolated_environment(home):

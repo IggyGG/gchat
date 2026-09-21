@@ -188,13 +188,14 @@ class WindowsEvidenceTest(unittest.TestCase):
                 ('passed', 'imported', 'private_key_removed', 'pfx_removed', 'my_store_restored',
                  'persistent_trust_stores_unchanged'), True)}
 
-    def verify(self):
+    def verify(self, *, lifecycle_source_archive=None):
         path = self.smoke / 'service/report.json'
         data = json.dumps(self.service).encode()
         path.write_bytes(data)
         self.report['service_receipt'] = reference(data, path)
         (self.smoke / 'report.json').write_text(json.dumps(self.report))
-        return worker.verify_installer_smoke(self.root, self.build, self.archive)
+        return worker.verify_installer_smoke(self.root, self.build, self.archive,
+                                             lifecycle_source_archive=lifecycle_source_archive)
 
     def verify_signer(self):
         for name, report in (('import', self.imported), ('cleanup', self.signing_cleanup)):
@@ -204,6 +205,50 @@ class WindowsEvidenceTest(unittest.TestCase):
     def test_exact_installed_binary_service_and_uninstall_evidence(self):
         self.verify()
         self.verify_signer()
+
+    def lifecycle_archive(self):
+        archive_path = self.root / 'controller.tar.gz'
+        helper_name = 'scripts/test-native-application.py'
+        helper = b'# separately frozen Windows private-directory fixture\n'
+        with tarfile.open(archive_path, 'w:gz') as archive:
+            member = tarfile.TarInfo(helper_name)
+            member.size = len(helper)
+            archive.addfile(member, io.BytesIO(helper))
+        return archive_path, reference(helper, helper_name)
+
+    def test_separate_lifecycle_fixture_requires_explicit_matching_archive(self):
+        archive, helper = self.lifecycle_archive()
+        self.service['harness'] = helper
+        with self.assertRaises(ValueError):
+            self.verify()
+        self.verify(lifecycle_source_archive=archive)
+        with self.assertRaises(ValueError):
+            self.verify(lifecycle_source_archive=self.archive)
+        self.service['harness'] = reference(b'tampered lifecycle helper')
+        with self.assertRaises(ValueError):
+            self.verify(lifecycle_source_archive=archive)
+
+    def test_lifecycle_override_cannot_replace_other_source_bindings(self):
+        archive, helper = self.lifecycle_archive()
+        self.service['harness'] = helper
+        for key in ('harness', 'signature_verifier'):
+            with self.subTest(key=key), patch.dict(self.report, {key: helper}):
+                with self.assertRaises(ValueError):
+                    self.verify(lifecycle_source_archive=archive)
+
+    def test_quoted_nsis_registration_paths_match_owned_installation(self):
+        self.report['registration']['location'] = '"' + self.installation.upper() + '"'
+        self.report['registration']['uninstall'] = '"' + self.installation + r'\uninstall.exe"'
+        self.verify()
+
+    def test_quoted_registration_cannot_escape_owned_installation(self):
+        for key, value in (
+                ('location', r'"C:\private install\GChat\..\other"'),
+                ('location', r'"C:\other\GChat"'),
+                ('uninstall', '"' + self.installation + r'\uninstall.exe" /S')):
+            with self.subTest(key=key), patch.dict(self.report['registration'], {key: value}):
+                with self.assertRaisesRegex(ValueError, 'escaped'):
+                    self.verify()
 
     def test_linux_or_windows_11_receipt_cannot_qualify_server_worker(self):
         for key, value in [('system', 'Linux'), ('CurrentBuildNumber', '26100'), ('architecture', 'arm64')]:

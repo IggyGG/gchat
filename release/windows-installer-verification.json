@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "package_run_id": 35662111776,
+  "package_controller": "b680b24995a5b33736c092e181ecb00c99263fb0",
+  "package_artifact_id": 10668237277,
+  "package_artifact_sha256": "45ffda56fe71ea800455fe3cedaec7cac83bed87519ff843ff0d95f12f6de619",
+  "build_sha256": "ee9c9d38ad5a98acdfe889759e5b19edbd4c30b48b753c4a18e0035b42b0ec4f",
+  "installer_sha256": "832d2db07e44e349a038428c29a48e8a97c37b8e25463ab86d01f29b62515cad",
+  "sources": {
+    "gchat": "3e09b2db471caf40ce6b0838ecc3000d5adfb644",
+    "gcoms": "7eec615e4478a166ee71f3144bc04c3070c92f72"
+  }
+}
