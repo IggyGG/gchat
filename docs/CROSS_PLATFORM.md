@@ -1,8 +1,11 @@
 # GChat platform delivery
 
 GChat shares its Svelte/Tauri interface across desktop and mobile. The current
-production Linux release is 0.1.3. Version 0.1.4 begins native Mac qualification;
-an in-progress build is not a published or qualified installer.
+production Linux release is 0.1.3. Mac 0.1.4 downloads for Apple Silicon and
+Intel are now Developer ID signed, Apple-notarized and stapled; both passed
+quarantined Gatekeeper and installed startup/service checks. Android 0.1.4 APKs
+are available with their documented emulator-only scope. Windows and the mobile
+push builds remain in progress; this is not a claim of completed store delivery.
 
 ## Delivery order
 
@@ -42,7 +45,9 @@ the latter. Hosted Mac workers provide Xcode when no local Mac is available.
 
 ## Release policy
 
-Keep Gh0st desktop signing; self-signed Mac builds do not claim notarization.
+Keep pinned Gh0st release signatures. Current Mac `.2` releases additionally use
+Movsai AB Developer ID signing and Apple notarization; original self-signed `.1`
+releases retain their original limitations and are superseded on the website.
 Apple TestFlight uses its own Apple-authorized provisioning. Secrets stay in
 protected CI, never in Git or application bundles. Every binary and installer
 retains exact source/dependency/native-check identities. Platforms ship separately

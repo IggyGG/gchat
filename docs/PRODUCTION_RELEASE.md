@@ -2,7 +2,7 @@
 
 On 2026-09-20 the owner selected production rollout and removed statistical privacy thresholds and mandatory 24-hour campaigns as release gates. Releases use bounded delivery, authentication, persistence/reopen, artifact-signature and rollback checks. Reuse source-bound completed checks for unchanged code; extended research and soak campaigns run separately and never impose a minimum release duration. Failed historical evidence stays failed.
 
-Linux is the current released desktop platform. macOS, Windows and mobile application delivery is now in progress, with separate native and installed-app checks before publishing each target. See CROSS_PLATFORM.md. Gh0st signs desktop artifacts with pinned release keys; self-signed distribution does not imply public-CA certification or Apple notarization.
+Linux and macOS downloads are published. Current Mac 0.1.4 `.2` DMGs for both architectures are signed with the pinned Movsai AB Developer ID, notarized by Apple, stapled and checked with quarantine and Gatekeeper enabled. Android APKs are published with their documented emulator qualification. Windows, mobile push and store delivery remain in progress. See CROSS_PLATFORM.md and the signed per-platform release manifests for exact scope. Gh0st detached release signatures remain pinned; historical self-signed Mac `.1` downloads do not acquire the new notarization qualification.
 
 ## Privacy improvements still outstanding
 
