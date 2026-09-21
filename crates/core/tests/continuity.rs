@@ -1,6 +1,6 @@
 use gchat_core::client::ClientHandle;
 use gchat_core::model::MemberId;
-use gcoms_sdk::ChannelVisibility;
+use gcoms::sdk::ChannelVisibility;
 use std::net::SocketAddr;
 
 fn addr() -> SocketAddr {
@@ -10,6 +10,7 @@ fn addr() -> SocketAddr {
 #[tokio::test(flavor = "multi_thread")]
 async fn channel_roster_transcript_and_scoped_pm_survive_restart() {
     let dir = tempfile::tempdir().unwrap();
+    gchat_core::private_fs::make_private(dir.path(), true).unwrap();
     let owner_path = dir.path().join("owner.gcstore");
     let member_path = dir.path().join("member.gcstore");
     let owner = ClientHandle::create_profile_fixture(&owner_path, "owner", addr(), None, None)

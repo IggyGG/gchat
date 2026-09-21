@@ -88,7 +88,7 @@ class PairedSourcesTests(unittest.TestCase):
 
     def graph(self):
         packages = []
-        for name in ('gcoms-node', 'gcoms-rpc', 'gcoms-sdk'):
+        for name in ('gcoms', 'gcoms-runtime', 'gcoms-node', 'gcoms-rpc', 'gcoms-sdk'):
             manifest = self.root / name / 'Cargo.toml'
             manifest.parent.mkdir()
             manifest.write_text(f'[package]\nname="{name}"\nversion="0.1.0"\n')
@@ -98,7 +98,7 @@ class PairedSourcesTests(unittest.TestCase):
 
     def test_registry_or_other_checkout_cannot_claim_the_supplied_source(self):
         graph = self.graph()
-        self.assertEqual(len(verify_resolved_protocol(graph, self.root)), 3)
+        self.assertEqual(len(verify_resolved_protocol(graph, self.root)), 5)
         graph['packages'][0]['source'] = 'registry+https://example.invalid/index'
         with self.assertRaisesRegex(EvidenceError, 'frozen source pair'):
             verify_resolved_protocol(graph, self.root)

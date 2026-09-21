@@ -88,20 +88,19 @@ impl ChatService {
                 expires.min(gcoms_network::NetworkInvitation::decode_at(code, at)?.expires_at);
         }
         let channel = if let Some(code) = &invitation.channel_invitation {
-            let envelope = gcoms_node::channel_invite::InviteEnvelope::from_link(code)
-                .ok_or("Invalid channel invitation")?;
-            if envelope.invite.expiry <= at {
+            let details = gcoms::runtime::contacts::inspect_channel_invitation_details(code)?;
+            if details.invitation.expires_at <= at {
                 return Err("Channel invitation has expired".into());
             }
-            expires = expires.min(envelope.invite.expiry);
+            expires = expires.min(details.invitation.expires_at);
             // A network label cannot smuggle another network's relay capabilities.
             #[cfg(feature = "gc2-carrier")]
-            if let Some(bundle) = &envelope.gc2_bootstrap {
-                if bundle.relays.iter().any(|relay| {
+            if let Some(relays) = &details.current_bootstrap_relays {
+                if relays.iter().any(|service_id| {
                     !defaults
                         .founders
                         .iter()
-                        .any(|founder| founder.service_id == relay.service_id)
+                        .any(|founder| &founder.service_id == service_id)
                 }) {
                     return Err(
                         "Channel invitation contains relays outside its signed network".into(),
@@ -112,7 +111,7 @@ impl ChatService {
                     "Ask for a current invitation including this network's relay bootstrap".into(),
                 );
             }
-            Some(envelope.invite.channel.clone())
+            Some(details.invitation.channel)
         } else {
             None
         };
@@ -142,7 +141,7 @@ impl ChatService {
                 let mut networks = vec![Self::describe_network(
                     &identity,
                     true,
-                    self.runtime.network_status(),
+                    self.runtime.network_status().await?,
                 )];
                 let records = self
                     .session
@@ -155,10 +154,10 @@ impl ChatService {
                     .clone();
                 let children = self.networks.lock().await;
                 for (id, record) in records {
-                    let status = children
-                        .get(&id)
-                        .map(|child| child.runtime.network_status())
-                        .unwrap_or_else(|| NetworkStatus::new(NetworkState::Unavailable));
+                    let status = match children.get(&id) {
+                        Some(child) => child.runtime.network_status().await?,
+                        None => NetworkStatus::new(NetworkState::Unavailable),
+                    };
                     networks.push(Self::describe_network(&record.identity, false, status));
                 }
                 Ok(NetworkResponse::List { networks })
@@ -295,7 +294,7 @@ impl ChatService {
                 };
                 let target = child.as_deref().unwrap_or(self);
                 if let Some(code) = &invitation.network_invitation {
-                    target.runtime.import_network_invitation(code)?;
+                    target.runtime.import_network_invitation(code).await?;
                 }
                 let response = if let Some(code) = &invitation.channel_invitation {
                     Box::pin(target.handle(Request::Submit {
@@ -364,13 +363,8 @@ impl ChatService {
                 "Cannot unlock this network's retained profile; its files were preserved".into(),
             );
         }
-        // Empty overrides select this runtime's pinned signed network. Passing
-        // origins as overrides would select the explicit-provider fixture path.
-        if let Err(error) = runtime.start_network_maintenance(Vec::new(), true) {
-            let _ = Box::pin(child.disconnect()).await;
-            let _ = runtime.shutdown().await;
-            return Err(error);
-        }
+        // Application::open already starts this profile's independent background
+        // maintenance with its pinned trust. Do not launch a second worker here.
         self.networks.lock().await.insert(id.into(), child.clone());
         Ok(child)
     }

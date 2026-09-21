@@ -1,5 +1,5 @@
 use super::*;
-use gcoms_sdk::ChannelStatus;
+use gcoms::sdk::ChannelStatus;
 use std::time::Duration;
 
 async fn exchange(a: &ProtocolClient, b: &ProtocolClient, text: &[u8]) {
@@ -115,7 +115,7 @@ async fn protocol_runtime_recovery_forwards_exact_admission_after_cold_reopen() 
     let socket = dir.path().join("owner.sock");
     let host = owner.clone();
     let server_socket = socket.clone();
-    let server = tokio::spawn(gcoms_sdk::serve_unix(
+    let server = tokio::spawn(gcoms::sdk::serve_unix(
         server_socket,
         host,
         crate::daemon::scope_capabilities(crate::daemon::Scope::Chat),
@@ -127,12 +127,12 @@ async fn protocol_runtime_recovery_forwards_exact_admission_after_cold_reopen() 
     })
     .await
     .unwrap();
-    let ipc = gcoms_sdk::IpcClient::connect(
+    let ipc = gcoms::sdk::IpcClient::connect(
         &socket,
         "actual-recovery-wrapper",
         vec![
-            gcoms_sdk::ipc::Capability::IdentityRead,
-            gcoms_sdk::ipc::Capability::ChannelAdmin,
+            gcoms::sdk::ipc::Capability::IdentityRead,
+            gcoms::sdk::ipc::Capability::ChannelAdmin,
         ],
     )
     .await

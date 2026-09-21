@@ -9,17 +9,12 @@ version.workspace = true
 publish.workspace = true
 
 [dependencies]
+gcoms = { version = "0.1.0", features = ["embedded", "ipc", "rpc", "launch", "files"] }
 gchat-api = { version = "0.1.0", path = "../chat-api" }
-gcoms-rpc = { version = "0.1.0" }
 gcoms-core = { version = "0.1.0" }
-gcoms-file-transfer = { version = "0.1.0" }
 hmac = "0.12"
 uuid = "1"
-gcoms-node = { version = "0.1.0", features = ["client-persist"] }
-gcoms-sdk = { version = "0.1.0" }
 gcoms-crypto = { version = "0.1.0" }
-gcoms-transport = { version = "0.1.0" }
-gcoms-routing = { version = "0.1.0" }
 gcoms-network-client = { version = "0.1.0" }
 gcoms-network = { version = "0.1.0" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal", "net", "process", "io-util"] }
@@ -53,6 +48,8 @@ windows-sys = { version = "0.61", features = [
 ] }
 
 [dev-dependencies]
+gcoms-routing = { version = "0.1.0", features = ["experimental-gc2"] }
+gcoms-node = { version = "0.1.0", features = ["client-persist"] }
 axum = "0.8"
 rcgen = { version = "0.13", default-features = false, features = ["aws_lc_rs", "pem"] }
 rustls = { version = "0.23.45", default-features = false, features = ["aws-lc-rs", "std"] }
@@ -61,4 +58,4 @@ tokio-rustls = "0.26"
 [features]
 # Explicit opt-in: builds the experimental GC/2 carrier profile into this
 # application. Default builds keep the GC/1 production profile.
-gc2-carrier = ["gcoms-node/experimental-gc2", "gcoms-network-client/experimental-gc2"]
+gc2-carrier = ["gcoms/gc2-carrier"]

@@ -3,13 +3,19 @@
 use crate::bootstrap::{fetch_relay_provision, parse_bootstrap_urls};
 use crate::client::{decode_relay_card, NodeInfo};
 use crate::private_fs::{validate_private_file, validate_private_parent};
-use gcoms_sdk::ipc::Capability;
+use gcoms::sdk::ipc::Capability;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use zeroize::Zeroizing;
 
 #[derive(clap::Args, Clone)]
 pub struct DaemonArgs {
+    /// Bundled GComs service executable; starts or attaches automatically.
+    #[arg(long, requires = "gcoms_endpoint")]
+    pub gcomsd: Option<PathBuf>,
+    /// Private endpoint for the shared per-user GComs service.
+    #[arg(long, requires = "gcomsd")]
+    pub gcoms_endpoint: Option<PathBuf>,
     /// Start the instance locked; a bound UI unlocks it through the chat API.
     #[arg(long)]
     pub interactive: bool,
@@ -55,7 +61,7 @@ pub struct DaemonArgs {
     #[arg(long, env = "GC_GC2_CARRIER", conflicts_with = "local_fixture")]
     pub gc2_carrier: bool,
     /// Local GC listener.
-    #[arg(long, default_value = "127.0.0.1:8443")]
+    #[arg(long, default_value = "0.0.0.0:0")]
     pub listen: SocketAddr,
     /// Reachable address published in this profile's contact card.
     #[arg(long)]
@@ -214,7 +220,7 @@ pub fn bootstrap_values(
 /// Host a standalone chat instance until the owning service is stopped.
 pub async fn run(args: DaemonArgs) -> Result<(), String> {
     if let Some(path) = std::env::var_os("GCHAT_PROTOCOL_METRICS") {
-        gcoms_node::metrics::init(Path::new(&path))
+        gcoms::runtime::metrics::init(Path::new(&path))
             .map_err(|error| format!("open local protocol metrics: {error}"))?;
     }
     use crate::chat_service::{
@@ -229,6 +235,13 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
         return Err("profile already exists".into());
     }
     let config = InstanceConfig {
+        protocol_backend: match (&args.gcomsd, &args.gcoms_endpoint) {
+            (Some(executable), Some(endpoint)) => gcoms::Backend::Shared {
+                executable: executable.clone(),
+                endpoint: endpoint.clone(),
+            },
+            _ => gcoms::Backend::Embedded,
+        },
         profile: paths.store.clone(),
         archive: args
             .chat_archive

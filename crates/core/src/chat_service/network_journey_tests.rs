@@ -109,7 +109,7 @@ async fn journey() {
     )
     .await
     .unwrap();
-    let sender_node = sender_runtime.sdk_client().embedded().node().clone();
+    let sender_node = sender_runtime.embedded().expect("embedded fixture").node().clone();
     sender_node.install_gc2_routing_bootstrap(&bundle).unwrap();
     sender_node
         .wait_for_inbox(tokio::time::Instant::now() + Duration::from_secs(120))

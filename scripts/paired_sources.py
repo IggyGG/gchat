@@ -63,7 +63,7 @@ def verify_resolved_protocol(metadata, protocol):
     protocol = Path(protocol).resolve()
     packages = []
     for package in metadata['packages']:
-        if not package['name'].startswith('gcoms-'):
+        if not (package['name'] == 'gcoms' or package['name'].startswith('gcoms-')):
             continue
         manifest = Path(package['manifest_path']).resolve()
         require(package.get('source') is None and manifest.is_relative_to(protocol),
@@ -72,7 +72,7 @@ def verify_resolved_protocol(metadata, protocol):
         require(source['name'] == package['name'], 'resolved GComs package name mismatch')
         packages.append({'name': package['name'], 'version': package['version'],
                          'manifest': manifest.relative_to(protocol).as_posix()})
-    require({'gcoms-node', 'gcoms-sdk', 'gcoms-rpc'} <= {p['name'] for p in packages},
+    require({'gcoms', 'gcoms-runtime', 'gcoms-node', 'gcoms-sdk', 'gcoms-rpc'} <= {p['name'] for p in packages},
             'desktop graph omits the expected GComs implementation')
     return sorted(packages, key=lambda item: item['name'])
 
@@ -135,7 +135,7 @@ def prepare_pair(chat, protocol, output, triple, environment=None):
         for directory in sorted(protocol.glob(member)):
             require(directory.resolve().is_relative_to(protocol), 'workspace member escapes source input')
             package = tomllib.loads((directory / 'Cargo.toml').read_text())['package']
-            if package['name'].startswith('gcoms-'):
+            if package['name'] == 'gcoms' or package['name'].startswith('gcoms-'):
                 patches.append(f'{json.dumps(package["name"])} = {{ path = {json.dumps(str(directory))} }}')
     cargo_dir = chat / '.cargo'
     cargo_dir.mkdir(exist_ok=True)

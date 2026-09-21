@@ -275,7 +275,7 @@ fn draw_home(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(footer(app, &hints, foot.width), foot);
 }
 
-fn draw_channel(frame: &mut Frame, app: &App, id: gcoms_sdk::ChannelId, area: Rect) {
+fn draw_channel(frame: &mut Frame, app: &App, id: gcoms::sdk::ChannelId, area: Rect) {
     let t = theme(app);
     let hints = if app.channel_focus == ChannelFocus::Members {
         "up/down member | enter PM | i invite | p publish | d remove | tab message | esc back"
@@ -387,14 +387,14 @@ fn draw_channel(frame: &mut Frame, app: &App, id: gcoms_sdk::ChannelId, area: Re
     frame.render_widget(footer(app, hints, foot.width), foot);
 }
 
-fn visibility_word(visibility: gcoms_sdk::ChannelVisibility) -> &'static str {
+fn visibility_word(visibility: gcoms::sdk::ChannelVisibility) -> &'static str {
     match visibility {
-        gcoms_sdk::ChannelVisibility::Public => "public",
-        gcoms_sdk::ChannelVisibility::Private => "private",
+        gcoms::sdk::ChannelVisibility::Public => "public",
+        gcoms::sdk::ChannelVisibility::Private => "private",
     }
 }
 
-fn role_word(role: gcoms_sdk::ChannelRole) -> String {
+fn role_word(role: gcoms::sdk::ChannelRole) -> String {
     format!("{role:?}").to_ascii_lowercase()
 }
 
@@ -524,19 +524,19 @@ fn transcript_scroll(lines: usize, area_height: u16, from_bottom: u16) -> u16 {
     bottom.saturating_sub(usize::from(from_bottom).min(bottom)) as u16
 }
 
-fn activity_words(activity: gcoms_sdk::ActivityBucket) -> &'static str {
+fn activity_words(activity: gcoms::sdk::ActivityBucket) -> &'static str {
     match activity {
-        gcoms_sdk::ActivityBucket::Today => "active today",
-        gcoms_sdk::ActivityBucket::ThisWeek => "active this week",
-        gcoms_sdk::ActivityBucket::Older => "quiet lately",
-        gcoms_sdk::ActivityBucket::None => "no recent activity",
+        gcoms::sdk::ActivityBucket::Today => "active today",
+        gcoms::sdk::ActivityBucket::ThisWeek => "active this week",
+        gcoms::sdk::ActivityBucket::Older => "quiet lately",
+        gcoms::sdk::ActivityBucket::None => "no recent activity",
     }
 }
 
 fn draw_public(
     frame: &mut Frame,
     app: &App,
-    descriptor: &gcoms_sdk::PublicChannelDescriptor,
+    descriptor: &gcoms::sdk::PublicChannelDescriptor,
     area: Rect,
 ) {
     let t = theme(app);
@@ -822,7 +822,7 @@ mod tests {
     fn channel_focus_and_scoped_pm_context_are_visible() {
         let mut app = app();
         app.screen = Screen::Channel {
-            id: gcoms_sdk::ChannelId([1; 32]),
+            id: gcoms::sdk::ChannelId([1; 32]),
         };
         assert!(render(&app).contains("message [FOCUS]"));
         app.channel_focus = ChannelFocus::Members;
@@ -830,7 +830,7 @@ mod tests {
 
         app.screen = Screen::ScopedPm {
             id: ScopedPmId {
-                channel_id: gcoms_sdk::ChannelId([1; 32]),
+                channel_id: gcoms::sdk::ChannelId([1; 32]),
                 self_member_id: MemberId([2; 32]),
                 remote_member_id: MemberId([3; 32]),
             },

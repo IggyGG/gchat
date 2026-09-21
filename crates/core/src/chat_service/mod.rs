@@ -13,7 +13,7 @@ use gchat_api::{
     Completion, Conversation, ConversationKind, HistoryPage, InstanceInfo, Member, Message,
     Request, RequestEnvelope, Response, ResponseEnvelope, Snapshot, MAX_FRAME_BYTES, VERSION,
 };
-use gcoms_sdk::{ipc::Capability, ChannelRole, ChannelVisibility, GcClient, LocalEndpoint};
+use gcoms::sdk::{ipc::Capability, ChannelRole, ChannelVisibility, GcClient, LocalEndpoint};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -48,7 +48,7 @@ struct UiState {
     input_history: Vec<gchat_api::InputHistoryEntry>,
     operations: BTreeMap<String, OperationRecord>,
     file_key: Option<[u8; 32]>,
-    file_config: gcoms_file_transfer::swarm::CacheConfig,
+    file_config: gcoms::sdk::sharing::CacheConfig,
 }
 #[derive(Clone, Serialize, Deserialize)]
 struct OperationRecord {
@@ -86,8 +86,6 @@ pub struct ChatService {
     provider_error: std::sync::RwLock<Option<gchat_api::ProviderStatus>>,
     stopped: watch::Sender<bool>,
     file_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
-    #[cfg(test)]
-    file_receipt_gate: std::sync::Mutex<Option<Arc<files::TestReceiptGate>>>,
     catalog_urls: std::sync::RwLock<Vec<String>>,
 }
 
@@ -107,7 +105,7 @@ fn now() -> u64 {
         .unwrap_or_default()
         .as_secs()
 }
-fn channel_key(id: gcoms_sdk::ChannelId) -> String {
+fn channel_key(id: gcoms::sdk::ChannelId) -> String {
     format!("channel/{}", hex(&id.0))
 }
 fn record_key(channel: &ChannelRecord) -> String {
@@ -204,8 +202,6 @@ impl ChatService {
             provider_error: std::sync::RwLock::new(None),
             stopped: watch::channel(false).0,
             file_worker: std::sync::Mutex::new(None),
-            #[cfg(test)]
-            file_receipt_gate: std::sync::Mutex::new(None),
             catalog_urls: std::sync::RwLock::new(Vec::new()),
         });
         if service.command_extension.is_some() {
@@ -477,11 +473,9 @@ impl ChatService {
                 store.save(&state)?;
                 let cache_path = self.archive.with_extension("pieces");
                 let cache_config = state.file_config.clone();
-                let files = tokio::task::spawn_blocking(move || {
-                    files::FileRuntime::open(&cache_path, file_key, cache_config)
-                })
-                .await
-                .unwrap_or_else(|_| Err("File cache recovery stopped".into()));
+                let files =
+                    files::FileRuntime::open(&self.runtime, &cache_path, file_key, cache_config)
+                        .await;
                 let (files, file_error) = match files {
                     Ok(files) => (Some(files), None),
                     Err(error) => (None, Some(format!("File cache unavailable: {error}. Chat history remains available; preserve the cache for recovery."))),
@@ -500,7 +494,7 @@ impl ChatService {
                     current.store.verify_passphrase(&passphrase)?;
                     current.ui_locked = false;
                     if let Some(files) = &current.files {
-                        files.enabled(true);
+                        files.enabled(true).await?;
                     }
                 }
             }
@@ -514,7 +508,7 @@ impl ChatService {
                 current.client.save().await?;
                 current.store.save(&current.state)?;
                 if let Some(files) = &current.files {
-                    files.enabled(false);
+                    files.enabled(false).await?;
                 }
                 current.ui_locked = true;
             }
@@ -537,7 +531,7 @@ impl ChatService {
                 status: if session.as_ref().is_none_or(|s| s.ui_locked) {
                     gchat_api::NetworkStatus::new(gchat_api::NetworkState::Locked)
                 } else {
-                    self.runtime.network_status()
+                    self.runtime.network_status().await?
                 },
             });
         }
@@ -559,9 +553,9 @@ impl ChatService {
                 if code.len() > gchat_api::MAX_NETWORK_INVITATION_BYTES {
                     return Err("Network invitation exceeds size limit".into());
                 }
-                self.runtime.import_network_invitation(code.trim())?;
+                self.runtime.import_network_invitation(code.trim()).await?;
                 Ok(Response::NetworkStatus {
-                    status: self.runtime.network_status(),
+                    status: self.runtime.network_status().await?,
                 })
             }
             Request::History {
@@ -1085,19 +1079,22 @@ impl ChatService {
                 }
             }
             "/nick" => {
-                gcoms_node::channel::ChannelChange::Nickname(args.into()).validate()?;
+                gcoms::runtime::contacts::validate_channel_change(
+                    &gcoms::sdk::ChannelChange::Nickname(args.into()),
+                )?;
             }
             "/topic" if !args.is_empty() => {
                 self.require(Capability::ChannelAdmin)?;
                 if context_channel(&archive, conversation)?.role != ChannelRole::Owner {
                     return Err("Only the channel owner can change the topic".into());
                 }
-                gcoms_node::channel::ChannelChange::Topic(if args == "--clear" {
-                    String::new()
-                } else {
-                    args.into()
-                })
-                .validate()?;
+                gcoms::runtime::contacts::validate_channel_change(
+                    &gcoms::sdk::ChannelChange::Topic(if args == "--clear" {
+                        String::new()
+                    } else {
+                        args.into()
+                    }),
+                )?;
             }
             "/query" | "/msg" | "/kick" => {
                 resolve_member(context_channel(&archive, conversation)?, split_head(args).0)?;
@@ -1113,9 +1110,9 @@ impl ChatService {
                         return Err(format!("Usage: {}", spec.usage));
                     }
                     if name == "/join" && !target.starts_with('#') {
-                        let invite = gcoms_node::channel_invite::ChannelInvite::from_link(target)
-                            .ok_or("Invalid invitation. Paste the complete link.")?;
-                        if invite.expiry <= now() {
+                        let invite = gcoms::runtime::contacts::inspect_channel_invitation(target)
+                            .map_err(|_| "Invalid invitation. Paste the complete link.")?;
+                        if invite.expires_at <= now() {
                             return Err(
                                 "This invitation has expired. Ask for a new invitation.".into()
                             );
@@ -1145,27 +1142,29 @@ impl ChatService {
         };
         if let Some(args @ ("dns on" | "dns off" | "dns status")) = network_arguments(text) {
             if args != "dns status" {
-                self.runtime.configure_network_dns(args == "dns on")?;
+                self.runtime.configure_network_dns(args == "dns on").await?;
             }
-            let status = self.runtime.network_dns_status()?;
+            let status = self.runtime.network_dns_status().await?;
             let notice = if !status.opted_in {
                 if status.pending {
                     "Public DNS is off; removal is queued.".into()
                 } else {
                     "Public DNS is off.".into()
                 }
-            } else if let Some(record) = status.registration.filter(|record| {
-                !status.removed && record.lease_expires_at > gcoms_network_client::now_unix()
-            }) {
-                if record.published {
+            } else if let Some(name) = status
+                .name
+                .filter(|_| !status.removed && status.lease_expires_at.unwrap_or(0) > now())
+            {
+                if status.published {
                     format!(
                         "Public DNS: {} (lease expires at {}).",
-                        record.fqdn, record.lease_expires_at
+                        name,
+                        status.lease_expires_at.unwrap_or(0)
                     )
                 } else {
                     format!(
                         "DNS name reserved: {}; publication confirmation is pending.",
-                        record.fqdn
+                        name
                     )
                 }
             } else {
@@ -1178,7 +1177,7 @@ impl ChatService {
             });
         }
         if let Some(code) = network_arguments(text).and_then(|args| args.strip_prefix("join ")) {
-            self.runtime.import_network_invitation(code.trim())?;
+            self.runtime.import_network_invitation(code.trim()).await?;
             return Ok(Response::Applied {
                 conversation: conversation.map(str::to_string),
                 notice: Some("Network invitation saved. Connecting in the background.".into()),
@@ -1252,7 +1251,7 @@ impl ChatService {
             "close" | "hide" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Close { conversation: conversation.ok_or("Select a conversation to close")?.into() } }),
             "nick" => {
                 let channel = context_channel(&archive, conversation)?;
-                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Nickname(args.into())).await?;
+                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Nickname(args.into())).await?;
                 applied(conversation.map(str::to_owned), Some("Channel nickname updated. Your identity and history are unchanged.".into()))
             }
             "topic" => {
@@ -1260,27 +1259,27 @@ impl ChatService {
                 if args.is_empty() {
                     return Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: format!("Topic for #{}", channel.title), text: client.channel_topic(channel.id).await? } });
                 }
-                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Topic(if args == "--clear" { String::new() } else { args.into() })).await?;
+                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Topic(if args == "--clear" { String::new() } else { args.into() })).await?;
                 applied(conversation.map(str::to_owned), Some("Topic updated.".into()))
             }
             "owner" => {
                 let channel = context_channel(&archive, conversation)?;
                 let member = resolve_member(channel, args)?;
-                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Transfer(member.0)).await?;
+                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Transfer(member.0)).await?;
                 applied(conversation.map(str::to_owned), Some("Ownership transferred; the channel and history are unchanged.".into()))
             }
             "part" => {
                 let channel = context_channel(&archive, conversation)?;
                 if args == "--close" {
-                    client.change_channel(channel.id, gcoms_sdk::ChannelChange::Close).await?;
+                    client.change_channel(channel.id, gcoms::sdk::ChannelChange::Close).await?;
                     let history = client.archive_snapshot().channels.iter().find(|c| c.id == channel.id).map(record_key);
                     return applied(history, Some("Channel closed. Offline members receive the closure when they reconnect. History is retained; unconfirmed sends are not marked delivered.".into()));
                 }
                 if channel.role == ChannelRole::Owner {
                     let member = resolve_member(channel, args.strip_prefix("--transfer ").ok_or("Choose the next owner")?)?;
-                    client.change_channel(channel.id, gcoms_sdk::ChannelChange::Transfer(member.0)).await?;
+                    client.change_channel(channel.id, gcoms::sdk::ChannelChange::Transfer(member.0)).await?;
                 }
-                client.change_channel(channel.id, gcoms_sdk::ChannelChange::Leave).await?;
+                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Leave).await?;
                 applied(conversation.map(str::to_owned), Some("Leave request saved. Membership ends when the owner processes it; your history is retained.".into()))
             }
             "me" => {
@@ -1386,12 +1385,8 @@ impl ChatService {
                 self.require(Capability::ChannelAdmin)?;
                 let channel = context_channel(&archive, conversation)?;
                 let link = client.create_invite(channel.id, 3600).await?;
-                let invitation = gcoms_node::channel_invite::ChannelInvite::from_link(&link)
-                    .ok_or("generated invitation is invalid")?;
-                let local_only = invitation.owner.aliases.iter().all(|alias| {
-                    let ip = alias.target.address.ip();
-                    ip.is_loopback() || ip.is_unspecified()
-                });
+                let invitation = gcoms::runtime::contacts::inspect_channel_invitation(&link)?;
+                let local_only = invitation.local_only;
                 let link = if let Some(network) = self.runtime.network_client() {
                     gcoms_network::JoinInvitation {
                         version: 1,
@@ -1400,7 +1395,7 @@ impl ChatService {
                         channel_invitation: Some(link),
                     }.encode_at(now())?
                 } else { link };
-                Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Invitation { channel: channel.title.clone(), link, expires: invitation.expiry, local_only } })
+                Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Invitation { channel: channel.title.clone(), link, expires: invitation.expires_at, local_only } })
             }
             "kick" => {
                 self.require(Capability::ChannelAdmin)?;
@@ -1586,7 +1581,7 @@ impl ChatService {
         let network_result = self.stop_networks().await;
         if let Some(current) = self.session.lock().await.as_ref() {
             if let Some(files) = &current.files {
-                files.enabled(false);
+                files.enabled(false).await?;
             }
         }
         let worker = self
@@ -1602,7 +1597,7 @@ impl ChatService {
         let mut session = self.session.lock().await;
         let result = if let Some(current) = session.as_ref() {
             if let Some(files) = &current.files {
-                files.enabled(false);
+                files.enabled(false).await?;
             }
             current.client.stop_background().await;
             current
@@ -1973,7 +1968,7 @@ pub async fn serve<S: ChatEndpoint>(
         result
     };
     let typed = async {
-        let result = gcoms_rpc::local::serve(&rpc_endpoint, router, async move {
+        let result = gcoms::rpc::local::serve(&rpc_endpoint, router, async move {
             if !*rpc_stop.borrow() {
                 let _ = rpc_stop.changed().await;
             }
@@ -2007,7 +2002,7 @@ async fn serve_legacy<S: ChatEndpoint>(
     let endpoint = LocalEndpoint::new(endpoint);
     endpoint.prepare_server().map_err(|e| e.to_string())?;
     let mut listener =
-        gcoms_sdk::local::LocalListener::bind(&endpoint).map_err(|e| e.to_string())?;
+        gcoms::sdk::local::LocalListener::bind(&endpoint).map_err(|e| e.to_string())?;
     let mut tasks = tokio::task::JoinSet::new();
     let slots = Arc::new(tokio::sync::Semaphore::new(32));
     let result = loop {
@@ -2020,21 +2015,21 @@ async fn serve_legacy<S: ChatEndpoint>(
                 tasks.spawn(async move {
                     let _permit = permit;
                     let operation = async {
-                        let bytes = gcoms_sdk::local_rpc::read(&mut stream, MAX_FRAME_BYTES).await?;
+                        let bytes = gcoms::sdk::local_rpc::read(&mut stream, MAX_FRAME_BYTES).await?;
                         if bytes.starts_with(gchat_api::files::IO_MAGIC) {
                             let mut response = match service.clone().file_io(bytes).await {
                                 Ok(data) => { let mut out = vec![0]; out.extend(data); out },
                                 Err(error) => { let mut out = vec![1]; out.extend(error.bytes().take(512)); out },
                             };
-                            let result = gcoms_sdk::local_rpc::write(&mut stream, &response, gchat_api::files::IO_LIMIT).await;
+                            let result = gcoms::sdk::local_rpc::write(&mut stream, &response, gchat_api::files::IO_LIMIT).await;
                             use zeroize::Zeroize; response.zeroize();
                             return result;
                         }
                         let request = serde_json::from_slice::<RequestEnvelope>(&bytes)
-                            .map_err(|e| gcoms_sdk::SdkError::Protocol(e.to_string()))?;
+                            .map_err(|e| gcoms::sdk::SdkError::Protocol(e.to_string()))?;
                         let response = service.dispatch(request).await;
-                        let encoded = serde_json::to_vec(&response).map_err(|e| gcoms_sdk::SdkError::Protocol(e.to_string()))?;
-                        gcoms_sdk::local_rpc::write(&mut stream, &encoded, MAX_FRAME_BYTES).await
+                        let encoded = serde_json::to_vec(&response).map_err(|e| gcoms::sdk::SdkError::Protocol(e.to_string()))?;
+                        gcoms::sdk::local_rpc::write(&mut stream, &encoded, MAX_FRAME_BYTES).await
                     };
                     let _ = tokio::time::timeout(Duration::from_secs(145), operation).await;
                 });

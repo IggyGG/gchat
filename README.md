@@ -1,5 +1,18 @@
 # GChat
 
+GChat uses the public `gcoms` Rust application API for its protocol runtime. It
+owns the chat archive and UI; GComs owns identity, encrypted protocol state,
+network enrollment, recovery, invitations and the file-transfer worker. GChat
+retains its archive, signed network settings, file-cache path/key and UI contract. The embedded backend is the
+default. To use a bundled shared service, run `gchat daemon --gcomsd
+/absolute/bundle/gcomsd --gcoms-endpoint /private/runtime/gcoms.sock` with the usual
+instance options. Each GChat profile remains independent inside that service.
+Locking/disconnecting stops that profile without stopping other applications.
+
+For this unreleased source change, validate against the matching GComs checkout
+with its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Registry
+versions and release lockfiles are finalized when the matching crates are published.
+
 **GChat** is the reference chat application for **GComs**, with a Tauri desktop
 application, terminal client and local service built from one repository.
 The Rust API contract drives both native clients and generated TypeScript bindings.
@@ -17,8 +30,10 @@ The [website and delivery tooling](docs/PUBLIC_DELIVERY.md) live in this reposit
 
 Current validation covers secure connections, authentication, transport security,
 local IPC access controls, disconnect/reconnect behavior, and private file sharing.
-Validation uses Linux and the existing Windows VM. macOS is unavailable;
-installer and publication work is deferred.
+The shared Rust integration has a native Linux/macOS test and size matrix; see
+the [GComs integration report](https://github.com/IggyGG/gcoms/blob/main/docs/RUST_INTEGRATIONS.md).
+GChat's desktop release checks are recorded separately in the
+[release evidence procedure](docs/RELEASE_EVIDENCE.md).
 
 [Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
 authorized sources, explicit download acceptance and a bounded encrypted cache.

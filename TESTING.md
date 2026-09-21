@@ -132,3 +132,14 @@ ordering, an actual failed replacement, subscriber closure under backpressure,
 lag notification and reopening after recovery. Existing shutdown and archive/file
 continuity tests remain required. Run the paired all-feature Rust tests and strict
 Clippy using GComs `scripts/check-gchat.py`; retain both source hashes.
+
+## Application facade qualification — 2026-09-18
+
+The [application runtime record](release/application-validation-2026-09-18.json)
+contains the new GComs facade and GChat Windows execution runs, source/binary hash
+references and retained failures. GChat passes 121 Windows GNU cases and 129 Linux
+cases against the IPC detach fix. Both target Clippy checks pass. Empty Windows
+PTY/API harnesses contribute no coverage; MSVC and installers remain unqualified.
+
+The same record separates successful public bootstrap and relay-pin probes from
+authenticated live application testing, which still needs a provisioned invitation.

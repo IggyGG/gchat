@@ -1,6 +1,6 @@
 //! Compatibility methods implemented using generated, typed service calls.
 use crate::{rpc, ChatError, Request, Response};
-use gcoms_rpc::{CallError, Client, OperationHandle, OperationId, ReplyBody};
+use gcoms::rpc::{CallError, Client, OperationHandle, OperationId, ReplyBody};
 
 pub(super) fn error(error: CallError<ChatError>) -> ChatError {
     match error {
@@ -25,7 +25,7 @@ pub(super) fn error(error: CallError<ChatError>) -> ChatError {
     }
 }
 
-pub(super) async fn request<T: gcoms_rpc::Transport>(
+pub(super) async fn request<T: gcoms::rpc::Transport>(
     client: Client<T>,
     request: Request,
 ) -> Result<Response, ChatError> {
@@ -165,7 +165,7 @@ pub(super) async fn request<T: gcoms_rpc::Transport>(
     })
 }
 
-pub(super) async fn status<T: gcoms_rpc::Transport>(
+pub(super) async fn status<T: gcoms::rpc::Transport>(
     client: &Client<T>,
     id: &str,
 ) -> Result<ReplyBody, ChatError> {
@@ -175,7 +175,7 @@ pub(super) async fn status<T: gcoms_rpc::Transport>(
         .await
         .map_err(|e| error(CallError::Rpc(e)))
 }
-pub(super) async fn resume<T: gcoms_rpc::Transport>(
+pub(super) async fn resume<T: gcoms::rpc::Transport>(
     client: &Client<T>,
     id: &str,
 ) -> Result<Response, ChatError> {
@@ -196,7 +196,7 @@ pub(super) async fn resume<T: gcoms_rpc::Transport>(
     }
     Ok(result)
 }
-fn handle<T: gcoms_rpc::Transport>(
+fn handle<T: gcoms::rpc::Transport>(
     client: &Client<T>,
     id: &str,
 ) -> Result<OperationHandle, ChatError> {
@@ -206,9 +206,9 @@ fn handle<T: gcoms_rpc::Transport>(
         service: rpc::SERVICE.into(),
         version: rpc::SERVICE_VERSION,
         method: "submit".into(),
-        operation: gcoms_rpc::OperationToken {
+        operation: gcoms::rpc::OperationToken {
             id: OperationId::new(id).map_err(|e| error(CallError::Rpc(e)))?,
-            deadline: gcoms_rpc::DecimalU64(0),
+            deadline: gcoms::rpc::DecimalU64(0),
         },
     })
 }
