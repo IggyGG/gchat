@@ -73,21 +73,46 @@ class RetainedUploadTests(unittest.TestCase):
             path = self.root / name
             path.write_bytes(data)
             return ios.reference(path)
-        self.original = {'scope': 'ios_exact_pair_simulator_and_signed_ipa', 'sources_unchanged': True,
-            'passed': False, 'sources': {'gchat': {'commit': 'a' * 40}}, 'build_number': '1.0.9',
-            'application': {'ipa': write('app.ipa', b'exact device app')},
-            'signing_cleanup': write('cleanup.json', b'original cleanup'),
-            'simulator_executable': write('simulator', b'original simulator')}
+        self.write_json = lambda name, data: write(name, json.dumps(data).encode())
+        RetainedInputsTests.setUp(self)
+        self.original.update(application={'ipa': write('app.ipa', b'exact device app')},
+            signing_cleanup=self.write_json('cleanup.json', self.cleanup),
+            simulator_executable=write('original-simulator', b'original simulator'))
+        self.sim_spec = {'controller_commit': '4' * 40, 'artifact_sha256': '5' * 64}
+        simulator = write('linked-simulator', b'simulator linked by Xcode')
+        lifecycle = {'scope': 'ios_installed_simulator_profile_background_reopen', 'passed': True,
+            'cleanup_complete': True, 'cleanup_errors': [], 'application': simulator,
+            'application_recompiled': False, 'application_resigned': False}
+        authority = {'scope': 'ios_xcode_linked_simulator_authority', 'passed': True,
+            'device_qualified': False, 'executable': simulator, 'host_entitlements': {},
+            'linked_simulator_authority': {'fixture': 'matching linked authority'}}
+        lifecycle_ref = self.write_json('lifecycle.json', lifecycle)
+        authority_ref = self.write_json('authority.json', authority)
+        simulator_inputs = copy.deepcopy(self.inputs)
+        simulator_inputs['target'] = 'aarch64-apple-ios-sim'
+        candidate = {'scope': 'ios_exact_pair_xcode_simulator_lifecycle', 'passed': True,
+            'sources_unchanged': True, 'sources': self.original['sources'],
+            'controller': {'commit': self.sim_spec['controller_commit']}, 'bundle': ios.BUNDLE,
+            'build_number': '1.0.9', 'device_rebuilt': False, 'distribution_signer_used': False,
+            'dependency_inputs': simulator_inputs, 'feature_graph': {'gcoms': ['network-client'], 'gcoms-node': []},
+            'executable': simulator, 'lifecycle': lifecycle_ref, 'linked_authority': authority_ref}
+        archive = write('simulator-artifact.zip', b'simulator archive')
+        self.sim_spec['artifact_sha256'] = archive['sha256']
         self.report = {'scope': 'ios_retained_pair_simulator_and_signed_ipa', 'passed': True,
             'sources_unchanged': True, 'application_recompiled': False, 'device_resigned': False,
+            'simulator_relinked_from_same_source': True,
             'original_build_verdict_unchanged': True, 'sources': self.original['sources'],
             'build_number': '1.0.9', 'original_build_passed': False,
             'original_build': write('original.json', json.dumps(self.original).encode()),
             'original_archive': write('original.zip', b'exact artifact archive'),
             'application': copy.deepcopy(self.original['application']),
             'signing_cleanup': self.original['signing_cleanup'],
-            'simulator_binding': {'original_application': self.original['simulator_executable']}}
-        self.report['inputs'] = {'artifact_sha256': self.report['original_archive']['sha256']}
+            'simulator': lifecycle_ref,
+            'simulator_binding': {'report': self.write_json('simulator-build.json', candidate),
+                'archive': archive, 'application': simulator, 'lifecycle': lifecycle_ref,
+                'linked_authority': authority_ref, 'verification': self.write_json('verification.json', authority)}}
+        self.report['inputs'] = {'artifact_sha256': self.report['original_archive']['sha256'],
+                                'simulator': self.sim_spec}
 
     def test_separate_pass_never_changes_original_failed_build(self):
         ios.validate_upload_build(self.report)
@@ -106,26 +131,31 @@ class RetainedUploadTests(unittest.TestCase):
 
     def test_wrong_simulator_cannot_authorize_device_upload(self):
         report = copy.deepcopy(self.report)
-        def retained_file(name, data):
-            path = self.root / name
-            path.write_text(json.dumps(data))
-            return ios.reference(path)
-        binary = self.root / 'derived-simulator'
-        binary.write_bytes(b'correct simulator')
-        actual = ios.reference(binary)
         report.update(bundle=ios.BUNDLE, team=ios.TEAM)
-        report['signing_cleanup'] = retained_file('valid-cleanup.json', {'passed': True})
-        report['simulator'] = retained_file('smoke.json', {'passed': True, 'cleanup_complete': True,
-            'executable': actual | {'sha256': '0' * 64}})
-        report['simulator_binding'].update(application_resigned=True, derived_simulator_only=True,
-            original_application_unchanged=True, application=actual,
-            simulator_keychain_signing=retained_file('signing.json', {'passed': True,
-                'resources_unchanged': True, 'device_qualified': False, 'derived_executable': actual}))
-        retained_file('build.json', report)
-        with patch.object(ios, 'validate_upload_build'), patch.object(ios, 'signing_pin') as credential_gate:
-            with self.assertRaisesRegex(ValueError, 'signing/startup artifact differs'):
+        wrong = self.root / 'wrong-simulator'
+        wrong.write_bytes(b'other source executable')
+        report['simulator_binding']['application'] = ios.reference(wrong)
+        self.write_json('build.json', report)
+        with patch.object(ios, 'signing_pin') as credential_gate:
+            with self.assertRaisesRegex(ValueError, 'executable differs'):
                 ios.upload(argparse.Namespace(output=self.root))
             credential_gate.assert_not_called()
+
+    def test_failed_lifecycle_cleanup_or_device_source_substitution_prevents_upload(self):
+        for change in ('cleanup', 'source', 'archive', 'postlink'):
+            report = copy.deepcopy(self.report)
+            if change == 'cleanup':
+                value = json.loads(ios.verify_reference(report['simulator']).read_text())
+                value['cleanup_complete'] = False
+                report['simulator_binding']['lifecycle'] = self.write_json('failed-lifecycle.json', value)
+            if change == 'source':
+                value = json.loads(ios.verify_reference(report['simulator_binding']['report']).read_text())
+                value['sources'] = {'gchat': {'commit': '9' * 40}}
+                report['simulator_binding']['report'] = self.write_json('other-source.json', value)
+            if change == 'archive': report['inputs']['simulator']['artifact_sha256'] = '0' * 64
+            if change == 'postlink': report['simulator_relinked_from_same_source'] = False
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                ios.validate_upload_build(report)
 
     def test_incomplete_or_failed_recheck_never_reaches_upload(self):
         for key in ('passed', 'sources_unchanged', 'original_build_verdict_unchanged'):
@@ -133,6 +163,66 @@ class RetainedUploadTests(unittest.TestCase):
             report[key] = False
             with self.subTest(key=key), self.assertRaises(ValueError):
                 ios.validate_upload_build(report)
+
+
+class SameSourceSimulatorTests(unittest.TestCase):
+    def setUp(self):
+        RetainedInputsTests.setUp(self)
+        self.sim_spec = {'controller_commit': '4' * 40, 'run_id': 101, 'artifact_id': 202,
+                         'request_id': 'simulator-01', 'artifact_sha256': '5' * 64}
+        inputs = copy.deepcopy(self.inputs)
+        inputs['target'] = 'aarch64-apple-ios-sim'
+        self.candidate = {'scope': 'ios_exact_pair_xcode_simulator_lifecycle', 'passed': True,
+            'sources_unchanged': True, 'sources': self.original['sources'],
+            'controller': {'commit': self.sim_spec['controller_commit']}, 'bundle': ios.BUNDLE,
+            'build_number': '1.0.9', 'device_rebuilt': False, 'distribution_signer_used': False,
+            'dependency_inputs': inputs, 'feature_graph': {'gcoms': ['network-client'],
+                                                         'gcoms-node': ['experimental-gc2']}}
+
+    def test_same_source_different_target_is_explicit(self):
+        retained.validate_simulator(self.candidate, self.original, self.sim_spec)
+        self.assertNotEqual(self.candidate['dependency_inputs']['target'], self.inputs['target'])
+        self.assertIs(self.original['passed'], False)
+
+    def test_unrelated_source_version_dependency_or_failed_journey_cannot_qualify_ipa(self):
+        for key, value in (('passed', False), ('sources_unchanged', False), ('build_number', '1.0.8'),
+                           ('sources', {}), ('controller', {'commit': '6' * 40}), ('device_rebuilt', True),
+                           ('distribution_signer_used', True)):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                retained.validate_simulator(self.candidate | {key: value}, self.original, self.sim_spec)
+        for key in ('source_archive_sha256', 'npm_archives', 'npm_bindings'):
+            changed = copy.deepcopy(self.candidate)
+            changed['dependency_inputs'][key] = {'other': '0' * 64}
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                retained.validate_simulator(changed, self.original, self.sim_spec)
+
+    def test_failed_or_other_workflow_cannot_supply_simulator(self):
+        run = {'id': 101, 'head_sha': '4' * 40, 'head_repository': {'full_name': 'IggyGG/gchat'},
+            'event': 'workflow_dispatch', 'status': 'completed', 'conclusion': 'success',
+            'path': '.github/workflows/ios-lifecycle.yml', 'head_branch': 'release/gchat-ios-lifecycle-0.1.4'}
+        artifact = {'id': 202, 'name': 'ios-lifecycle-simulator-01', 'expired': False,
+                    'workflow_run': {'id': 101}, 'digest': 'sha256:' + '5' * 64}
+        retained.simulator_run_binding(run, artifact, self.sim_spec)
+        for key, value in (('conclusion', 'failure'), ('path', '.github/workflows/ios-release.yml'),
+                           ('head_sha', '7' * 40), ('event', 'pull_request')):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                retained.simulator_run_binding(run | {key: value}, artifact, self.sim_spec)
+        with self.assertRaises(ValueError):
+            retained.simulator_run_binding(run, artifact | {'digest': 'sha256:' + '0' * 64}, self.sim_spec)
+
+    def test_retained_simulator_paths_and_bytes_are_bound(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'ios-simulator-output'
+            root.mkdir()
+            receipt = root / 'report.json'
+            receipt.write_text('original bytes')
+            item = ios.reference(receipt)
+            self.assertEqual(retained.simulator_file(item, root), receipt)
+            with self.assertRaises(ValueError):
+                retained.simulator_file(item | {'path': '/ios-simulator-output/../report.json'}, root)
+            receipt.write_text('modified bytes')
+            with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                retained.simulator_file(item, root)
 
 
 if __name__ == '__main__':

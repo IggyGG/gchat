@@ -12,6 +12,10 @@ on:
       artifact_sha256:
         required: true
         type: string
+      simulator_input:
+        description: JSON containing successful simulator run/artifact/digest/controller/request identifiers
+        required: true
+        type: string
       gchat_commit:
         required: true
         type: string
@@ -57,7 +61,7 @@ jobs:
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
           python-version: '3.12.10'
-      - name: Verify original signed IPA and corrected simulator copy
+      - name: Verify original IPA and completed same-source simulator lifecycle
         env:
           GH_TOKEN: ${{ github.token }}
           IOS_SIGNING_CERT_SHA256: ${{ vars.IOS_SIGNING_CERT_SHA256 }}
@@ -67,6 +71,7 @@ jobs:
           GCHAT_COMMIT: ${{ inputs.gchat_commit }}
           GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
           BUILD_NUMBER: ${{ inputs.build_number }}
+          SIMULATOR_INPUT: ${{ inputs.simulator_input }}
         run: |
           python3 -m unittest discover -s runner/scripts/tests -p 'ios*_test.py'
           python3 - <<'PY'
@@ -75,6 +80,7 @@ jobs:
           value = {name: os.environ[name.upper()] for name in
                    ('artifact_sha256', 'gchat_commit', 'gcoms_commit', 'build_number')}
           value.update(run_id=int(os.environ['ORIGINAL_RUN_ID']), artifact_id=int(os.environ['ARTIFACT_ID']))
+          value['simulator'] = json.loads(os.environ['SIMULATOR_INPUT'])
           Path('verification-input.json').write_text(json.dumps(value, indent=2) + '\n')
           PY
           python3 runner/scripts/ios-verify-retained.py --spec verification-input.json \
@@ -99,14 +105,20 @@ jobs:
             verification-input.json
             ios-verification/build.json
             ios-verification/publication.json
-            ios-verification/simulator-app.zip
+            ios-verification/simulator-artifact.zip
+            ios-verification/simulator-run.json
+            ios-verification/simulator-artifact.json
+            ios-verification/simulator-original/ios-simulator-output/report.json
+            ios-verification/simulator-original/ios-simulator-output/authority/
+            ios-verification/simulator-original/ios-simulator-output/lifecycle/report.json
+            ios-verification/simulator-original/ios-simulator-output/lifecycle/test-summary.json
+            ios-verification/simulator-original/ios-simulator-output/lifecycle/xctest.log
+            ios-verification/simulator-verification/
             ios-verification/original-*.json
             ios-verification/original-artifact.zip
             ios-verification/original/ios-output/build.json
             ios-verification/original/ios-output/signing-cleanup.json
             ios-verification/original/ios-output/*.ipa
             ios-verification/ipa-signer.der
-            ios-verification/simulator-keychain-signing/
-            ios-verification/simulator-smoke/
             ios-verification/upload.json
             ios-verification/upload.log

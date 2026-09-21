@@ -133,9 +133,15 @@ App Store profile, publisher signature, entitlements and executable again; it
 never signs or recompiles the device application. Original source archive and
 dependency bindings and all signing-cleanup checks are required.
 
-The verifier signs only an owned simulator copy using the simulator-specific
-private Keychain identity, then runs native startup/relaunch and independent
-cleanup. Original archives and failed build receipts remain unchanged. A separate
+The verifier also takes the successful simulator-only run, artifact digest and
+controller identity. That run must build the same source pair and version with
+normal Xcode linking of simulator entitlements and pass the actual profile,
+background and reopen journey with complete cleanup. The verifier rehashes its
+source/dependency inputs, XCTest evidence and executable, and checks the linked
+authority and host signature natively. It neither re-signs that application nor
+repeats its completed journey. Original archives and failed build receipts remain
+unchanged; post-link iOS entitlement injection into the host signature is not
+accepted. A separate
 `ios_retained_pair_simulator_and_signed_ipa` receipt can authorize uploading that
 same device IPA after these checks pass. It explicitly records whether the
 original final derived-input check was reached. This is not a physical-device,

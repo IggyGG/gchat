@@ -768,8 +768,10 @@ def validate_upload_build(report):
                     'retained IPA differs from the original device artifact')
             require(original['signing_cleanup'][key] == report['signing_cleanup'][key],
                     'retained original signing cleanup differs')
-            require(original['simulator_executable'][key] == report['simulator_binding']['original_application'][key],
-                    'retained simulator differs from original application')
+        spec = importlib.util.spec_from_file_location('ios_retained_verify', Path(__file__).with_name('ios-verify-retained.py'))
+        verifier = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(verifier)
+        verifier.validate_linked_upload(report, original)
 
 
 def upload(args):
@@ -783,18 +785,6 @@ def upload(args):
     smoke = json.loads(verify_reference(build_report['simulator']).read_text())
     require(cleanup.get('passed') is True and smoke.get('passed') is True and smoke.get('cleanup_complete') is True,
             'upload requires completed simulator and signing cleanup')
-    if build_report['scope'] == 'ios_retained_pair_simulator_and_signed_ipa':
-        binding = build_report['simulator_binding']
-        require(binding.get('application_resigned') is True and binding.get('derived_simulator_only') is True
-                and binding.get('original_application_unchanged') is True,
-                'retained simulator derivation is not explicitly bounded')
-        verify_reference(binding['application'])
-        signing = json.loads(verify_reference(binding['simulator_keychain_signing']).read_text())
-        require(signing.get('passed') is True and signing.get('resources_unchanged') is True
-                and signing.get('device_qualified') is False
-                and signing.get('derived_executable') == binding['application']
-                and smoke.get('executable') == binding['application'],
-                'retained simulator signing/startup artifact differs')
     ipa = verify_reference(build_report['application']['ipa'])
     pin = signing_pin()
     require(publisher_policy(verify_reference(build_report['publication']), pin) == build_report.get('publisher'),
