@@ -28,9 +28,11 @@ def verify_fixture_boundary(original, updated):
     def outside_directory_setup(text):
         start = text.index('def private_directory(path):')
         end = text.index('def isolated_environment(home):', start)
-        return (text[:start] + text[end:]).replace('import csv\n', '').replace('import base64\n', '')
+        unchanged = (text[:start] + text[end:]).replace('import csv\n', '').replace('import base64\n', '')
+        old_request = '                with shutdown.open("x", encoding="utf-8") as stream:\n                    stream.write("stop\\n")'
+        return unchanged.replace(old_request, '                publish_shutdown_request(shutdown)')
     if outside_directory_setup(original) != outside_directory_setup(updated):
-        raise ValueError('lifecycle recovery changed behavior outside private fixture-directory setup')
+        raise ValueError('lifecycle recovery changed behavior outside private fixture setup')
 
 
 def verify_package(directory, config):

@@ -102,3 +102,9 @@ No application, authentication, signing policy or native qualification is change
 The verification controller and corrected helper are separately hash-bound; the
 original failed lifecycle report remains retained beside the new one. This path
 uses no signing key, compilation or replacement executable.
+The first verification follow-up passed that directory check and created an
+actual encrypted profile, then correctly rejected a shutdown file owned by the
+elevated process's Administrators group. The same fixture now secures the stop
+file's owner/DACL before atomically publishing it; failure leaves no visible
+shutdown request and still uses the existing forced-child cleanup path. The
+original failure stays recorded; the app's owner-only shutdown check is unchanged.

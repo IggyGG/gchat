@@ -133,6 +133,15 @@ class BindingTests(BindingFixture, unittest.TestCase):
 
 
 class PrivateDirectoryTests(unittest.TestCase):
+    def test_shutdown_request_is_never_published_if_owner_setup_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "shutdown.stop"
+            with patch.object(smoke, "private_fixture_path", side_effect=OSError("fixture failure")):
+                with self.assertRaises(OSError):
+                    smoke.publish_shutdown_request(target)
+            self.assertFalse(target.exists())
+            self.assertFalse(target.with_name("shutdown.stop.pending").exists())
+
     @unittest.skipUnless(os.name == "nt", "requires native Windows DACL semantics")
     def test_replaces_explicit_foreign_aces_before_application_start(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -148,6 +157,10 @@ class PrivateDirectoryTests(unittest.TestCase):
             child = path / "inherited"
             child.mkdir()
             smoke.private_directory(child)
+            shutdown = child / "test.stop"
+            smoke.publish_shutdown_request(shutdown)
+            self.assertEqual(shutdown.read_text(), "stop\n")
+            self.assertFalse(shutdown.with_name("test.stop.pending").exists())
 
 
 @unittest.skipUnless(os.name == "posix", "fake executable fixture uses Unix sockets; native Windows remains a separate gate")

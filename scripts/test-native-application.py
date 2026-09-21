@@ -153,8 +153,12 @@ class Client:
 
 
 def private_directory(path):
+    private_fixture_path(path, directory=True)
+
+
+def private_fixture_path(path, *, directory):
     if os.name != "nt":
-        path.chmod(0o700)
+        path.chmod(0o700 if directory else 0o600)
         return
     # Python's Windows tempfile may install explicit SYSTEM/Administrators ACEs.
     # Disabling inheritance and granting our SID does not remove those entries.
@@ -164,10 +168,12 @@ def private_directory(path):
 $ErrorActionPreference = 'Stop'
 $path = $env:GCHAT_FIXTURE_DIRECTORY
 $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
-$acl = New-Object Security.AccessControl.DirectorySecurity
+$directory = $env:GCHAT_FIXTURE_DIRECTORY_KIND -eq 'directory'
+$acl = if ($directory) { New-Object Security.AccessControl.DirectorySecurity } else { New-Object Security.AccessControl.FileSecurity }
 $acl.SetOwner($sid)
 $acl.SetAccessRuleProtection($true, $false)
-$rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+$inheritance = if ($directory) { 'ContainerInherit,ObjectInherit' } else { 'None' }
+$rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', $inheritance, 'None', 'Allow')
 $acl.AddAccessRule($rule)
 Set-Acl -LiteralPath $path -AclObject $acl
 $actual = Get-Acl -LiteralPath $path
@@ -176,14 +182,34 @@ if ($actual.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Val
     -not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
     $rules[0].IdentityReference.Value -ne $sid.Value -or $rules[0].IsInherited -or
     $rules[0].AccessControlType -ne 'Allow' -or $rules[0].FileSystemRights -ne 'FullControl' -or
-    $rules[0].InheritanceFlags -ne 'ContainerInherit,ObjectInherit') {
+    $rules[0].InheritanceFlags -ne $inheritance) {
     throw 'Fixture directory is not exclusively owned by the current account'
 }
 '''
-    environment = dict(os.environ, GCHAT_FIXTURE_DIRECTORY=str(path))
-    subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand",
-                    base64.b64encode(script.encode("utf-16-le")).decode("ascii")],
-                   env=environment, capture_output=True, check=True)
+    environment = dict(os.environ, GCHAT_FIXTURE_DIRECTORY=str(path),
+                       GCHAT_FIXTURE_DIRECTORY_KIND="directory" if directory else "file")
+    try:
+        subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand",
+                        base64.b64encode(script.encode("utf-16-le")).decode("ascii")],
+                       env=environment, capture_output=True, check=True)
+    except subprocess.CalledProcessError as error:
+        # Keep existing shutdown failure handling: failed setup must still stop
+        # the child and fail the lifecycle gate, never leave it running.
+        raise OSError("Unable to secure the owned Windows fixture path") from error
+
+
+def publish_shutdown_request(path):
+    # An elevated Windows process may otherwise create a file owned by the
+    # Administrators group. Publish only after its exact owner/DACL is checked,
+    # so the service cannot race against an incompletely secured request file.
+    pending = path.with_name(path.name + ".pending")
+    with pending.open("x", encoding="utf-8") as stream:
+        stream.write("stop\n")
+    try:
+        private_fixture_path(pending, directory=False)
+        pending.rename(path)
+    finally:
+        pending.unlink(missing_ok=True)
 
 
 def isolated_environment(home):
@@ -210,8 +236,7 @@ def stop_service(process, shutdown, timeout):
     if process.poll() is None:
         try:
             if os.name == "nt":
-                with shutdown.open("x", encoding="utf-8") as stream:
-                    stream.write("stop\n")
+                publish_shutdown_request(shutdown)
             else:
                 process.terminate()
             process.wait(timeout=timeout)
