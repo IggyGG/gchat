@@ -29,6 +29,8 @@ PLATFORMS = {'linux': 'Linux', 'macos': 'macOS', 'windows': 'Windows', 'android'
 
 
 def validate(data):
+    if data.get('schema') == 2:
+        return validate_platforms(data)
     if data.get('schema') != 1 or data.get('channel') not in ('developer-preview', 'production'):
         raise ValueError('unsupported download manifest')
     artifacts = data.get('artifacts')
@@ -69,8 +71,87 @@ def validate(data):
     return data
 
 
+def release_asset(value, tag):
+    prefix = f'https://github.com/IggyGG/gchat/releases/download/{tag}/'
+    name = value.removeprefix(prefix) if isinstance(value, str) else ''
+    if not isinstance(value, str) or not value.startswith(prefix) or not re.fullmatch(r'[A-Za-z0-9_.+-]+', name) or name in ('.', '..'):
+        raise ValueError('downloads must reference immutable assets in their own release')
+    return name
+
+
+def validate_platforms(data):
+    if data.get('channel') != 'production' or data.get('version') is not None:
+        raise ValueError('independent platform releases have no shared version')
+    pin = fingerprint(data.get('publisher_fingerprint'))
+    releases = data.get('releases')
+    if not isinstance(releases, dict) or not releases:
+        raise ValueError('platform releases are required')
+    for tag, release in releases.items():
+        if not re.fullmatch(r'v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', tag):
+            raise ValueError('invalid platform release tag')
+        version = release.get('version')
+        if not isinstance(version, str) or not re.fullmatch(r'\d+\.\d+\.\d+', version) or not (tag == 'v' + version or tag.startswith('v' + version + '-')):
+            raise ValueError('platform version differs from tag')
+        if release.get('manifest_format') not in ('platform-v1', 'legacy-v1'):
+            raise ValueError('unsupported signed platform manifest')
+        sources = release.get('sources', {})
+        if set(sources) != {'gchat', 'gcoms'} or not all(isinstance(x, str) and re.fullmatch('[0-9a-f]{40}', x) for x in sources.values()):
+            raise ValueError('platform source pair is required')
+        key = release.get('release_key', {})
+        if fingerprint(key.get('fingerprint')) != pin or release_asset(key.get('url'), tag) != 'gchat-release-key.asc':
+            raise ValueError('platform release key differs from pinned publisher')
+        manifest = release.get('manifest', {})
+        expected = 'platform-release.json' if release['manifest_format'] == 'platform-v1' else 'release-manifest.json'
+        if release_asset(manifest.get('url'), tag) != expected or manifest.get('signature_url') != manifest['url'] + '.asc':
+            raise ValueError('signed release manifest missing')
+        for value in (key.get('sha256'), manifest.get('sha256'), manifest.get('signature_sha256')):
+            if not isinstance(value, str) or not re.fullmatch('[0-9a-f]{64}', value):
+                raise ValueError('platform metadata checksum missing')
+    seen, used = set(), set()
+    artifacts = data.get('artifacts')
+    if not isinstance(artifacts, list):
+        raise ValueError('artifacts must be a list')
+    for artifact in artifacts:
+        target = (artifact.get('target'), artifact.get('format'))
+        tag = artifact.get('release')
+        if target not in TARGETS or target in seen or tag not in releases:
+            raise ValueError('unexpected, duplicate or unbound platform artifact')
+        seen.add(target); used.add(tag)
+        release_asset(artifact.get('url'), tag)
+        release_asset(artifact.get('signature_url'), tag)
+        if artifact.get('signature_url') != artifact['url'] + '.asc' or artifact.get('signing_verified') is not True:
+            raise ValueError('unverified platform artifact')
+        for field in ('sha256', 'signature_sha256'):
+            if not re.fullmatch('[0-9a-f]{64}', artifact.get(field, '')):
+                raise ValueError('platform artifact checksum missing')
+    if used != set(releases) or not {('linux-x86_64', 'deb'), ('linux-x86_64', 'appimage')} <= seen:
+        raise ValueError('preserve complete Linux downloads and reference each release')
+    return data
+
+
+def validate_signed_manifest(release, manifest, artifacts):
+    if manifest.get('version') != release['version']:
+        raise ValueError('signed manifest version mismatch')
+    sources = manifest.get('sources', {})
+    commits = {name: value.get('commit') if isinstance(value, dict) else value for name, value in sources.items()}
+    if commits != release['sources']:
+        raise ValueError('signed manifest source pair mismatch')
+    if release['manifest_format'] == 'platform-v1':
+        if manifest.get('kind') != 'platform-release' or manifest.get('schema') != 1 or not artifacts or manifest.get('tag') != artifacts[0]['release']:
+            raise ValueError('wrong signed platform manifest type')
+        packages = manifest.get('artifacts', {})
+    else:
+        packages = {item['name']: item for item in manifest.get('packages', [])}
+    for artifact in artifacts:
+        item = packages.get(artifact['url'].rsplit('/', 1)[-1], {})
+        if item.get('sha256') != artifact['sha256'] or item.get('format') != artifact['format']:
+            raise ValueError('artifact differs from signed release manifest')
+        if release['manifest_format'] == 'platform-v1' and item.get('target') != artifact['target']:
+            raise ValueError('signed artifact target mismatch')
+
+
 def client_status(data):
-    if data['version'] is None:
+    if data['version'] is None and data.get('schema') != 2:
         return 'Desktop and mobile applications. Signed public installers are being prepared.'
     present = {item['target'].split('-', 1)[0] for item in data['artifacts']}
     platforms = ', '.join(label for key, label in PLATFORMS.items() if key in present)
@@ -83,6 +164,24 @@ def remote_check(data):
         with urlopen(Request(repo, method='HEAD'), timeout=30) as response:
             if response.status != 200:
                 raise ValueError('public source mirror unavailable')
+    if data.get('schema') == 2:
+        for tag, release in data['releases'].items():
+            with tempfile.TemporaryDirectory(prefix='gchat-platform-check-') as temporary:
+                temp = Path(temporary); home = temp / 'gnupg'; home.mkdir(mode=0o700)
+                key = temp / 'key.asc'; key_info = release['release_key']
+                fetch(key_info['url'], key_info['sha256'], key)
+                subprocess.run(['gpg', '--homedir', str(home), '--batch', '--import', str(key)], check=True, capture_output=True)
+                manifest = temp / 'manifest.json'; signature = temp / 'manifest.asc'; info = release['manifest']
+                fetch(info['url'], info['sha256'], manifest); fetch(info['signature_url'], info['signature_sha256'], signature)
+                verify(signature, manifest, data['publisher_fingerprint'], home)
+                artifacts = [a for a in data['artifacts'] if a['release'] == tag]
+                validate_signed_manifest(release, json.loads(manifest.read_text()), artifacts)
+                for artifact in artifacts:
+                    path = temp / 'installer'; signature = temp / 'installer.asc'
+                    fetch(artifact['url'], artifact['sha256'], path)
+                    fetch(artifact['signature_url'], artifact['signature_sha256'], signature)
+                    verify(signature, path, data['publisher_fingerprint'], home)
+        return
     if data['version'] is None:
         return
     with tempfile.TemporaryDirectory(prefix='gchat-download-check-') as temp:
@@ -108,7 +207,16 @@ def fetch(url, expected, path):
 
 def downloads(data):
     escape = html.escape
-    if data['version'] is None:
+    if data.get('schema') == 2:
+        links = '<p>Production downloads · versions qualified independently by platform.</p><ul>'
+        for a in data['artifacts']:
+            release = data['releases'][a['release']]
+            links += (f'<li><a href="{escape(a["url"])}">Download {TARGETS[(a["target"], a["format"])]}</a>'
+                      f' · {escape(release["version"])} · <a href="{escape(a["signature_url"])}">Signature</a>'
+                      f' · <a href="{escape(release["manifest"]["url"])}">Build evidence</a></li>')
+        key = next(iter(data['releases'].values()))['release_key']
+        links += '</ul><p><a href="' + escape(key['url']) + '">Release signing key</a> · Fingerprint: <code>' + escape(data['publisher_fingerprint']) + '</code></p>'
+    elif data['version'] is None:
         links = '<p>Desktop and mobile apps are being prepared. Downloads will appear here after installation and signing checks pass.</p>'
     else:
         links = '<p>' + ('Production ' if data['channel'] == 'production' else 'Developer preview ') + escape(data['version']) + '</p><ul>'
