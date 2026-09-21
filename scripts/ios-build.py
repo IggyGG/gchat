@@ -616,6 +616,125 @@ def verify_ipa(ipa, destination, pin, version):
             'bundle': BUNDLE, 'architectures': ['arm64'], 'minimum_ios': '15.0'}
 
 
+def native_test_project(plugin):
+    """App-host the exact platform helpers without duplicating a Rust runtime.
+
+    The real application already compiled the Tauri bridge. This small simulator
+    fixture exercises the unchanged Swift tests and actual private Keychain APIs.
+    It makes no delegate, live APNs, or installed GChat journey claim.
+    """
+    shared = {'GENERATE_INFOPLIST_FILE': 'YES', 'SWIFT_VERSION': '5.0',
+              'IPHONEOS_DEPLOYMENT_TARGET': '15.0'}
+    module = 'tauri-plugin-gchat-mobile-platform'
+    return {'name': 'GChatNativeTests', 'options': {'deploymentTarget': {'iOS': '15.0'}},
+        'targets': {
+            module: {'type': 'framework', 'platform': 'iOS',
+                'sources': [str(plugin / 'Sources' / name) for name in ('PushNotifications.swift', 'UnlockVault.swift')],
+                'settings': {'base': shared | {'PRODUCT_BUNDLE_IDENTIFIER': 'boo.gchat.native-tests.platform',
+                    'PRODUCT_MODULE_NAME': 'tauri_plugin_gchat_mobile_platform', 'ENABLE_TESTABILITY': 'YES'}}},
+            'GChatNativeHost': {'type': 'application', 'platform': 'iOS', 'sources': ['Host.swift'],
+                'dependencies': [{'target': module}], 'settings': {'base': shared | {
+                    'PRODUCT_BUNDLE_IDENTIFIER': 'boo.gchat.native-tests',
+                    'CODE_SIGN_ENTITLEMENTS': 'Host.entitlements', 'TARGETED_DEVICE_FAMILY': '1,2'}}},
+            'PluginTests': {'type': 'bundle.unit-test', 'platform': 'iOS',
+                'sources': [str(plugin / 'Tests/PluginTests' / name) for name in ('PushValidationTests.swift', 'UnlockVaultTests.swift')],
+                'dependencies': [{'target': module}, {'target': 'GChatNativeHost'}],
+                'settings': {'base': shared | {'PRODUCT_BUNDLE_IDENTIFIER': 'boo.gchat.native-tests.tests',
+                    'TEST_HOST': '$(BUILT_PRODUCTS_DIR)/GChatNativeHost.app/GChatNativeHost',
+                    'BUNDLE_LOADER': '$(TEST_HOST)'}}}},
+        'schemes': {'GChatNativeTests': {'build': {'targets': {'GChatNativeHost': ['test'], 'PluginTests': ['test']}},
+            'test': {'targets': [{'name': 'PluginTests', 'parallelizable': False, 'randomExecutionOrder': False}],
+                     'gatherCoverageData': False}}}}
+
+
+def native_test_results(summary, log):
+    expected = {('PushValidationTests', 'testOnlyOpaqueGenericHintsAreAccepted'),
+                ('UnlockVaultTests', 'testValidationRejectsPathsAndInvalidSecrets'),
+                ('UnlockVaultTests', 'testOptInRoundTripUpdateAndDelete')}
+    require(summary.get('result') == 'Passed' and summary.get('passedTests') == len(expected)
+            and summary.get('failedTests') == 0 and summary.get('skippedTests') == 0,
+            'native XCTest must execute all three cases without failure or skip')
+    found = re.findall(r"Test Case '-\[(?:[\w.]+\.)?(\w+) (\w+)\]' passed", log)
+    require(set(found) == expected and len(found) == len(expected),
+            'native XCTest log is missing or duplicates the required push/vault cases')
+    return {'passed': len(found), 'failed': 0, 'skipped': 0,
+            'cases': [{'class': cls, 'name': name} for cls, name in sorted(found)]}
+
+
+def native_unit_tests(chat, destination):
+    destination.mkdir(parents=True, exist_ok=False)
+    plugin = (chat / 'apps/client/src-tauri/mobile-platform/ios').resolve()
+    inputs = ['Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',
+              'Tests/PluginTests/PushValidationTests.swift', 'Tests/PluginTests/UnlockVaultTests.swift']
+    sources = {name: reference(plugin / name) for name in inputs}
+    report = {'schema': 1, 'scope': 'ios_app_hosted_native_push_validation_and_keychain_tests',
+              'passed': False, 'sources': sources, 'push_qualified': False,
+              'physical_device_qualified': False, 'tauri_bridge_exercised': False,
+              'application_journey_qualified': False, 'cleanup_complete': False}
+    device = None
+    log = destination / 'xctest.log'
+    try:
+        runtime = simulator_runtime()
+        types = json.loads(output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
+        devices = json.loads(output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+        phone = simulator_phone(runtime, types, devices)
+        device = output(['xcrun', 'simctl', 'create', 'GChatNative-' + secrets.token_hex(6), phone, runtime])
+        require(re.fullmatch('[0-9A-Fa-f-]{36}', device), 'unexpected native-test simulator ID')
+        report.update(device=device, runtime=runtime, device_type=phone)
+        run(['xcrun', 'simctl', 'boot', device], timeout=120)
+        run(['xcrun', 'simctl', 'bootstatus', device, '-b'], timeout=180)
+        runner = destination / 'runner'
+        runner.mkdir()
+        (runner / 'Host.swift').write_text('import UIKit\n@main final class Host: UIResponder, UIApplicationDelegate {\n'
+            '  var window: UIWindow?\n'
+            '  func application(_ application: UIApplication, didFinishLaunchingWithOptions options: '
+            '[UIApplication.LaunchOptionsKey: Any]?) -> Bool {\n'
+            '    window = UIWindow(frame: UIScreen.main.bounds); window?.rootViewController = UIViewController()\n'
+            '    window?.makeKeyAndVisible(); return true\n  }\n}\n')
+        # Simulator-only authority is linked by Xcode, never borrowed from the
+        # app's distribution profile or installed into a persistent trust store.
+        (runner / 'Host.entitlements').write_bytes(plistlib.dumps({
+            'application-identifier': 'boo.gchat.native-tests',
+            'keychain-access-groups': ['boo.gchat.native-tests'], 'get-task-allow': True}))
+        write_json(runner / 'project.json', native_test_project(plugin))
+        report['fixture'] = {name: reference(runner / name) for name in ('project.json', 'Host.swift', 'Host.entitlements')}
+        run(['xcodegen', 'generate', '--spec', 'project.json'], cwd=runner, timeout=120)
+        results = destination / 'native-tests.xcresult'
+        command = ['/usr/bin/xcodebuild', 'test', '-project', runner / 'GChatNativeTests.xcodeproj',
+            '-scheme', 'GChatNativeTests', '-destination', 'platform=iOS Simulator,id=' + device,
+            '-derivedDataPath', destination / 'derived', '-resultBundlePath', results,
+            '-parallel-testing-enabled', 'NO', '-maximum-concurrent-test-simulator-destinations', '1',
+            'CODE_SIGNING_ALLOWED=YES', 'CODE_SIGN_STYLE=Manual', 'CODE_SIGN_IDENTITY=-',
+            'DEVELOPMENT_TEAM=', 'PROVISIONING_PROFILE_SPECIFIER=', 'PROVISIONING_PROFILE=']
+        environment = {key: value for key, value in os.environ.items() if key not in
+            ('GH_TOKEN', 'GITHUB_TOKEN', 'XCODE_XCCONFIG_FILE') and not key.startswith(
+            ('APP_STORE_CONNECT_', 'IOS_CERTIFICATE', 'IOS_PROVISIONING_', 'IOS_MOBILE_', 'APPLE_API_', 'APPLE_DEVELOPMENT_TEAM'))}
+        with log.open('wb') as stream:
+            completed = subprocess.run([str(value) for value in command], stdout=stream,
+                stderr=subprocess.STDOUT, env=environment, timeout=900)
+        report['exit_code'] = completed.returncode
+        require(completed.returncode == 0, 'iOS native tests failed; see native-tests/xctest.log')
+        summary = json.loads(output(['xcrun', 'xcresulttool', 'get', 'test-results', 'summary', '--path', results]))
+        write_json(destination / 'test-summary.json', summary)
+        report['test_summary'] = reference(destination / 'test-summary.json')
+        report['tests'] = native_test_results(summary, log.read_text())
+        report['passed'] = True
+    except Exception as error:
+        report['error'] = type(error).__name__ + ': ' + str(error)
+        raise
+    finally:
+        if log.is_file(): report['log'] = reference(log)
+        if device:
+            cleanup_simulator(device, report)
+        else:
+            report['cleanup_complete'] = True
+        report['sources_unchanged'] = all(digest(plugin / name) == value['sha256'] for name, value in sources.items())
+        report['passed'] = report['passed'] and report['sources_unchanged'] and report['cleanup_complete']
+        write_json(destination / 'report.json', report)
+    require(report['passed'], 'iOS native test cleanup/source guard failed')
+    return reference(destination / 'report.json')
+
+
 def build(args):
     require(platform.system() == 'Darwin' and platform.machine() == 'arm64', 'use an Apple Silicon Mac worker')
     originals = {'gchat': args.gchat.resolve(), 'gcoms': args.gcoms.resolve()}
@@ -731,6 +850,7 @@ def build(args):
         # Retain both compiled artifacts and remove the signer before exercising
         # CoreSimulator. A runner installation failure must not erase a verified
         # device artifact, but still prevents upload and a passing build verdict.
+        report['native_tests'] = native_unit_tests(chat, destination / 'native-tests')
         report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
         verify_derived_inputs(chat, pair)
         report['passed'] = True

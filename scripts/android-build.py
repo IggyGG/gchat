@@ -290,6 +290,73 @@ def derive_bundle_apks(root, bundle, jar, key, private, tools, pin, expected):
         for path in passwords: path.unlink(missing_ok=True)
 
 
+def native_unit_results(paths):
+    """A successful Gradle invocation without the intended tests is not a pass."""
+    cases = {}
+    for path in paths:
+        root = ET.parse(path).getroot()
+        for case in root.iter('testcase'):
+            key = (case.get('classname', ''), case.get('name', ''))
+            require(key not in cases, 'duplicate native unit-test result')
+            require(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')),
+                    'native unit test failed or skipped: ' + key[1])
+            cases[key] = True
+    prefix = 'boo.gchat.app.mobileplatform.'
+    expected = {(prefix + 'PushNotificationValidationTest', name) for name in (
+        'delayedPermissionAndTokenCallbacksCannotUndoOptOut', 'onlyOpaqueReferencesAreAccepted')}
+    expected.add((prefix + 'UnlockVaultValidationTest', 'rejectsPathSlotsAndInvalidSecrets'))
+    require(expected <= cases.keys(), 'required mobile notification/vault tests did not execute')
+    return {'passed': len(cases), 'failed': 0, 'skipped': 0,
+            'cases': [{'class': cls, 'name': name} for cls, name in sorted(cases)]}
+
+
+def native_unit_tests(chat, generated, destination, environment):
+    destination.mkdir(parents=True, exist_ok=False)
+    plugin = (chat / 'apps/client/src-tauri/mobile-platform/android').resolve()
+    sources = {str(path.relative_to(plugin)): digest(path) for path in sorted(plugin.rglob('*'))
+               if path.is_file() and ('build.gradle' in path.name or path.suffix in ('.kt', '.xml'))
+               and 'build' not in path.relative_to(plugin).parts}
+    report = {'schema': 1, 'scope': 'android_native_plugin_jvm_tests', 'passed': False,
+              'sources': sources, 'push_qualified': False, 'physical_device_qualified': False,
+              'keystore_instrumentation_qualified': False}
+    init = destination / 'native-tests.gradle'
+    retained = destination / 'junit'
+    retained.mkdir()
+    # Match the actual plugin project directory, not a guessed Tauri module name.
+    # Only this test task is forced to rerun; application/Rust builds stay cached.
+    init.write_text('gradle.projectsEvaluated {\n'
+        '  def selected = rootProject.allprojects.findAll { it.projectDir.canonicalPath == '
+        + json.dumps(str(plugin)) + ' }\n'
+        '  if (selected.size() != 1) throw new GradleException("Expected exactly one GChat native plugin")\n'
+        '  def unit = selected[0].tasks.named("testDebugUnitTest")\n'
+        '  unit.configure { outputs.upToDateWhen { false }; reports.junitXml.required = true; '
+        'reports.junitXml.outputLocation.set(new File(' + json.dumps(str(retained)) + ')) }\n'
+        '  rootProject.tasks.register("gchatNativeUnitTests") { dependsOn(unit) }\n'
+        '}\n')
+    log = destination / 'gradle.log'
+    try:
+        with log.open('wb') as stream:
+            result = subprocess.run([str(generated / 'gradlew'), '--no-daemon', '--console=plain',
+                '--init-script', str(init), 'gchatNativeUnitTests'], cwd=generated, env=environment,
+                stdout=stream, stderr=subprocess.STDOUT, timeout=900)
+        report['exit_code'] = result.returncode
+        report['results'] = [reference(path) for path in sorted(retained.glob('*.xml'))]
+        require(result.returncode == 0, 'Android native plugin tests failed; see native-tests/gradle.log')
+        report['tests'] = native_unit_results(sorted(retained.glob('*.xml')))
+        report['passed'] = True
+    except Exception as error:
+        report['error'] = type(error).__name__ + ': ' + str(error)
+        raise
+    finally:
+        report['driver'] = reference(init)
+        if log.is_file(): report['log'] = reference(log)
+        report['sources_unchanged'] = all(digest(plugin / path) == value for path, value in sources.items())
+        report['passed'] = report['passed'] and report['sources_unchanged']
+        write_json(destination / 'report.json', report)
+    require(report['passed'], 'Android native plugin source changed during tests')
+    return reference(destination / 'report.json')
+
+
 def build(args):
     original = {'gchat': args.gchat.resolve(), 'gcoms': args.gcoms.resolve()}
     before = {name: source_identity(root) for name, root in original.items()}
@@ -394,6 +461,7 @@ def build(args):
             shutil.copyfile(bundles[0], bundle)
             report['bundle'] = {**reference(bundle), **inspect_bundle(bundle, jar, entries)}
             report['bundletool'] = reference(jar)
+        report['native_tests'] = native_unit_tests(chat, generated, dest / 'native-tests', env)
         report['generated_gradle_sha256'] = digest(gradle)
         report['passed'] = True
     except Exception as error:
