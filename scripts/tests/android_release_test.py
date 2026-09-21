@@ -143,6 +143,15 @@ class EmulatorCleanup(unittest.TestCase):
             result = android.cleanup_emulator(lambda *a, **k: '', ['adb'], True, 10123, [])
         self.assertFalse(result['passed'])
 
+    def test_package_manager_uid_requires_one_exact_user_zero_app(self):
+        self.assertEqual(android.installed_package_uid('package:boo.gchat.app uid:10123\n'), 10123)
+        for text in ('package:boo.gchat.app.debug uid:10123', 'package:boo.gchat.app uid:0',
+                     'package:boo.gchat.app uid:1000', 'package:boo.gchat.app uid:110123',
+                     'package:boo.gchat.app uid:10123\npackage:boo.gchat.app.debug uid:10124',
+                     'appId=10123', 'userId=10123', ''):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                android.installed_package_uid(text)
+
     def test_listener_scan_filters_uid_and_connected_sockets(self):
         row = '0: 00000000:1234 00000000:0000 0A 0:0 0:0 0 10123 0 42\n'
         self.assertEqual(android.listener_rows(row, 10123), [{'local_address': '00000000:1234', 'inode': '42'}])

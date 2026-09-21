@@ -347,6 +347,18 @@ def cleanup_emulator(shell, adb, installed, uid, firewall):
     return {'passed': not errors, 'errors': errors}
 
 
+def installed_package_uid(text):
+    # PackageManager's UID listing is stable across releases; dumpsys field names
+    # (userId/appId) are human diagnostics and changed on the API 35 fixture.
+    rows = [line.strip() for line in text.splitlines() if line.strip()]
+    require(len(rows) == 1, 'installed package UID lookup is ambiguous')
+    match = re.fullmatch(r'package:' + re.escape(PACKAGE) + r'\s+uid:([0-9]+)', rows[0])
+    require(match is not None, 'package manager did not return the exact installed app UID')
+    uid = int(match.group(1))
+    require(10000 <= uid < 100000, 'fixture app UID is outside Android user 0 application range')
+    return uid
+
+
 def smoke(args):
     root = args.output.resolve()
     signed_path = root / 'signing.json'
@@ -389,10 +401,9 @@ def smoke(args):
         require(report['api'] >= 26 and report['abi'] == 'x86_64', 'unexpected emulator API/ABI')
         run([*adb, 'install', '--no-streaming', apk], timeout=120)
         installed = True
-        package = shell('dumpsys', 'package', PACKAGE)
-        match = re.search(r'\buserId=([0-9]+)', package)
-        require(match is not None, 'could not identify installed app UID')
-        uid = int(match.group(1))
+        package = shell('pm', 'list', 'packages', '-U', '--user', '0', PACKAGE)
+        (dest / 'package-uid.txt').write_text(package + '\n')
+        uid = installed_package_uid(package)
         # This fresh disposable emulator is rooted. Block only this app UID's
         # non-loopback traffic; adb and host networking are untouched.
         for command in ('iptables', 'ip6tables'):
