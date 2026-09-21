@@ -72,6 +72,13 @@ def sdk():
     return root
 
 
+def tauri_command(*arguments):
+    # Tauri persists its launcher in Gradle's Rust callback. The package script
+    # is resolvable from both apps/client and src-tauri; a direct `node tauri.js`
+    # launch gets rewritten to `node tauri` and fails after native compilation.
+    return ['npm', 'run', 'tauri', '--', *arguments]
+
+
 def verify_checkouts(args):
     chat, coms = args.gchat.resolve(), args.gcoms.resolve()
     chat_ref, coms_ref = policy.release_ref(args.gchat_ref), policy.release_ref(args.gcoms_ref)
@@ -183,8 +190,7 @@ def build(args):
         manifest = native / 'Cargo.toml'
         config = dest / 'android-config.json'
         write_json(config, {'identifier': PACKAGE, 'bundle': {'android': {'minSdkVersion': 26}}})
-        cli = chat / 'node_modules/@tauri-apps/cli/tauri.js'
-        run(['node', cli, 'android', 'init', '--ci', '--skip-targets-install', '--config', config], cwd=chat / 'apps/client', env=env)
+        run(tauri_command('android', 'init', '--ci', '--skip-targets-install', '--config', config), cwd=chat / 'apps/client', env=env)
         generated = native / 'gen/android'
         gradle = generated / 'app/build.gradle.kts'
         with gradle.open('a') as stream:
@@ -218,8 +224,8 @@ def build(args):
         for metadata_path in metadata_paths:
             notices.extend(['--rust-metadata', metadata_path])
         run(notices, cwd=chat, env=env)
-        run(['node', cli, 'android', 'build', '--ci', '--apk', '--split-per-abi', '--target', 'aarch64', 'x86_64',
-             '--config', config], cwd=chat / 'apps/client', env=env)
+        run(tauri_command('android', 'build', '--ci', '--apk', '--split-per-abi', '--target', 'aarch64', 'x86_64',
+                          '--config', config), cwd=chat / 'apps/client', env=env)
         candidates = sorted(generated.glob('app/build/outputs/apk/**/*.apk'))
         artifacts = dest / 'unsigned'
         artifacts.mkdir()

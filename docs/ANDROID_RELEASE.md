@@ -25,7 +25,10 @@ The worker first checks the protected workflow ref and both full commit IDs. It
 uses existing paired-source preparation: immutable Git archives, local GComs Rust
 patches, built npm archives, derived locks and source provenance. Originals must
 stay clean and unchanged. Tauri generates its Android project only in those
-retained build inputs. The installed local Tauri CLI's `android init --ci
+retained build inputs. Invoke the installed local Tauri CLI through the package
+script (`npm run tauri -- ...`) so Gradle's generated Rust callback retains a
+working launcher when its cwd is `src-tauri`. A direct Node/script launch can
+become an invalid `node tauri` callback. The CLI's `android init --ci
 --skip-targets-install` and `android build --ci --apk --split-per-abi --target
 aarch64 x86_64` commands are used without invented build flags.
 

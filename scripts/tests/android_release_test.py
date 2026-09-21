@@ -19,6 +19,32 @@ spec.loader.exec_module(android)
 PIN = 'ab' * 32
 
 
+class MobileLauncher(unittest.TestCase):
+    def test_package_runner_survives_gradle_src_tauri_working_directory(self):
+        # Exercise real npm's parent package lookup and lifecycle context without
+        # compiling or invoking an Android SDK. This is the Gradle callback cwd.
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch) / 'client'
+            native = app / 'src-tauri'
+            native.mkdir(parents=True)
+            (app / 'package.json').write_text(json.dumps({
+                'name': 'gchat-android-callback-fixture', 'private': True,
+                'scripts': {'tauri': 'node runner.cjs'},
+            }))
+            (app / 'runner.cjs').write_text(
+                'require("fs").writeFileSync("observed.json", JSON.stringify({'
+                'cwd:process.cwd(),args:process.argv.slice(2),event:process.env.npm_lifecycle_event,'
+                'manager:process.env.npm_execpath}));')
+            args = ['android', 'android-studio-script', '--target', 'aarch64']
+            subprocess.run(android.tauri_command(*args), cwd=native, check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+            observed = json.loads((app / 'observed.json').read_text())
+            self.assertEqual(Path(observed['cwd']).resolve(), app.resolve())
+            self.assertEqual(observed['args'], args)
+            self.assertEqual(observed['event'], 'tauri')
+            self.assertEqual(Path(observed['manager']).name, 'npm-cli.js')
+
+
 class ArtifactGuards(unittest.TestCase):
     def test_feature_graph_allows_ipc_types_but_not_hosting(self):
         graph = 'gcoms v0.1.0|files,ipc,network-client\ngcoms-node v0.1.0|client-persist\ngcoms-runtime v0.1.0|network-client'
