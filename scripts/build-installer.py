@@ -30,7 +30,25 @@ def run(args, **kwargs):
     result = subprocess.run(args, cwd=kwargs.pop('cwd', ROOT), **kwargs)
     if result.returncode:
         # Never stringify command arguments: keychain tools accept secret arguments.
-        raise RuntimeError(f'{Path(args[0]).name} failed ({result.returncode})')
+        message = f'{Path(args[0]).name} failed ({result.returncode})'
+        if Path(args[0]).name == 'security':
+            # Security diagnostics can contain paths and supplied credentials.
+            # Classify known errors using fixed text; never echo raw stderr.
+            diagnostic = result.stderr or b''
+            if isinstance(diagnostic, bytes):
+                diagnostic = diagnostic.decode('utf-8', errors='replace')
+            known_errors = (
+                ('MAC verification failed during PKCS12 import',
+                 'PKCS#12 MAC verification failed; check the passphrase and container algorithm compatibility'),
+                ('Unknown format in import', 'signing input format is not recognized'),
+                ('User interaction is not allowed', 'keychain access requires unavailable user interaction'),
+                ('The specified keychain could not be found', 'temporary signing keychain was not found'),
+            )
+            for marker, detail in known_errors:
+                if marker in diagnostic:
+                    message += ': ' + detail
+                    break
+        raise RuntimeError(message)
     return result
 
 
@@ -94,8 +112,10 @@ def apple_keychain(policy):
                     environment.pop(name, None)
             yield environment
         finally:
-            subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', *previous], capture_output=True)
-            subprocess.run(['security', 'delete-keychain', str(keychain)], capture_output=True)
+            try:
+                run(['security', 'list-keychains', '-d', 'user', '-s', *previous], capture_output=True)
+            finally:
+                run(['security', 'delete-keychain', str(keychain)], capture_output=True)
 
 
 def verify_windows(path, policy):
