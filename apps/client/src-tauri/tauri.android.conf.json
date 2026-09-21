@@ -1,0 +1,8 @@
+{
+  "identifier": "boo.gchat.app",
+  "bundle": {
+    "android": {
+      "minSdkVersion": 26
+    }
+  }
+}

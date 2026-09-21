@@ -22,16 +22,27 @@ gc2-carrier = ["gchat-core/gc2-carrier"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-gcoms = { version = "0.1.0" }
+gcoms = { version = "0.1.0", default-features = false, features = ["rpc", "files"] }
 tauri = { version = "2", features = [] }
 gchat-api = { version = "0.1.0", path = "../../../crates/chat-api" }
 gchat-core = { version = "0.1.0", path = "../../../crates/core" }
-tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "fs", "io-util"] }
 clap = { version = "4", features = ["derive", "env"] }
 serde_json = "1"
 
-[target.'cfg(target_os = "android")'.dependencies]
-jni = "0.21"
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-gchat-mobile-platform = { path = "mobile-platform" }
+tauri-plugin-dialog = "2.7"
+tauri-plugin-fs = "2.5"
+tempfile = "3"
+serde = { version = "1", features = ["derive"] }
+zeroize = "1"
+
+[dev-dependencies]
+tauri-plugin-gchat-mobile-platform = { path = "mobile-platform" }
+tempfile = "3"
+serde = { version = "1", features = ["derive"] }
+zeroize = "1"
 
 # Native dependencies stay outside the CLI workspace gates.
 [workspace]

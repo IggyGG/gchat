@@ -1,10 +1,13 @@
 import { mount } from 'svelte';
 import Workspace from '../src/Workspace.svelte';
+import type { DeviceUnlock } from '../src/device-unlock';
 import type { CommandSpec, Conversation, FileInfo, NetworkState, Request, Response, Snapshot } from '../src/api';
 const parameters = new URLSearchParams(location.search);
 const primaryNetwork = 'a'.repeat(64), otherNetwork = 'b'.repeat(64);
 let joinedNetwork = false;
 const instance = { id: 'ui-test-instance', label: 'gchat-production', bootId: 'fixture-boot', locked: false, protocolLocked: false, profileExists: true, archiveExists: true, safetyNumber: 'fixture', capabilities: ['ChannelAdmin', 'files.v1'] };
+if (parameters.has('device-unlock')) { instance.locked = true; instance.protocolLocked = true; }
+const unlockChoices: boolean[] = [];
 if (parameters.has('networks')) instance.capabilities.push('networks.v1');
 const members = [{ id: 'self', nickname: 'Iggy', isSelf: true, capabilities: [] }, { id: 'peer', nickname: 'Ada', isSelf: false, capabilities: [] }];
 const conversations: Conversation[] = ['general', 'design', 'archive'].map((name, index) => ({ provider: null, id: `channel/${name}`, channelId: name, kind: index === 2 ? 'archive' : 'channel', name: `#${name}`, topic: index === 0 ? 'A little more room to talk.' : '', active: true, owner: !parameters.has('member'), members, unread: index === 1 ? 2 : 0, lastMessageId: null, inputLimitBytes: 12000, commands: [] }));
@@ -19,7 +22,7 @@ const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', use
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
-  requests, setNetwork(value: NetworkState) { state = value; revision++; },
+  requests, unlockChoices, setNetwork(value: NetworkState) { state = value; revision++; },
   holdUpload() { hold = true; }, releaseUpload() { hold = false; release?.(); },
   getFiles: () => files, setLocked(value: boolean) { instance.locked = value; revision++; },
 } });
@@ -66,7 +69,13 @@ async function request(req: Request): Promise<Response> {
     default: throw new Error(`Unexpected fixture request: ${req.kind}`);
   }
 }
-mount(Workspace, { target: document.getElementById('app')!, props: { transport: { request }, fileAccess: {
+const deviceUnlock: DeviceUnlock | undefined = parameters.has('device-unlock') ? {
+  async unlock(passphrase, create, remember) {
+    unlockChoices.push(remember);
+    return { response: await request({ kind: 'unlock', passphrase, create }), warning: parameters.has('vault-failure') ? 'Secure device storage unavailable; enter your passphrase after suspension.' : undefined };
+  },
+} : undefined;
+mount(Workspace, { target: document.getElementById('app')!, props: { transport: { request }, deviceUnlock, fileAccess: {
   async exchange() { if (hold) await new Promise<void>(resolve => release = resolve); return new Uint8Array(); },
   async save() { return '/Downloads/notes.txt'; },
 } } });

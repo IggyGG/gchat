@@ -1,4 +1,22 @@
 import { test, expect, type Page } from '@playwright/test';
+test('native remember choice defaults off and requires explicit consent', async ({ page }) => {
+  await page.goto('/?device-unlock');
+  await expect(page.getByLabel('Remember on this device')).not.toBeChecked();
+  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([false]);
+  await expect(page.locator('.active-title')).toHaveText('#general');
+});
+test('native vault failure keeps a successful unlock and shows the storage warning', async ({ page }) => {
+  await page.goto('/?device-unlock&vault-failure');
+  await page.getByLabel('Remember on this device').check();
+  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([true]);
+  await expect(page.locator('.active-title')).toHaveText('#general');
+  await expect(page.getByText('Secure device storage unavailable; enter your passphrase after suspension.', { exact: true })).toBeVisible();
+  await expect(page.locator('#gchat-password')).toHaveCount(0);
+});
 async function ready(page: Page, suffix = '') { await page.goto('/' + suffix); await expect(page.locator('.active-title')).toHaveText('#general'); }
 async function command(page: Page, text: string) { const input = page.getByRole('textbox', { name: 'Message or command' }); await input.fill(text); await input.press('Enter'); }
 test('channel details expose real topic, nickname and explicit owner departure choices', async ({ page }) => {

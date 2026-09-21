@@ -218,6 +218,7 @@ pub fn bootstrap_values(
 }
 
 /// Host a standalone chat instance until the owning service is stopped.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub async fn run(args: DaemonArgs) -> Result<(), String> {
     if let Some(path) = std::env::var_os("GCHAT_PROTOCOL_METRICS") {
         gcoms::runtime::metrics::init(Path::new(&path))
@@ -334,7 +335,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
     let saved = server.await.map_err(|e| e.to_string())?;
     result.and(saved)
 }
-#[cfg(unix)]
+#[cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))]
 async fn shutdown_signal() -> Result<(), String> {
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
         .map_err(|error| error.to_string())?;

@@ -25,6 +25,16 @@
     "linux": {
       "name": "Gh0st",
       "certificate_fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
+    },
+    "android": {
+      "name": "Gh0st",
+      "certificate_sha256": "ad7a7a315b2b76162de0a61f1acc651886c2f697e93089364cf9f6ed992a1f06"
+    },
+    "ios": {
+      "name": "Gh0st",
+      "team_id": "U93DVTJ3T5",
+      "certificate_sha256": "575c69108062e8a523117b57785563dba10a2265ee72df4771701813e5cbfbb7",
+      "distribution": "app-store"
     }
   },
   "publication_status": "approved_by_owner",
@@ -62,7 +72,10 @@
   "unqualified_targets": {
     "windows-x86_64": "Cross-platform application implementation is authorized; native installer qualification remains pending.",
     "macos-x86_64": "Version 0.1.4 native application qualification is in progress; no installer pass claimed yet.",
-    "macos-aarch64": "Version 0.1.4 native application qualification is in progress; no installer pass claimed yet."
+    "macos-aarch64": "Version 0.1.4 native application qualification is in progress; no installer pass claimed yet.",
+    "android-arm64": "Native application build and emulator qualification pending; physical-device and push delivery qualification remain open.",
+    "android-x86_64": "Native application build and emulator qualification pending; no device delivery claim.",
+    "ios-arm64": "Signed device application and simulator qualification pending; physical-device and push delivery qualification remain open."
   },
   "public_repository_url": "https://github.com/IggyGG/gchat",
   "security_reporting_url": "https://github.com/IggyGG/gchat/security/advisories/new",

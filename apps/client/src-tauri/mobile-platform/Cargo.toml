@@ -1,0 +1,25 @@
+[package]
+name = "tauri-plugin-gchat-mobile-platform"
+version = "0.1.0"
+authors = ["Gh0st"]
+description = "Private native unlock storage and lifecycle events for GChat"
+edition = "2021"
+rust-version = "1.98"
+license = "MIT OR Apache-2.0"
+publish = false
+links = "tauri-plugin-gchat-mobile-platform"
+
+[dependencies]
+tauri = { version = "2.11.3", default-features = false }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+zeroize = "1"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+tauri = { version = "2.11.3", default-features = false, features = ["wry"] }
+
+[build-dependencies]
+tauri-plugin = { version = "2.6.3", features = ["build"] }

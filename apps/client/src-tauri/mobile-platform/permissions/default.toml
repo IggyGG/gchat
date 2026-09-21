@@ -1,0 +1,3 @@
+[default]
+description = "No webview permissions. Unlock storage is available only to Rust."
+permissions = []

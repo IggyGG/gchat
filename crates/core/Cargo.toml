@@ -9,7 +9,7 @@ version.workspace = true
 publish.workspace = true
 
 [dependencies]
-gcoms = { version = "0.1.0", features = ["embedded", "ipc", "rpc", "launch", "files"] }
+gcoms = { version = "0.1.0", default-features = false, features = ["rpc", "files"] }
 gchat-api = { version = "0.1.0", path = "../chat-api" }
 gcoms-core = { version = "0.1.0" }
 hmac = "0.12"
@@ -35,6 +35,12 @@ serde_json = "1"
 url = "2"
 base64 = "0.22"
 
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+gcoms = { version = "0.1.0", default-features = false, features = ["embedded", "ipc", "launch"] }
+
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+gcoms = { version = "0.1.0", default-features = false, features = ["network-client"] }
+
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1", features = ["process"] }
 
@@ -48,14 +54,14 @@ windows-sys = { version = "0.61", features = [
 ] }
 
 [dev-dependencies]
-gcoms-routing = { version = "0.1.0", features = ["experimental-gc2"] }
 gcoms-node = { version = "0.1.0", features = ["client-persist"] }
+gcoms-routing = { version = "0.1.0", features = ["experimental-gc2"] }
 axum = "0.8"
 rcgen = { version = "0.13", default-features = false, features = ["aws_lc_rs", "pem"] }
 rustls = { version = "0.23.45", default-features = false, features = ["aws-lc-rs", "std"] }
 tokio-rustls = "0.26"
 
 [features]
-# Explicit opt-in: builds the experimental GC/2 carrier profile into this
-# application. Default builds keep the GC/1 production profile.
-gc2-carrier = ["gcoms/gc2-carrier"]
+# Compile GC/2 without implying relay hosting. Desktop separately enables the
+# embedded backend; Android/iOS keep only the outbound network-client backend.
+gc2-carrier = ["gcoms/network-client"]

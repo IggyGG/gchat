@@ -1,0 +1,9 @@
+{
+  "identifier": "boo.gchat.app",
+  "bundle": {
+    "iOS": {
+      "developmentTeam": "U93DVTJ3T5",
+      "minimumSystemVersion": "15.0"
+    }
+  }
+}

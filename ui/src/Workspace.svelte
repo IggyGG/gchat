@@ -7,6 +7,7 @@
   import GhostMark from './GhostMark.svelte';
   import FilePanel from './FilePanel.svelte';
   import type { FileAccess } from './files';
+  import type { DeviceUnlock } from './device-unlock';
   import NetworkSetup from './NetworkSetup.svelte';
   import { FileController, emptyFiles, type FileViewState } from './file-controller';
   import { hasNetworkSetup, networkLabel, localCommand, mergeViewCommands, viewCommands, readFont, writeFont, type ChatFont } from './workspace-state';
@@ -16,7 +17,7 @@
   import { ConversationViews, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
   import { fitVisualViewport, isTouchActivation } from './viewport';
 
-  let { transport: attachmentTransport, tools, fileAccess }: { transport: Transport; tools?: Snippet; fileAccess?: FileAccess } = $props();
+  let { transport: attachmentTransport, tools, fileAccess, deviceUnlock }: { transport: Transport; tools?: Snippet; fileAccess?: FileAccess; deviceUnlock?: DeviceUnlock } = $props();
   let networks = $state<JoinedNetwork[]>([]);
   let selectedNetwork = $state<string>();
   const transport = new NetworkWorkspace(() => attachmentTransport, value => networks = value);
@@ -34,6 +35,7 @@
   let searchGeneration = 0;
   let draft = $state('');
   let password = $state('');
+  let rememberDevice = $state(false);
   let lifecycleBusy = $state(false);
   let pending = $state<Record<string, string>>({});
   const busy = $derived(lifecycleBusy || !!pending[selected ?? '']);
@@ -368,7 +370,13 @@
     else pending = { ...pending, [scope]: snapshot?.conversations.find(c => c.id === scope)?.name ?? 'Status' };
     if (request.kind === 'submit') dismissFailure(request.operation_id);
     notice = '';
-    try { await apply(await transport.request(request), origin); return true; }
+    try {
+      const native = request.kind === 'unlock' && deviceUnlock
+        ? await deviceUnlock.unlock(request.passphrase, request.create, rememberDevice) : undefined;
+      await apply(native ? native.response : await transport.request(request), origin);
+      if (native?.warning) notice = native.warning;
+      return true;
+    }
     catch (error) { if (!running || (locked && request.kind === 'submit')) return false; const failure = chatError(error); if (request.kind === 'submit' && !locked) failures = [...failures, { request, code: failure.code, message: failure.message }]; else notice = failure.message; return false; }
     finally { if (scope === null) lifecycleBusy = false; else { const remaining = { ...pending }; delete remaining[scope]; pending = remaining; } }
   }
@@ -596,6 +604,7 @@
           <form onsubmit={unlock}>
             <label for="gchat-password">{creating ? 'Choose a passphrase' : snapshot?.instance.protocolLocked ? 'Instance passphrase' : 'Archive passphrase'}</label>
             <input id="gchat-password" type="password" autocomplete={creating ? 'new-password' : 'current-password'} bind:value={password} minlength={creating ? 8 : undefined} maxlength="4096" required disabled={busy} />
+            {#if deviceUnlock}<label class="remember-device"><input type="checkbox" bind:checked={rememberDevice} disabled={busy} />Remember on this device</label><small>Uses secure device storage to reconnect after suspension. /lock removes the saved credential.</small>{/if}
             <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Opening…' : creating ? 'Create identity' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
           </form>
         </div>
@@ -784,6 +793,8 @@
   .network-gate { align-self:center; }
   label { display:block; margin:12px 0 6px; }
   input { display:block; width:100%; border:1px solid #626969; background:#16181c; padding:10px; min-height:40px; }
+  .remember-device { display:flex; align-items:center; gap:10px; min-height:44px; }
+  .remember-device input { width:20px; height:20px; min-height:20px; margin:0; }
   .primary { margin-top:12px; border:1px solid #566476; background:#343b46; padding:9px 14px; }
   dl { display:grid; grid-template-columns:max-content 1fr; gap:8px 18px; margin:24px 0; }
   dt { color:var(--accent); } dd { margin:0; color:var(--muted); }

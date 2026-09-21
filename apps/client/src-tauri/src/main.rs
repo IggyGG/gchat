@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn main() {
     use clap::Parser;
     if std::env::args_os().any(|arg| arg == "--interactive") {
@@ -15,4 +16,9 @@ fn main() {
     } else {
         gchat_native::run();
     }
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+fn main() {
+    gchat_native::run();
 }

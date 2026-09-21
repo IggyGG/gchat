@@ -7,6 +7,19 @@ use gcoms::{
 use std::{net::SocketAddr, path::Path, sync::Arc};
 #[derive(Clone)]
 pub struct ProtocolRuntime(pub Application);
+
+/// Mobile profiles, including explicitly joined networks, never host a relay.
+pub(crate) fn default_backend() -> gcoms::Backend {
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        gcoms::Backend::NetworkClient
+    }
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        gcoms::Backend::Embedded
+    }
+}
+
 impl ProtocolRuntime {
     pub(crate) fn network_client(&self) -> Option<gcoms_network_client::NetworkClient> {
         self.0
@@ -36,6 +49,7 @@ impl ProtocolRuntime {
         };
         Ok(Self(
             Application::builder("gchat")
+                .backend(default_backend())
                 .network_config(serde_json::to_vec(&installed).map_err(|error| error.to_string())?)
                 .profile(path)
                 .unlock_secret(secret)

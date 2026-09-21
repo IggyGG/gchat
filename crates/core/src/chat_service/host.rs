@@ -1,4 +1,4 @@
-//! UI-independent startup, unlock and shutdown. Desktop and Android host this same code.
+//! UI-independent startup, unlock and shutdown. Mobile hosts this in-process.
 use super::{instance_metadata, random_id, ChatEndpoint, ChatService};
 use crate::runtime::ProtocolRuntime;
 use gchat_api::{
@@ -36,7 +36,7 @@ impl InstanceConfig {
     pub fn from_home(home: Option<&Path>) -> Result<Self, String> {
         let paths = crate::paths::resolve(home)?;
         Ok(Self {
-            protocol_backend: gcoms::Backend::Embedded,
+            protocol_backend: crate::runtime::default_backend(),
             profile: paths.profile,
             archive: paths.archive,
             protocol_socket: paths.socket,
@@ -46,20 +46,33 @@ impl InstanceConfig {
             relay_urls: crate::bootstrap::default_provider_urls(),
             network_recovery: true,
             local_fixture: false,
-            gc2_carrier: false,
+            gc2_carrier: cfg!(any(target_os = "android", target_os = "ios")),
             catalog_urls: Vec::new(),
         })
     }
     pub fn chat_endpoint(&self) -> PathBuf {
         super::endpoint_for(&self.protocol_socket)
     }
+
+    fn uses_protocol_ipc(&self) -> bool {
+        !matches!(self.protocol_backend, gcoms::Backend::NetworkClient)
+    }
 }
 
+struct ProtocolIpc {
+    stop: watch::Sender<bool>,
+    server: tokio::task::JoinHandle<Result<(), gcoms::sdk::SdkError>>,
+}
+impl ProtocolIpc {
+    async fn stop(self) {
+        let _ = self.stop.send(true);
+        let _ = self.server.await;
+    }
+}
 struct Running {
     service: Arc<ChatService>,
     runtime: ProtocolRuntime,
-    stop: watch::Sender<bool>,
-    server: tokio::task::JoinHandle<Result<(), gcoms::sdk::SdkError>>,
+    ipc: Option<ProtocolIpc>,
 }
 pub struct InstanceHost {
     config: InstanceConfig,
@@ -81,6 +94,14 @@ pub fn capabilities() -> Vec<Capability> {
 
 impl InstanceHost {
     pub fn new(config: InstanceConfig) -> Result<Arc<Self>, String> {
+        #[cfg(any(target_os = "android", target_os = "ios"))]
+        if config.uses_protocol_ipc() || !config.gc2_carrier {
+            return Err("mobile instances require the outbound GC/2 network client".into());
+        }
+        if !config.uses_protocol_ipc() && (config.listen.port() != 0 || config.advertise.is_some())
+        {
+            return Err("outbound instances cannot configure listeners or advertisements".into());
+        }
         if !config.profile.exists() && config.archive.exists() {
             return Err(
                 "the archive exists but its protocol profile is missing; restore this instance"
@@ -127,8 +148,11 @@ impl InstanceHost {
         if create == self.config.profile.exists() {
             return Err("instance creation state changed; refresh before unlocking".into());
         }
-        let endpoint = LocalEndpoint::new(&self.config.protocol_socket);
-        endpoint.prepare_server().map_err(|e| e.to_string())?;
+        if self.config.uses_protocol_ipc() {
+            LocalEndpoint::new(&self.config.protocol_socket)
+                .prepare_server()
+                .map_err(|e| e.to_string())?;
+        }
         let relay = if let Some(path) = self.config.relay_file.as_deref() {
             crate::daemon::resolve_inbox_relay(Some(path), &[], None).await?
         } else {
@@ -158,18 +182,29 @@ impl InstanceHost {
         };
         let runtime = ProtocolRuntime(builder.open().await?);
         let service =
-            ChatService::new(self.config.archive.clone(), runtime.clone(), capabilities())?;
+            match ChatService::new(self.config.archive.clone(), runtime.clone(), capabilities()) {
+                Ok(service) => service,
+                Err(error) => {
+                    runtime.shutdown().await?;
+                    return Err(error);
+                }
+            };
         service.configure_catalogs(self.config.catalog_urls.clone());
-        let (stop, receiver) = watch::channel(false);
-        let socket = self.config.protocol_socket.clone();
-        let sdk = runtime.sdk_client();
-        let server = tokio::spawn(async move {
-            gcoms::sdk::ipc::serve_local_until(&socket, sdk, capabilities(), async move {
-                let mut receiver = receiver;
-                let _ = receiver.changed().await;
-            })
-            .await
-        });
+        let ipc = if self.config.uses_protocol_ipc() {
+            let (stop, receiver) = watch::channel(false);
+            let socket = self.config.protocol_socket.clone();
+            let sdk = runtime.sdk_client();
+            let server = tokio::spawn(async move {
+                gcoms::sdk::ipc::serve_local_until(&socket, sdk, capabilities(), async move {
+                    let mut receiver = receiver;
+                    let _ = receiver.changed().await;
+                })
+                .await
+            });
+            Some(ProtocolIpc { stop, server })
+        } else {
+            None
+        };
         if create || self.config.archive.exists() {
             let response = service
                 .dispatch(RequestEnvelope {
@@ -183,8 +218,10 @@ impl InstanceHost {
                 .await;
             if let Response::Error { message, .. } = response.response {
                 if create {
-                    let _ = stop.send(true);
-                    let _ = server.await;
+                    let _ = service.disconnect().await;
+                    if let Some(ipc) = ipc {
+                        ipc.stop().await;
+                    }
                     runtime.shutdown().await?;
                     return Err(message);
                 }
@@ -195,18 +232,20 @@ impl InstanceHost {
         Ok(Running {
             service,
             runtime,
-            stop,
-            server,
+            ipc,
         })
     }
 
     async fn stop(&self, running: Running) -> Result<(), String> {
         let saved = running.service.disconnect().await;
-        let _ = running.stop.send(true);
-        let _ = running.server.await;
+        if let Some(ipc) = running.ipc {
+            ipc.stop().await;
+        }
         drop(running.service);
         let shutdown = running.runtime.shutdown().await;
-        let _ = LocalEndpoint::new(&self.config.protocol_socket).cleanup();
+        if self.config.uses_protocol_ipc() {
+            let _ = LocalEndpoint::new(&self.config.protocol_socket).cleanup();
+        }
         saved.and(shutdown)
     }
 }
@@ -356,6 +395,11 @@ pub async fn ensure_running(
     executable: &Path,
     gchat_binary: bool,
 ) -> Result<ChatClient, String> {
+    if !config.uses_protocol_ipc() {
+        return Err(
+            "outbound instances must attach in-process instead of launching a daemon".into(),
+        );
+    }
     let endpoint = config.chat_endpoint();
     let metadata = instance_metadata(&config.archive)?;
     if let Ok(client) = ChatClient::connect(&endpoint, Some(&metadata.id)).await {
@@ -454,6 +498,10 @@ pub async fn ensure_running(
         log_path.display()
     ))
 }
+
+#[cfg(test)]
+#[path = "host_mobile_tests.rs"]
+mod mobile_tests;
 
 #[cfg(test)]
 mod retained_scope_tests {
