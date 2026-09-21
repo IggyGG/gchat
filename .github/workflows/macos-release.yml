@@ -95,6 +95,7 @@ jobs:
           brew install node@22 cmake
           echo "$(brew --prefix node@22)/bin" >> "$GITHUB_PATH"
           python3 gchat/scripts/macos-loopback.py
+          python3 -m pip install --disable-pip-version-check numpy==2.3.5
       - name: Qualify both native workspaces with retained evidence
         timeout-minutes: 275
         run: |
