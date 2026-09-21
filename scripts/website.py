@@ -16,12 +16,16 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORIES = ('https://github.com/IggyGG/gchat', 'https://github.com/IggyGG/gcoms')
 TARGETS = {
-    ('windows-x86_64', 'nsis'): 'Windows 11 · installer',
+    ('windows-x86_64', 'nsis'): 'Windows · 64-bit installer',
     ('macos-aarch64', 'dmg'): 'macOS · Apple Silicon',
     ('macos-x86_64', 'dmg'): 'macOS · Intel',
     ('linux-x86_64', 'deb'): 'Ubuntu / Debian · .deb',
     ('linux-x86_64', 'appimage'): 'Linux · AppImage',
+    ('android-arm64', 'apk'): 'Android · ARM64 APK',
+    ('android-x86_64', 'apk'): 'Android · x86_64 APK',
 }
+DESKTOP_TARGETS = {key for key in TARGETS if not key[0].startswith('android-')}
+PLATFORMS = {'linux': 'Linux', 'macos': 'macOS', 'windows': 'Windows', 'android': 'Android'}
 
 
 def validate(data):
@@ -59,10 +63,19 @@ def validate(data):
             raise ValueError('missing matching signature checksum')
         if artifact.get('signing_verified') is not True:
             raise ValueError('unverified artifact cannot be advertised')
-    required = {key for key in TARGETS if key[0] == 'linux-x86_64'} if data['channel'] == 'production' else set(TARGETS)
-    if seen != required:
+    required = {key for key in TARGETS if key[0] == 'linux-x86_64'} if data['channel'] == 'production' else DESKTOP_TARGETS
+    if not required <= seen:
         raise ValueError('the complete signed platform set is required')
     return data
+
+
+def client_status(data):
+    if data['version'] is None:
+        return 'Desktop and mobile applications. Signed public installers are being prepared.'
+    present = {item['target'].split('-', 1)[0] for item in data['artifacts']}
+    platforms = ', '.join(label for key, label in PLATFORMS.items() if key in present)
+    return ('Signed downloads available above for ' + platforms + '. '
+            'Privacy improvements and platform testing limits are documented in the release notes.')
 
 
 def remote_check(data):
@@ -96,7 +109,7 @@ def fetch(url, expected, path):
 def downloads(data):
     escape = html.escape
     if data['version'] is None:
-        links = '<p>Signed installers are being prepared for Windows, macOS, and Linux. Downloads will appear here after installation and signing checks pass.</p>'
+        links = '<p>Desktop and mobile apps are being prepared. Downloads will appear here after installation and signing checks pass.</p>'
     else:
         links = '<p>' + ('Production ' if data['channel'] == 'production' else 'Developer preview ') + escape(data['version']) + '</p><ul>'
         for a in data['artifacts']:
@@ -124,8 +137,7 @@ def build(output, data):
     page = (ROOT / 'website/index.template.html').read_text(encoding='utf-8')
     if page.count('@@DOWNLOADS@@') != 1 or page.count('@@CLIENT_STATUS@@') != 1:
         raise ValueError('website template must contain both content slots exactly once')
-    page = page.replace('@@DOWNLOADS@@', downloads(data)).replace('@@CLIENT_STATUS@@',
-        ('Signed Linux production release available above. Privacy improvements are documented in the release notes; Windows and macOS packages are deferred.' if data['channel'] == 'production' else 'Signed desktop developer preview available above.') if data['version'] else 'Desktop application and TUI. Signed public installers are being prepared.')
+    page = page.replace('@@DOWNLOADS@@', downloads(data)).replace('@@CLIENT_STATUS@@', client_status(data))
     if '@@' in page:
         raise ValueError('unresolved website template marker')
     rendered = page.encode('utf-8')
