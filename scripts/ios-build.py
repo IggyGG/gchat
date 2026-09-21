@@ -424,7 +424,6 @@ def build(args):
         report['publisher'] = publisher_policy(chat / 'release/publication.json', pin)
         report['publication'] = reference(chat / 'release/publication.json')
         native = chat / 'apps/client/src-tauri'
-        cli = chat / 'node_modules/@tauri-apps/cli/tauri.js'
         client = chat / 'apps/client'
         run(['python3', chat / 'scripts/collect-notices.py'], cwd=chat, env=environment)
         config = destination / 'ios-config.json'
@@ -432,7 +431,11 @@ def build(args):
             'developmentTeam': TEAM, 'minimumSystemVersion': '15.0', 'bundleVersion': version}}})
         # GChat uses encryption; never silently declare an exemption for App Store review.
         (native / 'Info.ios.plist').write_bytes(plistlib.dumps({'ITSAppUsesNonExemptEncryption': True}))
-        run(['node', cli, 'ios', 'init', '--ci', '--skip-targets-install', '--config', config], cwd=client, env=environment)
+        # npm supplies the runner context used by Tauri's generated Xcode Rust
+        # callback. Direct `node tauri.js` produces an unusable `node tauri`
+        # callback relative to gen/apple instead of this package's script.
+        run(['npm', 'run', 'tauri', '--', 'ios', 'init', '--ci', '--skip-targets-install', '--config', config],
+            cwd=client, env=environment)
         generated = native / 'gen/apple'
         entitlement_path = configure_project(generated)
         report['feature_graphs'] = {}
@@ -444,7 +447,7 @@ def build(args):
                            '--edges', 'normal', '--prefix', 'none', '--format', '{p}|{f}'], cwd=chat, env=environment)
             (destination / ('features-' + triple + '.txt')).write_text(tree + '\n')
             report['feature_graphs'][triple] = feature_graph(tree)
-        run(['node', cli, 'ios', 'build', '--ci', '--target', 'aarch64-sim', '--no-sign', '--config', config],
+        run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64-sim', '--no-sign', '--config', config],
             cwd=client, env=environment, timeout=5400)
         simulator_apps = list((generated / 'build').glob('**/*.app'))
         simulator_apps = [app for app in simulator_apps if '.xcarchive' not in str(app)]
@@ -478,7 +481,7 @@ def build(args):
                 'CODE_SIGN_ENTITLEMENTS = ' + str(entitlement_path) + '\n'
                 'OTHER_CODE_SIGN_FLAGS = --keychain "' + str(keychain) + '"\n')
             signing['XCODE_XCCONFIG_FILE'] = str(xcconfig)
-            run(['node', cli, 'ios', 'build', '--ci', '--target', 'aarch64', '--export-method', 'app-store-connect',
+            run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64', '--export-method', 'app-store-connect',
                  '--config', config], cwd=client, env=signing, timeout=5400)
             candidates = list((generated / 'build').glob('**/*.ipa'))
             require(len(candidates) == 1, 'expected one signed IPA output')
