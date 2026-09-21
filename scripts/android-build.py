@@ -359,6 +359,25 @@ def installed_package_uid(text):
     return uid
 
 
+def keyboard_shown(text):
+    values = re.findall(r'\bmInputShown=(true|false)\b', text)
+    require(values, 'input method did not expose fixture keyboard visibility')
+    return any(value == 'true' for value in values)
+
+
+def wait_keyboard(shell, expected, timeout=10):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if keyboard_shown(shell('dumpsys', 'input_method')) == expected:
+            # Let Android's IME animation and the app visualViewport settle before
+            # obtaining new accessibility bounds. Escape does not dismiss Gboard.
+            time.sleep(0.4)
+            if keyboard_shown(shell('dumpsys', 'input_method')) == expected:
+                return
+        time.sleep(0.2)
+    raise ValueError('fixture keyboard did not reach expected visibility')
+
+
 def smoke(args):
     root = args.output.resolve()
     signed_path = root / 'signing.json'
@@ -429,6 +448,18 @@ def smoke(args):
             shell('input', 'tap', str((points[0] + points[2]) // 2), str((points[1] + points[3]) // 2))
         def text(value):
             return lambda node: node.attrib.get('text') == value or node.attrib.get('content-desc') == value
+        def fill_passphrase():
+            expected = 'gchat-emulator-fixture-only-42'
+            password = wait_node(lambda n: n.attrib.get('password') == 'true')
+            tap(password)
+            wait_keyboard(shell, True)
+            shell('input', 'text', expected)
+            password = wait_node(lambda n: n.attrib.get('password') == 'true')
+            require(password.attrib.get('text') == expected, 'fixture passphrase input differs before submission')
+            shell('input', 'keyevent', '4')  # Android Back dismisses the shown IME.
+            wait_keyboard(shell, False)
+            password = wait_node(lambda n: n.attrib.get('password') == 'true')
+            require(password.attrib.get('text') == expected, 'fixture passphrase changed during keyboard dismissal')
         def no_listener(phase):
             tcp = shell('cat', '/proc/net/tcp', '/proc/net/tcp6')
             listeners = listener_rows(tcp, uid)
@@ -437,10 +468,7 @@ def smoke(args):
         launch()
         wait_node(text('Create identity'))
         no_listener('fresh_locked')
-        password = wait_node(lambda n: n.attrib.get('password') == 'true')
-        tap(password)
-        shell('input', 'text', 'gchat-emulator-fixture-only-42')
-        shell('input', 'keyevent', '111')  # Escape closes the software keyboard.
+        fill_passphrase()
         tap(wait_node(text('Create identity')))
         wait_node(text('Connect to GChat'), timeout=120)
         no_listener('created_unlocked_without_network_invitation')
@@ -449,10 +477,7 @@ def smoke(args):
         no_listener('background')
         launch()
         wait_node(text('Reconnect'))
-        password = wait_node(lambda n: n.attrib.get('password') == 'true')
-        tap(password)
-        shell('input', 'text', 'gchat-emulator-fixture-only-42')
-        shell('input', 'keyevent', '111')
+        fill_passphrase()
         tap(wait_node(text('Reconnect')))
         wait_node(text('Connect to GChat'), timeout=120)
         no_listener('foreground_reopened')
@@ -463,10 +488,7 @@ def smoke(args):
         no_listener('process_restart_retained_profile_locked')
         report['profile_lifecycle_passed'] = True
         if getattr(args, 'probe_picker', False):
-            password = wait_node(lambda n: n.attrib.get('password') == 'true')
-            tap(password)
-            shell('input', 'text', 'gchat-emulator-fixture-only-42')
-            shell('input', 'keyevent', '111')
+            fill_passphrase()
             tap(wait_node(text('Reconnect')))
             wait_node(text('Connect to GChat'), timeout=120)
             tap(wait_node(text('Or choose an invitation file')))

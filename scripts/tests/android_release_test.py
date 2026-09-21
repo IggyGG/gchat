@@ -159,6 +159,29 @@ class EmulatorCleanup(unittest.TestCase):
         self.assertEqual(android.listener_rows(row.replace(' 0A ', ' 01 '), 10123), [])
 
 
+class KeyboardDriver(unittest.TestCase):
+    def test_visibility_requires_actual_ime_state(self):
+        self.assertTrue(android.keyboard_shown('mRequestedShowExplicitly=false\n mInputShown=true\n'))
+        self.assertFalse(android.keyboard_shown(' mInputShown=false\n'))
+        self.assertTrue(android.keyboard_shown('mInputShown=false\nmInputShown=true'))
+        with self.assertRaisesRegex(ValueError, 'visibility'):
+            android.keyboard_shown('mInputShown=unknown')
+
+    def test_waits_for_two_settled_visibility_samples(self):
+        shell = Mock(side_effect=['mInputShown=true', 'mInputShown=false', 'mInputShown=true',
+                                  'mInputShown=false', 'mInputShown=false'])
+        with patch.object(android.time, 'sleep'):
+            android.wait_keyboard(shell, False)
+        self.assertEqual(shell.call_count, 5)
+        shell.assert_called_with('dumpsys', 'input_method')
+
+    def test_visibility_timeout_does_not_continue_to_click(self):
+        shell = Mock(return_value='mInputShown=true')
+        with patch.object(android.time, 'monotonic', side_effect=[0, 0, 11]), \
+                patch.object(android.time, 'sleep'), self.assertRaisesRegex(ValueError, 'expected visibility'):
+            android.wait_keyboard(shell, False)
+
+
 class ArtifactReuse(unittest.TestCase):
     def test_relocated_original_receipt_keeps_hash_and_size_binding(self):
         with tempfile.TemporaryDirectory() as scratch:
