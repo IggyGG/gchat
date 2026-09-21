@@ -2,7 +2,7 @@
 use gchat_api::ChatClient;
 use gchat_core::{chat_service::endpoint_for, runtime::ProtocolRuntime};
 use gcoms::sdk::GcClient;
-use std::{process::Stdio, time::Duration};
+use std::{io::Read, process::Stdio, time::Duration};
 
 #[tokio::test]
 async fn headless_daemon_creates_separate_archive_for_a_retained_profile() {
@@ -37,6 +37,15 @@ async fn headless_daemon_creates_separate_archive_for_a_retained_profile() {
     drop(client);
     runtime.shutdown().await.unwrap();
     assert!(!archive.exists());
+    let stderr_path = dir.path().join("daemon.stderr");
+    let stderr = std::fs::File::create(&stderr_path).unwrap();
+    let diagnostic = || {
+        let mut bytes = Vec::new();
+        if let Ok(file) = std::fs::File::open(&stderr_path) {
+            let _ = file.take(16 * 1024).read_to_end(&mut bytes);
+        }
+        String::from_utf8_lossy(&bytes).into_owned()
+    };
     let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_gchat"))
         .args([
             "daemon",
@@ -57,7 +66,7 @@ async fn headless_daemon_creates_separate_archive_for_a_retained_profile() {
         .arg(&archive_pass)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::from(stderr))
         .kill_on_drop(true)
         .spawn()
         .unwrap();
@@ -67,15 +76,22 @@ async fn headless_daemon_creates_separate_archive_for_a_retained_profile() {
             if let Ok(client) = ChatClient::connect(&endpoint, None).await {
                 break client;
             }
-            assert!(
-                child.try_wait().unwrap().is_none(),
-                "standalone daemon stopped before readiness"
-            );
+            if let Some(status) = child.try_wait().unwrap() {
+                panic!(
+                    "standalone daemon stopped before readiness: {status}; {}",
+                    diagnostic()
+                );
+            }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
     })
     .await
-    .unwrap();
+    .unwrap_or_else(|error| {
+        panic!(
+            "standalone daemon readiness timed out: {error}; {}",
+            diagnostic()
+        )
+    });
     let response = connected
         .request(gchat_api::Request::Snapshot)
         .await
