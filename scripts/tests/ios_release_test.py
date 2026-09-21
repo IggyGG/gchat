@@ -249,7 +249,12 @@ class ArtifactTests(unittest.TestCase):
     @unittest.skipIf(os.name == 'nt', 'executes the macOS-compatible POSIX build wrapper')
     def test_xcode_selection_survives_cargo_mobile_explicit_environment(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            # Exercise macOS's /var -> /private/var spelling difference on
+            # every POSIX test host, rather than relying on its temp layout.
+            physical = Path(temporary) / 'physical'
+            physical.mkdir()
+            root = Path(temporary) / 'alias'
+            root.symlink_to(physical, target_is_directory=True)
             native = root / 'real xcodebuild'
             native.write_text('#!/bin/sh\nprintf "%s\\n" "$DEVELOPER_DIR" "${XCODE_XCCONFIG_FILE-unset}" "$@"\n')
             native.chmod(0o700)
@@ -262,7 +267,7 @@ class ArtifactTests(unittest.TestCase):
                 result = subprocess.check_output(['xcodebuild', '-showBuildSettings'],
                     env={'PATH': wrapped['PATH']}, text=True).splitlines()
                 self.assertEqual(result, [environment['DEVELOPER_DIR'],
-                    str(config) if signing else 'unset', '-showBuildSettings'])
+                    str(config.resolve()) if signing else 'unset', '-showBuildSettings'])
 
     def test_simulator_uses_an_available_runtime_compatible_phone_not_type_list_order(self):
         types = [{'identifier': 'iphone17', 'name': 'iPhone 17'},
