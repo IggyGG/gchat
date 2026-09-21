@@ -9,9 +9,10 @@ default. To use a bundled shared service, run `gchat daemon --gcomsd
 instance options. Each GChat profile remains independent inside that service.
 Locking/disconnecting stops that profile without stopping other applications.
 
-For this unreleased source change, validate against the matching GComs checkout
-with its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Registry
-versions and release lockfiles are finalized when the matching crates are published.
+For paired-source development, validate against the matching GComs checkout with
+its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public
+registry manifests and canonical release lockfiles intact; each published download
+retains its exact source and dependency bindings in its signed release manifest.
 
 **GChat** is the reference chat application for **GComs**, with a Tauri desktop
 application, terminal client and local service built from one repository.
