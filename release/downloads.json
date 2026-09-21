@@ -98,6 +98,25 @@
         "sha256": "621bfc25c68a32f8ef3cf331f8f6621e18615fef6d3249bd6a93292b642956da",
         "signature_sha256": "7b27a436f3cab8585f0d06118b357ca7ecee3f71f3f802cd8482ea69c8e2af73"
       }
+    },
+    "v0.1.4-windows-x86_64.1": {
+      "version": "0.1.4",
+      "sources": {
+        "gchat": "3e09b2db471caf40ce6b0838ecc3000d5adfb644",
+        "gcoms": "7eec615e4478a166ee71f3144bc04c3070c92f72"
+      },
+      "manifest_format": "platform-v1",
+      "release_key": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-windows-x86_64.1/gchat-release-key.asc",
+        "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
+        "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
+      },
+      "manifest": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-windows-x86_64.1/platform-release.json",
+        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-windows-x86_64.1/platform-release.json.asc",
+        "sha256": "236781c65f07b5576cbfa6fa7d786a4952845f2c7ff79fc14798849ec12804ae",
+        "signature_sha256": "95983ae68ba8c0fa6a107e0693de624c779984f7673935701bb9cd7b984ad33e"
+      }
     }
   },
   "artifacts": [
@@ -160,6 +179,16 @@
       "signing_verified": true,
       "sha256": "4120a9867a98937101b3efec0a7db3b824223d4a806483613281f011b4051d0e",
       "signature_sha256": "a228e12c1ec441ed4bda74d0d4f1e7a6bcd75d669dfdd3925349107a31cd2d28"
+    },
+    {
+      "target": "windows-x86_64",
+      "format": "nsis",
+      "release": "v0.1.4-windows-x86_64.1",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-windows-x86_64.1/GChat_0.1.4_x64-setup.exe",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-windows-x86_64.1/GChat_0.1.4_x64-setup.exe.asc",
+      "signing_verified": true,
+      "sha256": "832d2db07e44e349a038428c29a48e8a97c37b8e25463ab86d01f29b62515cad",
+      "signature_sha256": "e3fd0a9e9739bd68ba239c63649b3cb2bb2c9f4a5dbc9780df92e9367134fb3c"
     }
   ]
 }
