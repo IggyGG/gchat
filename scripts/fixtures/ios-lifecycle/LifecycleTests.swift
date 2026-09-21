@@ -96,7 +96,29 @@ final class GChatLifecycleTests: XCTestCase {
         XCTAssertFalse(app.toolbars.buttons["Done"].firstMatch.exists)
         XCTAssertTrue(button.exists && button.isHittable)
         XCTAssertTrue(main.exists && main.frame.contains(button.frame))
-        button.tap()
+        let frame = button.frame
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        let field = app.webViews.secureTextFields.firstMatch
+        XCTAssertFalse(field.frame.contains(center))
+        let geometry = XCTAttachment(string: "button=\(frame) main=\(main.frame) field=\(field.frame) center=\(center)")
+        geometry.name = "submit-geometry-" + title
+        geometry.lifetime = .keepAlways
+        add(geometry)
+        screenshot("submit-before-" + title)
+        // The retained element.tap() failure left the password field focused
+        // and the form unsubmitted despite the visibility checks above. Tap the
+        // measured center once without an accessibility activation-point lookup;
+        // retain geometry and transition evidence for this real native input.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            .withOffset(CGVector(dx: center.x - app.frame.minX, dy: center.y - app.frame.minY)).tap()
+        // Record only booleans, never the entered value. The following original
+        // 45-second joint-state assertion still decides successful submission.
+        let populated = field.exists && !((field.value as? String) ?? "").isEmpty
+        let transition = XCTAttachment(string: "passwordFieldPopulated=\(populated) keyboard=\(app.keyboards.firstMatch.exists) opening=\(app.webViews.buttons["Opening…"].exists)")
+        transition.name = "submit-transition-" + title
+        transition.lifetime = .keepAlways
+        add(transition)
+        screenshot("submit-after-" + title)
     }
 
     func backgroundAndActivate() {
