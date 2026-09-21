@@ -1,24 +1,8 @@
-name: Windows release worker
-run-name: Forgejo Windows ${{ inputs.request_id }}
+name: Windows package recovery
+run-name: Windows package recovery ${{ inputs.request_id }}
 on:
   workflow_dispatch:
     inputs:
-      gchat_ref:
-        description: Protected main/release branch or approved version tag, exactly at gchat_commit
-        required: true
-        type: string
-        default: main
-      gcoms_ref:
-        description: Protected main/release branch containing gcoms_commit, or exact approved version tag
-        required: true
-        type: string
-        default: main
-      gchat_commit:
-        required: true
-        type: string
-      gcoms_commit:
-        required: true
-        type: string
       request_id:
         required: true
         type: string
@@ -28,7 +12,7 @@ jobs:
   windows:
     environment: release-signing
     runs-on: windows-2022
-    timeout-minutes: 360
+    timeout-minutes: 90
     defaults:
       run:
         # Child signing tools use Windows PowerShell. Keep its native module
@@ -48,14 +32,20 @@ jobs:
           git config --global core.longpaths true
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: ${{ inputs.gchat_commit }}
+          ref: ${{ github.sha }}
+          path: controller
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 3e09b2db471caf40ce6b0838ecc3000d5adfb644
           path: gchat
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: IggyGG/gcoms
-          ref: ${{ inputs.gcoms_commit }}
+          ref: 7eec615e4478a166ee71f3144bc04c3070c92f72
           path: gcoms
           fetch-depth: 0
           persist-credentials: false
@@ -67,17 +57,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22.23.2'
-      - name: Verify frozen release sources and workflow
+      - name: Verify and retain both original native passes
         env:
-          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
-          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
-          GCHAT_REF: ${{ inputs.gchat_ref }}
-          GCOMS_REF: ${{ inputs.gcoms_ref }}
-        run: >-
-          python gchat/scripts/windows-build.py --verify-checkouts
-          --gchat gchat --gcoms gcoms
-          --gchat-commit "$env:GCHAT_COMMIT" --gcoms-commit "$env:GCOMS_COMMIT"
-          --gchat-ref "$env:GCHAT_REF" --gcoms-ref "$env:GCOMS_REF"
+          GH_TOKEN: ${{ github.token }}
+        run: python controller/scripts/windows-package.py prepare --prior retained --gchat gchat --gcoms gcoms
       - name: Qualify disposable certificate import and cleanup
         timeout-minutes: 5
         run: ./gchat/scripts/test-windows-signing.ps1 -OutputDirectory signing-fixture
@@ -113,6 +96,7 @@ jobs:
           $SignTool.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           $NSIS = Join-Path ${env:ProgramFiles(x86)} 'NSIS/makensis.exe'
           if (-not (Test-Path -LiteralPath $NSIS)) { throw 'NSIS prerequisite is missing from the isolated worker' }
+          Get-Command 7z.exe -ErrorAction Stop | Select-Object Source, Version | Format-Table -AutoSize
           & $NSIS /VERSION
           if ($LASTEXITCODE -ne 0) { throw 'NSIS prerequisite is unusable' }
           cmake --version
@@ -122,70 +106,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'GnuPG signature-test prerequisite is unusable' }
           python gchat/scripts/windows-build.py --prepare-webview --worker-evidence worker-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Windows/WebView prerequisite verification failed' }
-      - name: Qualify GComs source provenance and portable tooling before native compilation
-        timeout-minutes: 5
-        working-directory: gcoms
-        run: |
-          python scripts/check-source.py
-          if ($LASTEXITCODE -ne 0) { throw 'GComs source audit failed before native compilation' }
-          python scripts/check-research-import.py
-          if ($LASTEXITCODE -ne 0) { throw 'GComs research provenance failed before native compilation' }
-          cargo fmt --all -- --check
-          if ($LASTEXITCODE -ne 0) { throw 'GComs formatting failed before native compilation' }
-          python -m unittest discover -s scripts/tests -p '*_test.py'
-          if ($LASTEXITCODE -ne 0) { throw 'GComs Python tooling failed before native compilation' }
-      - name: Qualify private filesystem ownership on native Windows
-        timeout-minutes: 10
-        working-directory: gcoms
-        env:
-          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
-        run: |
-          @'
-          import hashlib, json, os, subprocess, sys
-          from pathlib import Path
-          sys.path.insert(0, str(Path('../gchat/scripts').resolve()))
-          from release_evidence import source_identity
-          output = Path('../worker-evidence/private-fs')
-          output.mkdir(parents=True, exist_ok=False)
-          before = source_identity(Path.cwd())
-          if before['commit'] != os.environ['GCOMS_COMMIT']:
-              raise SystemExit('Private filesystem check source differs from requested GComs')
-          report = {'source': before, 'checks': [], 'passed': False, 'source_unchanged': False}
-          commands = [
-              ['cargo', 'test', '-p', 'gcoms-private-fs', '--lib', '--locked', '--', '--test-threads=1'],
-              ['cargo', 'test', '-p', 'gcoms-sdk', '--lib', '--locked', '--no-default-features',
-               'private_fs::tests::', '--', '--test-threads=1'],
-          ]
-          for index, command in enumerate(commands):
-              log = output / f'check-{index}.log'
-              with log.open('wb') as stream:
-                  try:
-                      code = subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, timeout=240).returncode
-                  except subprocess.TimeoutExpired:
-                      code = 124
-              print(log.read_text(encoding='utf-8', errors='replace'), flush=True)
-              report['checks'].append({'command': command, 'exit_code': code, 'log': log.name,
-                  'sha256': hashlib.sha256(log.read_bytes()).hexdigest()})
-          report['source_unchanged'] = source_identity(Path.cwd()) == before
-          report['passed'] = report['source_unchanged'] and all(row['exit_code'] == 0 for row in report['checks'])
-          (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
-          raise SystemExit(0 if report['passed'] else 1)
-          '@ | python -
-          if ($LASTEXITCODE -ne 0) { throw 'Native private filesystem qualification failed' }
-      - name: Diagnose standalone daemon startup on the exact archived pair
-        timeout-minutes: 12
-        run: |
-          python gchat/scripts/windows-daemon-check.py --gchat gchat --gcoms gcoms --output worker-evidence/daemon-inputs --target-dir "$env:RUNNER_TEMP/gchat-daemon-target" --timeout 600
-          if ($LASTEXITCODE -ne 0) { throw 'Native standalone daemon diagnostic failed; retained child stderr and exact source maps' }
-      - name: Qualify both native workspaces
-        timeout-minutes: 235
-        run: |
-          python gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --target windows-x86_64 --output native-evidence
-          if ($LASTEXITCODE -ne 0) { throw 'Candidate initialization failed' }
-          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.windows-x86_64 --timeout 7800 -- python scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
-          if ($LASTEXITCODE -ne 0) { throw 'Native GChat qualification failed' }
-          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.windows-x86_64 --timeout 6000 -- python scripts/ci.py
-          if ($LASTEXITCODE -ne 0) { throw 'Native GComs qualification failed' }
       - name: Import only the existing pinned release certificate
         timeout-minutes: 5
         env:
@@ -196,7 +116,7 @@ jobs:
         timeout-minutes: 45
         working-directory: gchat
         run: |
-          python scripts/build-installer.py --target windows-x86_64 --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
+          python ../controller/scripts/windows-package.py build --prior ../retained --gchat . --gcoms ../gcoms --output ../signed
           if ($LASTEXITCODE -ne 0) { throw 'Signed NSIS build failed' }
       - name: Install, reopen, uninstall and clean up the actual application
         timeout-minutes: 15
@@ -212,6 +132,10 @@ jobs:
         if: always()
         run: |
           New-Item -ItemType Directory -Force -Path signed | Out-Null
+          if (Test-Path -LiteralPath retained/original/native-evidence) { Copy-Item retained/original/native-evidence signed/native-evidence -Recurse -Force }
+          if (Test-Path -LiteralPath retained/recovery-inputs.json) { Copy-Item retained/recovery-inputs.json signed/recovery-inputs.json }
+          if (Test-Path -LiteralPath retained/original/reconstructed-native-config.json) { Copy-Item retained/original/reconstructed-native-config.json signed/reconstructed-native-config.json }
+          git -C controller archive --format=tar -o ../signed/packaging-controller.tar HEAD
           foreach ($Name in @('native-evidence', 'worker-evidence', 'signing-evidence', 'signing-preflight', 'signing-fixture')) {
             if (Test-Path -LiteralPath $Name) { Copy-Item -LiteralPath $Name -Destination signed -Recurse -Force }
           }
@@ -222,6 +146,11 @@ jobs:
           path: |
             signed/*.exe
             signed/build.json
+            signed/recovery.json
+            signed/recovery-inputs.json
+            signed/reconstructed-native-config.json
+            signed/packaging-controller.tar
+            signed/retained-build-outputs/**
             signed/provenance/**
             signed/native-evidence/**
             signed/worker-evidence/**

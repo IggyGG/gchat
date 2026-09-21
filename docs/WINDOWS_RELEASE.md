@@ -71,3 +71,23 @@ mobile behavior. The pinned self-signed signature establishes the configured
 publisher identity; it is not a claim of public CA trust. Native results require
 an actual completed Windows worker; local Python fixture passes alone are not a
 Windows release receipt.
+
+## Packaging-only recovery
+
+`windows-package.yml` keeps its packaging controller separate from the exact
+application source pair in `release/windows-package-recovery.json`. It verifies
+the original GitHub artifact digest, both unchanged successful native reports,
+their logs, source archives and dependency identity before reusing them. It then
+builds only NSIS, verifies the executable extracted from that signed installer,
+and runs the existing install/reopen/uninstall and signer-cleanup checks. Tauri
+restores the unsigned build-directory executable after bundling; that temporary
+copy is not the shipped executable and must not supply its signature or hash.
+
+Windows20's original upload omitted the generated hidden `.cargo/config.toml`.
+Recovery reproduces only that file from the frozen manifests and original
+hash-bound native-log checkout path, requires its exact recorded SHA256, and
+labels the reconstruction separately. The original ZIP and native receipts stay
+unchanged. Subsequent uploads explicitly include hidden provenance. Actual build
+executables/installers are retained even if verification fails; their presence
+does not qualify them. Controller provenance never replaces application-native
+provenance or converts the original failed workflow into a passing release.

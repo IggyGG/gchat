@@ -320,5 +320,72 @@ class DiskImageApplicationTest(unittest.TestCase):
                 self.assertFalse(self.mount.parent.exists())
 
 
+class NsisApplicationTest(unittest.TestCase):
+    def test_bundle_uses_shipped_signed_executable_instead_of_restored_unsigned_copy(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / 'output'
+            output.mkdir()
+            target = output / 'build/x86_64-pc-windows-msvc/release'
+            extracted = []
+
+            def execute(command, **kwargs):
+                if command[:3] == ['npm.cmd', 'run', 'tauri']:
+                    (target / 'bundle/nsis').mkdir(parents=True)
+                    (target / 'bundle/nsis/GChat.exe').write_bytes(b'signed installer')
+                    (target / 'gchat-desktop.exe').write_bytes(b'unsigned restored build copy')
+                elif command[:2] == ['7z.exe', 'x']:
+                    destination = Path(next(x[2:] for x in command if x.startswith('-o')))
+                    binary = destination / 'gchat-desktop.exe'
+                    binary.write_bytes(b'actual signed packaged executable')
+                    extracted.append(binary)
+                return subprocess.CompletedProcess(command, 0)
+
+            def verify(path, policy):
+                self.assertNotEqual(path, target / 'gchat-desktop.exe')
+                self.assertIn(path.read_bytes(), (b'signed installer', b'actual signed packaged executable'))
+
+            with patch.object(installer, 'run', side_effect=execute), \
+                 patch.object(installer.shutil, 'which', return_value='7z.exe'), \
+                 patch.object(installer, 'fingerprint', return_value='A' * 40), \
+                 patch.object(installer, 'verify_windows', side_effect=verify), \
+                 patch.object(installer, 'verify_resolved_protocol'), \
+                 patch.object(installer.subprocess, 'check_output', return_value=b'{}'):
+                files, executables = installer.bundle('windows-x86_64', output, {},
+                    {'name': 'Gh0st'}, 'self-signed', root)
+            self.assertEqual(executables, [{'name': 'gchat-desktop.exe',
+                'sha256': hashlib.sha256(b'actual signed packaged executable').hexdigest(),
+                'size': len(b'actual signed packaged executable')}])
+            self.assertEqual((output / files[0]['name']).read_bytes(), b'signed installer')
+            self.assertFalse(extracted[0].exists())
+
+    def test_missing_duplicate_or_bad_signature_cannot_substitute_build_copy(self):
+        for count in (0, 2):
+            with self.subTest(count=count), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                (root / 'nsis').mkdir()
+                (root / 'nsis/GChat.exe').write_bytes(b'installer')
+
+                def extract(command, **kwargs):
+                    destination = Path(next(x[2:] for x in command if x.startswith('-o')))
+                    for n in range(count):
+                        path = destination / str(n) / 'gchat-desktop.exe'
+                        path.parent.mkdir()
+                        path.write_bytes(b'executable')
+
+                with patch.object(installer, 'verify_windows'), \
+                     patch.object(installer.shutil, 'which', return_value='7z.exe'), \
+                     patch.object(installer, 'run', side_effect=extract):
+                    with self.assertRaisesRegex(ValueError, 'exactly one'):
+                        with installer.application_from_nsis(root, 'self-signed'):
+                            self.fail('invalid NSIS contents accepted')
+                with patch.object(installer, 'verify_windows', side_effect=ValueError('bad signature')), \
+                     patch.object(installer, 'run') as run:
+                    with self.assertRaisesRegex(ValueError, 'bad signature'):
+                        with installer.application_from_nsis(root, 'self-signed'):
+                            self.fail('invalid NSIS signature accepted')
+                    run.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

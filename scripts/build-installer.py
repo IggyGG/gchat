@@ -197,6 +197,31 @@ def application_from_dmg(bundle_dir):
         raise ValueError('disk image changed during application verification')
 
 
+@contextmanager
+def application_from_nsis(bundle_dir, policy):
+    installers = list(bundle_dir.glob('nsis/*.exe'))
+    if len(installers) != 1 or installers[0].is_symlink():
+        raise ValueError('expected one signed NSIS installer')
+    installer = installers[0]
+    before = sha(installer)
+    verify_windows(installer, policy)
+    extractor = shutil.which('7z.exe') or shutil.which('7z')
+    if not extractor:
+        raise ValueError('7-Zip is required to inspect the actual NSIS application')
+    # Tauri restores the unsigned/unpatched build-directory executable after
+    # bundling. Inspect the signed application that the installer actually ships.
+    with tempfile.TemporaryDirectory(prefix='gchat-nsis-') as temporary:
+        root = Path(temporary)
+        run([extractor, 'x', str(installer), '-o' + str(root), '-y', '-r', 'gchat-desktop.exe'],
+            stdout=subprocess.DEVNULL)
+        matches = list(root.rglob('gchat-desktop.exe'))
+        if len(matches) != 1 or not matches[0].is_file() or matches[0].is_symlink() or not matches[0].resolve().is_relative_to(root.resolve()):
+            raise ValueError('NSIS must contain exactly one regular desktop executable')
+        yield matches[0]
+    if sha(installer) != before:
+        raise ValueError('NSIS installer changed during application verification')
+
+
 def bundle(target, output, environment, identity, policy, checkout):
     system, arch, triple, bundles = TARGETS[target]
     config = {'bundle': {'publisher': identity['name']}}
@@ -254,9 +279,9 @@ def bundle(target, output, environment, identity, policy, checkout):
                 executable = app / 'Contents/MacOS' / name
                 executables.append({'name': name, 'sha256': sha(executable), 'size': executable.stat().st_size})
         elif system == 'Windows':
-            executable = build_root / triple / 'release/gchat-desktop.exe'
-            verify_windows(executable, policy)
-            executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
+            with application_from_nsis(bundle_dir, policy) as executable:
+                verify_windows(executable, policy)
+                executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
         patterns = {'deb':'deb/*.deb', 'appimage':'appimage/*.AppImage', 'nsis':'nsis/*.exe', 'dmg':'dmg/*.dmg'}
         files = []
         for kind in bundles:
