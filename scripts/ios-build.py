@@ -774,6 +774,38 @@ def validate_upload_build(report):
         verifier.validate_linked_upload(report, original)
 
 
+
+def upload_result(text, ipa_name):
+    """altool can return zero for a server rejection; require JSON acceptance."""
+    require(len(text) <= 1024 * 1024, 'altool upload response is unexpectedly large')
+    require(not re.search(r'UPLOAD\s+FAILED|(?:^|\n)[^\n]*\bERROR:', text, re.IGNORECASE),
+            'App Store Connect reported an upload rejection; see upload.log')
+
+    def unique_fields(pairs):
+        result = {}
+        for key, value in pairs:
+            require(key not in result, 'ambiguous duplicate field in altool upload response')
+            result[key] = value
+        return result
+
+    start = text.find('{')
+    require(start >= 0, 'altool did not return a structured upload result')
+    try:
+        result = json.loads(text[start:], object_pairs_hook=unique_fields)
+    except json.JSONDecodeError:
+        raise ValueError('altool upload result is incomplete or ambiguous') from None
+    require(isinstance(result, dict), 'altool upload result must be an object')
+    require(all(result.get(key) in (None, []) for key in ('product-errors', 'errors', 'error')),
+            'App Store Connect rejected the upload; see upload.log')
+    message = result.get('success-message')
+    require(isinstance(message, str), 'altool response has no explicit upload acceptance')
+    match = re.fullmatch(r"No errors uploading (['\"])(.+)\1\.?", message.strip())
+    require(match is not None and PurePosixPath(match.group(2)).name == ipa_name,
+            'altool acceptance does not name the uploaded IPA')
+    return {'accepted': True, 'success_message': message,
+            'delivery_uuid': result.get('delivery-uuid')}
+
+
 def upload(args):
     destination = args.output.resolve()
     build_path = destination / 'build.json'
@@ -813,8 +845,12 @@ def upload(args):
                                         stderr=subprocess.STDOUT, timeout=1200)
             report['exit_code'] = result.returncode
             report['log'] = reference(destination / 'upload.log')
-            require(result.returncode == 0, 'App Store Connect did not accept the IPA upload')
+            require(result.returncode == 0, 'App Store Connect upload command failed')
+            report['result'] = upload_result((destination / 'upload.log').read_text(), ipa.name)
             report['passed'] = True
+    except Exception as error:
+        report['error'] = str(error)
+        raise
     finally:
         write_json(destination / 'upload.json', report)
 

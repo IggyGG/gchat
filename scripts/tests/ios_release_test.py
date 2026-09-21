@@ -547,6 +547,100 @@ class ArtifactTests(unittest.TestCase):
                 ios.secret_command(['security', 'secret'])
 
 
+
+class UploadResultTests(unittest.TestCase):
+    accepted = {'success-message': "No errors uploading '/private/build/GChat-1.0.9.ipa'.",
+                'delivery-uuid': '6e2fc15b-1f3d-4053-a81f-d59cba1c4cbb'}
+    rejected = {'product-errors': [{'code': 409, 'message': 'Validation failed',
+                'underlying-errors': [{'message': 'Invalid Export Compliance Code'}]}]}
+
+    def test_only_structured_acceptance_for_the_same_ipa_succeeds(self):
+        for prefix in ('', 'Running altool at path /Applications/Xcode.app/...\n\n'):
+            result = ios.upload_result(prefix + json.dumps(self.accepted), 'GChat-1.0.9.ipa')
+            self.assertTrue(result['accepted'])
+            self.assertEqual(result['delivery_uuid'], self.accepted['delivery-uuid'])
+
+    def test_server_rejection_overrides_any_success_field(self):
+        for value in (self.rejected, self.accepted | self.rejected):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, 'rejected'):
+                ios.upload_result(json.dumps(value), 'GChat-1.0.9.ipa')
+        for marker in ('UPLOAD FAILED with 1 error', '2026-09-21 ERROR: validation failed'):
+            with self.subTest(marker=marker), self.assertRaisesRegex(ValueError, 'rejection'):
+                ios.upload_result(marker + '\n' + json.dumps(self.accepted), 'GChat-1.0.9.ipa')
+
+    def test_missing_ambiguous_or_other_command_success_is_not_upload_acceptance(self):
+        cases = ['', 'No errors uploading GChat-1.0.9.ipa', '{}',
+                 json.dumps({'success-message': 'No errors validating GChat-1.0.9.ipa'}),
+                 json.dumps({'success-message': "No errors uploading 'another.ipa'."}),
+                 json.dumps(self.accepted)[:-1], json.dumps(self.accepted) + json.dumps(self.rejected),
+                 '{"success-message":"failed","success-message":"No errors uploading \'GChat-1.0.9.ipa\'."}']
+        for text in cases:
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                ios.upload_result(text, 'GChat-1.0.9.ipa')
+
+    def upload(self, text, exit_code):
+        root = Path(self.temporary.name)
+        ipa = root / 'GChat-1.0.9.ipa'
+        ipa.write_bytes(b'unchanged signed artifact fixture')
+        cleanup = root / 'cleanup.json'
+        cleanup.write_text(json.dumps({'passed': True}))
+        smoke = root / 'smoke.json'
+        smoke.write_text(json.dumps({'passed': True, 'cleanup_complete': True}))
+        publisher = {'name': 'Gh0st', 'team_id': ios.TEAM, 'distribution': 'app-store',
+                     'certificate_sha256': PIN}
+        policy = root / 'publication.json'
+        policy.write_text(json.dumps({'publisher_identities': {'ios': publisher}}))
+        report = {'bundle': ios.BUNDLE, 'team': ios.TEAM, 'signing_cleanup': ios.reference(cleanup),
+                  'simulator': ios.reference(smoke), 'publication': ios.reference(policy), 'publisher': publisher,
+                  'application': {'ipa': ios.reference(ipa), 'profile': {'certificate_sha256': PIN}}}
+        (root / 'build.json').write_text(json.dumps(report))
+        env = {'IOS_SIGNING_CERT_SHA256': PIN, 'APP_STORE_CONNECT_KEY_ID': 'FIXTURE123',
+               'APP_STORE_CONNECT_ISSUER_ID': '00000000-0000-0000-0000-000000000000',
+               'APP_STORE_CONNECT_PRIVATE_KEY': 'nonsecret fixture only'}
+        private = []
+
+        def command(args, **kwargs):
+            self.assertIn('--upload-app', args)
+            private.append(Path(kwargs['cwd']))
+            self.assertTrue((private[-1] / 'private_keys/AuthKey_FIXTURE123.p8').is_file())
+            kwargs['stdout'].write(text.encode())
+            return subprocess.CompletedProcess(args, exit_code)
+
+        with patch.dict(os.environ, env), patch.object(ios, 'validate_upload_build'), \
+                patch.object(ios.subprocess, 'run', side_effect=command):
+            try:
+                ios.upload(argparse.Namespace(output=root))
+            finally:
+                self.assertTrue(all(not path.exists() for path in private))
+                self.assertEqual(ipa.read_bytes(), b'unchanged signed artifact fixture')
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+
+    def test_zero_exit_with_real_error_shape_retains_failed_receipt(self):
+        log = 'Running altool...\nUPLOAD FAILED with 1 error\n' + json.dumps(self.rejected)
+        with self.assertRaisesRegex(ValueError, 'rejection'):
+            self.upload(log, 0)
+        report = json.loads((Path(self.temporary.name) / 'upload.json').read_text())
+        self.assertIs(report['passed'], False)
+        self.assertEqual(report['exit_code'], 0)
+        self.assertEqual(ios.verify_reference(report['log']).read_text(), log)
+        self.assertIn('rejection', report['error'])
+
+    def test_success_requires_exit_zero_and_acceptance_with_bound_receipt(self):
+        self.upload(json.dumps(self.accepted), 0)
+        report = json.loads((Path(self.temporary.name) / 'upload.json').read_text())
+        self.assertIs(report['passed'], True)
+        self.assertIs(report['result']['accepted'], True)
+        self.assertIs(report['apple_processing_qualified'], False)
+        self.assertIs(report['public_app_store_submission'], False)
+        with self.assertRaisesRegex(ValueError, 'command failed'):
+            self.upload(json.dumps(self.accepted), 1)
+        failed = json.loads((Path(self.temporary.name) / 'upload.json').read_text())
+        self.assertIs(failed['passed'], False)
+
+
 class SourceTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
