@@ -122,6 +122,10 @@ both avdmanager and emulator, checks its registration before starting, and stops
 its emulator on every terminal path. This avoids the inherited home-directory
 mismatch that prevented the earlier emulator from booting. The bounded driver
 retains setup, emulator, app-UID logcat and UI diagnostics alongside cleanup.
+ADB's root restart may close the initial connection. The driver reconnects within
+45 seconds and at most three attempts, and requires an actual `id -u` result of
+zero before installing the app or firewall rules. It retains every root attempt;
+this does not retry an application assertion or weaken lifecycle checks.
 
 [Android's documented AVD directory lookup](https://developer.android.com/tools/variables)
 defines these shared paths. The earlier native/signing artifact remains immutable;

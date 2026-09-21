@@ -326,7 +326,45 @@ def listener_rows(text, uid):
     return rows
 
 
-def cleanup_emulator(shell, adb, installed, uid, firewall):
+def root_emulator(adb, receipt, timeout=45):
+    """ADB root may close its transport while restarting; require real UID 0."""
+    deadline = time.monotonic() + timeout
+    report = {'passed': False, 'attempts': []}
+    try:
+        for _ in range(3):
+            attempt = []
+            report['attempts'].append(attempt)
+            def command(*args):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return None
+                item = {'command': list(args)}
+                attempt.append(item)
+                try:
+                    result = subprocess.run([str(x) for x in [*adb, *args]], text=True,
+                                            capture_output=True, timeout=min(15, remaining))
+                    item.update(returncode=result.returncode, stdout=result.stdout, stderr=result.stderr)
+                    return result
+                except subprocess.TimeoutExpired:
+                    item['timed_out'] = True
+                    return None
+            command('root')
+            ready = command('wait-for-device')
+            if ready is not None and ready.returncode == 0:
+                identity = command('shell', 'id', '-u')
+                if identity is not None and identity.returncode == 0 and identity.stdout.strip() == '0':
+                    report['passed'] = True
+                    return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(1, remaining))
+        raise ValueError('fixture ADB did not reconnect with verified root privileges')
+    finally:
+        write_json(receipt, report)
+
+
+def cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created=True):
     errors = []
     if installed:
         for command in firewall:
@@ -340,10 +378,11 @@ def cleanup_emulator(shell, adb, installed, uid, firewall):
             require(not shell('pm', 'path', PACKAGE, absent_ok=True), 'app package remains installed')
         except Exception:
             errors.append('failed to uninstall owned emulator app')
-    try:
-        shell('rm', '-f', '/sdcard/gchat-fixture-ui.xml')
-    except Exception:
-        errors.append('failed to remove owned UI dump')
+    if ui_dump_created:
+        try:
+            shell('rm', '-f', '/sdcard/gchat-fixture-ui.xml')
+        except Exception:
+            errors.append('failed to remove owned UI dump')
     return {'passed': not errors, 'errors': errors}
 
 
@@ -421,11 +460,11 @@ def smoke(args):
               'physical_device_qualified': False, 'network_delivery_qualified': False, 'push_qualified': False,
               'observations': []}
     installed = False
+    ui_dump_created = False
     uid = None
     firewall = []
     try:
-        run([*adb, 'root'], timeout=30)
-        run([*adb, 'wait-for-device'], timeout=60)
+        root_emulator(adb, dest / 'adb-root.json')
         report['api'] = int(shell('getprop', 'ro.build.version.sdk'))
         report['abi'] = shell('getprop', 'ro.product.cpu.abi')
         require(report['api'] >= 26 and report['abi'] == 'x86_64', 'unexpected emulator API/ABI')
@@ -443,6 +482,8 @@ def smoke(args):
             result = shell('am', 'start', '-W', '-n', PACKAGE + '/' + artifact['activity'])
             require('Status: ok' in result, 'Android did not start GChat successfully')
         def nodes():
+            nonlocal ui_dump_created
+            ui_dump_created = True  # A failed dump may still leave a partial file.
             shell('uiautomator', 'dump', '/sdcard/gchat-fixture-ui.xml')
             return ET.fromstring(shell('cat', '/sdcard/gchat-fixture-ui.xml')).iter('node')
         def wait_node(predicate, timeout=60):
@@ -534,7 +575,7 @@ def smoke(args):
                 (dest / 'final-ui.xml').write_text(shell('cat', '/sdcard/gchat-fixture-ui.xml'))
             except Exception as error:
                 report['diagnostic_error'] = type(error).__name__
-        report['cleanup'] = cleanup_emulator(shell, adb, installed, uid, firewall)
+        report['cleanup'] = cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created)
         report['inputs_unchanged'] = digest(apk) == artifact['sha256']
         report['passed'] = report['passed'] and report['cleanup']['passed'] and report['inputs_unchanged']
         write_json(dest / 'report.json', report)

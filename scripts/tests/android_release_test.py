@@ -110,7 +110,65 @@ class ArtifactGuards(unittest.TestCase):
             android.verify_elf_alignment(data)
 
 
+class EmulatorRoot(unittest.TestCase):
+    def test_restart_transport_closure_requires_verified_root_after_reconnect(self):
+        replies = [subprocess.CompletedProcess([], 1, '', 'unable to connect for root: closed'),
+                   subprocess.CompletedProcess([], 0, '', ''),
+                   subprocess.CompletedProcess([], 0, '0\n', '')]
+        with tempfile.TemporaryDirectory() as scratch, patch.object(android.subprocess, 'run', side_effect=replies) as run:
+            receipt = Path(scratch) / 'root.json'
+            android.root_emulator(['adb', '-s', 'emulator-5554'], receipt)
+            report = json.loads(receipt.read_text())
+        self.assertTrue(report['passed'])
+        self.assertEqual(len(report['attempts']), 1)
+        self.assertEqual(report['attempts'][0][0]['returncode'], 1)
+        self.assertEqual(run.call_args.args[0][-3:], ['shell', 'id', '-u'])
+
+    def test_root_command_success_cannot_substitute_for_root_identity(self):
+        def respond(command, **kwargs):
+            return subprocess.CompletedProcess(command, 0, '2000\n' if command[-1] == '-u' else '', '')
+        with tempfile.TemporaryDirectory() as scratch, patch.object(android.subprocess, 'run', side_effect=respond) as run, \
+                patch.object(android.time, 'sleep'):
+            receipt = Path(scratch) / 'root.json'
+            with self.assertRaisesRegex(ValueError, 'verified root'):
+                android.root_emulator(['adb'], receipt)
+            report = json.loads(receipt.read_text())
+        self.assertFalse(report['passed'])
+        self.assertEqual(len(report['attempts']), 3)
+        self.assertEqual(run.call_count, 9)
+
+    def test_lost_transport_is_bounded_and_retained(self):
+        def respond(command, **kwargs):
+            if command[-1] == 'wait-for-device':
+                raise subprocess.TimeoutExpired(command, kwargs['timeout'])
+            return subprocess.CompletedProcess(command, 0, '', '')
+        with tempfile.TemporaryDirectory() as scratch, patch.object(android.subprocess, 'run', side_effect=respond) as run, \
+                patch.object(android.time, 'sleep'):
+            receipt = Path(scratch) / 'root.json'
+            with self.assertRaisesRegex(ValueError, 'verified root'):
+                android.root_emulator(['adb'], receipt)
+            report = json.loads(receipt.read_text())
+        self.assertFalse(report['passed'])
+        self.assertTrue(all(attempt[-1]['timed_out'] for attempt in report['attempts']))
+        self.assertEqual(run.call_count, 6)
+        self.assertTrue(all(call.kwargs['timeout'] <= 15 for call in run.call_args_list))
+
+    def test_exhausted_deadline_does_not_start_another_command(self):
+        with tempfile.TemporaryDirectory() as scratch, patch.object(android.subprocess, 'run') as run:
+            receipt = Path(scratch) / 'root.json'
+            with self.assertRaisesRegex(ValueError, 'verified root'):
+                android.root_emulator(['adb'], receipt, timeout=0)
+            self.assertFalse(json.loads(receipt.read_text())['passed'])
+        run.assert_not_called()
+
+
 class EmulatorCleanup(unittest.TestCase):
+    def test_no_owned_resources_requires_no_device_cleanup(self):
+        shell = Mock(side_effect=RuntimeError('ADB is unavailable before fixture setup'))
+        result = android.cleanup_emulator(shell, ['adb'], False, None, [], ui_dump_created=False)
+        self.assertTrue(result['passed'])
+        shell.assert_not_called()
+
     def test_uninstalls_after_every_owned_rule_even_if_first_rule_fails(self):
         calls = []
         def shell(*args, **kwargs):
