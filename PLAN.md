@@ -1,8 +1,10 @@
 # Application delivery plan
 
-Recorded checkpoint: **2026-09-21 17:29 UTC**. Linux, Apple Silicon Mac,
-Intel Mac and Android downloads are published. Windows and iOS qualification
-runs are pending at this checkpoint; neither is recorded as released here.
+Recorded checkpoint: **2026-09-21 17:36 UTC**. Linux, Apple Silicon Mac,
+Intel Mac and Android downloads are published. Windows needs a native retry
+after a test-fixture correction. The iOS simulator lifecycle passed, but Apple
+rejected the upload for missing export-compliance information; neither Windows
+nor iOS is recorded as released here.
 
 ## Published clients
 
@@ -24,23 +26,26 @@ the individual signed manifests for the completed scope and limits.
 
 ## Finish Windows and iOS
 
-1. Complete the current [Windows16 native run](https://github.com/IggyGG/gchat/actions/runs/35624488869),
-   then its signed NSIS installation, service/reopen, uninstall and signing-store
-   cleanup checks. Publish only its exact verified installer. This worker covers
-   Windows Server 2022 x64; Windows 11 graphical interaction remains a separate
-   follow-up. The [Windows release procedure](docs/WINDOWS_RELEASE.md) defines
-   the bindings and checks.
-2. Complete the [retained iOS verification run](https://github.com/IggyGG/gchat/actions/runs/35631610692).
-   Reuse the already signed build 1.0.9 IPA and the separately linked simulator
-   app on the same source pair. The corrected XCTest must pass the full installed
-   profile/background/reopen lifecycle with cleanup before upload. Preserve the
-   previous failed build and journey receipts. No device-app rebuild is needed
-   for this driver retry.
-3. After iOS verification, upload the unchanged IPA and record App Store Connect
-   acceptance, Apple processing, export-compliance requirements and actual
-   TestFlight availability separately. A signed IPA or successful upload alone
-   is not an available TestFlight or App Store release. See the
-   [iOS release procedure](docs/IOS_RELEASE.md).
+1. Preserve the [Windows16 native run](https://github.com/IggyGG/gchat/actions/runs/35624488869):
+   its GChat native CI passed; GComs rejected two pre-created routing directories
+   because the tests configured private ownership only on Unix. Apply the tested
+   cross-platform fixture setup without changing production access controls,
+   then finish native qualification, signed NSIS installation, service/reopen,
+   uninstall and signing-store cleanup. The
+   [Windows release procedure](docs/WINDOWS_RELEASE.md) defines the bindings.
+2. Preserve the passing installed iOS simulator profile/background/Keychain/reopen
+   journey from [retained verification](https://github.com/IggyGG/gchat/actions/runs/35631610692).
+   It tested the existing simulator app and reverified signed build 1.0.9 without
+   recompiling or resigning the device app. Physical-device and live-network
+   behavior remain separate scopes.
+3. Fix the upload helper's false success: `altool` returned process status zero
+   while its structured result contained `product-errors` and Apple error 409,
+   Invalid Export Compliance Code. The original workflow/upload receipt remains
+   retained as a false positive; no build was accepted into App Store Connect.
+   Prepare the first encryption declaration with the owner, then bind the actual
+   Apple-approved configuration to a new verified package before retrying.
+   Upload acceptance, Apple processing and tester availability remain distinct.
+   See the [iOS release procedure](docs/IOS_RELEASE.md).
 
 Use retained completed native inputs for packaging or harness retries whenever
 their source/artifact bindings still apply. Do not rerun a completed platform or

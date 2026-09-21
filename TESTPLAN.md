@@ -1,9 +1,10 @@
 # Application qualification status and remaining checks
 
-Recorded checkpoint: **2026-09-21 17:29 UTC**. The completed scopes below come
-from retained release manifests and publication receipts. Windows16 and the
-iOS retained-artifact verifier are still pending at this checkpoint. A running
-job, a source test, and an installed application pass are distinct evidence.
+Recorded checkpoint: **2026-09-21 17:36 UTC**. The completed scopes below come
+from retained release manifests and publication receipts. Windows16 failed in
+GComs after GChat native CI passed. iOS installed simulator validation passed,
+but the Apple upload was rejected. The workflow reported a false upload success;
+its original evidence remains retained and does not qualify distribution.
 
 ## Completed release evidence
 
@@ -33,11 +34,14 @@ the same-source x86_64 emulator receipt retains that distinction. See
 
 ## Pending Windows gate
 
-[Windows16](https://github.com/IggyGG/gchat/actions/runs/35624488869) must complete
-both native CI entrypoints, then pinned Authenticode signing and the actual NSIS
-installation. Require matching installed executable and uninstaller signatures,
-fresh/unlock/shutdown/reopen service behavior, uninstall/resource cleanup, and
-unchanged persistent certificate stores. Retain earlier failures separately.
+[Windows16](https://github.com/IggyGG/gchat/actions/runs/35624488869) retains its
+passing GChat native CI and failed GComs `node_profile` ownership checks. The
+correction makes both pre-created fixture directories private on Windows as
+well as Unix and explicitly tests refusal to repair an existing nonprivate
+directory. Production ownership checks remain unchanged. Validate the corrected
+frozen pair, then require pinned Authenticode signing, actual NSIS installation,
+matching installed executable/uninstaller signatures, profile reopening,
+uninstall/resource cleanup and unchanged persistent certificate stores.
 
 The result is Windows Server 2022 x64 MSVC/installer-service qualification.
 Windows 11 graphical interaction, SmartScreen reputation and installed
@@ -47,17 +51,21 @@ not a substitute for that native result. See [Windows release checks](docs/WINDO
 ## Pending iOS gate
 
 [Retained verification](https://github.com/IggyGG/gchat/actions/runs/35631610692)
-must reverify the existing signed build 1.0.9 IPA and same-source simulator app,
-then run the corrected full XCTest on those simulator bytes. Require one passing
-test, zero failures/skips, unchanged executable, profile/background/reopen
-assertions and complete simulator cleanup. Original build and journey failures
-must retain their verdicts and hashes.
+passed the native installed simulator journey: one test, zero failures/skips,
+75.851 seconds. It used the existing simulator executable, exercised fresh
+profile creation, background locking, manual reopening, consented Keychain
+resume and process relaunch, and completed cleanup. Original source/device IPA
+and previous failed journey receipts retain their identities and verdicts.
 
-Only after this pass may the verified original IPA be uploaded. Record upload
-acceptance, Apple processing, export compliance and tester availability as
-separate outcomes. Physical devices, live network onboarding/chat/files, battery
-and live APNs delivery remain unqualified by this fixture. An APNs entitlement
-is not a push-delivery result. See [iOS release checks](docs/IOS_RELEASE.md).
+The subsequent `altool` upload returned zero but reported `product-errors`:
+Apple 409 Invalid Export Compliance Code. Treat that upload as rejected despite
+the original helper/workflow success. The upload-result regression must reject
+error JSON, failure markers, empty or ambiguous output regardless of exit status;
+only explicit structured success can establish upload acceptance. The first
+Apple encryption declaration is not yet configured. Preserve the signed IPA;
+any later package configuration/signature needs its own binding. Physical
+devices, live onboarding/chat/files, battery and live APNs remain unqualified.
+An APNs entitlement is not a push result. See [iOS release checks](docs/IOS_RELEASE.md).
 
 ## Evidence and regression rules
 
