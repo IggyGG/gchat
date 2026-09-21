@@ -85,4 +85,9 @@
   button { width:fit-content; margin-top:12px; padding:9px 18px; cursor:pointer; background:#343b46; color:var(--ink); border:1px solid #566476; font:inherit; }
   [role=alert] { color:#ffb5b5; margin-top:12px; }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .network { min-width:0; overflow-wrap:anywhere; }
+  @media(pointer:coarse) {
+    button,summary { min-height:44px; min-width:44px; }
+    input,textarea { font-size:16px; min-height:44px; }
+  }
 </style>

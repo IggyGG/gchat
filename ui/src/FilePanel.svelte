@@ -12,7 +12,7 @@
 
   <label><input type="checkbox" bind:checked={showAll} /> Show all cached files</label>
   <div class="toolbar">
-    {#if canSave && canShare}<button class="share" disabled={busy} onclick={() => choose()}>Share a file…</button>{:else if !canShare}<span>This conversation is read only.</span>{:else}<span>Use the desktop or terminal app to import and save files.</span>{/if}
+    {#if canSave && canShare}<button class="share" disabled={busy} onclick={() => choose()}>Share a file…</button>{:else if !canShare}<span>This conversation is read only.</span>{:else}<span>Use an app with file access to import and save files.</span>{/if}
     <small>Accepted downloads are also shared with authorized participants while chat is unlocked.</small>
   </div>
   {#if view.uploading}<p role="status">Importing {view.uploading}</p>{/if}
@@ -31,7 +31,7 @@
         {#if file.state === 'offered'}<button disabled={busy} onclick={() => controller.act({ action: 'accept', id: file.id })}>Download & share</button>{/if}
         {#if ['downloading', 'waiting_for_peers'].includes(file.state)}<button disabled={busy} onclick={() => controller.act({ action: 'pause', id: file.id })}>Pause</button>{/if}
         {#if file.state === 'paused'}<button disabled={busy} onclick={() => controller.act({ action: 'resume', id: file.id })}>Resume</button>{/if}
-        {#if file.state === 'complete' && canSave}<button disabled={busy} onclick={() => controller.save(file)}>Save to Downloads</button>{/if}
+        {#if file.state === 'complete' && canSave}<button disabled={busy} onclick={() => controller.save(file)}>Save file…</button>{/if}
         <button disabled={busy} onclick={() => controller.act({ action: 'cancel', id: file.id })}>{file.state === 'complete' ? 'Remove cached copy' : 'Cancel'}</button>
       </div>
     </article>
@@ -45,4 +45,10 @@
 </section>
 <style>
   .files{padding:16px;font:14px/1.5 system-ui,sans-serif;color:var(--ink)}summary{cursor:pointer;min-height:24px}.toolbar{display:grid;gap:10px;margin:12px 0}article{padding:14px 0;border-bottom:1px solid var(--line)}strong{overflow-wrap:anywhere}small{display:block;color:var(--muted)}progress{width:100%;height:8px}.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}button,input{font:inherit;max-width:100%;min-height:34px}button{cursor:pointer;color:var(--ink);background:transparent;border:1px solid var(--line);padding:5px 8px}button:hover{background:#343b46}.settings{margin-top:20px}label{display:flex;align-items:center;gap:8px;margin:6px 0}input[type=number]{width:6em;background:var(--bg);color:var(--ink);border:1px solid var(--line)}[role=alert]{color:#ffb3b3}:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media(pointer:coarse) {
+    button,summary { min-height:44px; min-width:44px; }
+    label { min-height:44px; }
+    input { font-size:16px; }
+    input[type=number] { min-height:44px; }
+  }
 </style>

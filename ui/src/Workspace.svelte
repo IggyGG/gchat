@@ -14,6 +14,7 @@
   import { chatError, type ChatError, type Transport } from './transport';
   import { MAX_INPUT_BYTES } from './api';
   import { ConversationViews, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
+  import { fitVisualViewport, isTouchActivation } from './viewport';
 
   let { transport: attachmentTransport, tools, fileAccess }: { transport: Transport; tools?: Snippet; fileAccess?: FileAccess } = $props();
   let networks = $state<JoinedNetwork[]>([]);
@@ -253,7 +254,7 @@
       }
     }
   }
-  async function select(id: string | null) {
+  async function select(id: string | null, activation?: MouseEvent) {
     const nextNetwork = id ? transport.networkFor(id) : selectedNetwork;
     if (nextNetwork !== selectedNetwork) { networkGeneration++; networkStatus = networks.find(n => n.id === nextNetwork)?.status; }
     selectedNetwork = nextNetwork; transport.select(selectedNetwork);
@@ -274,7 +275,11 @@
       if (transcript) transcript.scrollTop = view.scrollTop;
     }
     channelsOpen = false; completions = [];
-    if (fromDrawer) { await tick(); composer?.focus(); }
+    if (fromDrawer) {
+      await tick();
+      if (isTouchActivation(activation, window.matchMedia('(pointer: coarse)').matches)) document.querySelector<HTMLElement>('.active-title')?.focus();
+      else composer?.focus();
+    }
     if (id && workspaceReady) await loadHistory(false);
     if (id && snapshot && !views.has(id)) {
       const position = rememberedPosition;
@@ -534,7 +539,7 @@
 </script>
 
 <svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} onresize={() => { narrow = window.innerWidth < 1000; if (window.innerWidth > 760) channelsOpen = false; }} />
-<div class="gchat" class:unavailable={offline} class:readable={font === 'readable'}>
+<div class="gchat" class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
   <header class="titlebar" inert={navigationModal}>
     {#if workspaceReady}<button class="channel-toggle" aria-label="Channels" aria-expanded={channelsOpen} onclick={() => void openNavigation('channels')}>☰</button>{/if}
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
@@ -555,11 +560,11 @@
     {#if workspaceReady}<aside class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
       {#if channelsOpen}<button onclick={closeNavigation}>Close channels</button>{/if}
       <div class="channel-entries">
-      <button class:chosen={!selected} aria-current={!selected ? 'page' : undefined} onclick={() => void select(null)}><span class="symbol">◈</span> Status</button>
+      <button class:chosen={!selected} aria-current={!selected ? 'page' : undefined} onclick={event => void select(null, event)}><span class="symbol">◈</span> Status</button>
       {#each networks.length > 1 ? networks : [undefined] as network (network?.id ?? 'single')}
-      {#if network}<button class="network-group" aria-pressed={selectedNetwork === network.id} onclick={() => { selectedNetwork = network.id; transport.select(network.id); networkGeneration++; networkStatus = network.status; void select(null); }}><span class="connection-dot" class:connected={network.status.state === 'connected'} aria-hidden="true">●</span>{network.name}</button>{/if}
+      {#if network}<button class="network-group" aria-pressed={selectedNetwork === network.id} onclick={event => { selectedNetwork = network.id; transport.select(network.id); networkGeneration++; networkStatus = network.status; void select(null, event); }}><span class="connection-dot" class:connected={network.status.state === 'connected'} aria-hidden="true">●</span>{network.name}</button>{/if}
       {#each snapshot?.conversations.filter(c => !hidden.includes(c.id) && (!network || transport.networkFor(c.id) === network.id)) ?? [] as conversation (conversation.id)}
-        <button class:chosen={selected === conversation.id} aria-current={selected === conversation.id ? 'page' : undefined} class:unread={conversation.unread > 0} onclick={() => void select(conversation.id)} title={conversation.topic || conversation.name}>
+        <button class:chosen={selected === conversation.id} aria-current={selected === conversation.id ? 'page' : undefined} class:unread={conversation.unread > 0} onclick={event => void select(conversation.id, event)} title={conversation.topic || conversation.name}>
           <span class="symbol">{conversation.kind === 'query' ? '↳' : conversation.kind === 'archive' ? '·' : '#'}</span>
           <span class="room-name">{conversation.name.replace(/^#/, '')}</span>
           {#if conversation.unread}<span class="badge">{conversation.unread}</span>{/if}
@@ -736,7 +741,7 @@
   .danger { color:var(--danger, #ed9b9b); }
   .network-group { font-size:12px; color:var(--muted); margin-top:12px; }
   @font-face { font-family:GchatFixedsys; src:url('/fonts/fixedsys-excelsior.ttf') format('truetype'); font-display:swap; }
-  .gchat { --bg:#1c1e22; --panel:#25282e; --line:#363c44; --ink:#e4e7eb; --muted:#a8b0bb; --accent:#b7cbe4; color-scheme:dark; height:100dvh; min-height:260px; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
+  .gchat { --bg:#1c1e22; --panel:#25282e; --line:#363c44; --ink:#e4e7eb; --muted:#a8b0bb; --accent:#b7cbe4; color-scheme:dark; position:var(--gchat-viewport-position,relative); top:var(--gchat-viewport-top,auto); width:100%; height:var(--gchat-viewport-height,100dvh); min-height:min(260px,var(--gchat-viewport-height,100dvh)); display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
   .gchat :global(*) { box-sizing:border-box; }
   button,input,textarea { font:inherit; color:inherit; }
   button { background:transparent; border:1px solid transparent; padding:6px 10px; cursor:pointer; text-align:left; min-height:36px; }
@@ -829,4 +834,10 @@
     .completions button { flex-wrap:wrap; gap:4px; }.completions span { width:100%; font-size:12px; }.notice { max-height:32%; }
   }
   @media(max-width:440px) { .brand { display:none; }.connection-dot { margin:0; font-size:12px; }.active-title { padding-left:2px; }.header-actions { gap:0; } }
+  @media(pointer:coarse) {
+    button,summary { min-height:44px; min-width:44px; }
+    input,textarea,select { font-size:16px; }
+    .titlebar button { min-height:44px; }
+    .modal { top:var(--gchat-viewport-top,0px); bottom:auto; margin-block:12px; max-height:calc(var(--gchat-viewport-height,100dvh) - 24px); }
+  }
 </style>

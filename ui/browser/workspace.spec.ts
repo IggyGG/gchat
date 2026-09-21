@@ -144,3 +144,86 @@ test('200% text zoom keeps actions and transcript reachable', async ({ page }) =
   await page.getByRole('button', { name: 'Help', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('/find');
 });
+
+test.describe('phone navigation', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  for (const width of [320, 390]) test(`touch navigation keeps drafts and reachable actions at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await ready(page);
+    const composer = page.getByRole('textbox', { name: 'Message or command' });
+    await composer.fill('A draft for general');
+    const targets = await page.locator('.titlebar button, .composer button').evaluateAll(nodes => nodes.map(node => {
+      const bounds = node.getBoundingClientRect();
+      return { label: node.getAttribute('aria-label') ?? node.textContent, width: bounds.width, height: bounds.height };
+    }));
+    for (const target of targets) {
+      expect(target.width, String(target.label)).toBeGreaterThanOrEqual(44);
+      expect(target.height, String(target.label)).toBeGreaterThanOrEqual(44);
+    }
+    await page.getByRole('button', { name: 'Channels', exact: true }).tap();
+    await page.locator('.channels').getByRole('button', { name: /design/ }).tap();
+    await expect(page.locator('.active-title')).toHaveText('#design');
+    await expect(composer).not.toBeFocused();
+    await expect(page.locator('.active-title')).toBeFocused();
+    await composer.fill('A draft for design');
+    await page.getByRole('button', { name: 'Channels', exact: true }).tap();
+    await page.locator('.channels').getByRole('button', { name: /general/ }).tap();
+    await expect(composer).toHaveValue('A draft for general');
+    await expect(composer).not.toBeFocused();
+    await page.getByRole('button', { name: 'Files: 1', exact: true }).tap();
+    const save = page.getByRole('button', { name: 'Save file…', exact: true });
+    await expect(save).toBeVisible();
+    expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await page.getByRole('button', { name: 'Close details', exact: true }).tap();
+    await expect(page.locator('.inspector')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Channels', exact: true }).tap();
+    await page.getByRole('button', { name: 'Close navigation', exact: true }).tap({ position: { x: width - 8, y: 20 } });
+    await expect(page.locator('.channels')).not.toBeVisible();
+    await page.setViewportSize({ width: 844, height: width });
+    await expect(composer).toHaveValue('A draft for general');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByRole('button', { name: 'Channels', exact: true }).tap();
+    await page.locator('.channels').getByRole('button', { name: /design/ }).tap();
+    await expect(composer).toHaveValue('A draft for design');
+  });
+
+  test('keyboard viewport keeps the composer and invitation actions visible without following pinch zoom', async ({ page }) => {
+    await page.addInitScript(() => {
+      const viewport = Object.assign(new EventTarget(), { height: 844, offsetTop: 0, scale: 1 });
+      Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
+      Object.assign(window, { keyboardViewport: (height: number, offsetTop = 0, scale = 1) => {
+        Object.assign(viewport, { height, offsetTop, scale });
+        viewport.dispatchEvent(new Event('resize'));
+      } });
+    });
+    await ready(page, '?networks');
+    const composer = page.getByRole('textbox', { name: 'Message or command' });
+    await composer.fill('Keep this draft through the keyboard');
+    await page.evaluate(() => (window as any).keyboardViewport(360, 24));
+    const bounds = await page.locator('.gchat').boundingBox();
+    expect(bounds?.height).toBe(360);
+    expect(bounds?.y).toBe(24);
+    const send = await page.getByRole('button', { name: 'Send', exact: true }).boundingBox();
+    expect(send!.y + send!.height).toBeLessThanOrEqual(384);
+    await page.evaluate(() => (window as any).keyboardViewport(180, 80, 2));
+    expect(await page.locator('.gchat').boundingBox()).toEqual(bounds);
+    await page.evaluate(() => (window as any).keyboardViewport(360, 24));
+    await page.getByRole('button', { name: 'Channels', exact: true }).tap();
+    await page.getByRole('button', { name: 'Join…', exact: true }).tap();
+    await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
+    await page.getByRole('button', { name: 'Continue', exact: true }).tap();
+    await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Phone guest');
+    const join = page.getByRole('button', { name: 'Join', exact: true });
+    await join.scrollIntoViewIfNeeded();
+    const action = await join.boundingBox();
+    expect(action!.y).toBeGreaterThanOrEqual(24);
+    expect(action!.y + action!.height).toBeLessThanOrEqual(384);
+    expect(await page.getByLabel('Your nickname in this channel', { exact: true }).evaluate(node => getComputedStyle(node).fontSize)).toBe('16px');
+    await page.getByRole('button', { name: 'Close dialog', exact: true }).tap();
+    await expect(composer).toHaveValue('Keep this draft through the keyboard');
+    await page.evaluate(() => (window as any).keyboardViewport(844));
+    await expect(composer).toHaveValue('Keep this draft through the keyboard');
+  });
+});
