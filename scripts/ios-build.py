@@ -319,6 +319,15 @@ def configure_project(generated):
     return path
 
 
+def generated_project(generated):
+    # Pinned Tauri/XcodeGen emits gchat-desktop.xcodeproj. Its built-in
+    # project.xcworkspace is nested, not a sibling *.xcworkspace.
+    projects = list(generated.glob('*.xcodeproj'))
+    require(len(projects) == 1 and (projects[0] / 'project.pbxproj').is_file(),
+            'expected exactly one generated Xcode project')
+    return projects[0]
+
+
 def simulator_runtime():
     runtimes = json.loads(output(['xcrun', 'simctl', 'list', 'runtimes', '--json']))['runtimes']
     ios = [item for item in runtimes if item.get('isAvailable') and '.iOS-' in item.get('identifier', '')]
@@ -513,28 +522,7 @@ def build(args):
             cwd=client, env=environment)
         generated = native / 'gen/apple'
         entitlement_path = configure_project(generated)
-        report['feature_graphs'] = {}
-        for triple in TARGETS:
-            metadata = json.loads(output(['cargo', 'metadata', '--locked', '--manifest-path', native / 'Cargo.toml',
-                                          '--filter-platform', triple, '--format-version=1'], cwd=chat, env=environment))
-            verify_resolved_protocol(metadata, chat.parent / 'gcoms')
-            tree = output(['cargo', 'tree', '--locked', '--manifest-path', native / 'Cargo.toml', '--target', triple,
-                           '--edges', 'normal', '--prefix', 'none', '--format', '{p}|{f}'], cwd=chat, env=environment)
-            (destination / ('features-' + triple + '.txt')).write_text(tree + '\n')
-            report['feature_graphs'][triple] = feature_graph(tree)
-        run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64-sim', '--no-sign', '--config', config],
-            cwd=client, env=environment, timeout=5400)
-        simulator_apps = list((generated / 'build').glob('**/*.app'))
-        simulator_apps = [app for app in simulator_apps if '.xcarchive' not in str(app)]
-        require(len(simulator_apps) == 1, 'expected one simulator app output before the device build')
-        simulator_app = simulator_apps[0]
-        info = plistlib.loads((simulator_app / 'Info.plist').read_bytes())
-        require(info.get('CFBundleIdentifier') == BUNDLE, 'simulator application identifier mismatch')
-        report['simulator_executable'] = reference(simulator_app / info['CFBundleExecutable'])
-        simulator_archive = destination / 'simulator-app.zip'
-        run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])
-        report['simulator_archive'] = reference(simulator_archive)
-        report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
+        project = generated_project(generated)
         with signer(destination, profile, pin, profile_bytes) as (keychain, identity):
             signing = dict(environment, IOS_MOBILE_PROVISION=base64.b64encode(profile_bytes).decode())
             exports = generated / 'ExportOptions.plist'
@@ -553,15 +541,36 @@ def build(args):
             signing = xcode_environment(destination / 'device-xcode', signing, xcconfig)
             report['device_xcode_wrapper'] = reference(destination / 'device-xcode/xcodebuild')
             report['signing_settings'] = reference(xcconfig)
-            workspaces = list(generated.glob('*.xcworkspace'))
-            require(len(workspaces) == 1, 'expected exactly one generated Xcode workspace')
-            workspace = workspaces[0]
-            settings = json.loads(output(['xcodebuild', '-showBuildSettings', '-json', '-workspace', workspace,
-                '-scheme', workspace.stem + '_iOS', '-configuration', 'release', '-sdk', 'iphoneos'],
+            # Check the actual generated project and effective SDK/signing
+            # settings before either expensive application compilation.
+            settings = json.loads(output(['xcodebuild', '-showBuildSettings', '-json', '-project', project,
+                '-scheme', project.stem + '_iOS', '-configuration', 'release', '-sdk', 'iphoneos'],
                 env={'HOME': os.environ['HOME'], 'PATH': signing['PATH']}, timeout=120))
             write_json(destination / 'device-build-settings.json', settings)
             verify_device_settings(settings, profile, identity)
             report['device_build_settings'] = reference(destination / 'device-build-settings.json')
+            report['feature_graphs'] = {}
+            for triple in TARGETS:
+                metadata = json.loads(output(['cargo', 'metadata', '--locked', '--manifest-path', native / 'Cargo.toml',
+                                              '--filter-platform', triple, '--format-version=1'], cwd=chat, env=environment))
+                verify_resolved_protocol(metadata, chat.parent / 'gcoms')
+                tree = output(['cargo', 'tree', '--locked', '--manifest-path', native / 'Cargo.toml', '--target', triple,
+                               '--edges', 'normal', '--prefix', 'none', '--format', '{p}|{f}'], cwd=chat, env=environment)
+                (destination / ('features-' + triple + '.txt')).write_text(tree + '\n')
+                report['feature_graphs'][triple] = feature_graph(tree)
+            run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64-sim', '--no-sign', '--config', config],
+                cwd=client, env=environment, timeout=5400)
+            simulator_apps = list((generated / 'build').glob('**/*.app'))
+            simulator_apps = [app for app in simulator_apps if '.xcarchive' not in str(app)]
+            require(len(simulator_apps) == 1, 'expected one simulator app output before the device build')
+            simulator_app = simulator_apps[0]
+            info = plistlib.loads((simulator_app / 'Info.plist').read_bytes())
+            require(info.get('CFBundleIdentifier') == BUNDLE, 'simulator application identifier mismatch')
+            report['simulator_executable'] = reference(simulator_app / info['CFBundleExecutable'])
+            simulator_archive = destination / 'simulator-app.zip'
+            run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])
+            report['simulator_archive'] = reference(simulator_archive)
+            report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
             run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64', '--export-method', 'app-store-connect',
                  '--config', config], cwd=client, env=signing, timeout=5400)
             candidates = list((generated / 'build').glob('**/*.ipa'))

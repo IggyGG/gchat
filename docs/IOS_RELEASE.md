@@ -38,6 +38,11 @@ because pinned cargo-mobile2 clears these variables from child environments;
 the shim invokes Apple's actual tool, with no signing check disabled. The worker
 retains these public settings and hidden dependency-provenance files.
 
+The generated Tauri input is `gchat-desktop.xcodeproj`, with its built-in
+workspace nested inside. Effective device signing/SDK settings are checked via
+that project immediately after initialization, before simulator or device
+compilation, so setup errors do not consume another full application build.
+
 The build checks each mobile target's actual normal-dependency feature graph:
 `network-client` must be enabled, and `embedded`, `launch` and node `relay-host`
 must be absent. Compiled RPC IPC types are permitted; they do not start a host.

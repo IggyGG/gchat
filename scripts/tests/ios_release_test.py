@@ -283,6 +283,29 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'compatible'):
             ios.simulator_phone('absent', types, devices)
 
+    def test_tauri_generated_project_does_not_require_a_sibling_workspace(self):
+        # iOS06's actual generation log names gen/apple/gchat-desktop.xcodeproj;
+        # the built-in workspace belongs inside that project directory.
+        with tempfile.TemporaryDirectory() as temporary:
+            generated = Path(temporary)
+            project = generated / 'gchat-desktop.xcodeproj'
+            (project / 'project.xcworkspace').mkdir(parents=True)
+            (project / 'project.pbxproj').write_text('// generated project fixture\n')
+            self.assertEqual(ios.generated_project(generated), project)
+            self.assertEqual(list(generated.glob('*.xcworkspace')), [])
+            (generated / 'other.xcodeproj').mkdir()
+            with self.assertRaisesRegex(ValueError, 'exactly one generated Xcode project'):
+                ios.generated_project(generated)
+
+    def test_missing_or_incomplete_generated_project_refused(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            generated = Path(temporary)
+            for create in (False, True):
+                if create:
+                    (generated / 'gchat-desktop.xcodeproj').mkdir()
+                with self.subTest(project_directory=create), self.assertRaisesRegex(ValueError, 'generated Xcode project'):
+                    ios.generated_project(generated)
+
     def test_mobile_graph_rejects_relay_and_desktop_hosts(self):
         graph = 'gcoms v0.1.0|files,ipc,network-client,rpc\ngcoms-node v0.1.0|client-persist\ngcoms-runtime v0.1.0|\n'
         self.assertIn('network-client', ios.feature_graph(graph)['gcoms'])
