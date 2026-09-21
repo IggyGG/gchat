@@ -13,7 +13,7 @@ on:
         required: true
         type: string
       simulator_input:
-        description: JSON containing successful simulator run/artifact/digest/controller/request identifiers
+        description: JSON containing retained simulator run/artifact/digest/controller/request identifiers
         required: true
         type: string
       gchat_commit:
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
           python-version: '3.12.10'
-      - name: Verify original IPA and completed same-source simulator lifecycle
+      - name: Verify original IPA and run same-source simulator lifecycle
         env:
           GH_TOKEN: ${{ github.token }}
           IOS_SIGNING_CERT_SHA256: ${{ vars.IOS_SIGNING_CERT_SHA256 }}
@@ -73,6 +73,7 @@ jobs:
           BUILD_NUMBER: ${{ inputs.build_number }}
           SIMULATOR_INPUT: ${{ inputs.simulator_input }}
         run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
           python3 -m unittest discover -s runner/scripts/tests -p 'ios*_test.py'
           python3 - <<'PY'
           import json, os
@@ -114,6 +115,11 @@ jobs:
             ios-verification/simulator-original/ios-simulator-output/lifecycle/test-summary.json
             ios-verification/simulator-original/ios-simulator-output/lifecycle/xctest.log
             ios-verification/simulator-verification/
+            ios-verification/simulator-lifecycle/report.json
+            ios-verification/simulator-lifecycle/test-summary.json
+            ios-verification/simulator-lifecycle/xctest.log
+            ios-verification/simulator-lifecycle/runner/
+            ios-verification/simulator-lifecycle/journey.xcresult/
             ios-verification/original-*.json
             ios-verification/original-artifact.zip
             ios-verification/original/ios-output/build.json

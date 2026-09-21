@@ -51,8 +51,8 @@ def simulator_run_binding(run, artifact, spec):
     require(run.get('id') == spec['run_id'] and run.get('head_sha') == spec['controller_commit']
             and run.get('head_repository', {}).get('full_name') == 'IggyGG/gchat'
             and run.get('event') == 'workflow_dispatch' and run.get('status') == 'completed'
-            and run.get('conclusion') == 'success' and run.get('path') == '.github/workflows/ios-lifecycle.yml',
-            'simulator workflow did not finish successfully on the bound controller')
+            and run.get('conclusion') in ('success', 'failure') and run.get('path') == '.github/workflows/ios-lifecycle.yml',
+            'simulator workflow did not finish on the bound controller')
     ios.policy.release_ref(run['head_branch'])
     require(re.fullmatch('[A-Za-z0-9_-]+', spec['request_id'])
             and artifact.get('id') == spec['artifact_id']
@@ -62,9 +62,10 @@ def simulator_run_binding(run, artifact, spec):
             and artifact.get('digest') == 'sha256:' + spec['artifact_sha256'], 'simulator artifact binding mismatch')
 
 
-def validate_simulator(candidate, original, spec):
+def validate_simulator(candidate, original, spec, *, allow_incomplete=False):
     require(candidate.get('scope') == 'ios_exact_pair_xcode_simulator_lifecycle'
-            and candidate.get('passed') is True and candidate.get('sources_unchanged') is True
+            and (candidate.get('passed') is True or (allow_incomplete and candidate.get('passed') is False))
+            and candidate.get('sources_unchanged') is True
             and candidate.get('sources') == original['sources']
             and candidate.get('controller', {}).get('commit') == spec['controller_commit']
             and candidate.get('build_number') == original['build_number']
@@ -104,7 +105,10 @@ def validate_linked_upload(report, original):
     require(ios.digest(archive) == report['inputs']['simulator']['artifact_sha256'],
             'simulator archive binding differs')
     candidate = json.loads(ios.verify_reference(binding['report']).read_text())
-    validate_simulator(candidate, original, report['inputs']['simulator'])
+    validate_simulator(candidate, original, report['inputs']['simulator'], allow_incomplete=True)
+    require(binding.get('lifecycle_rechecked') is True
+            and binding.get('original_build_passed') is candidate.get('passed'),
+            'original simulator verdict must be retained with a separate lifecycle check')
     proof = json.loads(ios.verify_reference(binding['verification']).read_text())
     authority = json.loads(ios.verify_reference(binding['linked_authority']).read_text())
     lifecycle = json.loads(ios.verify_reference(binding['lifecycle']).read_text())
@@ -117,9 +121,15 @@ def validate_linked_upload(report, original):
             and lifecycle.get('passed') is True and lifecycle.get('cleanup_complete') is True
             and lifecycle.get('cleanup_errors') == [] and lifecycle.get('application_recompiled') is False
             and lifecycle.get('application_resigned') is False, 'simulator lifecycle or cleanup did not pass')
+    journey.test_result(json.loads(ios.verify_reference(lifecycle['test_summary']).read_text()))
+    ios.verify_reference(lifecycle['xctest_log'])
+    original_lifecycle = json.loads(ios.verify_reference(binding['original_lifecycle']).read_text())
+    require(original_lifecycle.get('cleanup_complete') is True and original_lifecycle.get('cleanup_errors') == [],
+            'original simulator cleanup must remain complete')
     ios.verify_reference(binding['application'])
     for key in ('sha256', 'size'):
-        require(binding['lifecycle'][key] == report['simulator'][key] == candidate['lifecycle'][key]
+        require(binding['lifecycle'][key] == report['simulator'][key]
+                and binding['original_lifecycle'][key] == candidate['lifecycle'][key]
                 and binding['linked_authority'][key] == candidate['linked_authority'][key],
                 'completed simulator evidence differs from its build')
         require(all(observed[key] == binding['application'][key] for observed in
@@ -145,7 +155,7 @@ def verify_simulator(spec, original, destination):
     root = retained / 'ios-simulator-output'
     receipt = root / 'report.json'
     candidate = json.loads(receipt.read_text())
-    validate_simulator(candidate, original, spec)
+    validate_simulator(candidate, original, spec, allow_incomplete=True)
     verify_retained_inputs(root / 'paired/provenance', candidate['dependency_inputs'])
     require(set(candidate['source_archives']) == {'gchat', 'gcoms'}, 'missing simulator source archives')
     for name, item in candidate['source_archives'].items():
@@ -157,10 +167,9 @@ def verify_simulator(spec, original, destination):
     lifecycle_path = simulator_file(candidate['lifecycle'], root)
     lifecycle = json.loads(lifecycle_path.read_text())
     require(lifecycle.get('scope') == 'ios_installed_simulator_profile_background_reopen'
-            and lifecycle.get('passed') is True and lifecycle.get('cleanup_complete') is True
+            and lifecycle.get('cleanup_complete') is True
             and lifecycle.get('cleanup_errors') == [] and lifecycle.get('application_recompiled') is False
-            and lifecycle.get('application_resigned') is False, 'simulator lifecycle or cleanup did not pass')
-    journey.test_result(json.loads(simulator_file(lifecycle['test_summary'], root).read_text()))
+            and lifecycle.get('application_resigned') is False, 'original simulator cleanup did not pass')
     simulator_file(lifecycle['xctest_log'], root)
     authority_path = simulator_file(candidate['linked_authority'], root)
     authority = json.loads(authority_path.read_text())
@@ -187,9 +196,15 @@ def verify_simulator(spec, original, destination):
             require(observed[key] == checked['executable'][key], 'simulator build, lifecycle or authority executable differs')
     require(checked['linked_simulator_authority'] == authority['linked_simulator_authority']
             and checked['host_entitlements'] == authority['host_entitlements'], 'simulator authority changed')
+    # Simulator01 built the correct app, but the native form tap did not submit.
+    # Reuse those exact bytes with the corrected driver; never relabel that
+    # failed receipt or recompile the application to rerun its UI journey.
+    fresh_lifecycle = journey.run_application(app, destination / 'simulator-lifecycle')
     return {'report': ios.reference(receipt), 'archive': ios.reference(archive),
             'application': checked['executable'], 'verification': verified,
-            'lifecycle': ios.reference(lifecycle_path), 'linked_authority': ios.reference(authority_path)}
+            'original_build_passed': candidate['passed'], 'lifecycle_rechecked': True,
+            'original_lifecycle': ios.reference(lifecycle_path), 'lifecycle': fresh_lifecycle,
+            'linked_authority': ios.reference(authority_path)}
 
 
 def verify(args):

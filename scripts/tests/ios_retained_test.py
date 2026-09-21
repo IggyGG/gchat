@@ -83,6 +83,9 @@ class RetainedUploadTests(unittest.TestCase):
         lifecycle = {'scope': 'ios_installed_simulator_profile_background_reopen', 'passed': True,
             'cleanup_complete': True, 'cleanup_errors': [], 'application': simulator,
             'application_recompiled': False, 'application_resigned': False}
+        lifecycle['test_summary'] = self.write_json('xctest-summary.json',
+            {'result': 'Passed', 'passedTests': 1, 'failedTests': 0, 'skippedTests': 0})
+        lifecycle['xctest_log'] = write('xctest.log', b'actual test evidence fixture')
         authority = {'scope': 'ios_xcode_linked_simulator_authority', 'passed': True,
             'device_qualified': False, 'executable': simulator, 'host_entitlements': {},
             'linked_simulator_authority': {'fixture': 'matching linked authority'}}
@@ -110,6 +113,7 @@ class RetainedUploadTests(unittest.TestCase):
             'simulator': lifecycle_ref,
             'simulator_binding': {'report': self.write_json('simulator-build.json', candidate),
                 'archive': archive, 'application': simulator, 'lifecycle': lifecycle_ref,
+                'original_lifecycle': lifecycle_ref, 'original_build_passed': True, 'lifecycle_rechecked': True,
                 'linked_authority': authority_ref, 'verification': self.write_json('verification.json', authority)}}
         self.report['inputs'] = {'artifact_sha256': self.report['original_archive']['sha256'],
                                 'simulator': self.sim_spec}
@@ -117,6 +121,31 @@ class RetainedUploadTests(unittest.TestCase):
     def test_separate_pass_never_changes_original_failed_build(self):
         ios.validate_upload_build(self.report)
         self.assertIs(json.loads(ios.verify_reference(self.report['original_build']).read_text())['passed'], False)
+
+    def test_original_failed_simulator_journey_requires_distinct_passing_recheck(self):
+        report = copy.deepcopy(self.report)
+        binding = report['simulator_binding']
+        candidate = json.loads(ios.verify_reference(binding['report']).read_text())
+        failed = json.loads(ios.verify_reference(binding['original_lifecycle']).read_text())
+        failed['passed'] = False
+        binding['original_lifecycle'] = self.write_json('original-failed-lifecycle.json', failed)
+        candidate.update(passed=False, lifecycle=binding['original_lifecycle'])
+        binding.update(report=self.write_json('original-failed-simulator.json', candidate), original_build_passed=False)
+        ios.validate_upload_build(report)
+        self.assertIs(json.loads(ios.verify_reference(binding['report']).read_text())['passed'], False)
+        binding['lifecycle_rechecked'] = False
+        with self.assertRaisesRegex(ValueError, 'separate lifecycle'):
+            ios.validate_upload_build(report)
+
+    def test_missing_or_skipped_actual_lifecycle_does_not_qualify(self):
+        report = copy.deepcopy(self.report)
+        lifecycle = json.loads(ios.verify_reference(report['simulator_binding']['lifecycle']).read_text())
+        skipped = {'result': 'Passed', 'passedTests': 0, 'failedTests': 0, 'skippedTests': 1}
+        lifecycle['test_summary'] = self.write_json('skipped-summary.json', skipped)
+        report['simulator_binding']['lifecycle'] = self.write_json('skipped-lifecycle.json', lifecycle)
+        report['simulator'] = report['simulator_binding']['lifecycle']
+        with self.assertRaisesRegex(ValueError, 'exactly one passing lifecycle'):
+            ios.validate_upload_build(report)
 
     def test_substituted_ipa_or_promoted_original_verdict_is_refused(self):
         for change in ('ipa', 'verdict', 'archive', 'source', 'resigned'):
@@ -196,14 +225,15 @@ class SameSourceSimulatorTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 retained.validate_simulator(changed, self.original, self.sim_spec)
 
-    def test_failed_or_other_workflow_cannot_supply_simulator(self):
+    def test_incomplete_or_other_workflow_cannot_supply_simulator(self):
         run = {'id': 101, 'head_sha': '4' * 40, 'head_repository': {'full_name': 'IggyGG/gchat'},
             'event': 'workflow_dispatch', 'status': 'completed', 'conclusion': 'success',
             'path': '.github/workflows/ios-lifecycle.yml', 'head_branch': 'release/gchat-ios-lifecycle-0.1.4'}
         artifact = {'id': 202, 'name': 'ios-lifecycle-simulator-01', 'expired': False,
                     'workflow_run': {'id': 101}, 'digest': 'sha256:' + '5' * 64}
         retained.simulator_run_binding(run, artifact, self.sim_spec)
-        for key, value in (('conclusion', 'failure'), ('path', '.github/workflows/ios-release.yml'),
+        retained.simulator_run_binding(run | {'conclusion': 'failure'}, artifact, self.sim_spec)
+        for key, value in (('conclusion', 'cancelled'), ('path', '.github/workflows/ios-release.yml'),
                            ('head_sha', '7' * 40), ('event', 'pull_request')):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 retained.simulator_run_binding(run | {key: value}, artifact, self.sim_spec)
