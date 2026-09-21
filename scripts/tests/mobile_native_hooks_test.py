@@ -94,6 +94,11 @@ class IosHooks(unittest.TestCase):
         spec = ios.native_test_project(plugin)
         targets = spec['targets']
         sources = targets['tauri-plugin-gchat-mobile-platform']['sources']
+        settings = targets['tauri-plugin-gchat-mobile-platform']['settings']['base']
+        # Swift framework lookup uses the imported module name as the bundle
+        # name, not the hyphenated package/target name.
+        self.assertEqual(settings['PRODUCT_NAME'], settings['PRODUCT_MODULE_NAME'])
+        self.assertEqual(settings['PRODUCT_NAME'], 'tauri_plugin_gchat_mobile_platform')
         self.assertEqual(sources, [str(plugin / 'Sources/PushNotifications.swift'), str(plugin / 'Sources/UnlockVault.swift')])
         self.assertEqual(targets['PluginTests']['sources'],
                          [str(plugin / 'Tests/PluginTests/PushValidationTests.swift'), str(plugin / 'Tests/PluginTests/UnlockVaultTests.swift')])

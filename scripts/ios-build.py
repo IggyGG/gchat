@@ -631,6 +631,7 @@ def native_test_project(plugin):
             module: {'type': 'framework', 'platform': 'iOS',
                 'sources': [str(plugin / 'Sources' / name) for name in ('PushNotifications.swift', 'UnlockVault.swift')],
                 'settings': {'base': shared | {'PRODUCT_BUNDLE_IDENTIFIER': 'boo.gchat.native-tests.platform',
+                    'PRODUCT_NAME': 'tauri_plugin_gchat_mobile_platform',
                     'PRODUCT_MODULE_NAME': 'tauri_plugin_gchat_mobile_platform', 'ENABLE_TESTABILITY': 'YES'}}},
             'GChatNativeHost': {'type': 'application', 'platform': 'iOS', 'sources': ['Host.swift'],
                 'dependencies': [{'target': module}], 'settings': {'base': shared | {

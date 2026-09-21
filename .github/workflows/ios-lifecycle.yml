@@ -149,6 +149,8 @@ jobs:
             ios-lifecycle-output/runner/
             ios-lifecycle-output/xctest.log
             ios-lifecycle-output/test-summary.json
+            ios-lifecycle-output/native-tests/
+            ios-lifecycle-output/linked-verification/
             ios-lifecycle-output/simulator-keychain-signing/
             ios-lifecycle-output/simulator-keychain-app.zip
             ios-lifecycle-output/journey.xcresult/

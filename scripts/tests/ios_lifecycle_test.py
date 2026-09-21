@@ -174,5 +174,60 @@ class SimulatorFixtureTests(unittest.TestCase):
         self.assertEqual((self.app / 'GChat').read_bytes(), b'original simulator executable')
 
 
+class FirstLifecycleTests(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        self.root = Path(self.scratch.name) / 'ios-output'
+        self.root.mkdir()
+        self.exe = {'sha256': 'a' * 64, 'size': 123}
+        self.authority = {'scope': 'ios_xcode_linked_simulator_authority', 'passed': True,
+                          'device_qualified': False, 'executable': self.exe}
+        self.cleanup = {key: True for key in ('passed', 'original_keychain_search_restored',
+                       'temporary_keychain_removed', 'original_profiles_unchanged', 'private_certificate_removed')}
+        self.cleanup['errors'] = []
+        self.native = {'scope': 'ios_app_hosted_native_push_validation_and_keychain_tests',
+                       'passed': False, 'sources_unchanged': True, 'cleanup_complete': True,
+                       'sources': {name: {} for name in ('Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',
+                       'Tests/PluginTests/PushValidationTests.swift', 'Tests/PluginTests/UnlockVaultTests.swift')}}
+
+    def item(self, name, value):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value))
+        return journey.ios.reference(path)
+
+    def original(self):
+        self.item('native-tests/report.json', self.native)
+        return {'passed': False, 'simulator_executable': self.exe,
+                'simulator_linked_authority': self.item('authority.json', self.authority),
+                'signing_cleanup': self.item('cleanup.json', self.cleanup)}
+
+    def test_linked_build_requires_fresh_tests_without_promoting_old_failure(self):
+        original = self.original()
+        before = copy.deepcopy(original)
+        report = {}
+        expected, first = journey.simulator_evidence(original, self.root, report)
+        self.assertTrue(first)
+        self.assertEqual(expected, self.exe)
+        self.assertTrue(report['original_startup_not_run'])
+        self.assertEqual(original, before)
+        self.assertNotIn('passed', report)
+
+    def test_existing_failed_smoke_cannot_use_linked_authority_to_bypass_failure(self):
+        original = self.original()
+        original['simulator'] = self.item('smoke.json', {'passed': False, 'cleanup_complete': True})
+        with self.assertRaisesRegex(ValueError, 'startup/cleanup'):
+            journey.simulator_evidence(original, self.root, {})
+
+    def test_unclean_failed_tests_or_different_executable_are_rejected(self):
+        for target, key, value in [(self.native, 'cleanup_complete', False),
+                                    (self.native, 'sources_unchanged', False),
+                                    (self.cleanup, 'errors', ['leaked signer']),
+                                    (self.authority, 'executable', self.exe | {'sha256': 'b' * 64})]:
+            with self.subTest(key=key), patch.dict(target, {key: value}), self.assertRaises(ValueError):
+                journey.simulator_evidence(self.original(), self.root, {})
+
+
 if __name__ == '__main__':
     unittest.main()

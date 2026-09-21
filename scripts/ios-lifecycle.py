@@ -65,6 +65,47 @@ def build_binding(report, spec):
         require(report['sources'][name]['commit'] == spec[name + '_commit'], 'original build source mismatch')
 
 
+def simulator_evidence(original, root, report):
+    """Permit a first lifecycle run after a later native-test build failure.
+
+    A linked artifact is not a startup pass. Its exact binary and authority are
+    rechecked below, and both native tests and the real lifecycle must now run.
+    Existing failed smoke/cleanup evidence remains a refusal.
+    """
+    if 'simulator' in original:
+        smoke_path = relocated(original['simulator'], root)
+        smoke = json.loads(smoke_path.read_text())
+        require(smoke.get('passed') is True and smoke.get('cleanup_complete') is True,
+                'original simulator startup/cleanup did not pass')
+        report['original_simulator'] = ios.reference(smoke_path)
+        return smoke['executable'], False
+    authority_path = relocated(original['simulator_linked_authority'], root)
+    authority = json.loads(authority_path.read_text())
+    require(authority.get('scope') == 'ios_xcode_linked_simulator_authority'
+            and authority.get('passed') is True and authority.get('device_qualified') is False,
+            'original simulator linked authority did not pass')
+    require(all(authority['executable'][key] == original['simulator_executable'][key]
+                for key in ('sha256', 'size')), 'original linked executable mismatch')
+    cleanup_path = relocated(original['signing_cleanup'], root)
+    cleanup = json.loads(cleanup_path.read_text())
+    require(all(cleanup.get(key) is True for key in ('passed', 'original_keychain_search_restored',
+                'temporary_keychain_removed', 'original_profiles_unchanged', 'private_certificate_removed'))
+            and cleanup.get('errors') == [], 'original signing cleanup did not pass')
+    native_path = root / 'native-tests/report.json'
+    native = json.loads(native_path.read_text())
+    require(native.get('scope') == 'ios_app_hosted_native_push_validation_and_keychain_tests'
+            and native.get('passed') is False and native.get('sources_unchanged') is True
+            and native.get('cleanup_complete') is True,
+            'original failed native test sources/cleanup must be retained')
+    require(set(native['sources']) == {'Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',
+                'Tests/PluginTests/PushValidationTests.swift', 'Tests/PluginTests/UnlockVaultTests.swift'},
+            'original native source inventory differs')
+    report.update(original_linked_authority=ios.reference(authority_path),
+                  original_signing_cleanup=ios.reference(cleanup_path),
+                  original_native_tests=ios.reference(native_path), original_startup_not_run=True)
+    return original['simulator_executable'], True
+
+
 def runner_project():
     return {'name': 'GChatLifecycle', 'options': {'deploymentTarget': {'iOS': '15.0'}},
         'targets': {'LifecycleTests': {'type': 'bundle.ui-testing', 'platform': 'iOS',
@@ -250,11 +291,15 @@ def main(args):
                     'original source archive mismatch')
         harness = subprocess.check_output(['git', 'show', spec['gchat_commit'] + ':scripts/ios-build.py'], cwd=args.gchat)
         require(hashlib.sha256(harness).hexdigest() == original['harness']['sha256'], 'original harness mismatch')
-        smoke_path = relocated(original['simulator'], root)
-        smoke = json.loads(smoke_path.read_text())
-        require(smoke.get('passed') is True and smoke.get('cleanup_complete') is True,
-                'original simulator startup/cleanup did not pass')
-        report['original_simulator'] = ios.reference(smoke_path)
+        expected_binary, first_lifecycle = simulator_evidence(original, root, report)
+        if first_lifecycle:
+            require(not args.simulator_keychain_fixture, 'linked simulator must remain unchanged')
+            plugin = args.gchat / 'apps/client/src-tauri/mobile-platform/ios'
+            original_native = json.loads(Path(report['original_native_tests']['path']).read_text())
+            for name, item in original_native['sources'].items():
+                require(ios.digest(plugin / name) == item['sha256']
+                        and (plugin / name).stat().st_size == item['size'], 'original native test input differs')
+            report['native_tests'] = ios.native_unit_tests(args.gchat, destination / 'native-tests')
         app_zip = relocated(original['simulator_archive'], root)
         with zipfile.ZipFile(app_zip) as zipped:
             ios.inspect_zip(zipped)
@@ -269,8 +314,16 @@ def main(args):
         executable = info.get('CFBundleExecutable', '')
         require(executable and Path(executable).name == executable, 'invalid simulator executable name')
         binary = app / executable
-        require(ios.digest(binary) == smoke['executable']['sha256']
-                and binary.stat().st_size == smoke['executable']['size'], 'retained executable mismatch')
+        require(ios.digest(binary) == expected_binary['sha256']
+                and binary.stat().st_size == expected_binary['size'], 'retained executable mismatch')
+        if first_lifecycle:
+            proof_ref = ios.simulator_tools().verify_app(app, destination / 'linked-verification')
+            proof = json.loads(Path(proof_ref['path']).read_text())
+            original_authority = json.loads(Path(report['original_linked_authority']['path']).read_text())
+            require(proof['linked_simulator_authority'] == original_authority['linked_simulator_authority']
+                    and proof['host_entitlements'] == original_authority['host_entitlements'],
+                    'retained simulator authority changed')
+            report['linked_verification'] = proof_ref
         app, binding = application_for_journey(app, destination, args.simulator_keychain_fixture)
         report.update(binding)
         binary = app / executable
