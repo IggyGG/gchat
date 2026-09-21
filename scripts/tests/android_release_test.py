@@ -231,7 +231,7 @@ class ArtifactReuse(unittest.TestCase):
 
     def test_archive_rejects_traversal_absolute_paths_and_symlinks(self):
         for name, mode in (('../escape', 0), ('/absolute', 0), ('directory\\escape', 0),
-                           ('C:escape', 0), ('link', 0o120777)):
+                           ('C:escape', 0), ('truncated\0name', 0), ('link', 0o120777)):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as scratch:
                 root = Path(scratch)
                 archive = root / 'input.zip'
@@ -242,10 +242,14 @@ class ArtifactReuse(unittest.TestCase):
                     member.filename = name
                     member.external_attr = mode << 16
                     bundle.writestr(member, b'fixture')
-                with zipfile.ZipFile(archive) as bundle:
-                    self.assertEqual(bundle.namelist(), [name])
-                with self.assertRaisesRegex(ValueError, 'unsafe'):
-                    android.extract_artifact(archive, root / 'original')
+                for index, separator in enumerate(('/', '\\')):
+                    # The reader also normalizes Windows separators. Exercise
+                    # both behaviors without changing the archive's raw bytes.
+                    with self.subTest(separator=separator), patch.object(zipfile.os, 'sep', separator):
+                        with zipfile.ZipFile(archive) as bundle:
+                            self.assertEqual([x.orig_filename for x in bundle.infolist()], [name])
+                        with self.assertRaisesRegex(ValueError, 'unsafe'):
+                            android.extract_artifact(archive, root / f'original-{index}')
                 self.assertFalse((root / 'escape').exists())
 
     def test_extract_preserves_original_failed_report_bytes(self):

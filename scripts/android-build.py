@@ -638,6 +638,9 @@ def extract_artifact(archive, destination):
                 'artifact archive exceeds extraction bounds')
         names = set()
         for member in members:
+            # ZipInfo normalizes backslashes on Windows and truncates NULs.
+            # Reject changes to the raw archived name before trusting it.
+            require(member.orig_filename == member.filename, 'unsafe artifact archive member')
             # ZIP member names have POSIX semantics on every host; WindowsPath
             # considers /absolute drive-relative and would miss this guard.
             path = PurePosixPath(member.filename)
