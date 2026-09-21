@@ -140,6 +140,7 @@ jobs:
             ios-output/simulator-xcode/
             ios-output/device-xcode/
             ios-output/simulator-smoke/
+            ios-output/simulator-signing/
             ios-output/paired/provenance/
             ios-output/upload.json
             ios-output/upload.log

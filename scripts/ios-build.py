@@ -319,6 +319,60 @@ def configure_project(generated):
     return path
 
 
+def sign_simulator(app, destination):
+    """Ad-hoc sign only a derived simulator app, never a device distribution."""
+    require(platform.system() == 'Darwin', 'simulator signing requires macOS')
+    info = plistlib.loads((app / 'Info.plist').read_bytes())
+    require(info.get('CFBundleIdentifier') == BUNDLE
+            and info.get('CFBundleSupportedPlatforms') == ['iPhoneSimulator'],
+            'simulator signing refuses device or other application bundles')
+    name = info.get('CFBundleExecutable', '')
+    require(name and Path(name).name == name, 'invalid simulator executable name')
+    binary = app / name
+    require(output(['lipo', '-archs', binary]) == 'arm64', 'expected ARM64 simulator application')
+    settings = output(['xcrun', 'vtool', '-show-build', binary])
+    require(re.search(r'platform\s+IOSSIMULATOR\b', settings)
+            and not re.search(r'platform\s+IOS\b', settings), 'refusing to ad-hoc sign a device binary')
+    require(not (app / 'embedded.mobileprovision').exists()
+            and not list(app.glob('PlugIns/*.appex')), 'simulator must not contain device provisioning or extensions')
+    destination.mkdir(parents=True, exist_ok=False)
+    entitlements = {'application-identifier': TEAM + '.' + BUNDLE,
+                    'com.apple.developer.team-identifier': TEAM,
+                    'keychain-access-groups': [TEAM + '.' + BUNDLE], 'get-task-allow': False}
+    entitlement_file = destination / 'entitlements.plist'
+    entitlement_file.write_bytes(plistlib.dumps(entitlements))
+    # Preserve the unsigned/ad-hoc compiler output separately. Adding the
+    # entitlements changes executable bytes; it is a derived artifact, not the
+    # original retained simulator artifact or a distribution-signed app.
+    original = destination / 'input-executable'
+    shutil.copyfile(binary, original)
+    report = {'schema': 1, 'scope': 'ios_simulator_adhoc_private_keychain_signing',
+              'passed': False, 'bundle': BUNDLE, 'device_qualified': False,
+              'original_executable': reference(original), 'entitlements': entitlements}
+    def resources():
+        return {str(path.relative_to(app)): digest(path) for path in app.rglob('*')
+                if path.is_file() and path != binary and '_CodeSignature' not in path.relative_to(app).parts}
+    before = resources()
+    try:
+        run(['codesign', '--force', '--sign', '-', '--generate-entitlement-der',
+             '--entitlements', entitlement_file, app], timeout=120)
+        run(['codesign', '--verify', '--deep', '--strict', app], timeout=120)
+        actual = plistlib.loads(subprocess.check_output(
+            ['codesign', '-d', '--entitlements', ':-', str(app)], stderr=subprocess.DEVNULL, timeout=30))
+        require(actual == entitlements, 'simulator signature has unexpected Keychain or application authority')
+        details = output(['codesign', '-d', '--verbose=2', app], stderr=subprocess.STDOUT, timeout=30)
+        require('Signature=adhoc' in details.splitlines(), 'simulator fixture must use ad-hoc signing only')
+        require(resources() == before, 'simulator signing changed application resources')
+        report.update(passed=True, derived_executable=reference(binary), verified_entitlements=actual,
+                      signature_details=details, resources_unchanged=True)
+    except Exception as error:
+        report['error'] = type(error).__name__ + ': ' + str(error)
+        raise
+    finally:
+        write_json(destination / 'report.json', report)
+    return reference(destination / 'report.json')
+
+
 def generated_project(generated):
     # Pinned Tauri/XcodeGen emits gchat-desktop.xcodeproj. Its built-in
     # project.xcworkspace is nested, not a sibling *.xcworkspace.
@@ -589,6 +643,7 @@ def build(args):
             simulator_app = simulator_apps[0]
             info = plistlib.loads((simulator_app / 'Info.plist').read_bytes())
             require(info.get('CFBundleIdentifier') == BUNDLE, 'simulator application identifier mismatch')
+            report['simulator_signing'] = sign_simulator(simulator_app, destination / 'simulator-signing')
             report['simulator_executable'] = reference(simulator_app / info['CFBundleExecutable'])
             simulator_archive = destination / 'simulator-app.zip'
             run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])

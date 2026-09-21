@@ -52,6 +52,16 @@ retained, then only that simulator is deleted. This gate establishes native
 startup/relaunch, **not** an interactive profile, messaging, file, notification,
 battery or physical-device journey. Those remain separate application checks.
 
+Simulator compilation uses `--no-sign`, followed by explicit ad-hoc signing of
+the derived ARM64 simulator bundle with its exact app identifier and private
+Keychain access group. The helper refuses device binaries, provisioning profiles,
+other bundle identifiers and broader entitlements. It retains the original
+compiler executable separately from the signed executable and checks unchanged
+resources. This simulator identity is not an Apple distribution signature or a
+device/push qualification. Earlier simulator archives without these entitlements
+remain unchanged; any separately signed reuse must name both artifact hashes.
+Apple documents how [code-signing entitlements determine Keychain access](https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps).
+
 Before running the simulator, the worker also builds a signed device IPA. It
 verifies the ARM64/iOS platform, iOS 15 minimum, app/build identity, complete code
 signature, pinned leaf certificate, unexpired App Store profile, disabled

@@ -25,6 +25,67 @@ spec.loader.exec_module(ios)
 PIN = hashlib.sha256(b'fixture distribution certificate').hexdigest()
 
 
+class SimulatorSigningTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.app = self.root / 'GChat.app'
+        self.app.mkdir()
+        self.info = {'CFBundleIdentifier': ios.BUNDLE, 'CFBundleSupportedPlatforms': ['iPhoneSimulator'],
+                     'CFBundleExecutable': 'GChat'}
+        (self.app / 'Info.plist').write_bytes(plistlib.dumps(self.info))
+        (self.app / 'GChat').write_bytes(b'original compiler executable')
+        self.entitlements = {'application-identifier': ios.TEAM + '.' + ios.BUNDLE,
+                             'com.apple.developer.team-identifier': ios.TEAM,
+                             'keychain-access-groups': [ios.TEAM + '.' + ios.BUNDLE], 'get-task-allow': False}
+        self.calls = []
+
+    def command(self, command, **kwargs):
+        self.calls.append(command)
+        if '--sign' in command:
+            self.assertEqual(command[command.index('--sign') + 1], '-')
+            (self.app / 'GChat').write_bytes(b'derived signed executable')
+
+    def execute(self, entitlements=None, platform_text='platform IOSSIMULATOR'):
+        with patch.object(ios.platform, 'system', return_value='Darwin'), \
+                patch.object(ios, 'output', side_effect=['arm64', platform_text, 'Signature=adhoc']), \
+                patch.object(ios, 'run', side_effect=self.command), \
+                patch.object(ios.subprocess, 'check_output', return_value=plistlib.dumps(
+                    entitlements if entitlements is not None else self.entitlements)):
+            return ios.sign_simulator(self.app, self.root / 'signing')
+
+    def test_simulator_signing_retains_original_and_exact_private_authority(self):
+        result = self.execute()
+        report = json.loads(Path(result['path']).read_text())
+        self.assertTrue(report['passed'])
+        self.assertFalse(report['device_qualified'])
+        self.assertTrue(report['resources_unchanged'])
+        self.assertEqual(ios.verify_reference(report['original_executable']).read_bytes(), b'original compiler executable')
+        self.assertEqual(ios.verify_reference(report['derived_executable']).read_bytes(), b'derived signed executable')
+        self.assertNotIn('aps-environment', report['verified_entitlements'])
+        self.assertIn(['codesign', '--verify', '--deep', '--strict', self.app], self.calls)
+
+    def test_device_or_unrelated_bundle_is_refused_before_signing(self):
+        for key, value in [('CFBundleSupportedPlatforms', ['iPhoneOS']), ('CFBundleIdentifier', 'other.app')]:
+            with self.subTest(key=key):
+                (self.app / 'Info.plist').write_bytes(plistlib.dumps(self.info | {key: value}))
+                with self.assertRaisesRegex(ValueError, 'refuses device or other'):
+                    self.execute()
+                self.assertFalse(self.calls)
+        (self.app / 'Info.plist').write_bytes(plistlib.dumps(self.info))
+        with self.assertRaisesRegex(ValueError, 'device binary'):
+            self.execute(platform_text='platform IOS')
+        self.assertFalse(self.calls)
+
+    def test_broader_keychain_authority_fails_and_retains_original(self):
+        with self.assertRaisesRegex(ValueError, 'unexpected Keychain'):
+            self.execute(entitlements=self.entitlements | {'keychain-access-groups': [ios.TEAM + '.*']})
+        report = json.loads((self.root / 'signing/report.json').read_text())
+        self.assertFalse(report['passed'])
+        self.assertEqual(ios.verify_reference(report['original_executable']).read_bytes(), b'original compiler executable')
+
+
 class ProfileTests(unittest.TestCase):
     def setUp(self):
         self.now = datetime.now(timezone.utc)
