@@ -20,8 +20,10 @@ The Rust API contract drives both native clients and generated TypeScript bindin
 Development and release authority remains in the existing local Forgejo repository.
 Public delivery uses [IggyGG/gchat](https://github.com/IggyGG/gchat) and
 [IggyGG/gcoms](https://github.com/IggyGG/gcoms) as GitHub mirrors.
-The first signed release is being prepared for Linux x86_64, Windows x86_64,
-and macOS Apple Silicon/Intel. See [release preparation](docs/RELEASE.md).
+Signed Linux x86_64 downloads are available. Windows x86_64, macOS Apple
+Silicon/Intel, Android and iOS releases are being qualified independently;
+availability and exact versions are listed on the download page. See
+[platform release delivery](docs/PLATFORM_RELEASES.md).
 
 For installation and first launch, see [gchat.boo](https://gchat.boo/#downloads)
 and the [installation guide](docs/INSTALL.md). GChat includes signed Hetzner relay
