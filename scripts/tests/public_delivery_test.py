@@ -26,6 +26,47 @@ deploy = module('deploy-website')
 publish = module('publish-release')
 
 
+def gpg_fixture_path(path, executable, windows=os.name == 'nt'):
+    # Git for Windows bundles MSYS GnuPG, whose native API rejects C:\ paths.
+    # Use that same installation's converter; native Gpg4win needs no conversion.
+    converter = Path(executable).with_name('cygpath.exe')
+    if windows and converter.is_file():
+        result = subprocess.run([str(converter), '--unix', '--absolute', str(path)],
+                                capture_output=True, timeout=15)
+        converted = result.stdout.decode('utf-8').strip()
+        if result.returncode or not converted.startswith('/'):
+            raise RuntimeError('GnuPG fixture path conversion failed: '
+                               + result.stderr.decode('utf-8', errors='replace'))
+        return converted
+    return str(path)
+
+
+class GnuPGFixturePathTests(unittest.TestCase):
+    def test_msys_paths_use_the_matching_installation_converter(self):
+        source = r'C:\Users\Test User\keyring'
+        result = subprocess.CompletedProcess([], 0, b'/c/Users/Test User/keyring\n', b'')
+        with patch.object(Path, 'is_file', return_value=True), \
+             patch.object(subprocess, 'run', return_value=result) as run:
+            self.assertEqual(gpg_fixture_path(source, '/git/usr/bin/gpg.exe', True),
+                             '/c/Users/Test User/keyring')
+        self.assertEqual(run.call_args.args[0],
+                         ['/git/usr/bin/cygpath.exe', '--unix', '--absolute', source])
+
+    def test_native_tool_paths_are_not_rewritten(self):
+        with patch.object(Path, 'is_file', return_value=False), \
+             patch.object(subprocess, 'run') as run:
+            self.assertEqual(gpg_fixture_path(r'C:\keys', '/native/gpg.exe', True), r'C:\keys')
+            self.assertEqual(gpg_fixture_path('/keys', '/usr/bin/gpg', False), '/keys')
+        run.assert_not_called()
+
+    def test_converter_error_is_not_replaced_with_a_guessed_path(self):
+        result = subprocess.CompletedProcess([], 1, b'', b'conversion refused')
+        with patch.object(Path, 'is_file', return_value=True), \
+             patch.object(subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(RuntimeError, 'conversion refused'):
+                gpg_fixture_path(r'C:\keys', '/git/usr/bin/gpg.exe', True)
+
+
 class DeploymentTests(unittest.TestCase):
     def test_website_is_utf8_with_hash_bound_bytes_under_non_utf8_locale(self):
         open_path = Path.open
@@ -103,7 +144,8 @@ class SignatureTests(unittest.TestCase):
                            + version.stderr.decode('utf-8', errors='replace'))
             self.assertEqual(version.returncode, 0, diagnostics)
             print(diagnostics, file=sys.stderr)
-            command = [executable, '--homedir', str(home), '--batch', '--pinentry-mode', 'loopback']
+            tool_home = gpg_fixture_path(home, executable)
+            command = [executable, '--homedir', tool_home, '--batch', '--pinentry-mode', 'loopback']
             def require_success(result):
                 self.assertEqual(result.returncode, 0, diagnostics + '\n'
                                  + result.stderr.decode('utf-8', errors='replace'))
@@ -123,18 +165,20 @@ class SignatureTests(unittest.TestCase):
                            if line.startswith('fpr:'))
                 path = home/'artifact'; path.write_bytes(b'qualified fixture')
                 sig = home/'artifact.asc'
-                result = subprocess.run(command + ['--armor', '--detach-sign', str(path)],
+                tool_path = gpg_fixture_path(path, executable)
+                tool_sig = gpg_fixture_path(sig, executable)
+                result = subprocess.run(command + ['--armor', '--detach-sign', tool_path],
                                         capture_output=True, timeout=30)
                 require_success(result)
-                verify(sig, path, key, home)
-                with self.assertRaises(ValueError): verify(sig, path, 'B'*40, home)
+                verify(tool_sig, tool_path, key, tool_home)
+                with self.assertRaises(ValueError): verify(tool_sig, tool_path, 'B'*40, tool_home)
                 path.write_bytes(b'tampered bytes')
-                with self.assertRaises(ValueError): verify(sig, path, key, home)
+                with self.assertRaises(ValueError): verify(tool_sig, tool_path, key, tool_home)
             finally:
                 # Windows cannot remove keyring files held by our test agent.
                 sibling = Path(executable).with_name('gpgconf.exe' if os.name == 'nt' else 'gpgconf')
                 gpgconf = str(sibling) if sibling.is_file() else shutil.which('gpgconf')
                 if gpgconf:
-                    result = subprocess.run([gpgconf, '--homedir', str(home), '--kill', 'gpg-agent'],
+                    result = subprocess.run([gpgconf, '--homedir', tool_home, '--kill', 'gpg-agent'],
                                             capture_output=True, timeout=15)
                     require_success(result)
