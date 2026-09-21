@@ -160,7 +160,9 @@ def validate_entitlements(value, profile=False):
     groups = value.get('keychain-access-groups', [])
     allowed = {TEAM + '.' + BUNDLE}
     if profile:
-        allowed.add(TEAM + '.*')
+        # Apple's TN3125 profiles include this system token group in their
+        # allowlist. The signed application still claims only its exact group.
+        allowed.update({TEAM + '.*', 'com.apple.token'})
     require(isinstance(groups, list) and set(groups) <= allowed, 'unexpected shared Keychain access group')
 
 
@@ -433,6 +435,15 @@ def build(args):
         if key.startswith(('APP_STORE_CONNECT_', 'IOS_CERTIFICATE', 'IOS_PROVISIONING_', 'APPLE_API_')):
             environment.pop(key)
     try:
+        # Reject bad provisioning inputs before spending time compiling either
+        # target. This public profile allowlist is not the app's entitlement set.
+        profile_bytes = base64.b64decode(os.environ['IOS_PROVISIONING_PROFILE_BASE64'], validate=True)
+        with tempfile.TemporaryDirectory(prefix='gchat-ios-profile-') as temporary:
+            profile_path = Path(temporary) / 'input.mobileprovision'
+            profile_path.write_bytes(profile_bytes)
+            profile_path.chmod(0o600)
+            profile = validate_profile(decode_profile(profile_path), pin)
+        report['provisioning_profile'] = profile
         report['xcode'] = output(['xcodebuild', '-version'])
         report['rustc'] = output(['rustc', '-vV'])
         for root in originals.values():
@@ -480,12 +491,6 @@ def build(args):
         run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])
         report['simulator_archive'] = reference(simulator_archive)
         report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
-        profile_bytes = base64.b64decode(os.environ['IOS_PROVISIONING_PROFILE_BASE64'], validate=True)
-        with tempfile.TemporaryDirectory(prefix='gchat-ios-profile-') as temporary:
-            profile_path = Path(temporary) / 'input.mobileprovision'
-            profile_path.write_bytes(profile_bytes)
-            profile_path.chmod(0o600)
-            profile = validate_profile(decode_profile(profile_path), pin)
         with signer(destination, profile, pin) as (keychain, identity):
             signing = dict(environment, IOS_MOBILE_PROVISION=base64.b64encode(profile_bytes).decode())
             exports = generated / 'ExportOptions.plist'

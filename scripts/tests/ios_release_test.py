@@ -80,6 +80,17 @@ class ProfileTests(unittest.TestCase):
         ios.validate_profile(self.profile, PIN)
         with self.assertRaisesRegex(ValueError, 'Keychain'):
             ios.validate_entitlements(self.profile['Entitlements'])
+
+    def test_apple_profile_token_allowance_is_never_granted_to_signed_app(self):
+        self.profile['Entitlements']['keychain-access-groups'] = [ios.TEAM + '.*', 'com.apple.token']
+        ios.validate_profile(self.profile, PIN)
+        for group in ('com.apple.token', ios.TEAM + '.*', 'another.app'):
+            self.profile['Entitlements']['keychain-access-groups'] = [ios.TEAM + '.' + ios.BUNDLE, group]
+            with self.subTest(group=group), self.assertRaisesRegex(ValueError, 'Keychain'):
+                ios.validate_entitlements(self.profile['Entitlements'])
+        self.profile['Entitlements']['keychain-access-groups'] = [ios.TEAM + '.*', 'another.app']
+        with self.assertRaisesRegex(ValueError, 'Keychain'):
+            ios.validate_profile(self.profile, PIN)
         self.profile['Entitlements']['keychain-access-groups'] = [ios.TEAM + '.' + ios.BUNDLE]
         ios.validate_entitlements(self.profile['Entitlements'])
         self.profile['Entitlements']['keychain-access-groups'].append('another.app')
