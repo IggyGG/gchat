@@ -3,6 +3,12 @@ run-name: Forgejo macOS ${{ inputs.request_id }}
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: Native architectures to qualify (single-target retries retain their own scope)
+        required: true
+        type: choice
+        default: both
+        options: [both, macos-aarch64, macos-x86_64]
       gchat_ref:
         description: Protected main/release branch or approved version tag, exactly at gchat_commit
         required: true
@@ -36,12 +42,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: macos-15
-            target: macos-aarch64
-          - runner: macos-15-intel
-            target: macos-x86_64
-    runs-on: ${{ matrix.runner }}
+        target: ${{ fromJSON(inputs.target == 'both' && '["macos-aarch64","macos-x86_64"]' || format('["{0}"]', inputs.target)) }}
+    runs-on: ${{ matrix.target == 'macos-aarch64' && 'macos-15' || 'macos-15-intel' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -95,6 +97,7 @@ jobs:
           brew install node@22 cmake
           echo "$(brew --prefix node@22)/bin" >> "$GITHUB_PATH"
           python3 gchat/scripts/macos-loopback.py
+          python3 -m pip install --disable-pip-version-check numpy==2.3.5
       - name: Qualify both native workspaces with retained evidence
         timeout-minutes: 275
         run: |
@@ -136,8 +139,10 @@ jobs:
         if: always()
         with:
           name: ${{ matrix.target }}
+          include-hidden-files: true
           path: |
             signed/*.dmg
+            signed/build/*/release/bundle/dmg/*.dmg
             signed/build.json
             signed/provenance/**
             signed/evidence/**

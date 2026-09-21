@@ -90,13 +90,27 @@ def verify_checkouts(gchat, gcoms, gchat_commit, gcoms_commit, gchat_ref, gcoms_
             subprocess.run(['git', 'merge-base', '--is-ancestor', commit, tip], cwd=root, check=True)
 
 
-def dispatch(gchat_commit, gcoms_commit, gchat_ref, gcoms_ref, request_id):
+def selected_targets(target):
+    if target == 'both':
+        return {'macos-x86_64', 'macos-aarch64'}
+    if target in ('macos-x86_64', 'macos-aarch64'):
+        return {target}
+    raise ValueError('select both, macos-x86_64 or macos-aarch64')
+
+
+def verify_collected_targets(actual, target):
+    if actual != selected_targets(target):
+        raise ValueError('collected native Mac targets differ from the requested architectures')
+
+
+def dispatch(gchat_commit, gcoms_commit, gchat_ref, gcoms_ref, request_id, target='both'):
+    selected_targets(target)
     verify_remote_sources(gchat_commit, gcoms_commit, gchat_ref, gcoms_ref)
     dispatch_ref = gchat_ref.removeprefix('refs/heads/').removeprefix('refs/tags/')
     gh('workflow', 'run', 'macos-release.yml', '--repo', REPO, '--ref', dispatch_ref,
        '-f', 'gchat_commit=' + gchat_commit, '-f', 'gcoms_commit=' + gcoms_commit,
        '-f', 'gchat_ref=' + gchat_ref, '-f', 'gcoms_ref=' + gcoms_ref,
-       '-f', 'request_id=' + request_id)
+       '-f', 'request_id=' + request_id, '-f', 'target=' + target)
 
 
 def verify_run(run, gchat_commit):
@@ -266,6 +280,7 @@ def main():
     p.add_argument('--gchat-ref', default='main', type=release_ref)
     p.add_argument('--gcoms-ref', default='main', type=release_ref)
     p.add_argument('--output', type=Path)
+    p.add_argument('--target', choices=('both', 'macos-x86_64', 'macos-aarch64'), default='both')
     p.add_argument('--verify-checkouts', action='store_true')
     p.add_argument('--gchat', type=Path)
     p.add_argument('--gcoms', type=Path)
@@ -280,7 +295,7 @@ def main():
     if not a.output:
         p.error('--output is required when dispatching')
     request_id = uuid.uuid4().hex
-    dispatch(a.gchat_commit, a.gcoms_commit, a.gchat_ref, a.gcoms_ref, request_id)
+    dispatch(a.gchat_commit, a.gcoms_commit, a.gchat_ref, a.gcoms_ref, request_id, a.target)
     deadline=time.monotonic()+21600;run=None
     while time.monotonic()<deadline:
         if run is None:
@@ -333,8 +348,8 @@ def main():
             with path.open('rb') as stream: digest=hashlib.file_digest(stream,'sha256').hexdigest()
             if digest!=item['sha256'] or item['signing_verified'] is not True: raise ValueError('Mac artifact digest/signing mismatch')
         verify_application_smoke(report.parent, data, file_reference(evidence, candidate['sources']['gchat']['archive']))
-    if targets!={'macos-x86_64','macos-aarch64'}: raise ValueError('both native Mac builds are required')
-    (output/'github-run.json').write_text(json.dumps({'run_id':run['id'],'url':run['html_url'],'workflow_commit':run['head_sha'],'refs':{'gchat':a.gchat_ref,'gcoms':a.gcoms_ref},'sources':expected},indent=2)+'\n')
+    verify_collected_targets(targets, a.target)
+    (output/'github-run.json').write_text(json.dumps({'run_id':run['id'],'url':run['html_url'],'workflow_commit':run['head_sha'],'refs':{'gchat':a.gchat_ref,'gcoms':a.gcoms_ref},'sources':expected,'targets':sorted(targets)},indent=2)+'\n')
     print('Retrieved verified source-bound macOS artifacts: '+str(output))
 
 

@@ -127,6 +127,40 @@ class DispatchTest(unittest.TestCase):
         self.assertIn('gchat_ref=' + REF, args)
         self.assertIn('gcoms_ref=' + REF, args)
 
+    def test_single_target_dispatch_and_default_both_keep_exact_source_refs(self):
+        for target in ('both', 'macos-x86_64', 'macos-aarch64'):
+            with self.subTest(target=target), \
+                 patch.object(macos, 'remote_ref_commit', side_effect=['a' * 40, 'b' * 40]), \
+                 patch.object(macos, 'gh') as gh:
+                macos.dispatch('a' * 40, 'b' * 40, REF, REF, 'request', target)
+                self.assertIn('target=' + target, gh.call_args.args)
+                self.assertIn('gchat_commit=' + 'a' * 40, gh.call_args.args)
+        with patch.object(macos, 'gh') as gh, self.assertRaisesRegex(ValueError, 'select both'):
+            macos.dispatch('a' * 40, 'b' * 40, REF, REF, 'request', 'arbitrary')
+        gh.assert_not_called()
+
+    def test_collector_requires_exact_requested_architectures(self):
+        both = {'macos-x86_64', 'macos-aarch64'}
+        for target in ('both', *sorted(both)):
+            expected = both if target == 'both' else {target}
+            macos.verify_collected_targets(expected, target)
+            for wrong in (set(), {'macos-aarch64'} if target != 'macos-aarch64' else both, {'other'}):
+                with self.subTest(target=target, wrong=wrong), self.assertRaisesRegex(ValueError, 'requested architectures'):
+                    macos.verify_collected_targets(wrong, target)
+
+    def test_workflow_selects_target_without_omitting_native_or_installation_gates(self):
+        workflow = (SCRIPTS.parent / '.github/workflows/macos-release.yml').read_text()
+        self.assertIn('default: both', workflow)
+        self.assertIn('options: [both, macos-aarch64, macos-x86_64]', workflow)
+        self.assertIn('fromJSON(inputs.target', workflow)
+        self.assertIn("matrix.target == 'macos-aarch64' && 'macos-15' || 'macos-15-intel'", workflow)
+        self.assertIn('--check native.gchat.${{ matrix.target }}', workflow)
+        self.assertIn('--check native.gcoms.${{ matrix.target }}', workflow)
+        self.assertIn('scripts/test-macos-bundle.py', workflow)
+        self.assertIn('numpy==2.3.5', workflow)
+        self.assertIn('include-hidden-files: true', workflow)
+        self.assertIn('signed/build/*/release/bundle/dmg/*.dmg', workflow)
+
     def test_mirror_mismatch_stops_before_dispatch(self):
         with patch.object(macos, 'remote_ref_commit', return_value='c' * 40), patch.object(macos, 'gh') as gh:
             with self.assertRaisesRegex(ValueError, 'selected GChat ref'):
@@ -159,7 +193,7 @@ class DispatchTest(unittest.TestCase):
 
     def test_forgejo_wrapper_preserves_detached_release_ref(self):
         with patch.dict(os.environ, {'GITHUB_REF': REF, 'GCOMS_REF': REF,
-                                     'GCOMS_COMMIT': 'b' * 40}, clear=True), \
+                                     'GCOMS_COMMIT': 'b' * 40, 'GCHAT_MACOS_TARGET': 'macos-x86_64'}, clear=True), \
              patch.object(dispatcher.subprocess, 'check_output', return_value='a' * 40 + '\n'), \
              patch.object(dispatcher.subprocess, 'run') as run:
             dispatcher.main()
@@ -167,6 +201,7 @@ class DispatchTest(unittest.TestCase):
         self.assertEqual(command[command.index('--gchat-ref') + 1], REF)
         self.assertEqual(command[command.index('--gcoms-ref') + 1], REF)
         self.assertEqual(command[command.index('--gchat-commit') + 1], 'a' * 40)
+        self.assertEqual(command[command.index('--target') + 1], 'macos-x86_64')
 
 
 class ApplicationCollectorTest(unittest.TestCase):

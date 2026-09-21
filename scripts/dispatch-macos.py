@@ -17,6 +17,7 @@ def main():
                     '--gchat-commit', commit, '--gchat-ref', ref,
                     '--gcoms-commit', os.environ['GCOMS_COMMIT'],
                     '--gcoms-ref', os.environ.get('GCOMS_REF', 'main'),
+                    '--target', os.environ.get('GCHAT_MACOS_TARGET', 'both'),
                     '--output', str(root / 'signed-macos')], check=True)
 
 
