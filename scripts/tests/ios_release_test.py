@@ -36,9 +36,8 @@ class SimulatorSigningTests(unittest.TestCase):
                      'CFBundleExecutable': 'GChat'}
         (self.app / 'Info.plist').write_bytes(plistlib.dumps(self.info))
         (self.app / 'GChat').write_bytes(b'original compiler executable')
-        self.entitlements = {'application-identifier': ios.TEAM + '.' + ios.BUNDLE,
-                             'com.apple.developer.team-identifier': ios.TEAM,
-                             'keychain-access-groups': [ios.TEAM + '.' + ios.BUNDLE], 'get-task-allow': False}
+        self.entitlements = {'application-identifier': ios.BUNDLE,
+                             'keychain-access-groups': [ios.BUNDLE], 'get-task-allow': True}
         self.calls = []
 
     def command(self, command, **kwargs):
@@ -64,7 +63,18 @@ class SimulatorSigningTests(unittest.TestCase):
         self.assertEqual(ios.verify_reference(report['original_executable']).read_bytes(), b'original compiler executable')
         self.assertEqual(ios.verify_reference(report['derived_executable']).read_bytes(), b'derived signed executable')
         self.assertNotIn('aps-environment', report['verified_entitlements'])
+        self.assertNotIn('com.apple.developer.team-identifier', report['verified_entitlements'])
+        self.assertEqual(report['verified_entitlements']['keychain-access-groups'], [ios.BUNDLE])
+        self.assertIs(report['verified_entitlements']['get-task-allow'], True)
         self.assertIn(['codesign', '--verify', '--deep', '--strict', self.app], self.calls)
+
+    def test_simulator_identity_cannot_satisfy_device_entitlement_policy(self):
+        with self.assertRaises(ValueError):
+            ios.validate_entitlements(self.entitlements)
+
+    def test_simulator_cannot_claim_distribution_team_authority(self):
+        with self.assertRaisesRegex(ValueError, 'unexpected Keychain'):
+            self.execute(entitlements=self.entitlements | {'com.apple.developer.team-identifier': ios.TEAM})
 
     def test_device_or_unrelated_bundle_is_refused_before_signing(self):
         for key, value in [('CFBundleSupportedPlatforms', ['iPhoneOS']), ('CFBundleIdentifier', 'other.app')]:

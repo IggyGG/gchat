@@ -363,9 +363,13 @@ def sign_simulator(app, destination):
     require(not (app / 'embedded.mobileprovision').exists()
             and not list(app.glob('PlugIns/*.appex')), 'simulator must not contain device provisioning or extensions')
     destination.mkdir(parents=True, exist_ok=False)
-    entitlements = {'application-identifier': TEAM + '.' + BUNDLE,
-                    'com.apple.developer.team-identifier': TEAM,
-                    'keychain-access-groups': [TEAM + '.' + BUNDLE], 'get-task-allow': False}
+    # This is a local simulator test identity, not a distribution-team claim.
+    # The SDK's native simulator host uses this app-only authority shape. A
+    # distribution entitlement set on an ad-hoc signature was rejected by
+    # taskgated before dyld in retained lifecycle04. XCTest uses a debuggable
+    # simulator fixture; device validation separately requires this to be false.
+    entitlements = {'application-identifier': BUNDLE,
+                    'keychain-access-groups': [BUNDLE], 'get-task-allow': True}
     entitlement_file = destination / 'entitlements.plist'
     entitlement_file.write_bytes(plistlib.dumps(entitlements))
     # Preserve the unsigned/ad-hoc compiler output separately. Adding the
