@@ -735,6 +735,60 @@ def native_unit_tests(chat, destination):
     return reference(destination / 'report.json')
 
 
+def simulator_tools():
+    # Reuse the qualified link/signature boundary rather than maintaining a
+    # second simulator policy in the device release builder. Import lazily:
+    # this helper also imports the release parser for its Mach-O checks.
+    path = Path(__file__).with_name('ios-simulator-build.py')
+    spec = importlib.util.spec_from_file_location('ios_release_simulator', path)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper
+
+
+def build_simulator(chat, generated, project, config, destination, environment, report):
+    helper = simulator_tools()
+    retained = destination / 'simulator-xcode'
+    retained.mkdir(parents=True, exist_ok=True)
+    report['simulator_helper'] = reference(Path(__file__).with_name('ios-simulator-build.py'))
+    # The device's TEAM/profile configuration remains untouched. A separate
+    # simulator config avoids cargo-mobile injecting distribution authority.
+    value = json.loads(config.read_text())
+    value['bundle']['iOS'].pop('developmentTeam', None)
+    simulator_config = retained / 'config.json'
+    write_json(simulator_config, value)
+    settings_file, entitlement_file = helper.configure_simulator(retained / 'link-settings')
+    simulator_env = dict(environment)
+    simulator_env.pop('APPLE_DEVELOPMENT_TEAM', None)
+    simulator_env = helper.simulator_environment(retained / 'link-driver', simulator_env, settings_file)
+    report['simulator_config'] = reference(simulator_config)
+    report['simulator_xcconfig'] = reference(settings_file)
+    report['simulator_entitlements'] = reference(entitlement_file)
+    settings = json.loads(output(['xcodebuild', '-showBuildSettings', '-json', '-project', project,
+        '-scheme', project.stem + '_iOS', '-configuration', 'release', '-sdk', 'iphonesimulator'],
+        env=simulator_env, timeout=120))
+    write_json(retained / 'build-settings.json', settings)
+    helper.verify_settings(settings, entitlement_file)
+    report['simulator_build_settings'] = reference(retained / 'build-settings.json')
+    run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64-sim',
+         '--archive-only', '--config', simulator_config], cwd=chat / 'apps/client', env=simulator_env, timeout=5400)
+    apps = list((generated / 'build').glob('**/*.xcarchive/Products/Applications/*.app'))
+    require(len(apps) == 1, 'expected exactly one simulator archive before the device build')
+    # cargo-mobile may reuse its archive path for the following device build.
+    # Keep the verified simulator application outside that generated directory.
+    app = destination / 'simulator-application' / apps[0].name
+    shutil.copytree(apps[0], app, symlinks=True)
+    report['simulator_linked_authority'] = helper.verify_app(app, retained / 'authority')
+    report['simulator_xcode_invocations'] = reference(retained / 'link-driver/invocations.jsonl')
+    info = plistlib.loads((app / 'Info.plist').read_bytes())
+    require(info.get('CFBundleVersion') == value['bundle']['iOS']['bundleVersion'], 'simulator version mismatch')
+    report['simulator_executable'] = reference(app / info['CFBundleExecutable'])
+    archive = destination / 'simulator-app.zip'
+    run(['ditto', '-c', '-k', '--keepParent', app, archive])
+    report['simulator_archive'] = reference(archive)
+    return app
+
+
 def build(args):
     require(platform.system() == 'Darwin' and platform.machine() == 'arm64', 'use an Apple Silicon Mac worker')
     originals = {'gchat': args.gchat.resolve(), 'gcoms': args.gcoms.resolve()}
@@ -826,19 +880,7 @@ def build(args):
                                '--edges', 'normal', '--prefix', 'none', '--format', '{p}|{f}'], cwd=chat, env=environment)
                 (destination / ('features-' + triple + '.txt')).write_text(tree + '\n')
                 report['feature_graphs'][triple] = feature_graph(tree)
-            run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64-sim', '--no-sign', '--config', config],
-                cwd=client, env=environment, timeout=5400)
-            simulator_apps = list((generated / 'build').glob('**/*.app'))
-            simulator_apps = [app for app in simulator_apps if '.xcarchive' not in str(app)]
-            require(len(simulator_apps) == 1, 'expected one simulator app output before the device build')
-            simulator_app = simulator_apps[0]
-            info = plistlib.loads((simulator_app / 'Info.plist').read_bytes())
-            require(info.get('CFBundleIdentifier') == BUNDLE, 'simulator application identifier mismatch')
-            report['simulator_signing'] = sign_simulator(simulator_app, destination / 'simulator-signing')
-            report['simulator_executable'] = reference(simulator_app / info['CFBundleExecutable'])
-            simulator_archive = destination / 'simulator-app.zip'
-            run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])
-            report['simulator_archive'] = reference(simulator_archive)
+            simulator_app = build_simulator(chat, generated, project, config, destination, environment, report)
             run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64', '--export-method', 'app-store-connect',
                  '--config', config], cwd=client, env=signing, timeout=5400)
             candidates = list((generated / 'build').glob('**/*.ipa'))

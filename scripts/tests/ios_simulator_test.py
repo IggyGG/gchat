@@ -134,5 +134,88 @@ class SimulatorBoundaryTests(unittest.TestCase):
         self.assertEqual((app / 'GChat').read_bytes(), before)
 
 
+class CombinedReleaseSimulatorTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.generated = self.root / 'chat/apps/client/src-tauri/gen/apple'
+        self.generated.mkdir(parents=True)
+        self.project = self.generated / 'gchat-desktop.xcodeproj'
+        self.config = self.root / 'ios-config.json'
+        self.config.write_text(json.dumps({'identifier': sim.ios.BUNDLE, 'bundle': {'iOS': {
+            'developmentTeam': sim.ios.TEAM, 'minimumSystemVersion': '15.0', 'bundleVersion': '1.0.10'}}}))
+        self.original = self.config.read_bytes()
+        self.destination = self.root / 'output'
+        self.environment = {'PATH': os.environ['PATH'], 'DEVELOPER_DIR': '/Applications/Xcode_26.2.app/Contents/Developer',
+                            'APPLE_DEVELOPMENT_TEAM': sim.ios.TEAM}
+        self.commands = []
+
+    def settings(self, command, **kwargs):
+        self.assertEqual(command[command.index('-sdk') + 1], 'iphonesimulator')
+        self.assertNotIn('APPLE_DEVELOPMENT_TEAM', kwargs['env'])
+        return json.dumps([{'buildSettings': {'PRODUCT_BUNDLE_IDENTIFIER': sim.ios.BUNDLE,
+            'CODE_SIGNING_ALLOWED': 'YES', 'CODE_SIGN_IDENTITY': '-', 'CODE_SIGN_STYLE': 'Manual',
+            'CODE_SIGN_ENTITLEMENTS': str(self.destination / 'simulator-xcode/link-settings/Simulator.entitlements'),
+            'SDKROOT': '/Applications/Xcode_26.2.app/Contents/Developer/Platforms/iPhoneSimulator.platform/SDK'}}])
+
+    def native_command(self, command, **kwargs):
+        self.commands.append(command)
+        if command[0] == 'npm':
+            self.assertIn('--archive-only', command)
+            self.assertNotIn('--no-sign', command)
+            self.assertNotIn('APPLE_DEVELOPMENT_TEAM', kwargs['env'])
+            config = Path(command[command.index('--config') + 1])
+            self.assertNotIn('developmentTeam', json.loads(config.read_text())['bundle']['iOS'])
+            app = self.generated / 'build/GChat.xcarchive/Products/Applications/GChat.app'
+            app.mkdir(parents=True)
+            (app / 'Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier': sim.ios.BUNDLE,
+                'CFBundleExecutable': 'GChat', 'CFBundleVersion': '1.0.10', 'CFBundleSupportedPlatforms': ['iPhoneSimulator']}))
+            (app / 'GChat').write_bytes(macho())
+            (self.destination / 'simulator-xcode/link-driver/invocations.jsonl').write_text('{}\n')
+        elif command[0] == 'ditto':
+            Path(command[-1]).write_bytes(b'fixture archive')
+        else:
+            self.fail('unexpected build command')
+
+    def verify_app(self, app, destination):
+        self.assertNotIn(self.generated, app.parents)
+        self.assertEqual(sim.ios.simulator_linked_entitlements(app / 'GChat')['entitlements'], {
+            'application-identifier': sim.ios.BUNDLE, 'keychain-access-groups': [sim.ios.BUNDLE], 'get-task-allow': True})
+        destination.mkdir(parents=True)
+        sim.ios.write_json(destination / 'report.json', {'passed': True, 'executable': sim.ios.reference(app / 'GChat')})
+        return sim.ios.reference(destination / 'report.json')
+
+    def test_full_builder_uses_existing_link_guard_and_keeps_device_authority_separate(self):
+        report = {}
+        with patch.object(sim.ios, 'simulator_tools', return_value=sim), \
+                patch.object(sim.ios, 'output', side_effect=self.settings), \
+                patch.object(sim.ios, 'run', side_effect=self.native_command), \
+                patch.object(sim, 'verify_app', side_effect=self.verify_app) as verify, \
+                patch.object(sim.ios, 'sign_simulator', side_effect=AssertionError('no post-link patching')):
+            app = sim.ios.build_simulator(self.root / 'chat', self.generated, self.project, self.config,
+                                         self.destination, self.environment, report)
+        verify.assert_called_once()
+        self.assertEqual(self.config.read_bytes(), self.original)
+        self.assertEqual(self.environment['APPLE_DEVELOPMENT_TEAM'], sim.ios.TEAM)
+        self.assertEqual(len(self.commands), 2)
+        original = self.generated / 'build/GChat.xcarchive/Products/Applications/GChat.app/GChat'
+        original.write_bytes(b'later device archive replacement')
+        self.assertEqual(sim.ios.digest(app / 'GChat'), report['simulator_executable']['sha256'])
+        self.assertNotIn('simulator_signing', report)
+        self.assertIn('simulator_linked_authority', report)
+
+    def test_invalid_effective_link_settings_stop_before_compilation(self):
+        def unsigned(command, **kwargs):
+            return self.settings(command, **kwargs).replace('"YES"', '"NO"')
+        with patch.object(sim.ios, 'simulator_tools', return_value=sim), \
+                patch.object(sim.ios, 'output', side_effect=unsigned), \
+                patch.object(sim.ios, 'run') as execute, self.assertRaisesRegex(ValueError, 'exact simulator'):
+            sim.ios.build_simulator(self.root / 'chat', self.generated, self.project, self.config,
+                                   self.destination, self.environment, {})
+        execute.assert_not_called()
+        self.assertEqual(self.config.read_bytes(), self.original)
+
+
 if __name__ == '__main__':
     unittest.main()
