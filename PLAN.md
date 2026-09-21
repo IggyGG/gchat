@@ -48,6 +48,24 @@ the individual signed manifests for the completed scope and limits.
    keeps upload acceptance, Apple processing and tester availability distinct.
    See the [iOS release procedure](docs/IOS_RELEASE.md).
 
+The owner has selected **France in the first iOS release**. Prepare the French
+encryption filing and Apple's export-compliance documentation using the exact
+signed application's technical inventory. Publisher contact details and draft
+filings stay outside public source and release bundles. No declaration approval,
+export code or accepted App Store upload is implied by the completed simulator
+checks.
+
+## Repair Mac downloaded-app verification
+
+The owner reported Gatekeeper blocking the published Apple Silicon DMG. Retain
+that self-signed release and prepare a separately tagged Developer ID replacement
+from the tested application. Apple's certificate API refused creation because it
+requires the Account Holder; a CSR is prepared for that account action. The new
+controller must re-sign without recompilation, preserve original code/resources
+and native provenance, obtain Accepted notarization, staple the ticket and pass
+quarantined Gatekeeper and application-lifecycle checks. The Mac signer policy is
+separate from the existing Linux/Windows policies and the Gh0st release key.
+
 Use retained completed native inputs for packaging or harness retries whenever
 their source/artifact bindings still apply. Do not rerun a completed platform or
 replace a published asset merely to align all platforms on one commit.

@@ -28,6 +28,15 @@ Apple-notarized. macOS may block its launch. Verify the detached signature and
 published fingerprint before granting a per-application exception; do not disable
 system-wide security controls.
 
+For the existing self-signed DMG, the message “Apple could not verify” indicates
+that Gatekeeper cannot establish Apple notarization. After verifying the official
+download, attempt to open it, then choose **System Settings → Privacy & Security →
+Open Anyway** for that specific file and confirm **Open**. If the warning names the
+DMG, do this before copying GChat into Applications. Follow
+[Apple's instructions](https://support.apple.com/en-us/102445); a warning that an
+app will damage your computer is a different case. Developer ID signing and
+notarization are being prepared for replacement Mac downloads.
+
 ## Linux, x86_64
 
 On Ubuntu 24.04/26.04, open the `.deb` with your package installer, or run

@@ -30,6 +30,12 @@ service selection, encrypted-profile reopen and wrong-passphrase refusal with
 network bootstrap disabled. They do not prove an installed live-network
 chat/file journey or full rendered interaction. The pinned Mac signatures do
 not establish Apple notarization or downloaded-app Gatekeeper acceptance.
+The reported Gatekeeper warning now has a dedicated repair: a new Developer ID
+artifact must retain the original app/native identity, compare code/resources
+without signatures, retain Apple's Accepted submission, validate the stapled DMG
+and pass quarantine-aware assessments with Gatekeeper enabled. Repeat the copied
+application service/GUI lifecycle on the replacement. Helper unit passes alone
+do not qualify the new signature, Apple acceptance or downloaded-app launch.
 Android ARM64 compilation/signing does not establish physical-phone execution;
 the same-source x86_64 emulator receipt retains that distinction. See
 [Android qualification](docs/ANDROID_RELEASE.md) for the exact workload.
@@ -68,6 +74,10 @@ Apple encryption declaration is not yet configured. Preserve the signed IPA;
 any later package configuration/signature needs its own binding. Physical
 devices, live onboarding/chat/files, battery and live APNs remain unqualified.
 An APNs entitlement is not a push result. See [iOS release checks](docs/IOS_RELEASE.md).
+France is included by owner instruction. The unsigned declaration draft and
+technical inventory do not constitute a filing, approval or export-compliance
+code. Retain the original Apple rejection until an actual accepted upload and
+processing result exist.
 
 ## Evidence and regression rules
 
