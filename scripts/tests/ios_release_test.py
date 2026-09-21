@@ -283,6 +283,60 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'compatible'):
             ios.simulator_phone('absent', types, devices)
 
+    def test_simulator_cleanup_attempts_all_steps_after_timeouts(self):
+        device = '12345678-1234-1234-1234-123456789abc'
+        report = {}
+        with patch.object(ios.subprocess, 'run', side_effect=[
+                subprocess.TimeoutExpired(['terminate'], 30),
+                subprocess.TimeoutExpired(['shutdown'], 60),
+                subprocess.CalledProcessError(1, ['delete'])]) as commands, \
+                patch.object(ios, 'output', side_effect=OSError('simulator unavailable')):
+            ios.cleanup_simulator(device, report)
+        self.assertEqual([call.args[0][2] for call in commands.call_args_list],
+                         ['terminate', 'shutdown', 'delete'])
+        self.assertTrue(all(call.args[0][3] == device for call in commands.call_args_list))
+        self.assertEqual([row['step'] for row in report['cleanup_errors']],
+                         ['terminate', 'shutdown', 'delete', 'verify_removal'])
+        self.assertFalse(report['cleanup_complete'])
+
+    def test_simulator_install_failure_survives_cleanup_timeout_with_receipt(self):
+        device = '12345678-1234-1234-1234-123456789abc'
+        original = subprocess.TimeoutExpired(['simctl', 'install'], 120)
+
+        def execute(command, **_):
+            if command[2] == 'install':
+                raise original
+
+        def result(command, **_):
+            if command[2] == 'create':
+                return device
+            if 'devicetypes' in command:
+                return json.dumps({'devicetypes': []})
+            return json.dumps({'devices': {}})
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            app = root / 'GChat.app'
+            app.mkdir()
+            (app / 'Info.plist').write_bytes(plistlib.dumps(
+                {'CFBundleIdentifier': ios.BUNDLE, 'CFBundleExecutable': 'GChat'}))
+            (app / 'GChat').write_bytes(b'fixture executable; never executed')
+            with patch.object(ios, 'simulator_runtime', return_value='ios26'), \
+                    patch.object(ios, 'simulator_phone', return_value='iphone17'), \
+                    patch.object(ios, 'output', side_effect=result), \
+                    patch.object(ios, 'run', side_effect=execute), \
+                    patch.object(ios.subprocess, 'run', side_effect=[
+                        subprocess.TimeoutExpired(['terminate'], 30), None, None]):
+                with self.assertRaises(subprocess.TimeoutExpired) as caught:
+                    ios.simulator_smoke(app, root / 'smoke')
+            self.assertIs(caught.exception, original)
+            report = json.loads((root / 'smoke/report.json').read_text())
+            self.assertIn('install', report['error'])
+            self.assertEqual(report['cleanup_errors'], [{'step': 'terminate', 'error_type': 'TimeoutExpired'}])
+            self.assertTrue(report['owned_device_removed'])
+            self.assertFalse(report['cleanup_complete'])
+            self.assertFalse(report['passed'])
+
     def test_tauri_generated_project_does_not_require_a_sibling_workspace(self):
         # iOS06's actual generation log names gen/apple/gchat-desktop.xcodeproj;
         # the built-in workspace belongs inside that project directory.

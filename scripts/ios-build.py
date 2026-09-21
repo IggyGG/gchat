@@ -353,6 +353,29 @@ def simulator_phone(runtime, types, devices):
     raise ValueError('no available iPhone device type is known compatible with the selected iOS runtime')
 
 
+def cleanup_simulator(device, report):
+    """Try every owned-device cleanup step without masking a build failure."""
+    errors = []
+    commands = (
+        ('terminate', ['xcrun', 'simctl', 'terminate', device, BUNDLE], 30, False),
+        ('shutdown', ['xcrun', 'simctl', 'shutdown', device], 60, False),
+        ('delete', ['xcrun', 'simctl', 'delete', device], 60, True),
+    )
+    for step, command, timeout, check in commands:
+        try:
+            subprocess.run(command, capture_output=True, timeout=timeout, check=check)
+        except Exception as error:
+            errors.append({'step': step, 'error_type': type(error).__name__})
+    try:
+        remaining = output(['xcrun', 'simctl', 'list', 'devices', '--json'], timeout=30)
+        report['owned_device_removed'] = device not in remaining
+    except Exception as error:
+        report['owned_device_removed'] = False
+        errors.append({'step': 'verify_removal', 'error_type': type(error).__name__})
+    report['cleanup_errors'] = errors
+    report['cleanup_complete'] = report['owned_device_removed'] and not errors
+
+
 def simulator_smoke(app, destination):
     destination.mkdir()
     report = {'schema': 1, 'scope': 'ios_simulator_native_startup_relaunch', 'passed': False,
@@ -369,8 +392,9 @@ def simulator_smoke(app, destination):
         phone = simulator_phone(runtime, types, devices)
         write_json(destination / 'selection.json', {'runtime': runtime, 'device_type': phone,
                                                    'device_types': types, 'available_devices': devices})
-        device = output(['xcrun', 'simctl', 'create', 'GChat-' + secrets.token_hex(6), phone, runtime])
-        require(re.fullmatch('[0-9A-Fa-f-]{36}', device), 'unexpected created simulator ID')
+        created = output(['xcrun', 'simctl', 'create', 'GChat-' + secrets.token_hex(6), phone, runtime])
+        require(re.fullmatch('[0-9A-Fa-f-]{36}', created), 'unexpected created simulator ID')
+        device = created
         report.update(device=device, runtime=runtime, device_type=phone)
         run(['xcrun', 'simctl', 'boot', device], timeout=120)
         run(['xcrun', 'simctl', 'bootstatus', device, '-b'], timeout=180)
@@ -395,13 +419,12 @@ def simulator_smoke(app, destination):
                                        'screenshot': reference(screenshot)})
             run(['xcrun', 'simctl', 'terminate', device, BUNDLE], timeout=30)
         report['passed'] = True
+    except Exception as error:
+        report['error'] = type(error).__name__ + ': ' + str(error)
+        raise
     finally:
         if device:
-            subprocess.run(['xcrun', 'simctl', 'terminate', device, BUNDLE], capture_output=True, timeout=30)
-            subprocess.run(['xcrun', 'simctl', 'shutdown', device], capture_output=True, timeout=60)
-            run(['xcrun', 'simctl', 'delete', device], timeout=60)
-            remaining = output(['xcrun', 'simctl', 'list', 'devices', '--json'])
-            report['cleanup_complete'] = device not in remaining
+            cleanup_simulator(device, report)
         else:
             report['cleanup_complete'] = True
         report['passed'] = report['passed'] and report['cleanup_complete']
@@ -570,7 +593,6 @@ def build(args):
             simulator_archive = destination / 'simulator-app.zip'
             run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])
             report['simulator_archive'] = reference(simulator_archive)
-            report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
             run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64', '--export-method', 'app-store-connect',
                  '--config', config], cwd=client, env=signing, timeout=5400)
             candidates = list((generated / 'build').glob('**/*.ipa'))
@@ -579,6 +601,10 @@ def build(args):
             shutil.copyfile(candidates[0], artifact)
             report['application'] = verify_ipa(artifact, destination / 'ipa-verification', pin, version)
         report['signing_cleanup'] = reference(destination / 'signing-cleanup.json')
+        # Retain both compiled artifacts and remove the signer before exercising
+        # CoreSimulator. A runner installation failure must not erase a verified
+        # device artifact, but still prevents upload and a passing build verdict.
+        report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
         verify_derived_inputs(chat, pair)
         report['passed'] = True
     except Exception as error:

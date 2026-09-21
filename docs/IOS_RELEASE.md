@@ -56,6 +56,11 @@ Only after simulator success does the worker build a signed device IPA. It
 verifies the ARM64/iOS platform, iOS 15 minimum, app/build identity, complete code
 signature, pinned leaf certificate, unexpired App Store profile, disabled
 debugger entitlement, production APNs entitlement and app-scoped Keychain groups.
+Both simulator and verified device artifacts are retained before CoreSimulator
+execution, and the temporary signer is removed before that execution. Simulator
+installation or startup failure still prevents upload; it does not qualify either
+artifact. Cleanup attempts termination, shutdown, deletion and removal verification
+independently, retaining the original failure even if a cleanup command times out.
 Signing cleanup and unchanged original sources are required for success. Push
 entitlement presence does not prove live push delivery.
 
