@@ -130,6 +130,7 @@ jobs:
             android-output/bundletool-all-*.jar
             android-output/features-*.txt
             android-output/emulator-smoke/
+            android-output/native-tests/
             android-output/emulator.log
             android-output/emulator-driver.json
             android-output/avd-create.log

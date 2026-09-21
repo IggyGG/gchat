@@ -139,6 +139,7 @@ jobs:
             ios-output/ExportOptions-app-store.plist
             ios-output/device-build-settings.json
             ios-output/simulator-xcode/
+            ios-output/native-tests/
             ios-output/device-xcode/
             ios-output/simulator-smoke/
             ios-output/simulator-signing/
