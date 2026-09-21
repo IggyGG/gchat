@@ -80,9 +80,13 @@ fn persist_remember(path: &Path, enabled: bool) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     pending.as_file().sync_all().map_err(|e| e.to_string())?;
     pending.persist(path).map_err(|e| e.to_string())?;
+    // Android/iOS require the directory barrier too. Windows only compiles this
+    // mobile module for its shared unit tests and cannot open directories as files.
+    #[cfg(unix)]
     std::fs::File::open(parent)
         .and_then(|dir| dir.sync_all())
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 fn lifecycle_request(request: &Request) -> bool {
