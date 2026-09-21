@@ -60,6 +60,8 @@ class AndroidHooks(unittest.TestCase):
             def execute(command, **kwargs):
                 init = (destination / 'native-tests.gradle').read_text()
                 self.assertIn(json.dumps(str(plugin.resolve())), init)
+                self.assertIn('if (rootProject.projectDir.canonicalPath != ' + json.dumps(str((root / 'generated').resolve())) + ') return', init)
+                self.assertLess(init.index('rootProject.projectDir.canonicalPath'), init.index('rootProject.allprojects'))
                 self.assertIn('tasks.named("testDebugUnitTest")', init)
                 self.assertIn('outputs.upToDateWhen { false }', init)
                 self.assertNotIn('--rerun-tasks', command)

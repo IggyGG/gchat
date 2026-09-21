@@ -323,8 +323,11 @@ def native_unit_tests(chat, generated, destination, environment):
     retained = destination / 'junit'
     retained.mkdir()
     # Match the actual plugin project directory, not a guessed Tauri module name.
+    # Init scripts also run for buildSrc/included builds, which have no app plugin.
+    # Scope the callback to this exact generated root, then require its plugin.
     # Only this test task is forced to rerun; application/Rust builds stay cached.
     init.write_text('gradle.projectsEvaluated {\n'
+        '  if (rootProject.projectDir.canonicalPath != ' + json.dumps(str(generated.resolve())) + ') return\n'
         '  def selected = rootProject.allprojects.findAll { it.projectDir.canonicalPath == '
         + json.dumps(str(plugin)) + ' }\n'
         '  if (selected.size() != 1) throw new GradleException("Expected exactly one GChat native plugin")\n'
