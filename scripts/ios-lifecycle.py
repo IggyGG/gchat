@@ -71,8 +71,9 @@ def runner_project():
                 'PRODUCT_BUNDLE_IDENTIFIER': 'boo.gchat.lifecycle-tests', 'GENERATE_INFOPLIST_FILE': 'YES',
                 'SWIFT_VERSION': '5.0', 'CODE_SIGNING_ALLOWED': 'NO', 'IPHONEOS_DEPLOYMENT_TARGET': '15.0'}}}},
         'schemes': {'GChatLifecycle': {'build': {'targets': {'LifecycleTests': ['test']}},
-            'test': {'targets': ['LifecycleTests'], 'gatherCoverageData': False,
-                     'parallelizable': False, 'randomExecutionOrder': False}}}}
+            'test': {'targets': [{'name': 'LifecycleTests', 'parallelizable': False,
+                                 'randomExecutionOrder': False}], 'gatherCoverageData': False,
+                     'deleteScreenshotsWhenEachTestSucceeds': False}}}}
 
 
 def test_result(summary):
