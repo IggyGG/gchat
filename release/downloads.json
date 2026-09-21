@@ -41,6 +41,44 @@
         "sha256": "e570b77e15eb51b3e9a5d49358efc491212f72f368ac902e69c5f0f90cd24206",
         "signature_sha256": "e910e6fd56f9429ae95fd8c118805b8ecc5c2acf6bc6bcd98492ca67ba5e260b"
       }
+    },
+    "v0.1.4-android-arm64.1": {
+      "version": "0.1.4",
+      "sources": {
+        "gchat": "ab3697a8bb98962f7a765254a6c5d2b6c8b6259e",
+        "gcoms": "398c751474dda2a361eca0cf0e28308c192c68fa"
+      },
+      "manifest_format": "platform-v1",
+      "release_key": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-arm64.1/gchat-release-key.asc",
+        "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
+        "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
+      },
+      "manifest": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-arm64.1/platform-release.json",
+        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-arm64.1/platform-release.json.asc",
+        "sha256": "7530b65761eecce8f6fca3d7f2f2db32571c76006cb13044d8a595ab83121068",
+        "signature_sha256": "bdcead1054b9f3edb331e917345f97bebf826e8a0d0ca962cbafc2a9915b4b5a"
+      }
+    },
+    "v0.1.4-android-x86_64.1": {
+      "version": "0.1.4",
+      "sources": {
+        "gchat": "ab3697a8bb98962f7a765254a6c5d2b6c8b6259e",
+        "gcoms": "398c751474dda2a361eca0cf0e28308c192c68fa"
+      },
+      "manifest_format": "platform-v1",
+      "release_key": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-x86_64.1/gchat-release-key.asc",
+        "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
+        "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
+      },
+      "manifest": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-x86_64.1/platform-release.json",
+        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-x86_64.1/platform-release.json.asc",
+        "sha256": "b3b67f78bf623d907cbb0e5d61d19999409b3a3c0900ca119fe939e0e45194b4",
+        "signature_sha256": "adfb9cb4f57b7b81cbf383b81b193510d78c2c81552cdf8f6b39685247074111"
+      }
     }
   },
   "artifacts": [
@@ -73,6 +111,26 @@
       "signing_verified": true,
       "sha256": "0847d0d9ab14336353263abc48e78c581f916299a61df7ce68fc2fd23fe9a9d8",
       "signature_sha256": "e9255ef69975b571424c5a2e8ba68e71467cc5d23dd5373361acf8b7e342965a"
+    },
+    {
+      "target": "android-arm64",
+      "format": "apk",
+      "release": "v0.1.4-android-arm64.1",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-arm64.1/GChat_0.1.4_arm64-v8a.apk",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-arm64.1/GChat_0.1.4_arm64-v8a.apk.asc",
+      "signing_verified": true,
+      "sha256": "e344b5bc565044767372d46c22e572ffc5b6e52ee200a15b07cccccf24796d44",
+      "signature_sha256": "efdbc216307e43accb83e8a30d647eecf083f66464567e2e591732b0896ba289"
+    },
+    {
+      "target": "android-x86_64",
+      "format": "apk",
+      "release": "v0.1.4-android-x86_64.1",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-x86_64.1/GChat_0.1.4_x86_64.apk",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-android-x86_64.1/GChat_0.1.4_x86_64.apk.asc",
+      "signing_verified": true,
+      "sha256": "8cb453e3faf9b34b8aee1ce0330aa19f5cdc5ef13da383b35240f238adfac3aa",
+      "signature_sha256": "316de868b6588e11310723c72ecd7313864b0ad223a3b13137ab53aedd5386ef"
     }
   ]
 }

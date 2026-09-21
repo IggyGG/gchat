@@ -50,11 +50,17 @@ Use the actual artifact filename in place of `GChat_FILENAME`. Downloading a
 
 ## Android
 
-When listed in Downloads, choose the ARM64 APK for a supported phone; the x86_64
+Choose the ARM64 APK in Downloads for a supported phone; the x86_64
 APK is intended for compatible emulators. Android 8.0/API 26 or later is required.
 Verify the download, open it, and allow installation from that source if prompted.
 Subsequent APKs must use the same signing identity to update the existing app.
 Do not uninstall first: Android removes app-private history on uninstall.
+
+Returning from the invitation file picker locks the default profile. Unlock with
+your passphrase and choose **Continue** to restore the selected invitation. The
+selection is held in memory for up to five minutes; it is not saved to disk.
+Current profile/picker validation is emulator-based; physical-device testing and
+background push delivery remain unfinished.
 
 ## iPhone and iPad
 

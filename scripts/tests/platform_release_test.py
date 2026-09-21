@@ -129,6 +129,26 @@ class PlatformWebsiteTests(unittest.TestCase):
         self.assertNotIn('Production 0.1.4', page)
         self.assertIn('for Linux, macOS.', website.client_status(data))
 
+    def test_x86_64_platform_tags_preserve_asset_origin_checks(self):
+        for target, fmt in [('android-x86_64', 'apk'), ('windows-x86_64', 'nsis'), ('macos-x86_64', 'dmg')]:
+            with self.subTest(target=target):
+                data = self.manifest()
+                old_tag = 'v0.1.4-macos-aarch64.1'
+                tag = 'v0.1.4-' + target + '.1'
+                release = data['releases'].pop(old_tag)
+                for record in (release['release_key'], release['manifest']):
+                    for key in ('url', 'signature_url'):
+                        if key in record: record[key] = record[key].replace(old_tag, tag)
+                data['releases'][tag] = release
+                artifact = data['artifacts'][-1]
+                artifact.update(release=tag, target=target, format=fmt)
+                for key in ('url', 'signature_url'):
+                    artifact[key] = artifact[key].replace(old_tag, tag)
+                website.validate(data)
+                self.assertIn('/' + tag + '/', website.downloads(data))
+                artifact['url'] = artifact['url'].replace(tag, tag + '/..')
+                with self.assertRaises(ValueError): website.validate(data)
+
     def test_untrusted_malformed_cross_release_unsigned_and_wrong_key_fail(self):
         mutations = [lambda d: d['artifacts'][0].update(url='https://evil.invalid/file.deb'),
                      lambda d: d['artifacts'][0].update(url=d['artifacts'][0]['url'] + '?download=1'),

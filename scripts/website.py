@@ -89,7 +89,7 @@ def validate_platforms(data):
     if not isinstance(releases, dict) or not releases:
         raise ValueError('platform releases are required')
     for tag, release in releases.items():
-        if not re.fullmatch(r'v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', tag):
+        if not re.fullmatch(r'v\d+\.\d+\.\d+(?:-[A-Za-z0-9_.-]+)?', tag):
             raise ValueError('invalid platform release tag')
         version = release.get('version')
         if not isinstance(version, str) or not re.fullmatch(r'\d+\.\d+\.\d+', version) or not (tag == 'v' + version or tag.startswith('v' + version + '-')):
@@ -243,9 +243,10 @@ def downloads(data):
 <div class="sec-head"><p class="sec-label">Get GChat</p><h2>Download. Connect. Start talking.</h2>
 <p>Secure communication over GComs. Your relay settings are included.</p></div>
 ''' + links + '''
+<p>Android: emulator-tested; physical-device checks and push delivery remain unfinished. Mac downloads are Gh0st-signed and are not Apple-notarized. See each build evidence link for its exact validation scope.</p>
 <p><a href="https://github.com/IggyGG/gchat">GChat source</a> · <a href="https://github.com/IggyGG/gcoms">GComs protocol</a> · <a href="https://github.com/IggyGG/gchat/releases">Release notes</a></p>
 <ol class="steps">
-<li class="step"><span class="n">01</span><h3>Install</h3><p>Windows: run the installer. macOS: open the DMG and drag GChat to Applications. Ubuntu/Debian: open the .deb with your package installer. AppImage: allow execution, then launch it.</p></li>
+<li class="step"><span class="n">01</span><h3>Install</h3><p>Windows: run the installer. macOS: open the DMG and drag GChat to Applications. Ubuntu/Debian: open the .deb with your package installer. AppImage: allow execution, then launch it. Android: download the ARM64 APK for most phones, open it and allow installation from your browser when prompted.</p></li>
 <li class="step"><span class="n">02</span><h3>Create your identity</h3><p>Open GChat and choose a passphrase. It protects your identity and history. Keep it safe; there is no passphrase reset.</p></li>
 <li class="step"><span class="n">03</span><h3>Join</h3><p>Choose Join and paste a conversation invitation from someone you trust. It can include the network and channel together. Review its details and choose your nickname.</p></li>
 <li class="step"><span class="n">04</span><h3>Start talking</h3><p>The green network dot shows when you are connected. A network-only invitation connects without joining a channel; use Create to start your own conversation.</p></li>

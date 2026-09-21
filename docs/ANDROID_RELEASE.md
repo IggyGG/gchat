@@ -12,6 +12,20 @@ Android pass is claimed until the real build, pinned signing and emulator steps
 produce their receipts. ARM64 compilation does not establish physical-device
 behavior. Live push, battery, lock-screen and physical-device results remain open.
 
+## Published 0.1.4 APKs
+
+The [ARM64](https://github.com/IggyGG/gchat/releases/tag/v0.1.4-android-arm64.1)
+and [x86_64](https://github.com/IggyGG/gchat/releases/tag/v0.1.4-android-x86_64.1)
+APKs are published with pinned Gh0st signatures and independent signed manifests.
+Run `35616288196` built GChat `ab3697a8bb98962f7a765254a6c5d2b6c8b6259e`
+with GComs `398c751474dda2a361eca0cf0e28308c192c68fa`; both native packages,
+16 KiB alignment and signatures passed. The actual x86_64 API35 app passed
+profile creation, background locking, explicit reopening, retained process restart,
+and Android DocumentsUI cancellation/selected-invitation continuation. Cleanup
+passed. ARM64 execution on a physical phone remains deferred; these receipts do
+not establish remote messaging/files, FCM, live onboarding or full mobile CI.
+The manifests and release notes retain those distinctions.
+
 ## Exact inputs and tools
 
 - The same pinned Rust version in both repositories' `rust-toolchain.toml`.
