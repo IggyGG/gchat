@@ -78,6 +78,20 @@ jobs:
           --gchat gchat --gcoms gcoms
           --gchat-commit "$env:GCHAT_COMMIT" --gcoms-commit "$env:GCOMS_COMMIT"
           --gchat-ref "$env:GCHAT_REF" --gcoms-ref "$env:GCOMS_REF"
+      - name: Qualify disposable certificate import and cleanup
+        timeout-minutes: 5
+        run: ./gchat/scripts/test-windows-signing.ps1 -OutputDirectory signing-fixture
+      - name: Preflight the existing pinned certificate before compilation
+        timeout-minutes: 5
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          try {
+            ./gchat/scripts/windows-signing.ps1 -Action Import -StateDirectory signing-preflight
+          } finally {
+            ./gchat/scripts/windows-signing.ps1 -Action Cleanup -StateDirectory signing-preflight
+          }
       - name: Install pinned native tools and WebView prerequisites
         timeout-minutes: 20
         run: |
@@ -198,7 +212,7 @@ jobs:
         if: always()
         run: |
           New-Item -ItemType Directory -Force -Path signed | Out-Null
-          foreach ($Name in @('native-evidence', 'worker-evidence', 'signing-evidence')) {
+          foreach ($Name in @('native-evidence', 'worker-evidence', 'signing-evidence', 'signing-preflight', 'signing-fixture')) {
             if (Test-Path -LiteralPath $Name) { Copy-Item -LiteralPath $Name -Destination signed -Recurse -Force }
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -212,5 +226,7 @@ jobs:
             signed/native-evidence/**
             signed/worker-evidence/**
             signed/signing-evidence/**
+            signed/signing-preflight/**
+            signed/signing-fixture/**
             signed/application-smoke/**
           if-no-files-found: error
