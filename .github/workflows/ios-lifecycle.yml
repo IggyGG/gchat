@@ -1,0 +1,100 @@
+name: Retained iOS simulator lifecycle
+run-name: iOS lifecycle ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      original_run_id:
+        required: true
+        type: string
+      artifact_id:
+        required: true
+        type: string
+      artifact_sha256:
+        required: true
+        type: string
+      gchat_commit:
+        description: Exact original application source
+        required: true
+        type: string
+      gcoms_commit:
+        required: true
+        type: string
+      build_number:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  lifecycle:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: runner
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          path: source-gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: source-gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Prepare runner only
+        env:
+          ORIGINAL_RUN_ID: ${{ inputs.original_run_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          python3 -m unittest discover -s runner/scripts/tests -p ios_lifecycle_test.py
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          value = {name: os.environ[name.upper()] for name in
+                   ('artifact_sha256', 'gchat_commit', 'gcoms_commit', 'build_number')}
+          value.update(run_id=int(os.environ['ORIGINAL_RUN_ID']), artifact_id=int(os.environ['ARTIFACT_ID']))
+          Path('journey-input.json').write_text(json.dumps(value, indent=2) + '\n')
+          PY
+      - name: Run retained application with native XCTest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 runner/scripts/ios-lifecycle.py --spec journey-input.json
+          --gchat source-gchat --gcoms source-gcoms --output ios-lifecycle-output
+      - name: Retain exact original binding and lifecycle results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ios-lifecycle-${{ inputs.request_id }}
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+          path: |
+            journey-input.json
+            ios-lifecycle-output/report.json
+            ios-lifecycle-output/original-*.json
+            ios-lifecycle-output/original-artifact.zip
+            ios-lifecycle-output/runner/
+            ios-lifecycle-output/xctest.log
+            ios-lifecycle-output/test-summary.json
+            ios-lifecycle-output/journey.xcresult/

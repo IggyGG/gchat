@@ -72,3 +72,25 @@ failures, even when a later retry passes.
 References: [Tauri iOS signing](https://v2.tauri.app/distribute/sign/ios/),
 [Tauri App Store build/upload](https://v2.tauri.app/distribute/app-store/),
 [Tauri CLI options](https://v2.tauri.app/reference/cli/).
+# Retained simulator lifecycle journey
+
+`ios-lifecycle.yml` and `scripts/ios-lifecycle.py` reuse a completed iOS worker's
+exact `simulator-app.zip`. The input names the original run, artifact ID and
+SHA-256, source pair and bundle build number. The runner verifies Git trees,
+source archives, original harness and simulator receipts before installation.
+It builds only a separate XCTest UI runner, never GChat or a replacement binary.
+
+The journey uses ordinary accessible UI to create an encrypted profile, return
+from the background with default-off credential storage, unlock with explicit
+“Remember on this device” consent, then resume and relaunch via the simulator
+Keychain. It retains the XCTest result bundle/screenshots and deletes only its
+new simulator. A passing simulator journey does not change a failed original
+device/signing verdict. No signing credentials or provider invitation are used.
+
+The harness requires a native passing result before claiming this journey is
+qualified. Its scope excludes cryptographic identity comparison, `/lock`
+revocation behind network onboarding, messaging/files, real OS suspension or
+power loss, APNs, device tests and installed signed-network onboarding. Apple
+documents the [external application proxy](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication)
+and [simulated Home button](https://developer.apple.com/documentation/xcuiautomation/xcuidevice)
+used by this test.
