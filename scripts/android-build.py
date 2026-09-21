@@ -76,7 +76,8 @@ def tauri_command(*arguments):
     # Tauri persists its launcher in Gradle's Rust callback. The package script
     # is resolvable from both apps/client and src-tauri; a direct `node tauri.js`
     # launch gets rewritten to `node tauri` and fails after native compilation.
-    return ['npm', 'run', 'tauri', '--', *arguments]
+    npm = 'npm.cmd' if os.name == 'nt' else 'npm'
+    return [npm, 'run', 'tauri', '--', *arguments]
 
 
 def verify_checkouts(args):

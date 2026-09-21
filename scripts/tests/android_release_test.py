@@ -20,6 +20,14 @@ PIN = 'ab' * 32
 
 
 class MobileLauncher(unittest.TestCase):
+    def test_selects_windows_command_shim_without_dropping_arguments(self):
+        with patch.object(android.os, 'name', 'nt'):
+            self.assertEqual(android.tauri_command('android', 'init', '--ci'),
+                             ['npm.cmd', 'run', 'tauri', '--', 'android', 'init', '--ci'])
+        with patch.object(android.os, 'name', 'posix'):
+            self.assertEqual(android.tauri_command('android', 'init', '--ci'),
+                             ['npm', 'run', 'tauri', '--', 'android', 'init', '--ci'])
+
     def test_package_runner_survives_gradle_src_tauri_working_directory(self):
         # Exercise real npm's parent package lookup and lifecycle context without
         # compiling or invoking an Android SDK. This is the Gradle callback cwd.
