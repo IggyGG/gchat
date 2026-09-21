@@ -146,14 +146,19 @@ jobs:
           raise SystemExit(0 if report['passed'] else 1)
           '@ | python -
           if ($LASTEXITCODE -ne 0) { throw 'Native private filesystem qualification failed' }
+      - name: Diagnose standalone daemon startup on the exact archived pair
+        timeout-minutes: 12
+        run: |
+          python gchat/scripts/windows-daemon-check.py --gchat gchat --gcoms gcoms --output worker-evidence/daemon-inputs --target-dir "$env:RUNNER_TEMP/gchat-daemon-target" --timeout 600
+          if ($LASTEXITCODE -ne 0) { throw 'Native standalone daemon diagnostic failed; retained child stderr and exact source maps' }
       - name: Qualify both native workspaces
-        timeout-minutes: 250
+        timeout-minutes: 235
         run: |
           python gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --target windows-x86_64 --output native-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Candidate initialization failed' }
-          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.windows-x86_64 --timeout 8100 -- python scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
+          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.windows-x86_64 --timeout 7800 -- python scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
           if ($LASTEXITCODE -ne 0) { throw 'Native GChat qualification failed' }
-          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.windows-x86_64 --timeout 6600 -- python scripts/ci.py
+          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.windows-x86_64 --timeout 6000 -- python scripts/ci.py
           if ($LASTEXITCODE -ne 0) { throw 'Native GComs qualification failed' }
       - name: Import only the existing pinned release certificate
         timeout-minutes: 5
