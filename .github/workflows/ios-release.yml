@@ -124,6 +124,7 @@ jobs:
           name: ios-${{ inputs.gchat_commit }}-${{ inputs.gcoms_commit }}-${{ inputs.build_number }}
           if-no-files-found: error
           retention-days: 30
+          include-hidden-files: true
           path: |
             ios-worker.log
             ios-output/build.json
@@ -134,6 +135,10 @@ jobs:
             ios-output/simulator-app.zip
             ios-output/signing-cleanup.json
             ios-output/features-*.txt
+            ios-output/signing.xcconfig
+            ios-output/device-build-settings.json
+            ios-output/simulator-xcode/
+            ios-output/device-xcode/
             ios-output/simulator-smoke/
             ios-output/paired/provenance/
             ios-output/upload.json

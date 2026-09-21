@@ -29,6 +29,15 @@ are never overwritten. A before/after receipt requires all original profiles to
 remain unchanged. Upload keys exist only in a private temporary directory, never
 in the app, retained build artifacts or repository.
 
+The validated UUID profile is installed in both recognized Xcode profile locations.
+Tauri's additional randomly named copy is removed only after decoding the same
+UUID and validating its certificate/entitlements. Newly created unrelated profiles
+are preserved and fail the unchanged-profile check. A private build-directory
+`xcodebuild` shim restores the pinned developer directory and manual-signing config
+because pinned cargo-mobile2 clears these variables from child environments;
+the shim invokes Apple's actual tool, with no signing check disabled. The worker
+retains these public settings and hidden dependency-provenance files.
+
 The build checks each mobile target's actual normal-dependency feature graph:
 `network-client` must be enabled, and `embedded`, `launch` and node `relay-host`
 must be absent. Compiled RPC IPC types are permitted; they do not start a host.

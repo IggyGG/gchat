@@ -185,7 +185,7 @@ def profile_files():
 
 
 @contextmanager
-def signer(destination, profile, pin):
+def signer(destination, profile, pin, profile_bytes=None):
     """Import only our key in an isolated keychain; restore the exact search list."""
     before_keys, before_profiles = keychains(), profile_files()
     require(not any(Path(path).name == profile['uuid'] + '.mobileprovision' for path in before_profiles),
@@ -201,6 +201,19 @@ def signer(destination, profile, pin):
         password = secrets.token_urlsafe(32)
         created = False
         try:
+            if profile_bytes is not None:
+                # Xcode versions use both locations. Install only the exact
+                # validated UUID and never overwrite an existing profile.
+                for relative in ('Library/MobileDevice/Provisioning Profiles',
+                                 'Library/Developer/Xcode/UserData/Provisioning Profiles'):
+                    directory = Path.home() / relative
+                    directory.mkdir(parents=True, exist_ok=True)
+                    target = directory / (profile['uuid'] + '.mobileprovision')
+                    with target.open('xb') as stream:
+                        stream.write(profile_bytes)
+                    target.chmod(0o600)
+                    require(validate_profile(decode_profile(target), pin) == profile,
+                            'installed profile differs from the validated input')
             p12.write_bytes(base64.b64decode(os.environ['IOS_CERTIFICATE_BASE64'], validate=True))
             p12.chmod(0o600)
             secret_command(['security', 'create-keychain', '-p', password, keychain])
@@ -237,13 +250,14 @@ def signer(destination, profile, pin):
             # strand the signing key or prevent a terminal cleanup receipt.
             current_profiles = attempt('enumerate_profiles', profile_files) or {}
             for path in current_profiles:
-                if path not in before_profiles and Path(path).name == profile['uuid'] + '.mobileprovision':
+                if path not in before_profiles:
                     candidate = Path(path)
 
                     def remove_profile():
                         value = decode_profile(candidate)
+                        if value.get('UUID') != profile['uuid']:
+                            return
                         validate_profile(value, pin)
-                        require(value['UUID'] == profile['uuid'], 'temporary profile identity changed')
                         candidate.unlink()
 
                     attempt('remove_owned_profile', remove_profile)
@@ -264,6 +278,33 @@ def signer(destination, profile, pin):
                     original_error.add_note('iOS signing cleanup also failed; see signing-cleanup.json where writable')
                 else:
                     raise ValueError('iOS signer did not restore its keychain/profile boundary')
+
+
+def xcode_environment(destination, environment, xcconfig=None, executable='/usr/bin/xcodebuild'):
+    """Restore public tool selection after cargo-mobile2 clears child env vars."""
+    developer = environment.get('DEVELOPER_DIR', '')
+    require(Path(developer).is_absolute(), 'an explicit absolute Xcode developer directory is required')
+    destination.mkdir()
+    wrapper = destination / 'xcodebuild'
+    text = '#!/bin/sh\nexport DEVELOPER_DIR=' + shlex.quote(developer) + '\n'
+    text += ('export XCODE_XCCONFIG_FILE=' + shlex.quote(str(xcconfig.resolve())) + '\n'
+             if xcconfig else 'unset XCODE_XCCONFIG_FILE\n')
+    text += 'exec ' + shlex.quote(executable) + ' "$@"\n'
+    wrapper.write_text(text)
+    wrapper.chmod(0o700)
+    return dict(environment, PATH=str(destination.resolve()) + os.pathsep + environment['PATH'])
+
+
+def verify_device_settings(settings, profile, identity):
+    targets = [item['buildSettings'] for item in settings
+               if item.get('buildSettings', {}).get('PRODUCT_BUNDLE_IDENTIFIER') == BUNDLE]
+    require(len(targets) == 1, 'device build settings must identify exactly one GChat target')
+    value = targets[0]
+    require(value.get('CODE_SIGN_STYLE') == 'Manual' and value.get('DEVELOPMENT_TEAM') == TEAM
+            and value.get('PROVISIONING_PROFILE_SPECIFIER') == profile['uuid']
+            and value.get('CODE_SIGN_IDENTITY') == identity, 'manual signing settings did not reach xcodebuild')
+    require('/Xcode_26.2.app/' in value.get('SDKROOT', '') and 'iPhoneOS' in value['SDKROOT'],
+            'device build did not select the pinned Xcode iOS SDK')
 
 
 def configure_project(generated):
@@ -445,6 +486,9 @@ def build(args):
             profile = validate_profile(decode_profile(profile_path), pin)
         report['provisioning_profile'] = profile
         report['xcode'] = output(['xcodebuild', '-version'])
+        require(report['xcode'].splitlines()[0] == 'Xcode 26.2', 'unexpected Xcode version')
+        environment = xcode_environment(destination / 'simulator-xcode', environment)
+        report['simulator_xcode_wrapper'] = reference(destination / 'simulator-xcode/xcodebuild')
         report['rustc'] = output(['rustc', '-vV'])
         for root in originals.values():
             pinned = tomllib.loads((root / 'rust-toolchain.toml').read_text())['toolchain']['channel']
@@ -491,7 +535,7 @@ def build(args):
         run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])
         report['simulator_archive'] = reference(simulator_archive)
         report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
-        with signer(destination, profile, pin) as (keychain, identity):
+        with signer(destination, profile, pin, profile_bytes) as (keychain, identity):
             signing = dict(environment, IOS_MOBILE_PROVISION=base64.b64encode(profile_bytes).decode())
             exports = generated / 'ExportOptions.plist'
             export_options = plistlib.loads(exports.read_bytes()) if exports.exists() else {}
@@ -506,6 +550,18 @@ def build(args):
                 'CODE_SIGN_ENTITLEMENTS = ' + str(entitlement_path) + '\n'
                 'OTHER_CODE_SIGN_FLAGS = --keychain "' + str(keychain) + '"\n')
             signing['XCODE_XCCONFIG_FILE'] = str(xcconfig)
+            signing = xcode_environment(destination / 'device-xcode', signing, xcconfig)
+            report['device_xcode_wrapper'] = reference(destination / 'device-xcode/xcodebuild')
+            report['signing_settings'] = reference(xcconfig)
+            workspaces = list(generated.glob('*.xcworkspace'))
+            require(len(workspaces) == 1, 'expected exactly one generated Xcode workspace')
+            workspace = workspaces[0]
+            settings = json.loads(output(['xcodebuild', '-showBuildSettings', '-json', '-workspace', workspace,
+                '-scheme', workspace.stem + '_iOS', '-configuration', 'release', '-sdk', 'iphoneos'],
+                env={'HOME': os.environ['HOME'], 'PATH': signing['PATH']}, timeout=120))
+            write_json(destination / 'device-build-settings.json', settings)
+            verify_device_settings(settings, profile, identity)
+            report['device_build_settings'] = reference(destination / 'device-build-settings.json')
             run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64', '--export-method', 'app-store-connect',
                  '--config', config], cwd=client, env=signing, timeout=5400)
             candidates = list((generated / 'build').glob('**/*.ipa'))

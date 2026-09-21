@@ -180,8 +180,90 @@ class ProfileTests(unittest.TestCase):
             self.assertFalse(cleanup['original_profiles_unchanged'])
             self.assertEqual(cleanup['errors'], [{'step': 'remove_owned_profile', 'error_type': 'ValueError'}])
 
+    def test_installed_and_tauri_random_named_profiles_are_removed_by_validated_uuid(self):
+        certificate = b'fixture distribution certificate'
+        pem = b'-----BEGIN CERTIFICATE-----\n' + base64.b64encode(certificate) + b'\n-----END CERTIFICATE-----\n'
+
+        def security(command):
+            if command[1] == 'create-keychain':
+                Path(command[-1]).touch()
+            elif command[1] == 'delete-keychain':
+                Path(command[-1]).unlink()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with patch.object(Path, 'home', return_value=root), \
+                    patch.dict(os.environ, {'IOS_CERTIFICATE_BASE64': base64.b64encode(b'fixture key').decode(),
+                                             'IOS_CERTIFICATE_PASSWORD': 'fixture'}), \
+                    patch.object(ios, 'keychains', return_value=[]), \
+                    patch.object(ios, 'secret_command', side_effect=security), \
+                    patch.object(ios.subprocess, 'check_output', return_value=pem), \
+                    patch.object(ios, 'output', return_value=hashlib.sha1(certificate).hexdigest().upper()), \
+                    patch.object(ios, 'decode_profile', return_value=self.profile):
+                with ios.signer(root, ios.validate_profile(self.profile, PIN), PIN, b'profile bytes'):
+                    self.assertEqual(len(ios.profile_files()), 2)
+                    random_copy = root / 'Library/MobileDevice/Provisioning Profiles/randomTauriCopy.mobileprovision'
+                    random_copy.write_bytes(b'profile bytes')
+                    self.assertEqual(len(ios.profile_files()), 3)
+                self.assertEqual(ios.profile_files(), {})
+            cleanup = json.loads((root / 'signing-cleanup.json').read_text())
+            self.assertTrue(cleanup['passed'])
+            self.assertTrue(cleanup['original_profiles_unchanged'])
+
+    def test_unrelated_new_profile_is_preserved_and_fails_cleanup(self):
+        certificate = b'fixture distribution certificate'
+        pem = b'-----BEGIN CERTIFICATE-----\n' + base64.b64encode(certificate) + b'\n-----END CERTIFICATE-----\n'
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            unrelated = root / 'unrelated.mobileprovision'
+            unrelated.write_bytes(b'other profile')
+            residual = {str(unrelated): hashlib.sha256(unrelated.read_bytes()).hexdigest()}
+            with patch.dict(os.environ, {'IOS_CERTIFICATE_BASE64': base64.b64encode(b'fixture key').decode(),
+                                         'IOS_CERTIFICATE_PASSWORD': 'fixture'}), \
+                    patch.object(ios, 'keychains', return_value=[]), \
+                    patch.object(ios, 'profile_files', side_effect=[{}, residual, residual]), \
+                    patch.object(ios, 'secret_command'), \
+                    patch.object(ios.subprocess, 'check_output', return_value=pem), \
+                    patch.object(ios, 'output', return_value=hashlib.sha1(certificate).hexdigest().upper()), \
+                    patch.object(ios, 'decode_profile', return_value={'UUID': 'another-owner'}):
+                with self.assertRaisesRegex(ValueError, 'boundary'):
+                    with ios.signer(root, ios.validate_profile(self.profile, PIN), PIN):
+                        pass
+            self.assertTrue(unrelated.exists())
+            self.assertFalse(json.loads((root / 'signing-cleanup.json').read_text())['passed'])
+
 
 class ArtifactTests(unittest.TestCase):
+    def test_device_preflight_requires_effective_profile_identity_and_xcode(self):
+        value = dict(PRODUCT_BUNDLE_IDENTIFIER=ios.BUNDLE, CODE_SIGN_STYLE='Manual', DEVELOPMENT_TEAM=ios.TEAM,
+                     PROVISIONING_PROFILE_SPECIFIER='profile-uuid', CODE_SIGN_IDENTITY='certificate-sha1',
+                     SDKROOT='/Applications/Xcode_26.2.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk')
+        ios.verify_device_settings([{'buildSettings': value}], {'uuid': 'profile-uuid'}, 'certificate-sha1')
+        for key, replacement in [('CODE_SIGN_STYLE', 'Automatic'), ('DEVELOPMENT_TEAM', 'other'),
+                                  ('PROVISIONING_PROFILE_SPECIFIER', ''), ('CODE_SIGN_IDENTITY', 'other'),
+                                  ('SDKROOT', '/Applications/Xcode_16.4.app/SDKs/iPhoneOS18.5.sdk')]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                ios.verify_device_settings([{'buildSettings': dict(value, **{key: replacement})}],
+                                           {'uuid': 'profile-uuid'}, 'certificate-sha1')
+
+    @unittest.skipIf(os.name == 'nt', 'executes the macOS-compatible POSIX build wrapper')
+    def test_xcode_selection_survives_cargo_mobile_explicit_environment(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            native = root / 'real xcodebuild'
+            native.write_text('#!/bin/sh\nprintf "%s\\n" "$DEVELOPER_DIR" "${XCODE_XCCONFIG_FILE-unset}" "$@"\n')
+            native.chmod(0o700)
+            config = root / 'manual signing.xcconfig'
+            config.write_text('CODE_SIGN_STYLE = Manual\n')
+            environment = dict(PATH=os.environ['PATH'], DEVELOPER_DIR='/Applications/Xcode_26.2.app/Contents/Developer')
+            for label, signing in [('simulator', None), ('device', config)]:
+                wrapped = ios.xcode_environment(root / label, environment, signing, str(native))
+                # Matches cargo-mobile2: only PATH and a small base env survive.
+                result = subprocess.check_output(['xcodebuild', '-showBuildSettings'],
+                    env={'PATH': wrapped['PATH']}, text=True).splitlines()
+                self.assertEqual(result, [environment['DEVELOPER_DIR'],
+                    str(config) if signing else 'unset', '-showBuildSettings'])
+
     def test_simulator_uses_an_available_runtime_compatible_phone_not_type_list_order(self):
         types = [{'identifier': 'iphone17', 'name': 'iPhone 17'},
                  {'identifier': 'iphone6s', 'name': 'iPhone 6s Plus'}]
