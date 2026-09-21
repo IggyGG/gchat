@@ -9,7 +9,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+import zipfile
+from unittest.mock import patch, Mock
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
@@ -147,6 +148,130 @@ class EmulatorCleanup(unittest.TestCase):
         self.assertEqual(android.listener_rows(row, 10123), [{'local_address': '00000000:1234', 'inode': '42'}])
         self.assertEqual(android.listener_rows(row, 10124), [])
         self.assertEqual(android.listener_rows(row.replace(' 0A ', ' 01 '), 10123), [])
+
+
+class ArtifactReuse(unittest.TestCase):
+    def test_relocated_original_receipt_keeps_hash_and_size_binding(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            original = Path(scratch) / 'old.apk'
+            original.write_bytes(b'signed original fixture')
+            item = android.reference(original)
+            relocated = Path(scratch) / 'new.apk'
+            original.rename(relocated)
+            self.assertEqual(android.verify_copy(relocated, item), relocated)
+            with self.assertRaisesRegex(ValueError, 'changed'):
+                android.verify_copy(relocated, {**item, 'size': item['size'] + 1})
+            relocated.write_bytes(b'tampered original fixture')
+            with self.assertRaisesRegex(ValueError, 'changed'):
+                android.verify_copy(relocated, item)
+
+    def test_original_failed_workflow_requires_exact_build_identity_and_artifact(self):
+        args = argparse.Namespace(build_run=123, artifact_id=456, gchat_commit='a' * 40,
+                                  gcoms_commit='b' * 40, artifact_sha256='c' * 64)
+        original = dict(id=123, head_sha=args.gchat_commit, head_repository={'full_name': android.policy.REPO},
+                        event='workflow_dispatch', status='completed', conclusion='failure',
+                        path='.github/workflows/android-release.yml', head_branch='release/gchat-mobile-0.1.4')
+        artifact = dict(id=456, expired=False, name=f'android-{args.gchat_commit}-{args.gcoms_commit}',
+                        digest='sha256:' + args.artifact_sha256)
+        self.assertEqual(android.verify_original_artifact(args, original, [artifact]), artifact)
+        for changed in ({'id': 124}, {'head_sha': 'd' * 40}, {'event': 'pull_request'}, {'status': 'in_progress'},
+                        {'head_repository': {'full_name': 'another/repository'}},
+                        {'path': '.github/workflows/other.yml'}, {'head_branch': 'unreviewed'}):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                android.verify_original_artifact(args, {**original, **changed}, [artifact])
+        for changed in ({'id': 457}, {'expired': True}, {'name': 'another-pair'}, {'digest': 'sha256:' + 'd' * 64}):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                android.verify_original_artifact(args, original, [{**artifact, **changed}])
+        with self.assertRaises(ValueError):
+            android.verify_original_artifact(args, original, [artifact, artifact])
+
+    def test_archive_rejects_traversal_absolute_paths_and_symlinks(self):
+        for name, mode in (('../escape', 0), ('/absolute', 0), ('directory\\escape', 0),
+                           ('C:escape', 0), ('link', 0o120777)):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as scratch:
+                root = Path(scratch)
+                archive = root / 'input.zip'
+                with zipfile.ZipFile(archive, 'w') as bundle:
+                    member = zipfile.ZipInfo(name)
+                    member.external_attr = mode << 16
+                    bundle.writestr(member, b'fixture')
+                with self.assertRaisesRegex(ValueError, 'unsafe'):
+                    android.extract_artifact(archive, root / 'original')
+                self.assertFalse((root / 'escape').exists())
+
+    def test_extract_preserves_original_failed_report_bytes(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            archive = root / 'input.zip'
+            raw = b'{"passed":false,"error":"original AVD failure"}\n'
+            with zipfile.ZipFile(archive, 'w') as bundle:
+                bundle.writestr('emulator-driver.json', raw)
+            android.extract_artifact(archive, root / 'original')
+            self.assertEqual((root / 'original/emulator-driver.json').read_bytes(), raw)
+            with self.assertRaises(FileExistsError):
+                android.extract_artifact(archive, root / 'original')
+
+
+class EmulatorDriver(unittest.TestCase):
+    def test_avd_tools_share_explicit_private_directory(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            inherited = dict(ANDROID_SDK_HOME='/stale/legacy', ANDROID_AVD_HOME='/stale/avd',
+                             ANDROID_EMULATOR_HOME='/stale/emulator', KEEP='yes')
+            env, avds = android.emulator_environment(root, inherited)
+            self.assertEqual(env['ANDROID_AVD_HOME'], str(root / 'android-user/avd'))
+            self.assertEqual(env['ANDROID_USER_HOME'], env['ANDROID_EMULATOR_HOME'])
+            self.assertEqual(Path(env['ANDROID_USER_HOME']) / 'avd', avds)
+            self.assertNotIn('ANDROID_SDK_HOME', env)
+            self.assertEqual(inherited['ANDROID_SDK_HOME'], '/stale/legacy')
+            self.assertEqual(env['KEEP'], 'yes')
+
+    def test_missing_registration_fails_before_emulator_and_retains_cleanup(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            with patch.object(android, 'sdk', return_value=root / 'sdk'), \
+                    patch.object(android.subprocess, 'run'), patch.object(android.subprocess, 'Popen') as popen:
+                with self.assertRaisesRegex(ValueError, 'requested AVD directory'):
+                    android.emulator(argparse.Namespace(output=root))
+                popen.assert_not_called()
+            report = json.loads((root / 'emulator-driver.json').read_text())
+            self.assertFalse(report['passed'])
+            self.assertFalse(report['started'])
+            self.assertTrue(report['process_stopped'])
+
+    def test_smoke_failure_stops_owned_emulator_even_if_adb_kill_stalls(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            process = Mock()
+            process.poll.return_value = None
+            def kill():
+                process.poll.return_value = -9
+            process.kill.side_effect = kill
+            create_env = []
+            def execute(command, **kwargs):
+                if 'create' in command:
+                    env = kwargs['env']
+                    create_env.append(env)
+                    avd = Path(command[command.index('--path') + 1])
+                    avd.mkdir()
+                    (avd / 'config.ini').write_text('fixture')
+                    (Path(env['ANDROID_AVD_HOME']) / 'gchat-release-fixture.ini').write_text('fixture')
+                elif command[-2:] == ['emu', 'kill']:
+                    raise subprocess.TimeoutExpired(command, 30)
+                return subprocess.CompletedProcess(command, 0, stdout='1')
+            with patch.object(android, 'sdk', return_value=root / 'sdk'), \
+                    patch.object(android.subprocess, 'run', side_effect=execute), \
+                    patch.object(android.subprocess, 'Popen', return_value=process) as popen, \
+                    patch.object(android, 'smoke', side_effect=ValueError('injected app failure')):
+                with self.assertRaisesRegex(ValueError, 'injected app failure'):
+                    android.emulator(argparse.Namespace(output=root))
+            self.assertEqual(popen.call_args.kwargs['env'], create_env[0])
+            process.kill.assert_called_once()
+            report = json.loads((root / 'emulator-driver.json').read_text())
+            self.assertTrue(report['started'])
+            self.assertTrue(report['process_stopped'])
+            self.assertFalse(report['passed'])
+            self.assertIn('injected app failure', report['error'])
 
 
 class FrozenSources(unittest.TestCase):

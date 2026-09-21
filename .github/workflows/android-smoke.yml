@@ -1,0 +1,95 @@
+name: Android signed artifact smoke
+run-name: Android smoke ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Original completed Android release workflow run ID
+        required: true
+        type: string
+      artifact_id:
+        description: Artifact ID belonging to that original run
+        required: true
+        type: string
+      artifact_sha256:
+        description: Exact original artifact ZIP SHA256 from GitHub
+        required: true
+        type: string
+      gchat_commit:
+        description: Original APK full GChat source commit (not this controller)
+        required: true
+        type: string
+      gcoms_commit:
+        description: Original APK full GComs source commit
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Install emulator and APK verification tools only
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openjdk-17-jdk libpulse0 libnss3 libxkbcommon0
+          echo 'JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> "$GITHUB_ENV"
+          echo '/usr/lib/jvm/java-17-openjdk-amd64/bin' >> "$GITHUB_PATH"
+          python3 - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          manager = Path(os.environ['ANDROID_HOME']) / 'cmdline-tools/latest/bin/sdkmanager'
+          environment = dict(os.environ, JAVA_HOME='/usr/lib/jvm/java-17-openjdk-amd64')
+          subprocess.run([str(manager), '--licenses'], input='y\n' * 100, text=True, env=environment, check=True)
+          subprocess.run([str(manager), 'platform-tools', 'build-tools;36.0.0', 'emulator',
+                          'system-images;android-35;google_apis;x86_64'], env=environment, check=True)
+          PY
+      - name: Verify original run, artifact digest, source receipts and pinned APK signatures
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+          BUILD_RUN: ${{ inputs.build_run }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+        run: >-
+          python3 gchat/scripts/android-build.py download-smoke --output android-smoke
+          --build-run "$BUILD_RUN" --artifact-id "$ARTIFACT_ID" --artifact-sha256 "$ARTIFACT_SHA256"
+          --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT"
+      - name: Run installed profile and lifecycle checks on unchanged signed APK
+        timeout-minutes: 10
+        run: |
+          sudo chmod 666 /dev/kvm
+          python3 gchat/scripts/android-build.py emulator --output android-smoke --probe-picker
+      - name: Retain original bindings and new controller smoke evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-smoke-${{ inputs.request_id }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            android-smoke/reuse.json
+            android-smoke/build.json
+            android-smoke/signing.json
+            android-smoke/emulator-driver.json
+            android-smoke/emulator-smoke/
+            android-smoke/emulator.log
+            android-smoke/avd-create.log

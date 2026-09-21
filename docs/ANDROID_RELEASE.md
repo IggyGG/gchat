@@ -71,7 +71,7 @@ On a correctly prepared build worker, with clean exact source trees:
 ```sh
 python3 gchat/scripts/android-build.py build --gchat gchat --gcoms gcoms --output android-output
 python3 gchat/scripts/android-build.py sign --output android-output
-python3 gchat/scripts/android-build.py smoke --output android-output --serial emulator-5554
+python3 gchat/scripts/android-build.py emulator --output android-output
 ```
 
 Output must be fresh. Build and signing write `build.json` and `signing.json`;
@@ -100,3 +100,33 @@ an app or OS vault pass.
 References: [Tauri Android build CLI](https://v2.tauri.app/reference/cli/#android-build),
 [Tauri Android signing](https://v2.tauri.app/distribute/sign/android/),
 [Android 16 KiB page sizes](https://developer.android.com/guide/practices/page-sizes).
+
+## Retry installed smoke without rebuilding
+
+`.github/workflows/android-smoke.yml` consumes an existing completed Android
+release run and its exact artifact ID, ZIP digest and original GChat/GComs commits.
+It needs no signing environment, keystore, Firebase config, Rust or npm build. Its
+read-only GitHub token downloads that run's artifact; the controller checks the
+protected original workflow/ref and source identities, GitHub and downloaded ZIP
+digests, source/build/signing receipt agreement, both APK hashes, the current
+publisher certificate pin, signatures and native-library/alignment metadata.
+A failed overall build workflow is acceptable only when its retained build and
+signing gates passed; the old emulator failure remains failed.
+
+The original extracted artifact stays under `original/`; original JSON bytes and
+paths are preserved. `reuse.json` binds the original app sources separately from
+the new controller's commit/tree and helper hash. The new lifecycle receipt never
+qualifies newer application code. The job creates one fresh AVD using the same
+explicit `ANDROID_USER_HOME`, `ANDROID_EMULATOR_HOME` and `ANDROID_AVD_HOME` for
+both avdmanager and emulator, checks its registration before starting, and stops
+its emulator on every terminal path. This avoids the inherited home-directory
+mismatch that prevented the earlier emulator from booting. The bounded driver
+retains setup, emulator, app-UID logcat and UI diagnostics alongside cleanup.
+
+[Android's documented AVD directory lookup](https://developer.android.com/tools/variables)
+defines these shared paths. The earlier native/signing artifact remains immutable;
+no new remote delivery or physical-device pass is implied. The smoke-only worker
+also opens the invitation file picker, cancels without selecting data and records
+whether the unlocked setup screen returns. Unexpected locking fails that separate
+picker check while preserving the completed profile lifecycle observations. No
+production invitation or provider request is used.

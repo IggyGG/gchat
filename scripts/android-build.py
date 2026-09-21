@@ -56,6 +56,12 @@ def verify_reference(item):
     return path
 
 
+def verify_copy(path, item):
+    require(path.is_file() and digest(path) == item['sha256'] and path.stat().st_size == item['size'],
+            'retained artifact or receipt changed: ' + path.name)
+    return path
+
+
 def run(command, cwd=None, env=None, timeout=3600):
     subprocess.run([str(x) for x in command], cwd=cwd, env=env, check=True, timeout=timeout)
 
@@ -64,10 +70,11 @@ def output(command, **kwargs):
     return subprocess.check_output([str(x) for x in command], text=True, **kwargs).strip()
 
 
-def sdk():
+def sdk(require_ndk=True):
     root = Path(os.environ.get('ANDROID_HOME', os.environ.get('ANDROID_SDK_ROOT', ''))).resolve()
     require((root / 'platform-tools/adb').is_file(), 'set ANDROID_HOME to an installed Android SDK')
-    require((root / f'ndk/{NDK}/source.properties').is_file(), f'install exact NDK {NDK}')
+    if require_ndk:
+        require((root / f'ndk/{NDK}/source.properties').is_file(), f'install exact NDK {NDK}')
     require((root / f'build-tools/{BUILD_TOOLS}/apksigner').is_file(), f'install build-tools {BUILD_TOOLS}')
     return root
 
@@ -345,12 +352,13 @@ def smoke(args):
     signed_path = root / 'signing.json'
     signed = json.loads(signed_path.read_text())
     require(signed.get('passed') and signed.get('private_keystore_removed'), 'signing/cleanup receipt did not pass')
-    build = json.loads(verify_reference(signed['build']).read_text())
+    build_path = verify_copy(root / 'build.json', signed['build'])
+    build = json.loads(build_path.read_text())
     require(build.get('passed') and build.get('sources_unchanged') and signed['sources'] == build['sources'],
             'signing receipt differs from its build/source binding')
     artifact = next(x for x in signed['artifacts'] if x['abi'] == 'x86_64')
-    apk = verify_reference(artifact)
-    android = sdk()
+    apk = verify_copy(root / 'signed/gchat-x86_64.apk', artifact)
+    android = sdk(require_ndk=False)
     verify_signature(apk, android / 'build-tools' / BUILD_TOOLS, signed['certificate_sha256'])
     adb = [android / 'platform-tools/adb', '-s', args.serial]
     require(re.fullmatch(r'emulator-[0-9]+', args.serial), 'smoke is restricted to an explicit emulator serial')
@@ -366,7 +374,8 @@ def smoke(args):
     dest = root / 'emulator-smoke'
     dest.mkdir(exist_ok=False)
     report = {'schema': 1, 'scope': 'android_x86_64_installed_profile_lifecycle_no_listener', 'passed': False,
-              'artifact': artifact, 'signing': reference(signed_path), 'sources': signed['sources'],
+              'artifact': artifact, 'tested_artifact': reference(apk), 'signing': reference(signed_path), 'sources': signed['sources'],
+              'controller': reference(Path(__file__)),
               'physical_device_qualified': False, 'network_delivery_qualified': False, 'push_qualified': False,
               'observations': []}
     installed = False
@@ -441,17 +450,204 @@ def smoke(args):
         launch()
         wait_node(text('Reconnect'))
         no_listener('process_restart_retained_profile_locked')
+        report['profile_lifecycle_passed'] = True
+        if getattr(args, 'probe_picker', False):
+            password = wait_node(lambda n: n.attrib.get('password') == 'true')
+            tap(password)
+            shell('input', 'text', 'gchat-emulator-fixture-only-42')
+            shell('input', 'keyevent', '111')
+            tap(wait_node(text('Reconnect')))
+            wait_node(text('Connect to GChat'), timeout=120)
+            tap(wait_node(text('Or choose an invitation file')))
+            picker = wait_node(lambda n: n.attrib.get('package', '').endswith('.documentsui'), timeout=30)
+            report['picker'] = {'opened': True, 'package': picker.attrib['package'], 'selected_file': False}
+            no_listener('invitation_picker_open')
+            shell('input', 'keyevent', '4')
+            returned = wait_node(lambda n: text('Reconnect')(n) or text('Connect to GChat')(n), timeout=30)
+            report['picker']['returned_locked'] = text('Reconnect')(returned)
+            report['picker']['passed'] = not report['picker']['returned_locked']
+            no_listener('invitation_picker_cancel_return')
+            require(report['picker']['passed'], 'invitation picker cancellation locked the profile')
         report['passed'] = True
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
         raise
     finally:
+        if installed and uid is not None:
+            try:
+                (dest / 'app-logcat.txt').write_text(shell('logcat', '-d', '-v', 'threadtime', '--uid=' + str(uid)))
+                (dest / 'final-ui.xml').write_text(shell('cat', '/sdcard/gchat-fixture-ui.xml'))
+            except Exception as error:
+                report['diagnostic_error'] = type(error).__name__
         report['cleanup'] = cleanup_emulator(shell, adb, installed, uid, firewall)
         report['inputs_unchanged'] = digest(apk) == artifact['sha256']
         report['passed'] = report['passed'] and report['cleanup']['passed'] and report['inputs_unchanged']
         write_json(dest / 'report.json', report)
         if not report['cleanup']['passed']:
             raise ValueError('Android fixture cleanup failed; see retained report')
+
+
+
+def emulator_environment(root, inherited):
+    environment = dict(inherited)
+    user = root / 'android-user'
+    avds = user / 'avd'
+    avds.mkdir(parents=True, exist_ok=False)
+    environment['ANDROID_USER_HOME'] = str(user)
+    environment['ANDROID_EMULATOR_HOME'] = str(user)
+    environment['ANDROID_AVD_HOME'] = str(avds)
+    # Legacy SDK settings must not send avdmanager to a different directory.
+    environment.pop('ANDROID_SDK_HOME', None)
+    return environment, avds
+
+
+def emulator(args):
+    root = args.output.resolve()
+    android = sdk(require_ndk=False)
+    environment, avds = emulator_environment(root, os.environ)
+    name = 'gchat-release-fixture'
+    avd_path = avds / (name + '.avd')
+    report = {'schema': 1, 'scope': 'android_disposable_emulator_driver', 'passed': False,
+              'controller': reference(Path(__file__)), 'avd_home': str(avds), 'started': False}
+    process = None
+    adb = [android / 'platform-tools/adb', '-s', 'emulator-5554']
+    try:
+        with (root / 'avd-create.log').open('w') as log:
+            subprocess.run([str(android / 'cmdline-tools/latest/bin/avdmanager'), 'create', 'avd', '--force',
+                            '--name', name, '--path', str(avd_path), '--package',
+                            'system-images;android-35;google_apis;x86_64'],
+                           input='no\n', text=True, env=environment, stdout=log, stderr=subprocess.STDOUT,
+                           check=True, timeout=120)
+        require((avd_path / 'config.ini').is_file(), 'avdmanager did not create the requested AVD directory')
+        require((avds / (name + '.ini')).is_file(), 'avdmanager did not register AVD in the explicit shared AVD home')
+        with (root / 'emulator.log').open('w') as log:
+            process = subprocess.Popen([str(android / 'emulator/emulator'), '-avd', name,
+                                        '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim',
+                                        '-no-snapshot', '-wipe-data', '-gpu', 'swiftshader_indirect'],
+                                       env=environment, stdout=log, stderr=log)
+            report['started'] = True
+            deadline = time.monotonic() + 180
+            while time.monotonic() < deadline:
+                require(process.poll() is None, 'emulator exited before startup')
+                try:
+                    result = subprocess.run([str(x) for x in [*adb, 'shell', 'getprop', 'sys.boot_completed']],
+                                            capture_output=True, text=True, timeout=10)
+                except subprocess.TimeoutExpired:
+                    continue
+                if result.returncode == 0 and result.stdout.strip() == '1':
+                    break
+                time.sleep(2)
+            else:
+                raise ValueError('emulator failed its bounded boot deadline')
+            run([*adb, 'shell', 'input', 'keyevent', '82'], timeout=30)
+            smoke(argparse.Namespace(output=root, serial='emulator-5554', probe_picker=getattr(args, 'probe_picker', False)))
+            report['passed'] = True
+    except Exception as error:
+        report['error'] = type(error).__name__ + ': ' + str(error)
+        raise
+    finally:
+        if process is not None:
+            if process.poll() is None:
+                try:
+                    subprocess.run([str(x) for x in [*adb, 'emu', 'kill']], check=False, timeout=30)
+                    process.wait(timeout=30)
+                except (OSError, subprocess.TimeoutExpired):
+                    process.kill()
+                    process.wait(timeout=10)
+            report['process_stopped'] = process.poll() is not None
+        else:
+            report['process_stopped'] = True
+        report['passed'] = report['passed'] and report['process_stopped']
+        write_json(root / 'emulator-driver.json', report)
+
+
+def verify_original_artifact(args, original, artifacts):
+    require(original.get('id') == args.build_run and original.get('head_sha') == args.gchat_commit and
+            original.get('event') == 'workflow_dispatch' and original.get('status') == 'completed' and
+            original.get('head_repository', {}).get('full_name') == policy.REPO and
+            original.get('path') == '.github/workflows/android-release.yml', 'original build run identity differs')
+    policy.release_ref(original['head_branch'])
+    matches = [x for x in artifacts if x['id'] == args.artifact_id]
+    require(len(matches) == 1, 'artifact does not belong to the original Android run')
+    item = matches[0]
+    require(not item.get('expired') and item['name'] == f'android-{args.gchat_commit}-{args.gcoms_commit}' and
+            item.get('digest') == 'sha256:' + args.artifact_sha256, 'original artifact name or digest differs')
+    return item
+
+
+def extract_artifact(archive, destination):
+    destination.mkdir(exist_ok=False)
+    with zipfile.ZipFile(archive) as bundle:
+        members = bundle.infolist()
+        require(len(members) < 50000 and sum(x.file_size for x in members) < 750 * 1024 * 1024,
+                'artifact archive exceeds extraction bounds')
+        names = set()
+        for member in members:
+            path = Path(member.filename)
+            require(not path.is_absolute() and '..' not in path.parts and '\\' not in member.filename and
+                    ':' not in member.filename and (member.external_attr >> 16) & 0o170000 != 0o120000 and
+                    member.filename not in names, 'unsafe artifact archive member')
+            names.add(member.filename)
+        bundle.extractall(destination)
+
+
+def download_smoke(args):
+    """Fetch one bound original artifact; preserve every original receipt byte."""
+    root = args.output.resolve()
+    root.mkdir(parents=True, exist_ok=False)
+    controller = Path(__file__).resolve().parents[1]
+    identity = source_identity(controller)
+    env = os.environ
+    ref = policy.release_ref(env.get('GITHUB_REF', ''))
+    require(env.get('GITHUB_SHA') == identity['commit'] == env.get('GITHUB_WORKFLOW_SHA') and
+            env.get('GITHUB_WORKFLOW_REF') == f'{policy.REPO}/.github/workflows/android-smoke.yml@{ref}',
+            'smoke controller must run from its own exact protected source')
+    policy.source_commit(args.gchat_commit)
+    policy.source_commit(args.gcoms_commit)
+    require(re.fullmatch('[0-9a-f]{64}', args.artifact_sha256), 'exact artifact ZIP digest is required')
+    def api(path):
+        return json.loads(output(['gh', 'api', f'repos/{policy.REPO}/' + path]))
+    original = api(f'actions/runs/{args.build_run}')
+    artifacts = api(f'actions/runs/{args.build_run}/artifacts')['artifacts']
+    item = verify_original_artifact(args, original, artifacts)
+    archive = root / 'original-artifact.zip'
+    with archive.open('wb') as stream:
+        subprocess.run(['gh', 'api', f'repos/{policy.REPO}/actions/artifacts/{args.artifact_id}/zip'],
+                       stdout=stream, check=True, timeout=300)
+    require(digest(archive) == args.artifact_sha256, 'downloaded ZIP digest differs')
+    original_root = root / 'original'
+    extract_artifact(archive, original_root)
+    # Original reports (including the failed driver log) remain untouched.
+    # Copies retain original absolute paths inside JSON; hashes bind relocated bytes.
+    for name in ('build.json', 'signing.json'):
+        shutil.copy2(original_root / name, root / name)
+    shutil.copytree(original_root / 'signed', root / 'signed')
+    signing_path, build_path = root / 'signing.json', root / 'build.json'
+    signing = json.loads(signing_path.read_text())
+    build = json.loads(verify_copy(build_path, signing['build']).read_text())
+    expected = {'gchat': args.gchat_commit, 'gcoms': args.gcoms_commit}
+    require(build.get('passed') and build.get('sources_unchanged') and signing.get('passed') and
+            signing.get('private_keystore_removed') and signing['sources'] == build['sources'] and
+            {name: value['commit'] for name, value in build['sources'].items()} == expected,
+            'original source/build/signature receipts do not match completed gates')
+    pin = signing_pin()
+    publisher = json.loads((controller / 'release/publication.json').read_text())['publisher_identities']['android']
+    require(publisher['certificate_sha256'].lower() == signing['certificate_sha256'] == pin,
+            'retained signer differs from the current pinned publisher')
+    tools = sdk(require_ndk=False) / 'build-tools' / BUILD_TOOLS
+    for artifact in signing['artifacts']:
+        require(artifact['abi'] in TARGETS, 'unexpected signed ABI')
+        apk = verify_copy(root / 'signed' / f'gchat-{artifact["abi"]}.apk', artifact)
+        verify_signature(apk, tools, pin)
+        actual = inspect_apk(apk, tools)
+        require(all(actual[k] == artifact[k] for k in ('abi', 'activity', 'native_libraries', 'min_sdk')),
+                'retained APK metadata differs from signed receipt')
+    require({x['abi'] for x in signing['artifacts']} == set(TARGETS), 'retained artifact lacks both signed ABIs')
+    write_json(root / 'reuse.json', {'schema': 1, 'passed': True, 'scope': 'original_signed_android_artifact_reuse',
+                                   'original_run': original, 'artifact': item, 'archive': reference(archive),
+                                   'controller': identity, 'harness': reference(Path(__file__)),
+                                   'sources': build['sources'], 'build': reference(build_path),
+                                   'signing': reference(signing_path)})
 
 
 def self_test():
@@ -493,16 +689,25 @@ def main():
     for name in ('gchat-commit', 'gcoms-commit', 'gchat-ref', 'gcoms-ref'):
         verify.add_argument('--' + name, required=True)
     compile_app.add_argument('--output', type=Path, required=True)
-    for name in ('sign', 'smoke'):
+    for name in ('sign', 'smoke', 'emulator'):
         sub = commands.add_parser(name)
         sub.add_argument('--output', type=Path, required=True)
         if name == 'smoke': sub.add_argument('--serial', required=True)
+        if name in ('smoke', 'emulator'): sub.add_argument('--probe-picker', action='store_true')
+    download = commands.add_parser('download-smoke')
+    download.add_argument('--output', type=Path, required=True)
+    download.add_argument('--build-run', type=int, required=True)
+    download.add_argument('--artifact-id', type=int, required=True)
+    for name in ('gchat-commit', 'gcoms-commit', 'artifact-sha256'):
+        download.add_argument('--' + name, required=True)
     commands.add_parser('self-test')
     args = parser.parse_args()
     if args.command == 'verify-checkouts': verify_checkouts(args)
     elif args.command == 'build': build(args)
     elif args.command == 'sign': sign(args)
     elif args.command == 'smoke': smoke(args)
+    elif args.command == 'emulator': emulator(args)
+    elif args.command == 'download-smoke': download_smoke(args)
     else: return self_test()
     return 0
 

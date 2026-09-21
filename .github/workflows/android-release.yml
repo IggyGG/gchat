@@ -111,41 +111,7 @@ jobs:
         timeout-minutes: 15
         run: |
           sudo chmod 666 /dev/kvm
-          python3 - <<'PY'
-          import os, subprocess, time
-          from pathlib import Path
-          sdk = Path(os.environ['ANDROID_HOME'])
-          subprocess.run([str(sdk / 'cmdline-tools/latest/bin/avdmanager'), 'create', 'avd', '--force',
-                          '--name', 'gchat-release-fixture', '--package', 'system-images;android-35;google_apis;x86_64'],
-                         input='no\n', text=True, check=True)
-          log = Path('android-output/emulator.log').open('w')
-          process = subprocess.Popen([str(sdk / 'emulator/emulator'), '-avd', 'gchat-release-fixture',
-                                      '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim', '-no-snapshot',
-                                      '-wipe-data', '-gpu', 'swiftshader_indirect'], stdout=log, stderr=log)
-          adb = [str(sdk / 'platform-tools/adb'), '-s', 'emulator-5554']
-          try:
-              deadline = time.monotonic() + 180
-              while time.monotonic() < deadline:
-                  if process.poll() is not None:
-                      raise SystemExit('emulator exited before startup')
-                  result = subprocess.run([*adb, 'shell', 'getprop', 'sys.boot_completed'], capture_output=True, text=True)
-                  if result.stdout.strip() == '1':
-                      break
-                  time.sleep(2)
-              else:
-                  raise SystemExit('emulator failed its bounded boot deadline')
-              subprocess.run([*adb, 'shell', 'input', 'keyevent', '82'], check=True)
-              subprocess.run(['python3', 'gchat/scripts/android-build.py', 'smoke', '--output', 'android-output',
-                              '--serial', 'emulator-5554'], check=True, timeout=600)
-          finally:
-              subprocess.run([*adb, 'emu', 'kill'], check=False, timeout=30)
-              try:
-                  process.wait(timeout=30)
-              except subprocess.TimeoutExpired:
-                  process.kill()
-                  process.wait()
-              log.close()
-          PY
+          python3 gchat/scripts/android-build.py emulator --output android-output
       - name: Retain exact APKs and success/failure evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -160,4 +126,6 @@ jobs:
             android-output/features-*.txt
             android-output/emulator-smoke/
             android-output/emulator.log
+            android-output/emulator-driver.json
+            android-output/avd-create.log
             android-output/paired/provenance/
