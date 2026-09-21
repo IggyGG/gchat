@@ -121,20 +121,21 @@ def build(output, data):
     if output == ROOT or ROOT.is_relative_to(output) or output.is_relative_to(ROOT / 'website'):
         raise ValueError('build output must not overwrite source')
     output.mkdir(parents=True, exist_ok=True)
-    page = (ROOT / 'website/index.template.html').read_text()
+    page = (ROOT / 'website/index.template.html').read_text(encoding='utf-8')
     if page.count('@@DOWNLOADS@@') != 1 or page.count('@@CLIENT_STATUS@@') != 1:
         raise ValueError('website template must contain both content slots exactly once')
     page = page.replace('@@DOWNLOADS@@', downloads(data)).replace('@@CLIENT_STATUS@@',
         ('Signed Linux production release available above. Privacy improvements are documented in the release notes; Windows and macOS packages are deferred.' if data['channel'] == 'production' else 'Signed desktop developer preview available above.') if data['version'] else 'Desktop application and TUI. Signed public installers are being prepared.')
     if '@@' in page:
         raise ValueError('unresolved website template marker')
-    (output / 'index.html').write_text(page)
-    (output / 'downloads.json').write_text(json.dumps(data, indent=2) + '\n')
+    rendered = page.encode('utf-8')
+    (output / 'index.html').write_bytes(rendered)
+    (output / 'downloads.json').write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8', newline='\n')
     shutil.copyfile(ROOT / 'website/robots.txt', output / 'robots.txt')
     (output / 'fonts').mkdir(exist_ok=True)
     for name in ('fixedsys-excelsior.ttf', 'LICENSE-CC0'):
         shutil.copyfile(ROOT / 'apps/client/public/fonts' / name, output / 'fonts' / name)
-    (output / 'build.json').write_text(json.dumps({'index_sha256': hashlib.sha256(page.encode()).hexdigest(), 'version': data['version']}) + '\n')
+    (output / 'build.json').write_text(json.dumps({'index_sha256': hashlib.sha256(rendered).hexdigest(), 'version': data['version']}) + '\n', encoding='utf-8', newline='\n')
 
 
 def main():
@@ -143,7 +144,7 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT / 'dist/website')
     parser.add_argument('--check-remote', action='store_true')
     args = parser.parse_args()
-    data = validate(json.loads(args.manifest.read_text()))
+    data = validate(json.loads(args.manifest.read_text(encoding='utf-8')))
     if args.check_remote:
         remote_check(data)
     build(args.output, data)

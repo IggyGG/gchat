@@ -37,6 +37,8 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
       GCHAT_ISOLATED_SIGNING_WORKER: '1'
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
     steps:
       - name: Keep source bytes and native paths portable
         run: |

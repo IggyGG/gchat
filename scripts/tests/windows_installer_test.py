@@ -4,7 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import shutil
 import sys
 import tempfile
@@ -53,15 +53,15 @@ class Fixture(unittest.TestCase):
 
 class ValidationTests(Fixture):
     def test_nsis_destination_is_last_and_unquoted_even_with_spaces(self):
-        command = windows.nsis_command(Path("C:/Signed Setup.exe"), Path("C:/Private Smoke/GChat"))
-        self.assertEqual(command, '"C:/Signed Setup.exe" /S /NS /D=C:/Private Smoke/GChat')
-        command = windows.nsis_command(Path("C:/Private Smoke/uninstall.exe"), Path("C:/Private Smoke/GChat"), True)
-        self.assertEqual(command, '"C:/Private Smoke/uninstall.exe" /S _?=C:/Private Smoke/GChat')
+        command = windows.nsis_command(PureWindowsPath("C:/Signed Setup.exe"), PureWindowsPath("C:/Private Smoke/GChat"))
+        self.assertEqual(command, r'"C:\Signed Setup.exe" /S /NS /D=C:\Private Smoke\GChat')
+        command = windows.nsis_command(PureWindowsPath("C:/Private Smoke/uninstall.exe"), PureWindowsPath("C:/Private Smoke/GChat"), True)
+        self.assertEqual(command, r'"C:\Private Smoke\uninstall.exe" /S _?=C:\Private Smoke\GChat')
         with self.assertRaisesRegex(ValueError, "unsafe NSIS"):
             windows.nsis_command(Path("setup.exe"), Path('owned" /D=elsewhere'))
 
     def test_installer_must_be_unique_and_hash_bound(self):
-        self.assertEqual(windows.select_installer(self.build, self.manifest), self.installer)
+        self.assertEqual(windows.select_installer(self.build, self.manifest), self.installer.resolve())
         self.installer.write_bytes(b"replaced")
         with self.assertRaisesRegex(ValueError, "bytes differ"):
             windows.select_installer(self.build, self.manifest)

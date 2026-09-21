@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,23 @@ publish = module('publish-release')
 
 
 class DeploymentTests(unittest.TestCase):
+    def test_website_is_utf8_with_hash_bound_bytes_under_non_utf8_locale(self):
+        open_path = Path.open
+        def cp1252_default(path, mode='r', buffering=-1, encoding=None, errors=None, newline=None):
+            if 'b' not in mode and encoding in (None, 'locale'):
+                encoding = 'cp1252'
+            return open_path(path, mode, buffering, encoding, errors, newline)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch.object(Path, 'open', cp1252_default):
+                website.build(root, {'schema': 1, 'version': None, 'artifacts': []})
+            rendered = (root / 'index.html').read_bytes()
+            self.assertIn('GChat', rendered.decode('utf-8'))
+            self.assertNotIn(b'\r\n', rendered)
+            report = json.loads((root / 'build.json').read_text(encoding='utf-8'))
+            self.assertEqual(report['index_sha256'], hashlib.sha256(rendered).hexdigest())
+            deploy.bundle(root, 'a' * 40)
+
     def test_changed_content_cannot_reuse_active_version_directory(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -78,7 +96,7 @@ class SignatureTests(unittest.TestCase):
     def test_real_signature_rejects_tampered_bytes_and_other_publisher(self):
         with tempfile.TemporaryDirectory() as temp:
             home = Path(temp); home.chmod(0o700)
-            command = ['gpg', '--homedir', str(home), '--batch']
+            command = ['gpg', '--homedir', str(home), '--batch', '--pinentry-mode', 'loopback']
             subprocess.run(command + ['--passphrase', '', '--quick-generate-key', 'GChat disposable test key', 'ed25519', 'sign', '1d'], check=True, capture_output=True)
             listing = subprocess.check_output(command + ['--with-colons', '--list-keys'], text=True, stderr=subprocess.DEVNULL)
             key = next(line.split(':')[9] for line in listing.splitlines() if line.startswith('fpr:'))

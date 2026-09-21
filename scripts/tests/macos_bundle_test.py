@@ -66,7 +66,7 @@ class BundleFixture(unittest.TestCase):
 
 class ValidationTests(BundleFixture):
     def test_dmg_bytes_and_unique_manifest_are_required(self):
-        self.assertEqual(bundle.select_dmg(self.build, self.manifest), self.dmg)
+        self.assertEqual(bundle.select_dmg(self.build, self.manifest), self.dmg.resolve())
         self.dmg.write_bytes(b"replacement")
         with self.assertRaisesRegex(ValueError, "DMG bytes differ"):
             bundle.select_dmg(self.build, self.manifest)
@@ -104,7 +104,7 @@ class ValidationTests(BundleFixture):
     def test_bundle_executable_cannot_escape_private_installation(self):
         app = self.root / "GChat.app"
         executable = application(app)
-        self.assertEqual(bundle.bundle_executable(app), executable)
+        self.assertEqual(bundle.bundle_executable(app), executable.resolve())
         plist = app / "Contents/Info.plist"
         plist.write_bytes(plistlib.dumps({"CFBundleExecutable": "../../../elsewhere"}))
         with self.assertRaisesRegex(ValueError, "unsafe CFBundleExecutable"):
