@@ -40,6 +40,55 @@ class FakeCommands:
         return 0, raw
 
 
+class DiskImageRetryTests(unittest.TestCase):
+    def exercise(self, errors, existing=False):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            dmg = root / 'candidate.dmg'
+            if existing:
+                dmg.write_bytes(b'original')
+            replies = iter(errors)
+            calls = []
+            def run(label, command, **kwargs):
+                calls.append(label)
+                error = next(replies)
+                dmg.write_bytes(b'partial' if error else b'complete')
+                (root / (label + '.stderr')).write_text(error)
+                return (1 if error else 0), b''
+            commands = SimpleNamespace(output=root, run=run)
+            with patch.object(tool.time, 'sleep') as sleep:
+                try:
+                    tool.create_dmg(commands, root, dmg)
+                except ValueError:
+                    return False, calls, dmg.read_bytes() if dmg.exists() else None, sleep.call_count
+                return True, calls, dmg.read_bytes(), sleep.call_count
+
+    def test_busy_partial_is_retried_and_success_retained(self):
+        passed, calls, content, sleeps = self.exercise(['hdiutil: create failed - Resource busy', ''])
+        self.assertTrue(passed)
+        self.assertEqual(calls, ['create-dmg-1', 'create-dmg-2'])
+        self.assertEqual(content, b'complete')
+        self.assertEqual(sleeps, 1)
+
+    def test_unrelated_error_is_not_retried(self):
+        passed, calls, _, sleeps = self.exercise(['hdiutil: create failed - Permission denied'])
+        self.assertFalse(passed)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(sleeps, 0)
+
+    def test_busy_retry_is_bounded(self):
+        passed, calls, _, sleeps = self.exercise(['hdiutil: create failed - Resource busy'] * 3)
+        self.assertFalse(passed)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(sleeps, 2)
+
+    def test_existing_image_is_never_replaced(self):
+        passed, calls, content, sleeps = self.exercise([], existing=True)
+        self.assertFalse(passed)
+        self.assertEqual(calls, [])
+        self.assertEqual(content, b'original')
+
+
 class PolicyAndOriginTests(unittest.TestCase):
     def setUp(self):
         self.args = SimpleNamespace(kind='native', target='macos-aarch64', run_id=12, artifact_id=34,

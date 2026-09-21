@@ -227,6 +227,29 @@ def sign_application(app, commands, output, identity):
     return signature
 
 
+def create_dmg(commands, stage, dmg):
+    """Retry only DiskImages' transient busy error, within one packaging budget."""
+    require(not dmg.exists() and not dmg.is_symlink(), 'refusing to replace an existing DMG')
+    deadline = time.monotonic() + 300
+    for attempt in range(3):
+        remaining = deadline - time.monotonic()
+        require(remaining > 0, 'create-dmg packaging deadline exhausted')
+        label = 'create-dmg-' + str(attempt + 1)
+        code, _ = commands.run(label, ['hdiutil', 'create', '-volname', 'GChat',
+                                     '-srcfolder', str(stage), '-format', 'UDZO', str(dmg)],
+                               timeout=remaining, allow_failure=True)
+        if code == 0:
+            require(dmg.is_file() and not dmg.is_symlink(), 'hdiutil produced no regular DMG')
+            return
+        error = (commands.output / (label + '.stderr')).read_text(errors='replace')
+        require('hdiutil: create failed - Resource busy' in error and attempt < 2,
+                f'{label} failed with exit {code}; see retained stderr')
+        if dmg.exists() or dmg.is_symlink():
+            require(dmg.is_file() and not dmg.is_symlink(), 'unexpected partial DMG type')
+            dmg.unlink()  # Only our newly created, incomplete candidate.
+        time.sleep(min(2 ** (attempt + 1), max(0, deadline - time.monotonic())))
+
+
 def prepare_signed(args, output, report, commands, identity):
     signed, build, original = original_inputs(args, output)
     report.update(original=original, sources=build['dependency_inputs']['sources'])
@@ -254,8 +277,7 @@ def prepare_signed(args, output, report, commands, identity):
     dmg = result / (image.stem + '-notarized.dmg')
     (stage / 'Applications').symlink_to('/Applications', target_is_directory=True)
     try:
-        commands.run('create-dmg', ['hdiutil', 'create', '-volname', 'GChat', '-srcfolder', str(stage),
-                                   '-format', 'UDZO', str(dmg)], timeout=300)
+        create_dmg(commands, stage, dmg)
     finally:
         # Never let an artifact uploader traverse the system Applications link.
         (stage / 'Applications').unlink()
