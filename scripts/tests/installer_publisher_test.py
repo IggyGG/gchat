@@ -1,6 +1,9 @@
 """Publisher display names and native signing identities are distinct."""
 import importlib.util
 import json
+import hashlib
+import plistlib
+from types import SimpleNamespace
 from pathlib import Path
 import subprocess
 import sys
@@ -142,6 +145,120 @@ class SigningDiagnosticsTest(unittest.TestCase):
                     with installer.apple_keychain('self-signed'):
                         pass
             self.assertEqual(commands[-1][:2], ['security', 'delete-keychain'])
+
+
+class DiskImageApplicationTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.bundle_dir = self.root / 'bundle'
+        (self.bundle_dir / 'dmg').mkdir(parents=True)
+        (self.bundle_dir / 'dmg/GChat.dmg').write_bytes(b'signed image')
+        self.commands = []
+        self.mount = None
+        self.readonly = True
+        self.wrong_mount = False
+        self.detach_failure = False
+
+    def execute(self, command, **kwargs):
+        self.commands.append(command)
+        if command[:2] == ['hdiutil', 'attach']:
+            self.mount = Path(command[command.index('-mountpoint') + 1])
+            app = self.mount / 'GChat.app'
+            (app / 'Contents/MacOS').mkdir(parents=True)
+            (app / 'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable': 'gchat-desktop'}))
+            (app / 'Contents/MacOS/gchat-desktop').write_bytes(b'signed executable')
+            info = {'system-entities': [{'mount-point': str(self.root if self.wrong_mount else self.mount),
+                                         'dev-entry': '/dev/disk7s1'}]}
+            return subprocess.CompletedProcess(command, 0, stdout=plistlib.dumps(info))
+        if command[:2] == ['hdiutil', 'detach'] and self.detach_failure:
+            raise RuntimeError('hdiutil detach failed')
+        if '--extract-certificates' in command:
+            prefix = command[command.index('--extract-certificates') + 1]
+            Path(prefix + '0').write_bytes(b'pinned certificate')
+        return subprocess.CompletedProcess(command, 0)
+
+    def test_verifies_actual_shipped_application_and_detaches(self):
+        with patch.object(installer, 'run', side_effect=self.execute), \
+             patch.object(installer.os, 'statvfs', return_value=SimpleNamespace(f_flag=1), create=True), \
+             patch.object(installer.os, 'ST_RDONLY', 1, create=True):
+            with installer.application_from_dmg(self.bundle_dir) as app:
+                self.assertEqual(app, self.mount / 'GChat.app')
+                self.assertTrue((app / 'Contents/MacOS/gchat-desktop').is_file())
+                self.assertFalse((self.bundle_dir / 'macos').exists())
+        self.assertEqual(self.commands[0][:3], ['codesign', '--verify', '--strict'])
+        self.assertIn('-readonly', self.commands[1])
+        self.assertEqual(self.commands[-1], ['hdiutil', 'detach', str(self.mount)])
+        self.assertFalse(self.mount.parent.exists())
+
+    def test_bad_mount_writable_mount_and_verification_error_always_detach(self):
+        for mode in ('wrong_mount', 'writable', 'verification_failure'):
+            self.wrong_mount = mode == 'wrong_mount'
+            with self.subTest(mode=mode), patch.object(installer, 'run', side_effect=self.execute), \
+                 patch.object(installer.os, 'statvfs', return_value=SimpleNamespace(f_flag=0 if mode == 'writable' else 1), create=True), \
+                 patch.object(installer.os, 'ST_RDONLY', 1, create=True):
+                with self.assertRaisesRegex(ValueError, 'mountpoint|read-only|bad signature'):
+                    with installer.application_from_dmg(self.bundle_dir):
+                        raise ValueError('bad signature')
+            self.assertEqual(self.commands[-1], ['hdiutil', 'detach', str(self.mount)])
+            self.assertFalse(self.mount.parent.exists())
+
+    def test_detach_failure_cannot_pass_or_remove_mounted_tree(self):
+        self.detach_failure = True
+        with patch.object(installer, 'run', side_effect=self.execute), \
+             patch.object(installer.os, 'statvfs', return_value=SimpleNamespace(f_flag=1), create=True), \
+             patch.object(installer.os, 'ST_RDONLY', 1, create=True):
+            with self.assertRaisesRegex(RuntimeError, 'detach failed'):
+                with installer.application_from_dmg(self.bundle_dir):
+                    pass
+        self.assertTrue(self.mount.is_dir())
+        installer.shutil.rmtree(self.mount.parent)  # Only a fake mount in this fixture.
+
+    def test_missing_or_multiple_images_are_refused_before_mount(self):
+        for count in (0, 2):
+            for item in (self.bundle_dir / 'dmg').iterdir():
+                item.unlink()
+            for index in range(count):
+                (self.bundle_dir / f'dmg/{index}.dmg').write_bytes(b'image')
+            with self.subTest(count=count), patch.object(installer, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'one signed disk image'):
+                    with installer.application_from_dmg(self.bundle_dir):
+                        pass
+                run.assert_not_called()
+
+    def test_bundle_binds_mounted_executable_and_requires_pinned_leaf(self):
+        for correct_pin in (True, False):
+            output = self.root / str(correct_pin)
+            output.mkdir()
+            bundle_dir = output / 'build/aarch64-apple-darwin/release/bundle'
+            identity = {'name': 'Gh0st', 'certificate_fingerprint':
+                        hashlib.sha256(b'pinned certificate' if correct_pin else b'wrong').hexdigest()}
+
+            def execute(command, **kwargs):
+                if command[:3] == ['npm', 'run', 'tauri']:
+                    (bundle_dir / 'dmg').mkdir(parents=True)
+                    (bundle_dir / 'dmg/GChat.dmg').write_bytes(b'signed image')
+                return self.execute(command, **kwargs)
+
+            details = subprocess.CompletedProcess(['codesign'], 0, stderr='Authority=Gh0st\n')
+            with self.subTest(correct_pin=correct_pin), patch.object(installer, 'run', side_effect=execute), \
+                 patch.object(installer.subprocess, 'check_output', return_value=b'{}'), \
+                 patch.object(installer.subprocess, 'run', return_value=details), \
+                 patch.object(installer, 'verify_resolved_protocol'), \
+                 patch.object(installer.os, 'statvfs', return_value=SimpleNamespace(f_flag=1), create=True), \
+                 patch.object(installer.os, 'ST_RDONLY', 1, create=True):
+                if correct_pin:
+                    files, executables = installer.bundle('macos-aarch64', output, {}, identity, 'self-signed', self.root)
+                    self.assertEqual(executables, [{'name': 'gchat-desktop',
+                        'sha256': hashlib.sha256(b'signed executable').hexdigest(), 'size': 17}])
+                    self.assertTrue(files[0]['signing_verified'])
+                    self.assertEqual((output / 'GChat.dmg').read_bytes(), b'signed image')
+                else:
+                    with self.assertRaisesRegex(ValueError, 'certificate differs'):
+                        installer.bundle('macos-aarch64', output, {}, identity, 'self-signed', self.root)
+                    self.assertFalse((output / 'GChat.dmg').exists())
+                self.assertFalse(self.mount.parent.exists())
 
 
 if __name__ == "__main__":

@@ -80,7 +80,6 @@ def signing_policy():
         raise ValueError('self-signed policy is limited to developer previews')
     return policy
 
-
 @contextmanager
 def apple_keychain(policy):
     with tempfile.TemporaryDirectory(prefix='gchat-sign-') as temp:
@@ -154,6 +153,42 @@ def configured_identity(system):
     return identity
 
 
+@contextmanager
+def application_from_dmg(bundle_dir):
+    """Inspect the shipped app even when Tauri removes its intermediate bundle."""
+    images = list((bundle_dir / 'dmg').glob('*.dmg'))
+    if len(images) != 1 or not images[0].is_file() or images[0].is_symlink():
+        raise ValueError('expected one signed disk image')
+    image = images[0]
+    before = sha(image)
+    run(['codesign', '--verify', '--strict', str(image)])
+    work = Path(tempfile.mkdtemp(prefix='gchat-inspect-dmg-')).resolve()
+    mount = work / 'volume'
+    mount.mkdir(mode=0o700)
+    attempted = False
+    try:
+        attempted = True
+        result = run(['hdiutil', 'attach', '-readonly', '-nobrowse', '-noautoopen',
+                      '-plist', '-mountpoint', str(mount), str(image)], capture_output=True)
+        entities = plistlib.loads(result.stdout).get('system-entities', [])
+        mounts = [entity for entity in entities if entity.get('mount-point')]
+        if len(mounts) != 1 or Path(mounts[0]['mount-point']).resolve() != mount:
+            raise ValueError('disk image did not use the owned mountpoint')
+        if not os.statvfs(mount).f_flag & os.ST_RDONLY:
+            raise ValueError('disk image inspection requires a read-only mount')
+        apps = list(mount.glob('*.app'))
+        if len(apps) != 1 or not apps[0].is_dir() or apps[0].is_symlink():
+            raise ValueError('expected one signed application in the disk image')
+        yield apps[0]
+    finally:
+        # Never recursively remove a directory while its volume is still mounted.
+        if attempted:
+            run(['hdiutil', 'detach', str(mount)], capture_output=True)
+        shutil.rmtree(work)
+    if sha(image) != before:
+        raise ValueError('disk image changed during application verification')
+
+
 def bundle(target, output, environment, identity, policy, checkout):
     system, arch, triple, bundles = TARGETS[target]
     config = {'bundle': {'publisher': identity['name']}}
@@ -187,31 +222,29 @@ def bundle(target, output, environment, identity, policy, checkout):
         bundle_dir = build_root / triple / 'release/bundle'
         executables = []
         if system == 'Darwin':
-            apps = list(bundle_dir.glob('macos/*.app'))
-            if len(apps) != 1:
-                raise ValueError('expected one signed application')
-            run(['codesign', '--verify', '--deep', '--strict', '--verbose=2', str(apps[0])])
-            details = subprocess.run(['codesign', '-d', '--verbose=4', str(apps[0])], capture_output=True, text=True, check=True)
-            if policy == 'publicly-trusted':
-                if 'TeamIdentifier='+required('APPLE_TEAM_ID') not in details.stderr.splitlines() or 'Authority='+required('APPLE_SIGNING_IDENTITY') not in details.stderr.splitlines():
-                    raise ValueError('signed application publisher differs from configured identity')
-            elif 'Authority='+identity['name'] not in details.stderr.splitlines():
-                raise ValueError('self-signed application publisher differs from configured identity')
-            certificate_prefix = Path(temp) / 'signer-'
-            run(['codesign', '-d', '--extract-certificates', str(certificate_prefix), str(apps[0])], capture_output=True)
-            certificate = Path(str(certificate_prefix)+'0').read_bytes()
-            expected = identity['certificate_fingerprint'].replace(' ', '').upper()
-            actual = hashlib.new('sha256' if len(expected) == 64 else 'sha1', certificate).hexdigest().upper()
-            if actual != expected:
-                raise ValueError('signed application certificate differs from configured fingerprint')
-            if policy == 'publicly-trusted':
-                run(['spctl', '--assess', '--type', 'execute', '--verbose=2', str(apps[0])])
-            metadata = plistlib.loads((apps[0] / 'Contents/Info.plist').read_bytes())
-            name = metadata.get('CFBundleExecutable')
-            if not isinstance(name, str) or Path(name).name != name or name in ('', '.', '..'):
-                raise ValueError('unsafe application executable name')
-            executable = apps[0] / 'Contents/MacOS' / name
-            executables.append({'name': name, 'sha256': sha(executable), 'size': executable.stat().st_size})
+            with application_from_dmg(bundle_dir) as app:
+                run(['codesign', '--verify', '--deep', '--strict', '--verbose=2', str(app)])
+                details = subprocess.run(['codesign', '-d', '--verbose=4', str(app)], capture_output=True, text=True, check=True)
+                if policy == 'publicly-trusted':
+                    if 'TeamIdentifier='+required('APPLE_TEAM_ID') not in details.stderr.splitlines() or 'Authority='+required('APPLE_SIGNING_IDENTITY') not in details.stderr.splitlines():
+                        raise ValueError('signed application publisher differs from configured identity')
+                elif 'Authority='+identity['name'] not in details.stderr.splitlines():
+                    raise ValueError('self-signed application publisher differs from configured identity')
+                certificate_prefix = Path(temp) / 'signer-'
+                run(['codesign', '-d', '--extract-certificates', str(certificate_prefix), str(app)], capture_output=True)
+                certificate = Path(str(certificate_prefix)+'0').read_bytes()
+                expected = identity['certificate_fingerprint'].replace(' ', '').upper()
+                actual = hashlib.new('sha256' if len(expected) == 64 else 'sha1', certificate).hexdigest().upper()
+                if actual != expected:
+                    raise ValueError('signed application certificate differs from configured fingerprint')
+                if policy == 'publicly-trusted':
+                    run(['spctl', '--assess', '--type', 'execute', '--verbose=2', str(app)])
+                metadata = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
+                name = metadata.get('CFBundleExecutable')
+                if not isinstance(name, str) or Path(name).name != name or name in ('', '.', '..'):
+                    raise ValueError('unsafe application executable name')
+                executable = app / 'Contents/MacOS' / name
+                executables.append({'name': name, 'sha256': sha(executable), 'size': executable.stat().st_size})
         elif system == 'Windows':
             executable = build_root / triple / 'release/gchat-desktop.exe'
             verify_windows(executable, policy)
@@ -235,10 +268,10 @@ def bundle(target, output, environment, identity, policy, checkout):
         return files, executables
 
 
-def main():
+def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--target',choices=TARGETS,required=True);p.add_argument('--gcoms',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--native-ci-report', type=Path, required=True, help='successful paired native-ci.json from this target and source pair')
-    a=p.parse_args()
+    a=p.parse_args(argv)
     system,arch,triple,_=TARGETS[a.target]
     actual={'amd64':'x86_64','arm64':'aarch64'}.get(platform.machine().lower(),platform.machine().lower())
     host=subprocess.check_output(['rustc','-vV'],text=True)

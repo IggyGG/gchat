@@ -117,9 +117,8 @@ jobs:
           clang --version
           brew install node@22 cmake
           echo "$(brew --prefix node@22)/bin" >> "$GITHUB_PATH"
-      - name: Build unchanged native-qualified application with corrected signing input
+      - name: Package unchanged native-qualified application with bound controller helper
         timeout-minutes: 140
-        working-directory: gchat
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -131,7 +130,7 @@ jobs:
           TARGET: ${{ inputs.target }}
         run: |
           npm install --global npm@11
-          python3 scripts/build-installer.py --target "$TARGET" --gcoms ../gcoms --native-ci-report ../retry-evidence/original-native/evidence/paired-gchat/native-ci.json --output ../signed
+          python3 controller/scripts/macos-package.py package --target "$TARGET" --gchat gchat --gcoms gcoms --output retry-evidence --signed signed 2>&1 | tee retry-evidence/package.log
       - name: Verify installed DMG service and graphical startup
         timeout-minutes: 15
         working-directory: gchat
@@ -153,6 +152,7 @@ jobs:
           include-hidden-files: true
           path: |
             signed/*.dmg
+            signed/build/*/release/bundle/dmg/*.dmg
             signed/build.json
             signed/provenance/**
             signed/application-smoke/**

@@ -10,6 +10,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import tarfile
 import unittest
 from unittest.mock import patch
@@ -220,6 +221,32 @@ class ControllerTest(unittest.TestCase):
             with patch.dict(environment, {'GITHUB_WORKFLOW_REF': f'{package.REPO}/.github/workflows/macos-release.yml@{ref}'}):
                 with self.assertRaisesRegex(ValueError, 'own frozen'):
                     package.verify_controller(Path('.'), environment)
+
+
+class PackagingHelperTest(unittest.TestCase):
+    def test_original_dependency_helper_is_used_with_separate_controller_installer(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'scripts').mkdir()
+            names = ('prepare_pair', 'verify_derived_inputs', 'verify_resolved_protocol',
+                     'verify_native_ci_inputs', 'verify_retained_inputs')
+            (root / 'scripts/paired_sources.py').write_text('\n'.join(
+                f'def {name}(): return "original {name}"' for name in names))
+            installer = SimpleNamespace(ROOT=Path('/controller'), main=lambda _: None)
+            with patch.object(package, 'script', return_value=installer):
+                selected = package.packaging_helper(root)
+            self.assertIs(selected, installer)
+            self.assertEqual(selected.ROOT, root.resolve())
+            for name in names:
+                self.assertEqual(getattr(selected, name)(), 'original ' + name)
+
+    def test_workflow_records_logs_and_preserves_final_dmg_on_later_failure(self):
+        workflow = (SCRIPTS.parent / '.github/workflows/macos-package.yml').read_text()
+        self.assertIn('controller/scripts/macos-package.py package', workflow)
+        self.assertIn('tee retry-evidence/package.log', workflow)
+        self.assertIn('signed/build/*/release/bundle/dmg/*.dmg', workflow)
+        self.assertIn('if: always()', workflow)
+        self.assertNotIn('python3 scripts/build-installer.py --target', workflow)
 
 
 if __name__ == '__main__':

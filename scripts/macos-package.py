@@ -2,7 +2,8 @@
 """Retry Mac packaging against an unchanged, already native-qualified source pair.
 
 The controller has its own protected commit. It never substitutes its source
-identity for the original native application inputs or edits their installer.
+identity for the original native application inputs. Packaging helper changes
+are recorded separately and never modify the qualified application checkout.
 """
 import argparse
 import fnmatch
@@ -220,8 +221,7 @@ def load_prepared(args):
 def preflight(args):
     output, report = load_prepared(args)
     installer = script('build-installer')
-    # Only this import preflight uses the new diagnostics. The actual installer
-    # remains the unchanged script committed with the qualified application.
+    # This controller's signing/packaging helper is separate from app identity.
     installer.ROOT = args.gchat.resolve()
     identity = installer.configured_identity('Darwin')
     policy = installer.signing_policy()
@@ -236,12 +236,55 @@ def preflight(args):
     print('Protected signing certificate imported; ready to build the unchanged qualified application')
 
 
+def packaging_helper(gchat):
+    installer = script('build-installer')
+    installer.ROOT = gchat.resolve()
+    # Dependency preparation belongs to the native-qualified source version.
+    # Newer SDK graphs must not be substituted into an older application build.
+    path = gchat.resolve() / 'scripts/paired_sources.py'
+    spec = importlib.util.spec_from_file_location('qualified_paired_sources', path)
+    paired = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(paired)
+    for name in ('prepare_pair', 'verify_derived_inputs', 'verify_resolved_protocol',
+                 'verify_native_ci_inputs', 'verify_retained_inputs'):
+        setattr(installer, name, getattr(paired, name))
+    return installer
+
+
+def package_application(args):
+    output, prepared = load_prepared(args)
+    report = {'passed': False, 'scope': 'controller_packaging_original_native_application',
+              'controller': prepared['controller'], 'sources': prepared['sources'],
+              'application_sources_modified': False, 'native_tests_rerun': False,
+              'controller_helpers': {name: reference(ROOT / 'scripts' / name) for name in
+                                     ('macos-package.py', 'build-installer.py', 'release_evidence.py')},
+              'qualified_dependency_helper': reference(args.gchat.resolve() / 'scripts/paired_sources.py')}
+    write_json(output / 'packaging-helper.json', report)
+    try:
+        packaging_helper(args.gchat).main([
+            '--target', args.target, '--gcoms', str(args.gcoms.resolve()),
+            '--native-ci-report', str(output / 'original-native/evidence/paired-gchat/native-ci.json'),
+            '--output', str(args.signed.resolve())])
+        load_prepared(args)
+        report.update(passed=True, build=reference(args.signed.resolve() / 'build.json'))
+    finally:
+        write_json(output / 'packaging-helper.json', report)
+
+
 def finish(args):
     output, report = load_prepared(args)
     preflight_report = read_json(output / 'signing-preflight.json')
     require(preflight_report.get('passed') is True and preflight_report.get('sources') == report['sources'] and
             preflight_report.get('controller') == report['controller'], 'signing import preflight differs')
     signed = args.signed.resolve()
+    packaging = read_json(output / 'packaging-helper.json')
+    require(packaging.get('passed') is True and packaging.get('sources') == report['sources'] and
+            packaging.get('controller') == report['controller'] and
+            packaging.get('build') == reference(signed / 'build.json'), 'packaging helper/source bindings differ')
+    require(packaging.get('controller_helpers') == {name: reference(ROOT / 'scripts' / name) for name in
+                                                  ('macos-package.py', 'build-installer.py', 'release_evidence.py')} and
+            packaging.get('qualified_dependency_helper') == reference(args.gchat.resolve() / 'scripts/paired_sources.py'),
+            'packaging helper bytes changed')
     build = read_json(signed / 'build.json')
     expected = {name: value['commit'] for name, value in report['sources'].items()}
     require(build.get('sources') == expected and build.get('target') == args.target and
@@ -265,14 +308,15 @@ def finish(args):
     script('macos-build').verify_application_smoke(signed, build, archive)
     report.update(passed=True, native_tests_rerun=False, build=reference(signed / 'build.json'),
                   application_smoke=reference(signed / 'application-smoke/report.json'),
-                  signing_preflight=reference(output / 'signing-preflight.json'))
+                  signing_preflight=reference(output / 'signing-preflight.json'),
+                  packaging_helper=reference(output / 'packaging-helper.json'))
     write_json(output / 'report.json', report)
     print('Signed DMG and copied-application service/GUI smoke passed against original native-qualified sources')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('phase', choices=('prepare', 'preflight', 'finish'))
+    parser.add_argument('phase', choices=('prepare', 'preflight', 'package', 'finish'))
     parser.add_argument('--target', choices=TARGETS, required=True)
     parser.add_argument('--gchat', type=Path, required=True)
     parser.add_argument('--gcoms', type=Path, required=True)
@@ -293,8 +337,11 @@ def main():
     elif args.phase == 'preflight':
         preflight(args)
     else:
-        require(args.signed is not None, '--signed required for finish')
-        finish(args)
+        require(args.signed is not None, '--signed required for package/finish')
+        if args.phase == 'package':
+            package_application(args)
+        else:
+            finish(args)
 
 
 if __name__ == '__main__':
