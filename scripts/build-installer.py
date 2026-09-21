@@ -71,9 +71,12 @@ def sha(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def signing_policy():
+def signing_policy(system=None):
     publication = json.loads((ROOT / 'release/publication.json').read_text())
-    policy = publication.get('signing_policy', 'publicly-trusted')
+    system = system or platform.system()
+    target = {'Linux': 'linux', 'Windows': 'windows', 'Darwin': 'macos'}[system]
+    identity = publication.get('publisher_identities', {}).get(target, {})
+    policy = identity.get('signing_policy', publication.get('signing_policy', 'publicly-trusted'))
     if policy not in ('publicly-trusted', 'self-signed-preview', 'self-signed'):
         raise ValueError('unknown signing policy')
     if policy == 'self-signed-preview' and publication.get('channel') != 'developer-preview':
@@ -139,15 +142,20 @@ def configured_identity(system):
     if system == 'Linux' and fingerprint('GCHAT_RELEASE_KEY').upper() != expected:
         raise ValueError('Linux signing identity differs from publication configuration')
     if system == 'Darwin':
-        if signing_policy() in ('self-signed-preview', 'self-signed'):
+        if signing_policy(system) in ('self-signed-preview', 'self-signed'):
             if required('APPLE_SIGNING_IDENTITY').replace(' ', '').upper() != expected:
                 raise ValueError('self-signed Apple identity must be the pinned certificate fingerprint')
             return identity
         team = required('APPLE_TEAM_ID')
         if not re.fullmatch('[A-Z0-9]{10}', team):
             raise ValueError('invalid Apple team identifier')
+        if identity.get('team_id', team) != team:
+            raise ValueError('Apple team differs from publication configuration')
         # The human publisher name is distinct from Apple's certificate CN.
-        expected_name = f"Developer ID Application: {identity['name']} ({team})"
+        expected_name = identity.get('signing_identity', f"Developer ID Application: {identity['name']} ({team})")
+        if not isinstance(expected_name, str) or not re.fullmatch(
+                r'Developer ID Application: [^\r\n]+ \(' + re.escape(team) + r'\)', expected_name):
+            raise ValueError('configure the exact Developer ID Application signing identity')
         if required('APPLE_SIGNING_IDENTITY') != expected_name:
             raise ValueError('Apple signing identity differs from publication configuration')
     return identity
@@ -280,7 +288,7 @@ def main(argv=None):
     if os.environ.get('GC_DEFAULT_RELAY_BOOTSTRAP'):
         raise ValueError('official installers must use the signed bundled relay defaults')
     identity = configured_identity(system)
-    policy = signing_policy()
+    policy = signing_policy(system)
     sources={}
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip(): raise ValueError('release source must be clean')

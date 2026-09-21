@@ -55,6 +55,64 @@ class PublisherTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "differs"):
                     installer.configured_identity("Windows")
 
+    def test_developer_id_identity_is_separate_from_brand_and_other_platforms(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.configuration(root, "A" * 40)
+            path = root / "release/publication.json"
+            value = json.loads(path.read_text())
+            value["signing_policy"] = "self-signed"
+            value["publisher_identities"]["macos"].update(
+                signing_policy="publicly-trusted", team_id="0123456789",
+                signing_identity="Developer ID Application: Example Company AB (0123456789)")
+            path.write_text(json.dumps(value))
+            environment = {"APPLE_TEAM_ID": "0123456789",
+                           "APPLE_SIGNING_IDENTITY": "Developer ID Application: Example Company AB (0123456789)"}
+            with patch.object(installer, "ROOT", root), patch.dict(installer.os.environ, environment, clear=True):
+                self.assertEqual(installer.signing_policy("Darwin"), "publicly-trusted")
+                for system in ("Linux", "Windows"):
+                    self.assertEqual(installer.signing_policy(system), "self-signed")
+                self.assertEqual(installer.configured_identity("Darwin")["name"], "Gh0st")
+                with patch.object(installer.platform, "system", return_value="Darwin"):
+                    self.assertEqual(installer.signing_policy(), "publicly-trusted")
+                installer.os.environ["APPLE_SIGNING_IDENTITY"] = "Developer ID Application: Other Company (0123456789)"
+                with self.assertRaisesRegex(ValueError, "differs"):
+                    installer.configured_identity("Darwin")
+                installer.os.environ["APPLE_TEAM_ID"] = "9999999999"
+                with self.assertRaisesRegex(ValueError, "team differs"):
+                    installer.configured_identity("Darwin")
+
+    def test_apple_identity_override_cannot_select_other_certificate_kind_or_team(self):
+        for name in ("Apple Distribution: Gh0st (0123456789)",
+                     "Developer ID Application: Gh0st (9999999999)",
+                     "Developer ID Application: Gh0st (0123456789)\n", None):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.configuration(root, "A" * 40)
+                path = root / "release/publication.json"
+                value = json.loads(path.read_text())
+                value["publisher_identities"]["macos"]["signing_identity"] = name
+                path.write_text(json.dumps(value))
+                with patch.object(installer, "ROOT", root), patch.dict(installer.os.environ, {
+                        "APPLE_TEAM_ID": "0123456789", "APPLE_SIGNING_IDENTITY": name or "missing"}, clear=True):
+                    with self.assertRaisesRegex(ValueError, "exact Developer ID Application"):
+                        installer.configured_identity("Darwin")
+
+    def test_platform_policy_cannot_bypass_preview_restriction_or_allow_unknown_policy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.configuration(root, "A" * 40)
+            path = root / "release/publication.json"
+            value = json.loads(path.read_text())
+            value.update(signing_policy="self-signed", channel="production")
+            for policy, message in (("self-signed-preview", "limited to developer previews"),
+                                    ("unchecked", "unknown signing policy")):
+                value["publisher_identities"]["macos"]["signing_policy"] = policy
+                path.write_text(json.dumps(value))
+                with self.subTest(policy=policy), patch.object(installer, "ROOT", root):
+                    with self.assertRaisesRegex(ValueError, message):
+                        installer.signing_policy("Darwin")
+
     def test_self_signed_apple_uses_pin_without_developer_account(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
