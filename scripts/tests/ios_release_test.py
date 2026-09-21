@@ -295,6 +295,36 @@ class ProfileTests(unittest.TestCase):
 
 
 class ArtifactTests(unittest.TestCase):
+    @unittest.skipIf(os.name == 'nt', 'executes the macOS-compatible POSIX build wrapper')
+    def test_export_uses_pinned_distribution_options_without_changing_archive_arguments(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            native = root / 'real xcodebuild'
+            native.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+            native.chmod(0o700)
+            expected = {'method': 'app-store-connect', 'signingStyle': 'manual', 'teamID': ios.TEAM,
+                        'signingCertificate': 'A' * 40, 'provisioningProfiles': {ios.BUNDLE: 'profile-uuid'}}
+            pinned = root / 'pinned export.plist'
+            pinned.write_bytes(plistlib.dumps(expected))
+            generated = root / 'tauri export.plist'
+            generated.write_bytes(plistlib.dumps({'signingCertificate': 'iOS Development'}))
+            environment = dict(PATH=os.environ['PATH'], DEVELOPER_DIR='/Applications/Xcode_26.2.app/Contents/Developer')
+            wrapper = root / 'device'
+            wrapped = ios.xcode_environment(wrapper, environment, executable=str(native), export_options=pinned)
+            args = ['-exportArchive', '-archivePath', 'path with spaces.xcarchive',
+                    '-exportOptionsPlist', str(generated), '-exportPath', 'signed output']
+            result = subprocess.check_output(['xcodebuild', *args], env={'PATH': wrapped['PATH']}, text=True).splitlines()
+            self.assertEqual(result, [str(pinned.resolve()) if x == str(generated) else x for x in args])
+            self.assertEqual((wrapper / 'original-export-options.plist').read_bytes(), generated.read_bytes())
+            archive = ['archive', '-project', 'app.xcodeproj', '-scheme', 'actual scheme']
+            self.assertEqual(subprocess.check_output(['xcodebuild', *archive],
+                env={'PATH': wrapped['PATH']}, text=True).splitlines(), archive)
+            # A later change cannot switch this frozen export back to debugging.
+            pinned.write_bytes(plistlib.dumps(expected | {'method': 'debugging'}))
+            failed = subprocess.run(['xcodebuild', *args], env={'PATH': wrapped['PATH']}, capture_output=True, text=True)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn('pinned export policy changed', failed.stderr)
+
     def test_device_preflight_requires_effective_profile_identity_and_xcode(self):
         value = dict(PRODUCT_BUNDLE_IDENTIFIER=ios.BUNDLE, CODE_SIGN_STYLE='Manual', DEVELOPMENT_TEAM=ios.TEAM,
                      PROVISIONING_PROFILE_SPECIFIER='profile-uuid', CODE_SIGN_IDENTITY='certificate-sha1',

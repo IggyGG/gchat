@@ -136,11 +136,13 @@ jobs:
             ios-output/signing-cleanup.json
             ios-output/features-*.txt
             ios-output/signing.xcconfig
+            ios-output/ExportOptions-app-store.plist
             ios-output/device-build-settings.json
             ios-output/simulator-xcode/
             ios-output/device-xcode/
             ios-output/simulator-smoke/
             ios-output/simulator-signing/
             ios-output/paired/provenance/
+            ios-output/paired/inputs/gchat/apps/client/src-tauri/gen/apple/build/*.xcarchive/
             ios-output/upload.json
             ios-output/upload.log

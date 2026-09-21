@@ -37,6 +37,14 @@ are preserved and fail the unchanged-profile check. A private build-directory
 because pinned cargo-mobile2 clears these variables from child environments;
 the shim invokes Apple's actual tool, with no signing check disabled. The worker
 retains these public settings and hidden dependency-provenance files.
+For `-exportArchive`, the shim uses the separately frozen manual App Store export
+plist, exact distribution-certificate fingerprint and profile UUID. The original
+Tauri-generated export plist is retained: an earlier worker correctly signed its
+device archive with Apple Distribution but export requested an iOS Development
+identity. Archive compilation arguments are unchanged. The signed IPA still must
+pass every certificate, profile, entitlement and bundle check; no development
+identity is accepted as a substitute. Device archives are retained for diagnosis
+and a separately bound export retry if needed.
 
 The generated Tauri input is `gchat-desktop.xcodeproj`, with its built-in
 workspace nested inside. Effective device signing/SDK settings are checked via

@@ -280,7 +280,7 @@ def signer(destination, profile, pin, profile_bytes=None):
                     raise ValueError('iOS signer did not restore its keychain/profile boundary')
 
 
-def xcode_environment(destination, environment, xcconfig=None, executable='/usr/bin/xcodebuild'):
+def xcode_environment(destination, environment, xcconfig=None, executable='/usr/bin/xcodebuild', export_options=None):
     """Restore public tool selection after cargo-mobile2 clears child env vars."""
     developer = environment.get('DEVELOPER_DIR', '')
     require(Path(developer).is_absolute(), 'an explicit absolute Xcode developer directory is required')
@@ -289,7 +289,34 @@ def xcode_environment(destination, environment, xcconfig=None, executable='/usr/
     text = '#!/bin/sh\nexport DEVELOPER_DIR=' + shlex.quote(developer) + '\n'
     text += ('export XCODE_XCCONFIG_FILE=' + shlex.quote(str(xcconfig.resolve())) + '\n'
              if xcconfig else 'unset XCODE_XCCONFIG_FILE\n')
-    text += 'exec ' + shlex.quote(executable) + ' "$@"\n'
+    if export_options:
+        # cargo-mobile2 generates its own export plist. Keep archive compilation
+        # untouched, but make the final export use our already validated manual
+        # distribution identity rather than its default development identity.
+        expected = plistlib.loads(export_options.read_bytes())
+        require(expected.get('method') == 'app-store-connect'
+                and expected.get('signingStyle') == 'manual' and expected.get('teamID') == TEAM
+                and set(expected.get('provisioningProfiles', {})) == {BUNDLE}, 'invalid pinned export policy')
+        dispatcher = destination / 'export.py'
+        dispatcher.write_text('import os, pathlib, plistlib, sys\n'
+            'args = sys.argv[1:]\n'
+            'if "-exportArchive" in args:\n'
+            '    indices = [i for i, value in enumerate(args) if value == "-exportOptionsPlist"]\n'
+            '    if len(indices) != 1 or indices[0] + 1 >= len(args):\n'
+            '        raise ValueError("expected exactly one export options argument")\n'
+            '    index = indices[0] + 1\n'
+            '    original = pathlib.Path(args[index])\n'
+            '    if original.stat().st_size > 1048576:\n'
+            '        raise ValueError("unexpected export options size")\n'
+            '    pathlib.Path(' + repr(str((destination / 'original-export-options.plist').resolve())) + ').write_bytes(original.read_bytes())\n'
+            '    pinned = pathlib.Path(' + repr(str(export_options.resolve())) + ')\n'
+            '    if plistlib.loads(pinned.read_bytes()) != ' + repr(expected) + ':\n'
+            '        raise ValueError("pinned export policy changed")\n'
+            '    args[index] = str(pinned)\n'
+            'os.execv(' + repr(executable) + ', [' + repr(executable) + ', *args])\n')
+        text += 'exec ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(dispatcher.resolve())) + ' "$@"\n'
+    else:
+        text += 'exec ' + shlex.quote(executable) + ' "$@"\n'
     wrapper.write_text(text)
     wrapper.chmod(0o700)
     return dict(environment, PATH=str(destination.resolve()) + os.pathsep + environment['PATH'])
@@ -602,12 +629,12 @@ def build(args):
         project = generated_project(generated)
         with signer(destination, profile, pin, profile_bytes) as (keychain, identity):
             signing = dict(environment, IOS_MOBILE_PROVISION=base64.b64encode(profile_bytes).decode())
-            exports = generated / 'ExportOptions.plist'
-            export_options = plistlib.loads(exports.read_bytes()) if exports.exists() else {}
-            export_options.update({'method': 'app-store-connect', 'signingStyle': 'manual',
+            exports = destination / 'ExportOptions-app-store.plist'
+            export_options = {'method': 'app-store-connect', 'signingStyle': 'manual',
                                    'teamID': TEAM, 'signingCertificate': identity,
-                                   'provisioningProfiles': {BUNDLE: profile['uuid']}})
+                                   'provisioningProfiles': {BUNDLE: profile['uuid']}}
             exports.write_bytes(plistlib.dumps(export_options))
+            report['export_options'] = reference(exports)
             xcconfig = destination / 'signing.xcconfig'
             xcconfig.write_text('CODE_SIGN_STYLE = Manual\nDEVELOPMENT_TEAM = ' + TEAM + '\n'
                 'CODE_SIGN_IDENTITY[sdk=iphoneos*] = ' + identity + '\n'
@@ -615,7 +642,7 @@ def build(args):
                 'CODE_SIGN_ENTITLEMENTS = ' + str(entitlement_path) + '\n'
                 'OTHER_CODE_SIGN_FLAGS = --keychain "' + str(keychain) + '"\n')
             signing['XCODE_XCCONFIG_FILE'] = str(xcconfig)
-            signing = xcode_environment(destination / 'device-xcode', signing, xcconfig)
+            signing = xcode_environment(destination / 'device-xcode', signing, xcconfig, export_options=exports)
             report['device_xcode_wrapper'] = reference(destination / 'device-xcode/xcodebuild')
             report['signing_settings'] = reference(xcconfig)
             # Check the actual generated project and effective SDK/signing
