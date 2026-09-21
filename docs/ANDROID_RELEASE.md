@@ -126,6 +126,9 @@ ADB's root restart may close the initial connection. The driver reconnects withi
 45 seconds and at most three attempts, and requires an actual `id -u` result of
 zero before installing the app or firewall rules. It retains every root attempt;
 this does not retry an application assertion or weaken lifecycle checks.
+The UI observer removes each prior XML dump before sampling. A missing or partial
+dump remains a pending observation within the original UI deadline, with the
+observer error retained; it cannot satisfy an assertion using a stale screen.
 
 [Android's documented AVD directory lookup](https://developer.android.com/tools/variables)
 defines these shared paths. The earlier native/signing artifact remains immutable;

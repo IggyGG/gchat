@@ -217,6 +217,32 @@ class EmulatorCleanup(unittest.TestCase):
         self.assertEqual(android.listener_rows(row.replace(' 0A ', ' 01 '), 10123), [])
 
 
+class UiObservation(unittest.TestCase):
+    def test_successful_exit_without_dump_is_pending_observation(self):
+        missing = subprocess.CalledProcessError(1, ['cat'], stderr='No such file or directory')
+        shell = Mock(side_effect=['', 'ERROR: could not get idle state.', missing,
+                                  '', 'UI hierarchy dumped', '<hierarchy><node text="Create identity"/></hierarchy>'])
+        diagnostics = []
+        self.assertEqual(android.ui_nodes(shell, diagnostics), [])
+        self.assertEqual(android.ui_nodes(shell, diagnostics)[0].attrib['text'], 'Create identity')
+        self.assertEqual(diagnostics[0]['dump_output'], 'ERROR: could not get idle state.')
+        self.assertEqual(diagnostics[0]['stderr'], 'No such file or directory')
+        self.assertEqual(shell.call_args_list[0].args, ('rm', '-f', '/sdcard/gchat-fixture-ui.xml'))
+        self.assertEqual(shell.call_args_list[3].args, ('rm', '-f', '/sdcard/gchat-fixture-ui.xml'))
+
+    def test_partial_xml_is_retained_without_reusing_previous_screen(self):
+        shell = Mock(side_effect=['', 'UI hierarchy dumped', '<hierarchy><node'])
+        diagnostics = []
+        self.assertEqual(android.ui_nodes(shell, diagnostics), [])
+        self.assertEqual(diagnostics[0]['error'], 'ParseError')
+
+    def test_failed_stale_dump_removal_does_not_read_or_accept_it(self):
+        shell = Mock(side_effect=subprocess.CalledProcessError(1, ['rm']))
+        with self.assertRaises(subprocess.CalledProcessError):
+            android.ui_nodes(shell, [])
+        self.assertEqual(shell.call_count, 1)
+
+
 class ActivityDriver(unittest.TestCase):
     def test_resumed_activity_ignores_retained_background_task_records(self):
         home = ('  topResumedActivity=ActivityRecord{abc u0 com.google.android.apps.nexuslauncher/.NexusLauncher t2}\n'

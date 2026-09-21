@@ -428,6 +428,23 @@ def wait_keyboard(shell, expected, timeout=10):
     raise ValueError('fixture keyboard did not reach expected visibility')
 
 
+def ui_nodes(shell, diagnostics):
+    # uiautomator can exit zero without writing a dump while a newly launched
+    # WebView is busy. Never consume an older screen or fail before the caller's
+    # existing observation deadline has elapsed.
+    path = '/sdcard/gchat-fixture-ui.xml'
+    shell('rm', '-f', path)
+    dump = ''
+    try:
+        dump = shell('uiautomator', 'dump', path)
+        return list(ET.fromstring(shell('cat', path)).iter('node'))
+    except (subprocess.CalledProcessError, ET.ParseError) as error:
+        diagnostics.append({'monotonic': time.monotonic(), 'dump_output': dump,
+                            'error': type(error).__name__,
+                            'stderr': getattr(error, 'stderr', None)})
+        return []
+
+
 def smoke(args):
     root = args.output.resolve()
     signed_path = root / 'signing.json'
@@ -458,7 +475,7 @@ def smoke(args):
               'artifact': artifact, 'tested_artifact': reference(apk), 'signing': reference(signed_path), 'sources': signed['sources'],
               'controller': reference(Path(__file__)),
               'physical_device_qualified': False, 'network_delivery_qualified': False, 'push_qualified': False,
-              'observations': []}
+              'observations': [], 'ui_observation_errors': []}
     installed = False
     ui_dump_created = False
     uid = None
@@ -484,8 +501,7 @@ def smoke(args):
         def nodes():
             nonlocal ui_dump_created
             ui_dump_created = True  # A failed dump may still leave a partial file.
-            shell('uiautomator', 'dump', '/sdcard/gchat-fixture-ui.xml')
-            return ET.fromstring(shell('cat', '/sdcard/gchat-fixture-ui.xml')).iter('node')
+            return ui_nodes(shell, report['ui_observation_errors'])
         def wait_node(predicate, timeout=60):
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
