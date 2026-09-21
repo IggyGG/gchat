@@ -190,6 +190,46 @@ class NotaryStateTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'pending frozen request'):
                     tool.validate_resume(report, args, controller)
 
+    def test_accepted_request_with_local_failure_resumes_without_second_upload(self):
+        args = SimpleNamespace(target='macos-aarch64', gchat_commit='a' * 40, gcoms_commit='b' * 40)
+        controller = {'commit': 'c' * 40, 'tree': 'd' * 40}
+        report = {'scope': 'retained_macos_developer_id_notarization', 'controller': controller,
+                  'pending': False, 'passed': False, 'cleanup_complete': True, 'target': args.target,
+                  'sources': {'gchat': {'commit': args.gchat_commit}, 'gcoms': {'commit': args.gcoms_commit}},
+                  'notarization': {'id': self.request_id, 'status': 'Accepted'},
+                  'error': 'prior local Gatekeeper or staple failure'}
+        tool.validate_resume(report, args, controller)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); dmg = root / 'GChat.dmg'; dmg.write_bytes(b'already submitted')
+            commands = FakeCommands(root, report)
+            with self.assertRaisesRegex(ValueError, 'never resubmitted'):
+                tool.submit_once(dmg, self.environment, root, report, commands)
+            self.assertEqual(commands.calls, [])
+
+
+class GatekeeperPreflightTests(unittest.TestCase):
+    def test_disabled_policy_fails_before_signing_or_submission_without_modifying_policy(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); report = {'commands': []}
+            commands = FakeCommands(root, report)
+            with patch.object(commands, 'run', return_value=(3, b'assessments disabled\n')) as run:
+                with self.assertRaisesRegex(ValueError, 'before signing or Apple submission'):
+                    tool.gatekeeper_preflight(root, report, commands)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(run.call_args.args[1], ['spctl', '--status'])
+            self.assertNotIn('notarization', report)
+
+    def test_enabled_policy_preflight_records_observation_without_global_mutation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); report = {'commands': []}
+            commands = FakeCommands(root, report)
+            (root / 'gatekeeper-preflight.stdout').write_bytes(b'assessments enabled\n')
+            (root / 'gatekeeper-preflight.stderr').write_bytes(b'')
+            with patch.object(commands, 'run', return_value=(0, b'assessments enabled\n')):
+                tool.gatekeeper_preflight(root, report, commands)
+            self.assertTrue(report['gatekeeper_preflight']['assessment_policy_enabled'])
+            self.assertFalse(report['gatekeeper_preflight']['policy_modified'])
+
 
 class WorkflowTests(unittest.TestCase):
     def test_retained_worker_has_no_build_or_gatekeeper_bypass_and_retains_pending_evidence(self):

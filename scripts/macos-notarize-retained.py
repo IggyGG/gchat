@@ -328,8 +328,23 @@ def await_notary(environment, output, report, commands, seconds):
         time.sleep(min(20, max(0, deadline - time.monotonic())))
 
 
+def gatekeeper_preflight(output, report, commands):
+    code, raw = commands.run('gatekeeper-preflight', ['spctl', '--status'], allow_failure=True)
+    require(code == 0 and raw.decode('utf-8').strip() == 'assessments enabled',
+            'Gatekeeper must be enabled on this worker before signing or Apple submission; no policy bypass is used')
+    report['gatekeeper_preflight'] = {'assessment_policy_enabled': True, 'policy_modified': False,
+                                    'evidence': [reference(output, commands.output / ('gatekeeper-preflight.' + stream))
+                                                 for stream in ('stdout', 'stderr')]}
+    save(output, report)
+
+
 def assess_gatekeeper(dmg, output, report, commands, identity):
     commands.run('staple-dmg', ['xcrun', 'stapler', 'staple', str(dmg)])
+    # Stapling changes DMG bytes. Retain the new hash before subsequent local
+    # checks so their failure can resume the same accepted Apple request.
+    report['post_staple_dmg_sha256'] = digest(dmg)
+    report['dmg'] = reference(output, dmg)
+    save(output, report)
     commands.run('validate-dmg-ticket', ['xcrun', 'stapler', 'validate', str(dmg)])
     wrapper.verify_signature(commands, dmg, identity, 'stapled-dmg')
     report['stapling'] = {'dmg_validated': True, 'standalone_app_ticket_stapled': False,
@@ -372,7 +387,8 @@ def assess_gatekeeper(dmg, output, report, commands, identity):
 
 def finish(args, output, report, commands, identity):
     dmg = file_reference(output, report['dmg'])
-    require(digest(dmg) == report['notarization']['submission_dmg_sha256'], 'submitted DMG changed before stapling')
+    require(digest(dmg) == report.get('post_staple_dmg_sha256', report['notarization']['submission_dmg_sha256']),
+            'submitted/stapled DMG changed before accepted-request recovery')
     assess_gatekeeper(dmg, output, report, commands, identity)
     build_path = output / 'signed/build.json'
     build = read_json(build_path)
@@ -380,6 +396,11 @@ def finish(args, output, report, commands, identity):
     build['files'][0]['sha256'] = digest(dmg)
     package.write_json(build_path, build)
     report.update(build=reference(output, build_path), dmg=reference(output, dmg))
+    previous_smoke = output / 'signed/application-smoke'
+    if previous_smoke.exists():
+        failures = output / 'previous-attempts'
+        failures.mkdir(exist_ok=True)
+        previous_smoke.rename(failures / ('application-smoke-' + str(len(report['commands']))))
     command = [sys.executable, str(ROOT / 'scripts/test-macos-bundle.py'), '--build-manifest', str(build_path),
                '--native-receipt', str(output / 'signed/provenance/native-ci.json'),
                '--publication', str(output / 'publication.json'), '--output', str(output / 'signed/application-smoke'),
@@ -399,13 +420,14 @@ def finish(args, output, report, commands, identity):
 
 
 def validate_resume(report, args, controller):
+    status = report.get('notarization', {}).get('status')
     require(report.get('scope') == 'retained_macos_developer_id_notarization' and
-            report.get('controller') == controller and report.get('pending') is True and
+            report.get('controller') == controller and
+            ((status == 'In Progress' and report.get('pending') is True) or status == 'Accepted') and
             report.get('passed') is False and report.get('cleanup_complete') is True and
             report.get('target') == args.target and
             {key: value['commit'] for key, value in report.get('sources', {}).items()} ==
             {'gchat': args.gchat_commit, 'gcoms': args.gcoms_commit} and
-            report.get('notarization', {}).get('status') == 'In Progress' and
             report.get('notarization', {}).get('id'), 'resume artifact is not this pending frozen request')
 
 
@@ -439,6 +461,7 @@ def run(args):
                     shutil.copy2(path, output / path.name)
             report = prior
             report['pending'] = False
+            report.pop('error', None)  # The unchanged prior receipt is retained below.
             shutil.copy2(output / 'resume-input/notarized/report.json', output / 'resume-previous-report.json')
             report['resumed_from'] = reference(output, output / 'resume-previous-report.json')
         else:
@@ -450,20 +473,29 @@ def run(args):
                 'controller publisher policy differs from retained signing authority')
         identity = publisher(read_json(output / 'publication.json'))
         report['publisher'] = identity
-        logs = output / 'logs'
-        logs.mkdir(exist_ok=True)
+        logs = output / 'logs' / ('attempt-' + str(len(report.get('attempts', [])) + 1))
+        logs.mkdir(parents=True)
+        report.setdefault('attempts', []).append({'logs': str(logs.relative_to(output)),
+                                                  'kind': args.kind, 'started_at': wrapper.smoke.timestamp()})
         commands = wrapper.Commands(logs, report)
+        gatekeeper_preflight(output, report, commands)
         installer = package.script('build-installer')
+        report['cleanup_complete'] = False
         with installer.apple_keychain('publicly-trusted') as environment:
             if args.kind != 'resume':
                 dmg = prepare_signed(args, output, report, commands, identity)
                 submit_once(dmg, environment, output, report, commands)
             else:
-                require(digest(file_reference(output, report['dmg'])) == report['notarization']['submission_dmg_sha256'],
+                require(digest(file_reference(output, report['dmg'])) == report.get(
+                            'post_staple_dmg_sha256', report['notarization']['submission_dmg_sha256']),
                         'pending notarization DMG no longer matches submitted bytes')
-            if await_notary(environment, output, report, commands, args.poll_seconds):
-                finish(args, output, report, commands, identity)
+            accepted = await_notary(environment, output, report, commands, args.poll_seconds)
         report['cleanup_complete'] = True
+        # Accepted-request recovery does not need private signing material.
+        # Keychain cleanup is complete before staple/Gatekeeper/app checks.
+        save(output, report)
+        if accepted:
+            finish(args, output, report, commands, identity)
         require(package.verify_controller(ROOT, os.environ, WORKFLOW) == controller, 'controller source changed')
         for name, repo in (('gchat', args.gchat), ('gcoms', args.gcoms)):
             require(source_identity(repo) == report['sources'][name], 'original application source changed')

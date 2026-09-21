@@ -99,6 +99,7 @@ jobs:
             notarized/signed/**
             notarized/logs/**
             notarized/entitlements/**
+            notarized/previous-attempts/**
             notarized/resume-previous-report.json
             notarized/resume-input-run.json
             notarized/resume-input-artifact.json
