@@ -108,10 +108,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'GnuPG signature-test prerequisite is unusable' }
           python gchat/scripts/windows-build.py --prepare-webview --worker-evidence worker-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Windows/WebView prerequisite verification failed' }
-      - name: Qualify portable GComs Python tooling before native compilation
+      - name: Qualify GComs source provenance and portable tooling before native compilation
         timeout-minutes: 5
         working-directory: gcoms
         run: |
+          python scripts/check-source.py
+          if ($LASTEXITCODE -ne 0) { throw 'GComs source audit failed before native compilation' }
+          python scripts/check-research-import.py
+          if ($LASTEXITCODE -ne 0) { throw 'GComs research provenance failed before native compilation' }
+          cargo fmt --all -- --check
+          if ($LASTEXITCODE -ne 0) { throw 'GComs formatting failed before native compilation' }
           python -m unittest discover -s scripts/tests -p '*_test.py'
           if ($LASTEXITCODE -ne 0) { throw 'GComs Python tooling failed before native compilation' }
       - name: Qualify private filesystem ownership on native Windows
