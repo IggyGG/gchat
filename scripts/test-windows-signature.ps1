@@ -1,6 +1,10 @@
 # Native regression check; generates disposable test keys, never release keys.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+# Cert: is supplied by this host's Security module. Load it before the first
+# trust-store read; no user profile or inherited PowerShell 7 module is needed.
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
+Get-PSDrive -Name Cert -ErrorAction Stop | Out-Null
 $Directory = Join-Path ([IO.Path]::GetTempPath()) ('gchat-signature-test-' + [Guid]::NewGuid().ToString('N'))
 $Certificates = @()
 $PreviousWorker = $env:GCHAT_ISOLATED_SIGNING_WORKER

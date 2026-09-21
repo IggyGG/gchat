@@ -31,7 +31,9 @@ jobs:
     timeout-minutes: 360
     defaults:
       run:
-        shell: pwsh
+        # Child signing tools use Windows PowerShell. Keep its native module
+        # path through Python rather than inheriting PowerShell 7 modules.
+        shell: powershell
     env:
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_DEV_DEBUG: '0'
