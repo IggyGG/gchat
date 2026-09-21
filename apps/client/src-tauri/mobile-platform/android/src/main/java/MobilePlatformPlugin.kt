@@ -1,6 +1,8 @@
 package boo.gchat.app.mobileplatform
 
 import android.app.Activity
+import android.util.Log
+import android.webkit.WebView
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -35,9 +37,17 @@ class MobilePlatformPlugin(private val activity: Activity) : Plugin(activity) {
     // Tauri has already loaded the GChat native library before registering this plugin.
     private external fun nativeLifecycle(state: Int)
 
-    override fun onResume() { nativeLifecycle(1) }
-    override fun onStop() {
-        if (!activity.isChangingConfigurations) nativeLifecycle(2)
+    private val lifecycleTarget = ProcessLifecycleTarget { state ->
+        Log.i("GChatLifecycle", if (state == 1) "process foreground" else "process background")
+        nativeLifecycle(state)
+    }
+
+    override fun load(webView: WebView) {
+        super.load(webView)
+        // Tauri 2.11.5 defines its process observer but does not register it.
+        // Bind directly instead of relying on unconnected Plugin lifecycle hooks.
+        // ProcessLifecycleOwner debounces configuration recreation itself.
+        activity.runOnUiThread { ProcessLifecycleBridge.bind(lifecycleTarget) }
     }
 
     @Command
