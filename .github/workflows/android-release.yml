@@ -97,7 +97,7 @@ jobs:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
           python3 gchat/scripts/android-build.py self-test
-          python3 gchat/scripts/android-build.py build --gchat gchat --gcoms gcoms --output android-output
+          python3 gchat/scripts/android-build.py build --gchat gchat --gcoms gcoms --output android-output --bundle
       - name: Sign APKs with the pinned Gh0st Android certificate
         timeout-minutes: 5
         env:
@@ -107,11 +107,11 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
         run: python3 gchat/scripts/android-build.py sign --output android-output
-      - name: Installed x86_64 app profile, suspend/reopen and socket smoke
+      - name: Installed bundle-derived x86_64 app profile, suspend/reopen and socket smoke
         timeout-minutes: 15
         run: |
           sudo chmod 666 /dev/kvm
-          python3 gchat/scripts/android-build.py emulator --output android-output --probe-picker
+          python3 gchat/scripts/android-build.py emulator --output android-output --probe-picker --from-bundle
       - name: Retain exact APKs and success/failure evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -123,6 +123,11 @@ jobs:
             android-output/build.json
             android-output/signing.json
             android-output/signed/*.apk
+            android-output/signed/*.aab
+            android-output/signed/*.apks
+            android-output/signed/bundle-apks/**
+            android-output/bundle-device.json
+            android-output/bundletool-all-*.jar
             android-output/features-*.txt
             android-output/emulator-smoke/
             android-output/emulator.log

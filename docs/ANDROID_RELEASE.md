@@ -75,7 +75,9 @@ The script signs existing exact APKs; it never creates a replacement publisher.
 Optional `GOOGLE_SERVICES_JSON_BASE64` contains only Firebase **client** app
 configuration matching `boo.gchat.app`. The runner rejects service-account keys.
 It retains the config hash and places the client JSON in generated Android inputs;
-this alone neither integrates FCM nor proves delivery. No server credential belongs
+It also generates the four documented Firebase Android resource values for the
+mobile messaging plugin. No analytics SDK is added; packaging these resources
+does not prove FCM delivery. No server credential belongs
 in an APK, a Git commit, or this workflow.
 
 ## Commands
@@ -161,3 +163,24 @@ discard invalidates that handle; outgoing selections retain their original
 network/channel and cannot be redirected by navigation. Browser tests also cover
 outgoing continuation/cancellation and unavailable destinations. Native smoke
 does not qualify remote file transfer or invitations to an operated network.
+
+## Google Play bundles
+
+The release workflow also runs `build --bundle` to produce one AAB containing both
+ARM64 and x86_64, in addition to the existing separate APKs. Bundletool 1.18.2 is
+pinned by SHA-256. Every bundled native library must match the corresponding APK
+and retain 16 KiB ELF alignment. The AAB uses JAR signing with the existing Android
+publisher; every payload entry is read and checked against the pinned certificate,
+including refusal of unsigned additions and modified entries.
+
+The signing stage derives an x86_64 API35 split-APK set from that exact signed AAB.
+The emulator stage uses `--from-bundle` and `adb install-multiple`, verifies each
+split signature and source-bound native payload, and exercises the existing
+profile/reopen/document-picker checks. A passing tool test is not an executed
+emulator receipt or a successful Play upload. Play app creation, permissions and
+Play App Signing continuity remain separate account prerequisites. Use the existing
+publisher key for Play App Signing so direct APK installations remain compatible.
+
+Bundletool keystore passwords use private temporary files, removed on failure and
+success. The retained `.apks` archive, split hashes and device specification bind
+the installed emulator app to the submitted AAB; no server push keys are packaged.

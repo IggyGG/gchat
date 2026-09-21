@@ -19,6 +19,7 @@ import sys
 import tempfile
 import time
 import tomllib
+import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -30,6 +31,8 @@ PICKER_FIXTURE_PATH = '/sdcard/Download/gchat-fixture.txt'
 PICKER_FIXTURE_TEXT = 'GCNI1-local-emulator-fixture-not-a-real-invitation'
 NDK = '28.2.13676358'
 BUILD_TOOLS = '36.0.0'
+BUNDLETOOL_VERSION = '1.18.2'
+BUNDLETOOL_SHA256 = '378b5434cd1378bef6b2bc527b8c7f0ff2584b273830335bce54d6d0813c8584'
 TARGETS = {'arm64-v8a': ('aarch64', 'aarch64-linux-android'),
            'x86_64': ('x86_64', 'x86_64-linux-android')}
 SPEC = importlib.util.spec_from_file_location('android_source_policy', Path(__file__).with_name('macos-build.py'))
@@ -162,6 +165,131 @@ def inspect_apk(path, tools):
     return {'abi': abi, 'activity': launch.group(1), 'native_libraries': native, 'min_sdk': 26}
 
 
+def bundletool(root):
+    """Fetch only Google's pinned tool; never accept a different cached JAR."""
+    target = root / ('bundletool-all-' + BUNDLETOOL_VERSION + '.jar')
+    if not target.exists():
+        url = 'https://github.com/google/bundletool/releases/download/' + BUNDLETOOL_VERSION + '/' + target.name
+        with urllib.request.urlopen(url, timeout=60) as response:
+            data = response.read(64 * 1024 * 1024 + 1)
+        require(len(data) <= 64 * 1024 * 1024 and hashlib.sha256(data).hexdigest() == BUNDLETOOL_SHA256,
+                'downloaded bundletool hash differs from the pinned release')
+        target.write_bytes(data)
+    require(digest(target) == BUNDLETOOL_SHA256, 'cached bundletool hash differs from the pinned release')
+    return target
+
+
+def bundle_native_libraries(path):
+    native = []
+    with zipfile.ZipFile(path) as archive:
+        names = archive.namelist()
+        require(len(names) == len(set(names)), 'bundle contains duplicate ZIP entries')
+        require('BundleConfig.pb' in names and 'base/manifest/AndroidManifest.xml' in names,
+                'bundle lacks its configuration or base manifest')
+        for name in names:
+            if name.endswith('.so'):
+                require(re.fullmatch(r'base/lib/(arm64-v8a|x86_64)/[^/]+\.so', name),
+                        'unexpected native library in app bundle')
+                data = archive.read(name)
+                native.append({'path': name.removeprefix('base/'), 'sha256': hashlib.sha256(data).hexdigest(),
+                               'size': len(data), 'load_alignment': verify_elf_alignment(data)})
+    require({x['path'].split('/')[1] for x in native} == set(TARGETS),
+            'bundle must contain both supported ABIs')
+    for abi in TARGETS:
+        require(any(x['path'] == f'lib/{abi}/libgchat_native.so' for x in native),
+                'bundle omits the actual GChat native application')
+    return sorted(native, key=lambda x: x['path'])
+
+
+def inspect_bundle(path, jar, apk_entries):
+    run(['java', '-jar', jar, 'validate', '--bundle=' + str(path)])
+    manifest = ET.fromstring(output(['java', '-jar', jar, 'dump', 'manifest', '--bundle=' + str(path), '--module=base']))
+    namespace = '{http://schemas.android.com/apk/res/android}'
+    require(manifest.attrib.get('package') == PACKAGE, 'bundle package identity mismatch')
+    uses_sdk = manifest.find('uses-sdk')
+    require(uses_sdk is not None and uses_sdk.attrib.get(namespace + 'minSdkVersion') == '26',
+            'bundle minimum SDK differs from API 26')
+    version_code = manifest.attrib.get(namespace + 'versionCode', '')
+    require(version_code.isdecimal() and 0 < int(version_code) <= 2100000000, 'invalid bundle version code')
+    native = bundle_native_libraries(path)
+    expected = sorted([lib for item in apk_entries for lib in item['native_libraries']], key=lambda x: x['path'])
+    require(native == expected, 'app bundle native libraries differ from the exact APK builds')
+    return {'package': PACKAGE, 'min_sdk': 26, 'version_code': int(version_code), 'native_libraries': native}
+
+
+def firebase_resources(value):
+    """Generate the Firebase resource subset documented by Google's plugin.
+
+    Tauri generates Gradle projects at build time. The native plugin supplies
+    its pinned Messaging dependency; these public values initialize that SDK.
+    """
+    require(isinstance(value, dict) and 'private_key' not in value and value.get('type') != 'service_account',
+            'server credential is forbidden in the APK')
+    project = value.get('project_info', {})
+    require(project.get('project_id') == 'gchat-23115', 'unexpected Firebase project')
+    matches = [x for x in value.get('client', []) if x.get('client_info', {}).get('android_client_info', {}).get('package_name') == PACKAGE]
+    require(len(matches) == 1, 'Firebase config must identify exactly one boo.gchat.app client')
+    client = matches[0]
+    keys = client.get('api_key', [])
+    require(len(keys) == 1 and isinstance(keys[0].get('current_key'), str), 'Firebase client API key is missing or ambiguous')
+    values = {'google_app_id': client['client_info'].get('mobilesdk_app_id'),
+              'gcm_defaultSenderId': project.get('project_number'), 'project_id': project['project_id'],
+              'google_api_key': keys[0]['current_key']}
+    require(isinstance(values['gcm_defaultSenderId'], str) and values['gcm_defaultSenderId'].isdecimal(),
+            'Firebase project number is missing')
+    require(isinstance(values['google_app_id'], str) and
+            re.fullmatch(r'1:' + re.escape(values['gcm_defaultSenderId']) + r':android:[a-zA-Z0-9]+', values['google_app_id']),
+            'Firebase app ID differs from its project')
+    require(re.fullmatch(r'[A-Za-z0-9_-]{20,}', values['google_api_key']), 'invalid Firebase public client API key')
+    resources = ET.Element('resources')
+    for name, data in values.items():
+        ET.SubElement(resources, 'string', {'name': name, 'translatable': 'false'}).text = data
+    return ET.tostring(resources, encoding='utf-8', xml_declaration=True)
+
+
+def derive_bundle_apks(root, bundle, jar, key, private, tools, pin, expected):
+    """Build and verify the actual x86 emulator split set from the signed AAB."""
+    device = {'supportedAbis': ['x86_64'], 'supportedLocales': ['en'], 'screenDensity': 420, 'sdkVersion': 35}
+    spec = root / 'bundle-device.json'
+    write_json(spec, device)
+    passwords = []
+    try:
+        for name in ('ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD'):
+            path = private / (name + '.txt')
+            path.write_text(os.environ[name]); path.chmod(0o600)
+            passwords.append(path)
+        archive = root / 'signed/gchat-x86_64.apks'
+        run(['java', '-jar', jar, 'build-apks', '--bundle=' + str(bundle), '--output=' + str(archive),
+             '--device-spec=' + str(spec), '--ks=' + str(key), '--ks-key-alias=' + os.environ['ANDROID_KEY_ALIAS'],
+             '--ks-pass=file:' + str(passwords[0]), '--key-pass=file:' + str(passwords[1])])
+        extracted = root / 'signed/bundle-apks'
+        extract_artifact(archive, extracted)
+        entries, native, activity = [], [], None
+        for apk in sorted(extracted.rglob('*.apk')):
+            verify_signature(apk, tools, pin)
+            badging = output([tools / 'aapt', 'dump', 'badging', apk])
+            require(re.search(r"^package: name='boo\.gchat\.app'", badging, re.M), 'split APK package differs')
+            launch = re.search(r"^launchable-activity: name='([^']+)'", badging, re.M)
+            if launch:
+                require(activity is None or activity == launch.group(1), 'split APK activities disagree')
+                activity = launch.group(1)
+            with zipfile.ZipFile(apk) as zipped:
+                for name in zipped.namelist():
+                    if name.startswith('lib/') and name.endswith('.so'):
+                        data = zipped.read(name)
+                        native.append({'path': name, 'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data),
+                                       'load_alignment': verify_elf_alignment(data)})
+            run([tools / 'zipalign', '-c', '-P', '16', '4', apk])
+            entries.append({**reference(apk), 'relative_path': apk.relative_to(root).as_posix()})
+        require(entries and activity, 'bundle-derived split set lacks the actual launchable app')
+        require(sorted(native, key=lambda x: x['path']) == sorted(expected, key=lambda x: x['path']),
+                'bundle-derived native payload differs from the x86 APK')
+        return {'archive': reference(archive), 'bundle': reference(bundle), 'device': device, 'activity': activity,
+                'abi': 'x86_64', 'artifacts': entries, 'native_libraries': native}
+    finally:
+        for path in passwords: path.unlink(missing_ok=True)
+
+
 def build(args):
     original = {'gchat': args.gchat.resolve(), 'gcoms': args.gcoms.resolve()}
     before = {name: source_identity(root) for name, root in original.items()}
@@ -217,6 +345,10 @@ def build(args):
             client_config.write_bytes(decoded)
             client_config.chmod(0o600)
             report['firebase_client_config_sha256'] = digest(client_config)
+            resource = generated / 'app/src/main/res/values/gchat_firebase.xml'
+            resource.parent.mkdir(parents=True, exist_ok=True)
+            resource.write_bytes(firebase_resources(value))
+            report['firebase_resources_sha256'] = digest(resource)
         report['feature_graphs'] = {}
         metadata_paths = []
         for abi, (_, triple) in TARGETS.items():
@@ -250,6 +382,18 @@ def build(args):
             entries.append({**reference(target), **inspected})
         require({x['abi'] for x in entries} == set(TARGETS), 'release build did not produce both ARM64 and x86_64 APKs')
         report['artifacts'] = entries
+        if getattr(args, 'bundle', False):
+            # A single Play bundle holds both ABIs. Never combine --aab with
+            # --split-per-abi: separate bundles cannot represent one Play version.
+            run(tauri_command('android', 'build', '--ci', '--aab', '--target', 'aarch64', 'x86_64',
+                              '--config', config), cwd=chat / 'apps/client', env=env)
+            bundles = sorted(generated.glob('app/build/outputs/bundle/**/*release*.aab'))
+            require(len(bundles) == 1, 'expected one release app bundle containing both ABIs')
+            jar = bundletool(dest)
+            bundle = artifacts / 'gchat.aab'
+            shutil.copyfile(bundles[0], bundle)
+            report['bundle'] = {**reference(bundle), **inspect_bundle(bundle, jar, entries)}
+            report['bundletool'] = reference(jar)
         report['generated_gradle_sha256'] = digest(gradle)
         report['passed'] = True
     except Exception as error:
@@ -312,6 +456,25 @@ def sign(args):
                 inspected = inspect_apk(result, tools)
                 require(inspected['native_libraries'] == item['native_libraries'], 'signing changed native library contents')
                 report['artifacts'].append({**reference(result), **inspected})
+            if build.get('bundle'):
+                bundle = verify_reference(build['bundle'])
+                jar = verify_reference(build['bundletool'])
+                require(digest(jar) == BUNDLETOOL_SHA256, 'bundletool signing input is not the pinned release')
+                result = target / bundle.name
+                run(['jarsigner', '-keystore', key, '-storepass:env', 'ANDROID_KEYSTORE_PASSWORD',
+                     '-keypass:env', 'ANDROID_KEY_PASSWORD', '-digestalg', 'SHA-256',
+                     '-signedjar', result, bundle, os.environ['ANDROID_KEY_ALIAS']])
+                verifier = Path(__file__).with_name('VerifyAndroidBundle.java')
+                verification = json.loads(output(['java', verifier, result, pin]))
+                require(verification.get('passed') is True and verification.get('certificate_sha256') == pin,
+                        'bundle signature verification failed')
+                inspected = inspect_bundle(result, jar, build['artifacts'])
+                require(inspected['native_libraries'] == build['bundle']['native_libraries'],
+                        'signing changed app bundle native libraries')
+                report['bundle'] = {**reference(result), **inspected, 'signature': verification,
+                                    'verifier': reference(verifier)}
+                expected = next(x['native_libraries'] for x in build['artifacts'] if x['abi'] == 'x86_64')
+                report['bundle_apks'] = derive_bundle_apks(root, result, jar, key, Path(private), tools, pin, expected)
             report['passed'] = True
         finally:
             key.unlink(missing_ok=True)
@@ -469,6 +632,20 @@ def select_picker_fixture(wait_node, tap):
     tap(node)
 
 
+def bundle_smoke_inputs(root, signed):
+    artifact = signed.get('bundle_apks', {})
+    require(artifact.get('artifacts') and signed.get('bundle'), 'no qualified bundle-derived split set')
+    require(artifact['bundle']['sha256'] == signed['bundle']['sha256'], 'split set belongs to another bundle')
+    archive = verify_copy(root / 'signed/gchat-x86_64.apks', artifact['archive'])
+    paths = []
+    for item in artifact['artifacts']:
+        path = root / item['relative_path']
+        require(path.resolve().is_relative_to((root / 'signed/bundle-apks').resolve()), 'split APK path escapes signed set')
+        require(path not in paths, 'duplicate split APK')
+        paths.append(verify_copy(path, item))
+    return artifact, archive, paths
+
+
 def smoke(args):
     root = args.output.resolve()
     signed_path = root / 'signing.json'
@@ -478,10 +655,16 @@ def smoke(args):
     build = json.loads(build_path.read_text())
     require(build.get('passed') and build.get('sources_unchanged') and signed['sources'] == build['sources'],
             'signing receipt differs from its build/source binding')
-    artifact = next(x for x in signed['artifacts'] if x['abi'] == 'x86_64')
-    apk = verify_copy(root / 'signed/gchat-x86_64.apk', artifact)
     android = sdk(require_ndk=False)
-    verify_signature(apk, android / 'build-tools' / BUILD_TOOLS, signed['certificate_sha256'])
+    from_bundle = getattr(args, 'from_bundle', False)
+    if from_bundle:
+        artifact, apk, apk_paths = bundle_smoke_inputs(root, signed)
+    else:
+        artifact = next(x for x in signed['artifacts'] if x['abi'] == 'x86_64')
+        apk = verify_copy(root / 'signed/gchat-x86_64.apk', artifact)
+        apk_paths = [apk]
+    for path in apk_paths:
+        verify_signature(path, android / 'build-tools' / BUILD_TOOLS, signed['certificate_sha256'])
     adb = [android / 'platform-tools/adb', '-s', args.serial]
     require(re.fullmatch(r'emulator-[0-9]+', args.serial), 'smoke is restricted to an explicit emulator serial')
     def shell(*cmd, absent_ok=False):
@@ -498,6 +681,7 @@ def smoke(args):
     report = {'schema': 1, 'scope': 'android_x86_64_installed_profile_lifecycle_no_listener', 'passed': False,
               'artifact': artifact, 'tested_artifact': reference(apk), 'signing': reference(signed_path), 'sources': signed['sources'],
               'controller': reference(Path(__file__)),
+              'from_bundle': from_bundle, 'installed_apks': [reference(path) for path in apk_paths],
               'physical_device_qualified': False, 'network_delivery_qualified': False, 'push_qualified': False,
               'observations': [], 'ui_observation_errors': []}
     installed = False
@@ -510,7 +694,7 @@ def smoke(args):
         report['api'] = int(shell('getprop', 'ro.build.version.sdk'))
         report['abi'] = shell('getprop', 'ro.product.cpu.abi')
         require(report['api'] >= 26 and report['abi'] == 'x86_64', 'unexpected emulator API/ABI')
-        run([*adb, 'install', '--no-streaming', apk], timeout=120)
+        run([*adb, 'install-multiple' if from_bundle else 'install', '--no-streaming', *apk_paths], timeout=120)
         installed = True
         package = shell('pm', 'list', 'packages', '-U', '--user', '0', PACKAGE)
         (dest / 'package-uid.txt').write_text(package + '\n')
@@ -655,7 +839,9 @@ def smoke(args):
             except Exception as error:
                 report['diagnostic_error'] = type(error).__name__
         report['cleanup'] = cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created, picker_file_created)
-        report['inputs_unchanged'] = digest(apk) == artifact['sha256']
+        original = artifact['archive'] if from_bundle else artifact
+        report['inputs_unchanged'] = digest(apk) == original['sha256'] and all(
+            digest(path) == item['sha256'] for path, item in zip(apk_paths, report['installed_apks']))
         report['passed'] = report['passed'] and report['cleanup']['passed'] and report['inputs_unchanged']
         write_json(dest / 'report.json', report)
         if not report['cleanup']['passed']:
@@ -715,7 +901,8 @@ def emulator(args):
             else:
                 raise ValueError('emulator failed its bounded boot deadline')
             run([*adb, 'shell', 'input', 'keyevent', '82'], timeout=30)
-            smoke(argparse.Namespace(output=root, serial='emulator-5554', probe_picker=getattr(args, 'probe_picker', False)))
+            smoke(argparse.Namespace(output=root, serial='emulator-5554', probe_picker=getattr(args, 'probe_picker', False),
+                                     from_bundle=getattr(args, 'from_bundle', False)))
             report['passed'] = True
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
@@ -869,11 +1056,13 @@ def main():
     for name in ('gchat-commit', 'gcoms-commit', 'gchat-ref', 'gcoms-ref'):
         verify.add_argument('--' + name, required=True)
     compile_app.add_argument('--output', type=Path, required=True)
+    compile_app.add_argument('--bundle', action='store_true', help='also build the single two-ABI Google Play AAB')
     for name in ('sign', 'smoke', 'emulator'):
         sub = commands.add_parser(name)
         sub.add_argument('--output', type=Path, required=True)
         if name == 'smoke': sub.add_argument('--serial', required=True)
         if name in ('smoke', 'emulator'): sub.add_argument('--probe-picker', action='store_true')
+        if name in ('smoke', 'emulator'): sub.add_argument('--from-bundle', action='store_true')
     download = commands.add_parser('download-smoke')
     download.add_argument('--output', type=Path, required=True)
     download.add_argument('--build-run', type=int, required=True)
