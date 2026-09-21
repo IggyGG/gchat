@@ -1,0 +1,163 @@
+name: Android release worker
+run-name: Forgejo Android ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      gchat_ref:
+        description: Protected main/release branch or approved tag at gchat_commit
+        required: true
+        type: string
+        default: main
+      gcoms_ref:
+        description: Protected main/release branch containing gcoms_commit
+        required: true
+        type: string
+        default: main
+      gchat_commit:
+        required: true
+        type: string
+      gcoms_commit:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    environment: release-signing
+    timeout-minutes: 90
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_BUILD_JOBS: '3'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.23.2'
+      - name: Verify exact protected sources before signing access
+        env:
+          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+          GCHAT_REF: ${{ inputs.gchat_ref }}
+          GCOMS_REF: ${{ inputs.gcoms_ref }}
+        run: >-
+          python3 gchat/scripts/android-build.py verify-checkouts
+          --gchat gchat --gcoms gcoms
+          --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT"
+          --gchat-ref "$GCHAT_REF" --gcoms-ref "$GCOMS_REF"
+      - name: Install pinned Rust, Java 17, Android SDK and NDK
+        timeout-minutes: 15
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openjdk-17-jdk libpulse0 libnss3 libxkbcommon0
+          echo 'JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> "$GITHUB_ENV"
+          echo '/usr/lib/jvm/java-17-openjdk-amd64/bin' >> "$GITHUB_PATH"
+          python3 - <<'PY'
+          import os, subprocess, tomllib
+          from pathlib import Path
+          pins = [tomllib.loads(Path(p, 'rust-toolchain.toml').read_text())['toolchain'] for p in ('gchat', 'gcoms')]
+          if pins[0] != pins[1]:
+              raise SystemExit('paired sources must use the same pinned Rust toolchain')
+          subprocess.run(['rustup', 'toolchain', 'install', pins[0]['channel'], '--profile', pins[0]['profile'],
+                          '--component', ','.join(pins[0]['components'])], check=True)
+          with open(os.environ['GITHUB_ENV'], 'a') as stream:
+              stream.write('RUSTUP_TOOLCHAIN=' + pins[0]['channel'] + '\n')
+          sdk = Path(os.environ['ANDROID_HOME'])
+          manager = sdk / 'cmdline-tools/latest/bin/sdkmanager'
+          environment = dict(os.environ, JAVA_HOME='/usr/lib/jvm/java-17-openjdk-amd64')
+          subprocess.run([str(manager), '--licenses'], input='y\n' * 100, text=True, env=environment, check=True)
+          subprocess.run([str(manager), 'platform-tools', 'platforms;android-36', 'build-tools;36.0.0',
+                          'ndk;28.2.13676358', 'emulator', 'system-images;android-35;google_apis;x86_64'],
+                         env=environment, check=True)
+          PY
+          npm install --global npm@11.6.2
+      - name: Compile both real mobile app ABIs and verify outbound feature graphs
+        timeout-minutes: 50
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          python3 gchat/scripts/android-build.py self-test
+          python3 gchat/scripts/android-build.py build --gchat gchat --gcoms gcoms --output android-output
+      - name: Sign APKs with the pinned Gh0st Android certificate
+        timeout-minutes: 5
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        run: python3 gchat/scripts/android-build.py sign --output android-output
+      - name: Installed x86_64 app profile, suspend/reopen and socket smoke
+        timeout-minutes: 15
+        run: |
+          sudo chmod 666 /dev/kvm
+          python3 - <<'PY'
+          import os, subprocess, time
+          from pathlib import Path
+          sdk = Path(os.environ['ANDROID_HOME'])
+          subprocess.run([str(sdk / 'cmdline-tools/latest/bin/avdmanager'), 'create', 'avd', '--force',
+                          '--name', 'gchat-release-fixture', '--package', 'system-images;android-35;google_apis;x86_64'],
+                         input='no\n', text=True, check=True)
+          log = Path('android-output/emulator.log').open('w')
+          process = subprocess.Popen([str(sdk / 'emulator/emulator'), '-avd', 'gchat-release-fixture',
+                                      '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim', '-no-snapshot',
+                                      '-wipe-data', '-gpu', 'swiftshader_indirect'], stdout=log, stderr=log)
+          adb = [str(sdk / 'platform-tools/adb'), '-s', 'emulator-5554']
+          try:
+              deadline = time.monotonic() + 180
+              while time.monotonic() < deadline:
+                  if process.poll() is not None:
+                      raise SystemExit('emulator exited before startup')
+                  result = subprocess.run([*adb, 'shell', 'getprop', 'sys.boot_completed'], capture_output=True, text=True)
+                  if result.stdout.strip() == '1':
+                      break
+                  time.sleep(2)
+              else:
+                  raise SystemExit('emulator failed its bounded boot deadline')
+              subprocess.run([*adb, 'shell', 'input', 'keyevent', '82'], check=True)
+              subprocess.run(['python3', 'gchat/scripts/android-build.py', 'smoke', '--output', 'android-output',
+                              '--serial', 'emulator-5554'], check=True, timeout=600)
+          finally:
+              subprocess.run([*adb, 'emu', 'kill'], check=False, timeout=30)
+              try:
+                  process.wait(timeout=30)
+              except subprocess.TimeoutExpired:
+                  process.kill()
+                  process.wait()
+              log.close()
+          PY
+      - name: Retain exact APKs and success/failure evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-${{ inputs.gchat_commit }}-${{ inputs.gcoms_commit }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            android-output/build.json
+            android-output/signing.json
+            android-output/signed/*.apk
+            android-output/features-*.txt
+            android-output/emulator-smoke/
+            android-output/emulator.log
+            android-output/paired/provenance/
