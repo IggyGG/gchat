@@ -44,9 +44,13 @@ def controller_publication(candidate, base, original, repository):
     source = candidate['sources']['gchat']['commit']
     require(json.loads(git('show', source + ':release/publication.json')) == original,
             'original publication is not the application source policy')
-    require(subprocess.run(['git', 'merge-base', '--is-ancestor', source, commit],
-                           cwd=repository, capture_output=True).returncode == 0,
-            'signer controller must retain the original application history')
+    # Architecture release branches may diverge. Bind the original bytes rather
+    # than requiring the separate signing controller to descend from both.
+    application = candidate['sources']['gchat']
+    require(git('rev-parse', source + '^{tree}').decode().strip() == application['tree'],
+            'original application tree mismatch')
+    require(hashlib.sha256(git('archive', '--format=tar', source)).hexdigest() == application['archive']['sha256'],
+            'original application archive differs from committed source')
     archive = file_reference(base, controller.get('archive'))
     require(hashlib.sha256(git('archive', '--format=tar', commit)).hexdigest() == controller['archive']['sha256'],
             'signer controller archive differs from committed source')

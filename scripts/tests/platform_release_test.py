@@ -205,6 +205,20 @@ class DeveloperIdPlatformReleaseTests(unittest.TestCase):
         self.assertNotIn(str(self.base), json.dumps(manifest))
         self.assertNotIn('path', json.dumps(manifest['signer_policy']))
 
+    def test_separate_architecture_history_requires_exact_original_archive(self):
+        self.git('checkout', '--orphan', 'separate-controller')
+        controller = self.commit()
+        policy = self.candidate['signer_policy']
+        policy['controller'] = controller | {'archive': self.file('separate-controller.tar', self.git('archive', '--format=tar', 'HEAD'))}
+        self.proof['controller'] = controller
+        self.proof['controller_archive'] = policy['controller']['archive']
+        self.save_proof()
+        self.validate()
+        application = self.candidate['sources']['gchat']
+        application['archive'] = self.file('different-app.tar', b'not the qualified application')
+        with self.assertRaisesRegex(ValueError, 'original application archive'):
+            self.validate()
+
     def test_arbitrary_policy_archive_or_tree_cannot_replace_committed_controller(self):
         policy = self.candidate['signer_policy']
         mutations = [('publication', self.json_file('arbitrary-policy.json', self.publication)),
