@@ -32,7 +32,8 @@
       "dmg"
     ],
     "android": {
-      "minSdkVersion": 26
+      "minSdkVersion": 26,
+      "versionCode": 1005
     },
     "license": "MIT OR Apache-2.0",
     "resources": {
