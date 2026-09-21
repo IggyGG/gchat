@@ -11,6 +11,16 @@ final class GChatLifecycleTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    override func tearDownWithError() throws {
+        if app.state != .notRunning {
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "final-accessibility-hierarchy"
+            hierarchy.lifetime = .keepAlways
+            add(hierarchy)
+            screenshot("99-final-state")
+        }
+    }
+
     func heading(_ title: String) -> XCUIElement {
         app.webViews.staticTexts.matching(NSPredicate(format: "label == %@", title)).firstMatch
     }
@@ -27,6 +37,17 @@ final class GChatLifecycleTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
         field.typeText(passphrase)
+        // WKWebView's native input accessory can cover the form button even
+        // when XCTest reports that button as hittable. Use the same Done
+        // control as a person, then require the keyboard to leave before tapping.
+        if app.keyboards.firstMatch.exists {
+            let done = app.toolbars.buttons["Done"].firstMatch
+            XCTAssertTrue(done.waitForExistence(timeout: 10))
+            done.tap()
+        }
+        let hidden = NSPredicate { _, _ in !self.app.keyboards.firstMatch.exists }
+        expectation(for: hidden, evaluatedWith: nil)
+        waitForExpectations(timeout: 10)
     }
 
     func backgroundAndActivate() {
