@@ -8,6 +8,14 @@ Studio C++ tools, the Windows SDK and NSIS. A missing WebView2 runtime is instal
 using Microsoft's HTTPS bootstrapper after verifying its trusted Microsoft
 Authenticode signature. The installer test itself performs no runtime download.
 
+Both Windows MSVC launchers reserve 8 MiB for the main thread, with pages
+committed on demand. The default 1 MiB reserve caused a native stack overflow
+during retained-profile daemon startup in unoptimized builds. The existing
+standalone daemon readiness/reopen test runs before full CI and retains the
+child's exit status and stderr; the installer still exercises the packaged
+desktop service separately. Worker-thread stack sizes and protocol limits are
+unchanged.
+
 The protected GitHub environment `release-signing` needs these secrets:
 
 | Secret | Contents |
