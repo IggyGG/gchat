@@ -28,6 +28,12 @@ def fixture():
 
 
 class KubernetesWebsiteTests(unittest.TestCase):
+    def test_older_retained_volume_does_not_require_a_new_privacy_page(self):
+        old_files = deploy.FILES - {'privacy.html'}
+        volume = deploy.version_volume('retained-old-release', old_files)
+        self.assertEqual({item['path'] for item in volume['configMap']['items']}, old_files)
+        self.assertNotIn('privacy.html', {item['path'] for item in volume['configMap']['items']})
+
     def test_public_check_retries_whole_bundle_after_stale_upstream(self):
         def response(data):
             value = MagicMock()

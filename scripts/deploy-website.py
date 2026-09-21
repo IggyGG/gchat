@@ -79,9 +79,9 @@ def content_volume(deployment):
     return matches[0]
 
 
-def version_volume(name):
+def version_volume(name, files=FILES):
     return {'name': 'content', 'configMap': {'name': name, 'defaultMode': 0o644,
-            'items': [{'key': path.replace('/', '--'), 'path': path} for path in sorted(FILES)]}}
+            'items': [{'key': path.replace('/', '--'), 'path': path} for path in sorted(files)]}}
 
 
 def volume_patch(deployment, volume):
@@ -208,6 +208,8 @@ def main():
         hashes = {}
         for path in FILES:
             key = path.replace('/', '--')
+            if path == 'privacy.html' and key not in desired['data']:
+                continue  # Immutable releases before the privacy page remain recoverable.
             raw = base64.b64decode(desired['binaryData'][key], validate=True) if path.endswith('.ttf') else desired['data'][key].encode()
             hashes[path] = hashlib.sha256(raw).hexdigest()
     else:
@@ -216,7 +218,7 @@ def main():
         verify_source(a.directory.resolve())
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
         desired, hashes = configmap(a.directory.resolve(), commit, a.namespace, a.deployment)
-    volume = version_volume(desired['metadata']['name'])
+    volume = version_volume(desired['metadata']['name'], hashes)
     # Validate both operations before creating a retained version or activating it.
     ensure_configmap(kube, desired, dry_run=True)
     kube.patch(previous, volume, dry_run=True)
