@@ -122,3 +122,21 @@ power loss, APNs, device tests and installed signed-network onboarding. Apple
 documents the [external application proxy](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication)
 and [simulated Home button](https://developer.apple.com/documentation/xcuiautomation/xcuidevice)
 used by this test.
+
+
+## Rechecking retained artifacts
+
+A completed `ios-release.yml` run may retain a verified distribution IPA even
+when CoreSimulator fails later. `ios-verify.yml` takes the exact original run,
+artifact ID/digest, source pair and build number. It checks the unchanged IPA's
+App Store profile, publisher signature, entitlements and executable again; it
+never signs or recompiles the device application. Original source archive and
+dependency bindings and all signing-cleanup checks are required.
+
+The verifier signs only an owned simulator copy using the simulator-specific
+private Keychain identity, then runs native startup/relaunch and independent
+cleanup. Original archives and failed build receipts remain unchanged. A separate
+`ios_retained_pair_simulator_and_signed_ipa` receipt can authorize uploading that
+same device IPA after these checks pass. It explicitly records whether the
+original final derived-input check was reached. This is not a physical-device,
+message/file, live-push, export-compliance or App Store approval receipt.

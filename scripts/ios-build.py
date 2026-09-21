@@ -704,19 +704,56 @@ def build(args):
     require(report['passed'], 'iOS build source changed')
 
 
+def validate_upload_build(report):
+    require(report.get('scope') in ('ios_exact_pair_simulator_and_signed_ipa',
+                                   'ios_retained_pair_simulator_and_signed_ipa')
+            and report.get('passed') is True and report.get('sources_unchanged') is True,
+            'upload requires a passed unchanged iOS build or retained-artifact verification')
+    if report['scope'] == 'ios_retained_pair_simulator_and_signed_ipa':
+        require(report.get('application_recompiled') is False and report.get('device_resigned') is False
+                and report.get('original_build_verdict_unchanged') is True,
+                'retained verification must preserve original device artifact and verdict')
+        original = json.loads(verify_reference(report['original_build']).read_text())
+        archive = verify_reference(report['original_archive'])
+        require(digest(archive) == report['inputs']['artifact_sha256'], 'original archive binding differs')
+        require(original.get('scope') == 'ios_exact_pair_simulator_and_signed_ipa'
+                and original.get('sources_unchanged') is True
+                and original.get('sources') == report.get('sources')
+                and original.get('passed') is report.get('original_build_passed')
+                and original.get('build_number') == report.get('build_number'),
+                'original build source, identity or verdict differs')
+        for key in ('sha256', 'size'):
+            require(original['application']['ipa'][key] == report['application']['ipa'][key],
+                    'retained IPA differs from the original device artifact')
+            require(original['signing_cleanup'][key] == report['signing_cleanup'][key],
+                    'retained original signing cleanup differs')
+            require(original['simulator_executable'][key] == report['simulator_binding']['original_application'][key],
+                    'retained simulator differs from original application')
+
+
 def upload(args):
     destination = args.output.resolve()
     build_path = destination / 'build.json'
     build_report = json.loads(build_path.read_text())
-    require(build_report.get('scope') == 'ios_exact_pair_simulator_and_signed_ipa'
-            and build_report.get('passed') is True and build_report.get('sources_unchanged') is True,
-            'upload requires a passed unchanged iOS build')
+    validate_upload_build(build_report)
     require(build_report.get('bundle') == BUNDLE and build_report.get('team') == TEAM,
             'upload build identity mismatch')
     cleanup = json.loads(verify_reference(build_report['signing_cleanup']).read_text())
     smoke = json.loads(verify_reference(build_report['simulator']).read_text())
     require(cleanup.get('passed') is True and smoke.get('passed') is True and smoke.get('cleanup_complete') is True,
             'upload requires completed simulator and signing cleanup')
+    if build_report['scope'] == 'ios_retained_pair_simulator_and_signed_ipa':
+        binding = build_report['simulator_binding']
+        require(binding.get('application_resigned') is True and binding.get('derived_simulator_only') is True
+                and binding.get('original_application_unchanged') is True,
+                'retained simulator derivation is not explicitly bounded')
+        verify_reference(binding['application'])
+        signing = json.loads(verify_reference(binding['simulator_keychain_signing']).read_text())
+        require(signing.get('passed') is True and signing.get('resources_unchanged') is True
+                and signing.get('device_qualified') is False
+                and signing.get('derived_executable') == binding['application']
+                and smoke.get('executable') == binding['application'],
+                'retained simulator signing/startup artifact differs')
     ipa = verify_reference(build_report['application']['ipa'])
     pin = signing_pin()
     require(publisher_policy(verify_reference(build_report['publication']), pin) == build_report.get('publisher'),
