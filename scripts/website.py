@@ -123,8 +123,8 @@ def downloads(data):
 <ol class="steps">
 <li class="step"><span class="n">01</span><h3>Install</h3><p>Windows: run the installer. macOS: open the DMG and drag GChat to Applications. Ubuntu/Debian: open the .deb with your package installer. AppImage: allow execution, then launch it.</p></li>
 <li class="step"><span class="n">02</span><h3>Create your identity</h3><p>Open GChat and choose a passphrase. It protects your identity and history. Keep it safe; there is no passphrase reset.</p></li>
-<li class="step"><span class="n">03</span><h3>Connect</h3><p>Paste or select the network invitation you received privately. GChat connects through the installed Hetzner relay network.</p></li>
-<li class="step"><span class="n">04</span><h3>Join a conversation</h3><p>Use a conversation invitation from someone you trust, or create a channel and invite them. Network and conversation invitations are separate.</p></li>
+<li class="step"><span class="n">03</span><h3>Join</h3><p>Choose Join and paste a conversation invitation from someone you trust. It can include the network and channel together. Review its details and choose your nickname.</p></li>
+<li class="step"><span class="n">04</span><h3>Start talking</h3><p>The green network dot shows when you are connected. A network-only invitation connects without joining a channel; use Create to start your own conversation.</p></li>
 </ol><p><a href="https://github.com/IggyGG/gchat/blob/main/docs/INSTALL.md">Installation, signature verification, and upgrades</a></p>
 </div></section>'''
 

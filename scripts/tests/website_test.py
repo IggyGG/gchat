@@ -24,7 +24,7 @@ class WebsiteTests(unittest.TestCase):
             page = (Path(temp)/'index.html').read_text()
             self.assertNotIn('/releases/download/', page)
             self.assertNotIn('@@', page)
-            self.assertTrue('Network and conversation invitations are separate' in page)
+            self.assertIn('network and channel together', page)
             self.assertTrue((Path(temp)/'fonts/LICENSE-CC0').is_file())
 
     def test_partial_unsigned_mutable_and_injected_downloads_fail(self):
