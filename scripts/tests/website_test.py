@@ -1,9 +1,13 @@
 import copy
+import hashlib
+import io
 import importlib.util
 import json
 from pathlib import Path
 import tempfile
 import sys
+from unittest.mock import patch
+from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import unittest
 
@@ -11,6 +15,39 @@ spec = importlib.util.spec_from_file_location('website', Path(__file__).resolve(
 site = importlib.util.module_from_spec(spec); spec.loader.exec_module(site)
 
 class WebsiteTests(unittest.TestCase):
+    def test_source_head_retry_preserves_method(self):
+        url = 'https://github.com/IggyGG/gchat'
+        with patch.object(site, 'urlopen', side_effect=[HTTPError(url, 504, 'fixture', {}, None), io.BytesIO()]) as fetch:
+            with site.open_public(url, timeout=30, method='HEAD'):
+                pass
+            self.assertEqual([call.args[0].get_method() for call in fetch.call_args_list], ['HEAD', 'HEAD'])
+            self.assertTrue(fetch.call_args_list[1].args[0].full_url.startswith(url + '?gchat-verification='))
+
+    def test_gateway_retry_keeps_exact_asset_digest(self):
+        url = 'https://github.com/IggyGG/gchat/releases/download/v0.1.4/key.asc'
+        raw = b'public fixture bytes'
+        with tempfile.TemporaryDirectory() as temp, patch.object(site, 'urlopen', side_effect=[
+                HTTPError(url, 504, 'cached gateway error', {}, None), io.BytesIO(raw)]) as fetch:
+            output = Path(temp) / 'asset'
+            site.fetch(url, hashlib.sha256(raw).hexdigest(), output)
+            self.assertEqual(output.read_bytes(), raw)
+            self.assertEqual(fetch.call_args_list[0].args[0], url)
+            self.assertTrue(fetch.call_args_list[1].args[0].startswith(url + '?gchat-verification='))
+            self.assertEqual(fetch.call_count, 2)
+
+    def test_gateway_retry_is_bounded_and_other_errors_stay_failures(self):
+        for code, calls in ((504, 2), (404, 1), (401, 1)):
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as temp, patch.object(
+                    site, 'urlopen', side_effect=HTTPError('https://github.com/asset', code, 'fixture', {}, None)) as fetch:
+                with self.assertRaises(HTTPError): site.fetch('https://github.com/asset', '0' * 64, Path(temp) / 'asset')
+                self.assertEqual(fetch.call_count, calls)
+
+    def test_checksum_mismatch_is_not_retried(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(site, 'urlopen', return_value=io.BytesIO(b'wrong')) as fetch:
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                site.fetch('https://github.com/asset', '0' * 64, Path(temp) / 'asset')
+            self.assertEqual(fetch.call_count, 1)
+
     def manifest(self):
         base = 'https://github.com/IggyGG/gchat/releases/download/v0.1.0/'
         return {'schema':1, 'version':'0.1.0', 'channel':'developer-preview', 'release_key':{'url':base+'gchat-release-key.asc','sha256':'b'*64,'fingerprint':'C'*40}, 'artifacts':[

@@ -22,6 +22,25 @@
         "sha256": "8f80f0a6e17e1c4638d331f5c566889328ea883351ca8c0a96e79f2aad848c82",
         "signature_sha256": "66c81c108267bad69f5d546da53f8c8a06ae503526a9cf03ca79352d8f93659a"
       }
+    },
+    "v0.1.4-macos-aarch64.1": {
+      "version": "0.1.4",
+      "sources": {
+        "gchat": "d78b6440db216f14fb019ee3a369a20d1a8c11b6",
+        "gcoms": "31857151d822581205e68bdacbbb1fc1f0993c82"
+      },
+      "manifest_format": "platform-v1",
+      "release_key": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/gchat-release-key.asc",
+        "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
+        "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
+      },
+      "manifest": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/platform-release.json",
+        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/platform-release.json.asc",
+        "sha256": "e570b77e15eb51b3e9a5d49358efc491212f72f368ac902e69c5f0f90cd24206",
+        "signature_sha256": "e910e6fd56f9429ae95fd8c118805b8ecc5c2acf6bc6bcd98492ca67ba5e260b"
+      }
     }
   },
   "artifacts": [
@@ -44,6 +63,16 @@
       "signing_verified": true,
       "sha256": "64e288664ba1169a01264639a2d0b4e6fff9d290bd70e3d05a1b5b352797ed5d",
       "signature_sha256": "b1dcd015e1eace14bf1d0095f54674ca50a24de5be54f4a8769401b229902939"
+    },
+    {
+      "target": "macos-aarch64",
+      "format": "dmg",
+      "release": "v0.1.4-macos-aarch64.1",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/GChat_0.1.4_aarch64.dmg",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/GChat_0.1.4_aarch64.dmg.asc",
+      "signing_verified": true,
+      "sha256": "0847d0d9ab14336353263abc48e78c581f916299a61df7ce68fc2fd23fe9a9d8",
+      "signature_sha256": "e9255ef69975b571424c5a2e8ba68e71467cc5d23dd5373361acf8b7e342965a"
     }
   ]
 }

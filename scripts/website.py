@@ -8,9 +8,11 @@ import re
 import shutil
 import tempfile
 import subprocess
+import uuid
 from release_signatures import fingerprint, verify
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -161,7 +163,7 @@ def client_status(data):
 
 def remote_check(data):
     for repo in REPOSITORIES:
-        with urlopen(Request(repo, method='HEAD'), timeout=30) as response:
+        with open_public(repo, timeout=30, method='HEAD') as response:
             if response.status != 200:
                 raise ValueError('public source mirror unavailable')
     if data.get('schema') == 2:
@@ -196,9 +198,23 @@ def remote_check(data):
             verify(signature, path, data['release_key']['fingerprint'], home)
 
 
+def open_public(url, timeout, method=None):
+    for attempt in range(2):
+        # A failed cached GitHub redirect can outlive the underlying outage.
+        # Retry only transient gateway errors; the canonical link and required
+        # artifact digest remain unchanged.
+        request_url = url if attempt == 0 else url + '?gchat-verification=' + uuid.uuid4().hex
+        try:
+            request = Request(request_url, method=method) if method else request_url
+            return urlopen(request, timeout=timeout)
+        except HTTPError as error:
+            if attempt or error.code not in (502, 503, 504):
+                raise
+
+
 def fetch(url, expected, path):
     digest = hashlib.sha256()
-    with urlopen(url, timeout=120) as response, path.open('wb') as output:
+    with open_public(url, timeout=120) as response, path.open('wb') as output:
         while chunk := response.read(1024 * 1024):
             digest.update(chunk); output.write(chunk)
     if digest.hexdigest() != expected:
