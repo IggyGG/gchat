@@ -32,6 +32,28 @@ final class GChatLifecycleTests: XCTestCase {
         add(attachment)
     }
 
+    func waitForUnlockedProfile() {
+        // Foreground activation can initially expose the pre-background WebView
+        // snapshot. Await the complete target state within the original budget,
+        // rather than accepting one old heading then failing on its next frame.
+        var readySince: TimeInterval?
+        let ready = NSPredicate { _, _ in
+            let unlocked = self.app.state == .runningForeground
+                && self.heading("Connect to GChat").exists
+                && !self.heading("Reconnect this instance").exists
+                && !self.heading("Create your GChat identity").exists
+            guard unlocked else { readySince = nil; return false }
+            let now = ProcessInfo.processInfo.systemUptime
+            if readySince == nil { readySince = now }
+            return now - readySince! >= 1
+        }
+        expectation(for: ready, evaluatedWith: nil)
+        waitForExpectations(timeout: 45)
+        XCTAssertFalse(app.webViews.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS %@", "secure device storage was unavailable"
+        )).firstMatch.exists)
+    }
+
     func enterPassphrase() {
         let field = app.webViews.secureTextFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 15))
@@ -67,7 +89,7 @@ final class GChatLifecycleTests: XCTestCase {
         screenshot("01-fresh-profile")
         enterPassphrase()
         app.webViews.buttons["Create identity"].tap()
-        XCTAssertTrue(heading("Connect to GChat").waitForExistence(timeout: 45))
+        waitForUnlockedProfile()
         screenshot("02-encrypted-profile-created")
 
         // Default-off credential storage must require manual unlock on return.
@@ -75,23 +97,22 @@ final class GChatLifecycleTests: XCTestCase {
         XCTAssertTrue(heading("Reconnect this instance").waitForExistence(timeout: 30))
         screenshot("03-background-requires-passphrase")
         enterPassphrase()
-        let remember = app.webViews.descendants(matching: .any)
+        let remember = app.webViews.switches
             .matching(NSPredicate(format: "label == %@", "Remember on this device")).firstMatch
         XCTAssertTrue(remember.waitForExistence(timeout: 10))
         remember.tap()
+        XCTAssertEqual(remember.value as? String, "1")
         app.webViews.buttons["Reconnect"].tap()
-        XCTAssertTrue(heading("Connect to GChat").waitForExistence(timeout: 45))
+        waitForUnlockedProfile()
+        screenshot("03b-consented-manual-reopen")
 
         // This now uses the native simulator Keychain after explicit consent.
         backgroundAndActivate()
-        XCTAssertTrue(heading("Connect to GChat").waitForExistence(timeout: 45))
-        XCTAssertFalse(heading("Reconnect this instance").exists)
+        waitForUnlockedProfile()
         screenshot("04-consented-keychain-resume")
         app.terminate()
         app.launch()
-        XCTAssertTrue(heading("Connect to GChat").waitForExistence(timeout: 45))
-        XCTAssertFalse(heading("Create your GChat identity").exists)
-        XCTAssertFalse(heading("Reconnect this instance").exists)
+        waitForUnlockedProfile()
         screenshot("05-retained-profile-relaunch")
     }
 }
