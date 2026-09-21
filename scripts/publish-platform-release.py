@@ -43,7 +43,7 @@ def main():
         home = Path(temporary); home.chmod(0o700)
         key = file_reference(base, candidate['release_key'])
         subprocess.run(['gpg', '--homedir', str(home), '--batch', '--import', str(key)], check=True, capture_output=True)
-        validate(candidate, base, publication, home)
+        validate(candidate, base, publication, home, controller_repository=args.gchat)
         manifest_bytes = (json.dumps(public_manifest(candidate, base), sort_keys=True, indent=2) + '\n').encode()
         if args.action == 'manifest':
             args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -75,6 +75,11 @@ def main():
         for name, source in candidate['sources'].items():
             obj = paired.github(f'repos/IggyGG/{name}/git/commits/{source["commit"]}')
             require(obj.get('sha') == source['commit'] and obj['tree']['sha'] == source['tree'], 'public source differs from qualified pair')
+        if 'signer_policy' in candidate:
+            controller = candidate['signer_policy']['controller']
+            obj = paired.github(f'repos/IggyGG/gchat/git/commits/{controller["commit"]}')
+            require(obj.get('sha') == controller['commit'] and obj['tree']['sha'] == controller['tree'],
+                    'public signer controller differs from qualified policy')
         local_tag = subprocess.check_output(['git', 'rev-parse', 'refs/tags/' + tag], cwd=args.gchat, text=True).strip()
         for remote in ('forgejo', 'https://github.com/IggyGG/gchat.git'):
             refs = subprocess.check_output(['git', 'ls-remote', remote, 'refs/tags/' + tag], cwd=args.gchat, text=True).split()
