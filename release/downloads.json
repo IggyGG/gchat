@@ -23,25 +23,6 @@
         "signature_sha256": "66c81c108267bad69f5d546da53f8c8a06ae503526a9cf03ca79352d8f93659a"
       }
     },
-    "v0.1.4-macos-aarch64.1": {
-      "version": "0.1.4",
-      "sources": {
-        "gchat": "d78b6440db216f14fb019ee3a369a20d1a8c11b6",
-        "gcoms": "31857151d822581205e68bdacbbb1fc1f0993c82"
-      },
-      "manifest_format": "platform-v1",
-      "release_key": {
-        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/gchat-release-key.asc",
-        "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
-        "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
-      },
-      "manifest": {
-        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/platform-release.json",
-        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/platform-release.json.asc",
-        "sha256": "e570b77e15eb51b3e9a5d49358efc491212f72f368ac902e69c5f0f90cd24206",
-        "signature_sha256": "e910e6fd56f9429ae95fd8c118805b8ecc5c2acf6bc6bcd98492ca67ba5e260b"
-      }
-    },
     "v0.1.4-android-arm64.1": {
       "version": "0.1.4",
       "sources": {
@@ -80,7 +61,26 @@
         "signature_sha256": "adfb9cb4f57b7b81cbf383b81b193510d78c2c81552cdf8f6b39685247074111"
       }
     },
-    "v0.1.4-macos-x86_64.1": {
+    "v0.1.4-macos-aarch64.2": {
+      "version": "0.1.4",
+      "sources": {
+        "gchat": "d78b6440db216f14fb019ee3a369a20d1a8c11b6",
+        "gcoms": "31857151d822581205e68bdacbbb1fc1f0993c82"
+      },
+      "manifest_format": "platform-v1",
+      "release_key": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.2/gchat-release-key.asc",
+        "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
+        "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
+      },
+      "manifest": {
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.2/platform-release.json",
+        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.2/platform-release.json.asc",
+        "sha256": "40fc8129dffa21a6897aaecf46376e4d7be1a289faec2652ae8eb7b19d42aa06",
+        "signature_sha256": "858db62191339bc791ba85a5a6a58b6b2e7ba8fb031a11504113cc8bab7beb5f"
+      }
+    },
+    "v0.1.4-macos-x86_64.2": {
       "version": "0.1.4",
       "sources": {
         "gchat": "ab3697a8bb98962f7a765254a6c5d2b6c8b6259e",
@@ -88,15 +88,15 @@
       },
       "manifest_format": "platform-v1",
       "release_key": {
-        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.1/gchat-release-key.asc",
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.2/gchat-release-key.asc",
         "sha256": "3bc0e7ef063465ef48019fc33fa8deafcdb6be16b6fe2a8e08e365aa1da5531a",
         "fingerprint": "F4F6F8550D2AA952A189640D58430838AA3230BB"
       },
       "manifest": {
-        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.1/platform-release.json",
-        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.1/platform-release.json.asc",
-        "sha256": "248d893b9e6e262065100943ec5ea0348bd926bec0d7c8e322adf0fc3faa704e",
-        "signature_sha256": "e52d9a17d978dfa9938579c4c88f7462c938adab9e66e008f64d06938b757557"
+        "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.2/platform-release.json",
+        "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.2/platform-release.json.asc",
+        "sha256": "69196b2fd6f13a4f57fcfaccf3ef08cf11fedbc5fa4965801b2a923983676a6f",
+        "signature_sha256": "32492daa6479bcbc15b1cb772f592aab62d22cb15283de257afd6f19024a77f5"
       }
     }
   },
@@ -124,12 +124,12 @@
     {
       "target": "macos-aarch64",
       "format": "dmg",
-      "release": "v0.1.4-macos-aarch64.1",
-      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/GChat_0.1.4_aarch64.dmg",
-      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.1/GChat_0.1.4_aarch64.dmg.asc",
+      "release": "v0.1.4-macos-aarch64.2",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.2/GChat_0.1.4_aarch64-notarized.dmg",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-aarch64.2/GChat_0.1.4_aarch64-notarized.dmg.asc",
       "signing_verified": true,
-      "sha256": "0847d0d9ab14336353263abc48e78c581f916299a61df7ce68fc2fd23fe9a9d8",
-      "signature_sha256": "e9255ef69975b571424c5a2e8ba68e71467cc5d23dd5373361acf8b7e342965a"
+      "sha256": "b16683c8f514edc1449bbdf551289d58ef3efa7bc9a5976169b196f45fdfe0e7",
+      "signature_sha256": "eba2a5c30b550fae33c84fe0bb7ac81da48443fb63ec48bf8285bfae764500f2"
     },
     {
       "target": "android-arm64",
@@ -154,12 +154,12 @@
     {
       "target": "macos-x86_64",
       "format": "dmg",
-      "release": "v0.1.4-macos-x86_64.1",
-      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.1/GChat_0.1.4_x64.dmg",
-      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.1/GChat_0.1.4_x64.dmg.asc",
+      "release": "v0.1.4-macos-x86_64.2",
+      "url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.2/GChat_0.1.4_x64-notarized.dmg",
+      "signature_url": "https://github.com/IggyGG/gchat/releases/download/v0.1.4-macos-x86_64.2/GChat_0.1.4_x64-notarized.dmg.asc",
       "signing_verified": true,
-      "sha256": "12c2d1a2c28aa00f0590f4050e7abfbc38066305eb282d4b3040f824edf722ec",
-      "signature_sha256": "285b736b5d6991581d5339f5651bcbcd7b34fb6c4d58b6eeddee5cbdaea3db0d"
+      "sha256": "4120a9867a98937101b3efec0a7db3b824223d4a806483613281f011b4051d0e",
+      "signature_sha256": "a228e12c1ec441ed4bda74d0d4f1e7a6bcd75d669dfdd3925349107a31cd2d28"
     }
   ]
 }
