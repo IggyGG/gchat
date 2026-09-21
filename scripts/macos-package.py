@@ -47,13 +47,13 @@ def gh_json(endpoint):
     return json.loads(subprocess.check_output(['gh', 'api', endpoint], text=True))
 
 
-def verify_controller(root, environment):
+def verify_controller(root, environment, workflow="macos-package.yml"):
     identity = source_identity(root)
     macos = script('macos-build')
     ref = macos.release_ref(environment.get('GITHUB_REF', ''))
     require(environment.get('GITHUB_SHA') == identity['commit'] and
             environment.get('GITHUB_WORKFLOW_SHA') == identity['commit'] and
-            environment.get('GITHUB_WORKFLOW_REF') == f'{REPO}/.github/workflows/macos-package.yml@{ref}',
+            environment.get('GITHUB_WORKFLOW_REF') == f'{REPO}/.github/workflows/{workflow}@{ref}',
             'package controller must run from its own frozen protected workflow commit')
     remote = ref.replace('refs/heads/', 'refs/remotes/origin/', 1) if ref.startswith('refs/heads/') else ref
     tip = subprocess.check_output(['git', 'rev-parse', '--verify', remote + '^{commit}'], cwd=root, text=True).strip()

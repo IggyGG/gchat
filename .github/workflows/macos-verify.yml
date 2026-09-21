@@ -1,0 +1,80 @@
+name: macOS retained installer verification
+run-name: Forgejo macOS verify ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        required: true
+        options: [macos-aarch64, macos-x86_64]
+      gchat_commit:
+        required: true
+        type: string
+      gcoms_commit:
+        required: true
+        type: string
+      package_run_id:
+        required: true
+        type: string
+      artifact_id:
+        required: true
+        type: string
+      artifact_sha256:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    environment: release-signing
+    runs-on: ${{ inputs.target == 'macos-aarch64' && 'macos-15' || 'macos-15-intel' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: controller
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12'
+      - name: Verify retained signed DMG and actual installed application
+        timeout-minutes: 20
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ inputs.target }}
+          GCHAT_COMMIT: ${{ inputs.gchat_commit }}
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+          PACKAGE_RUN_ID: ${{ inputs.package_run_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+        run: |
+          set -o pipefail
+          python3 controller/scripts/macos-verify.py --target "$TARGET" --gchat gchat --gcoms gcoms --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT" --package-run-id "$PACKAGE_RUN_ID" --artifact-id "$ARTIFACT_ID" --artifact-sha256 "$ARTIFACT_SHA256" --output verified 2>&1 | tee verification.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ${{ inputs.target }}-verified
+          include-hidden-files: true
+          path: |
+            verified/**
+            verification.log
+          if-no-files-found: error

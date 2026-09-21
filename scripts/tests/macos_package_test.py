@@ -244,6 +244,7 @@ class PackagingHelperTest(unittest.TestCase):
         workflow = (SCRIPTS.parent / '.github/workflows/macos-package.yml').read_text()
         self.assertIn('controller/scripts/macos-package.py package', workflow)
         self.assertIn('tee retry-evidence/package.log', workflow)
+        self.assertIn('set -o pipefail', workflow)
         self.assertIn('signed/build/*/release/bundle/dmg/*.dmg', workflow)
         self.assertIn('if: always()', workflow)
         self.assertNotIn('python3 scripts/build-installer.py --target', workflow)

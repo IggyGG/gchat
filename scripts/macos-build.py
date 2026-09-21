@@ -142,7 +142,8 @@ def verify_archived_file(archive, name, reference):
     return data
 
 
-def verify_application_smoke(directory, build, source_archive):
+def verify_application_smoke(directory, build, source_archive, harness_archive=None):
+    harness_archive = harness_archive or source_archive
     smoke = directory / 'application-smoke'
     report = json.loads((smoke / 'report.json').read_text())
     if (report.get('schema') != 1 or
@@ -164,7 +165,7 @@ def verify_application_smoke(directory, build, source_archive):
     for key, path in (('dmg', directory / artifact['name']), ('build_manifest', directory / 'build.json'),
                       ('native_receipt', directory / 'provenance/native-ci.json')):
         verify_reference(path, inputs.get(key))
-    verify_archived_file(source_archive, 'scripts/test-macos-bundle.py', report.get('harness'))
+    verify_archived_file(harness_archive, 'scripts/test-macos-bundle.py', report.get('harness'))
     publication = json.loads(verify_archived_file(source_archive, 'release/publication.json',
                                                  inputs.get('publication')))
     publisher = publication['publisher_identities']['macos']
@@ -189,7 +190,7 @@ def verify_application_smoke(directory, build, source_archive):
         any(service.get(name) is not True for name in
             ('passed', 'inputs_unchanged', 'children_stopped', 'temporary_profile_removed'))):
         raise ValueError('Mac packaged service lifecycle failed or cleanup is incomplete')
-    verify_archived_file(source_archive, 'scripts/test-native-application.py', service.get('harness'))
+    verify_archived_file(harness_archive, 'scripts/test-native-application.py', service.get('harness'))
     application_inputs = report['application_inputs']
     if (service.get('inputs') != application_inputs or
         application_inputs.get('sources') != build['dependency_inputs']['sources'] or

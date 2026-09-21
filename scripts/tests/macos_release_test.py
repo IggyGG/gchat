@@ -299,6 +299,27 @@ class ApplicationCollectorTest(unittest.TestCase):
     def test_complete_relocated_receipt_is_accepted_without_original_installation(self):
         self.assertTrue(self.verify()['passed'])
 
+    def test_recovery_controller_harness_is_separate_from_original_application_archive(self):
+        controller = self.root / 'controller.tar'
+        with tarfile.open(controller, 'w') as archive:
+            for name in ('scripts/test-macos-bundle.py', 'scripts/test-native-application.py'):
+                body = b'corrected controller ' + name.encode()
+                info = tarfile.TarInfo(name)
+                info.size = len(body)
+                archive.addfile(info, io.BytesIO(body))
+                if name.endswith('test-macos-bundle.py'):
+                    self.report['harness'] = self.ref('/controller/' + name, body)
+                else:
+                    self.service['harness'] = self.ref('/controller/' + name, body)
+        with self.assertRaisesRegex(ValueError, 'frozen source archive'):
+            self.verify()
+        self.assertTrue(macos.verify_application_smoke(self.root, self.build, self.archive, controller)['passed'])
+        # The controller archive cannot replace the app's pinned publisher.
+        self.report['inputs']['publication']['sha256'] = 'f' * 64
+        self.write('application-smoke/report.json', json.dumps(self.report).encode())
+        with self.assertRaisesRegex(ValueError, 'frozen source archive'):
+            macos.verify_application_smoke(self.root, self.build, self.archive, controller)
+
     def test_wrong_source_and_failed_cleanup_are_rejected(self):
         self.report['sources'] = {'other': {}}
         with self.assertRaisesRegex(ValueError, 'source binding'):

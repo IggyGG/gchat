@@ -231,7 +231,7 @@ def bundle(target, output, environment, identity, policy, checkout):
                 elif 'Authority='+identity['name'] not in details.stderr.splitlines():
                     raise ValueError('self-signed application publisher differs from configured identity')
                 certificate_prefix = Path(temp) / 'signer-'
-                run(['codesign', '-d', '--extract-certificates', str(certificate_prefix), str(app)], capture_output=True)
+                run(['codesign', '-d', '--extract-certificates=' + str(certificate_prefix), str(app)], capture_output=True)
                 certificate = Path(str(certificate_prefix)+'0').read_bytes()
                 expected = identity['certificate_fingerprint'].replace(' ', '').upper()
                 actual = hashlib.new('sha256' if len(expected) == 64 else 'sha1', certificate).hexdigest().upper()

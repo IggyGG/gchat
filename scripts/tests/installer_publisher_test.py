@@ -174,8 +174,9 @@ class DiskImageApplicationTest(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, stdout=plistlib.dumps(info))
         if command[:2] == ['hdiutil', 'detach'] and self.detach_failure:
             raise RuntimeError('hdiutil detach failed')
-        if '--extract-certificates' in command:
-            prefix = command[command.index('--extract-certificates') + 1]
+        if any(part.startswith('--extract-certificates=') for part in command):
+            self.assertNotIn('--extract-certificates', command)
+            prefix = next(part.split('=', 1)[1] for part in command if part.startswith('--extract-certificates='))
             Path(prefix + '0').write_bytes(b'pinned certificate')
         return subprocess.CompletedProcess(command, 0)
 

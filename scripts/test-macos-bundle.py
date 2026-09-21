@@ -149,7 +149,7 @@ def verify_signature(commands, path, identity, label):
         arguments.append("--deep")
     commands.run(label + "-integrity", [*arguments, str(path)])
     prefix = commands.output / (label + "-leaf-")
-    commands.run(label + "-certificate", ["codesign", "-d", "--extract-certificates", str(prefix), str(path)])
+    commands.run(label + "-certificate", ["codesign", "-d", "--extract-certificates=" + str(prefix), str(path)])
     certificate = Path(str(prefix) + "0")
     require(certificate.is_file(), "signed artifact has no extracted leaf certificate")
     return {**check_certificate(certificate.read_bytes(), identity), "certificate": smoke.reference(certificate)}

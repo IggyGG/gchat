@@ -129,6 +129,7 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           TARGET: ${{ inputs.target }}
         run: |
+          set -o pipefail
           npm install --global npm@11
           python3 controller/scripts/macos-package.py package --target "$TARGET" --gchat gchat --gcoms gcoms --output retry-evidence --signed signed 2>&1 | tee retry-evidence/package.log
       - name: Verify installed DMG service and graphical startup

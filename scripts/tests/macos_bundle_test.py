@@ -147,7 +147,8 @@ class WorkflowTests(BundleFixture):
             def run(self, label, command, **kwargs):
                 self.report["commands"].append({"name": label, "command": [str(part) for part in command]})
                 if label.endswith("-certificate"):
-                    prefix = Path(command[command.index("--extract-certificates") + 1])
+                    test.assertNotIn("--extract-certificates", command)
+                    prefix = Path(next(part.split("=", 1)[1] for part in command if part.startswith("--extract-certificates=")))
                     Path(str(prefix) + "0").write_bytes(test.certificate if mode != "bad_certificate" else b"untrusted")
                 if label == "attach":
                     mountpoint = Path(command[command.index("-mountpoint") + 1])
