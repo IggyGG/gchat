@@ -1,0 +1,540 @@
+#!/usr/bin/env python3
+"""Frozen-pair iOS build, simulator startup, pinned IPA verification and upload.
+
+Only retained derived inputs are changed. The simulator scope is startup/relaunch;
+it does not qualify messaging, device persistence, live APNs or physical devices.
+"""
+import argparse
+import base64
+from contextlib import contextmanager
+from datetime import datetime, timezone
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path, PurePosixPath
+import platform
+import plistlib
+import re
+import secrets
+import shlex
+import shutil
+import stat
+import subprocess
+import tempfile
+import time
+import tomllib
+import zipfile
+
+from paired_sources import prepare_pair, verify_derived_inputs, verify_resolved_protocol
+from release_evidence import digest, source_identity
+
+BUNDLE = 'boo.gchat.app'
+TEAM = 'U93DVTJ3T5'
+APP_STORE_ID = '6814308446'
+TARGETS = ('aarch64-apple-ios', 'aarch64-apple-ios-sim')
+SPEC = importlib.util.spec_from_file_location('ios_source_policy', Path(__file__).with_name('macos-build.py'))
+policy = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(policy)
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2) + '\n')
+
+
+def reference(path):
+    return {'path': str(path.resolve()), 'sha256': digest(path), 'size': path.stat().st_size}
+
+
+def verify_reference(item):
+    path = Path(item['path'])
+    require(path.is_file() and digest(path) == item['sha256'] and path.stat().st_size == item['size'],
+            'retained artifact no longer matches its receipt')
+    return path
+
+
+def run(command, cwd=None, env=None, timeout=3600):
+    subprocess.run([str(x) for x in command], cwd=cwd, env=env, check=True, timeout=timeout)
+
+
+def output(command, **kwargs):
+    return subprocess.check_output([str(x) for x in command], text=True, **kwargs).strip()
+
+
+def secret_command(command):
+    # security's password arguments must never appear in an exception or log.
+    try:
+        result = subprocess.run([str(x) for x in command], capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        raise ValueError('private signing command timed out') from None
+    require(result.returncode == 0, 'private signing setup/cleanup command failed')
+
+
+def build_number(value):
+    require(re.fullmatch(r'[1-9][0-9]{0,3}\.[0-9]{1,2}\.[0-9]{1,2}', value),
+            'build number must use Apple numeric major.minor.patch (four/two/two digits)')
+    return value
+
+
+def signing_pin():
+    value = os.environ.get('IOS_SIGNING_CERT_SHA256', '').replace(':', '').lower()
+    require(re.fullmatch('[0-9a-f]{64}', value), 'set the reviewed IOS_SIGNING_CERT_SHA256 pin')
+    return value
+
+
+def publisher_policy(path, pin):
+    value = json.loads(path.read_text()).get('publisher_identities', {}).get('ios', {})
+    require(value.get('name') == 'Gh0st' and value.get('team_id') == TEAM
+            and value.get('distribution') == 'app-store' and value.get('certificate_sha256') == pin,
+            'signing pin differs from the frozen Gh0st iOS publication policy')
+    return value
+
+
+def verify_checkouts(args):
+    chat, coms = args.gchat.resolve(), args.gcoms.resolve()
+    chat_ref, coms_ref = policy.release_ref(args.gchat_ref), policy.release_ref(args.gcoms_ref)
+    env = os.environ
+    require(env.get('GITHUB_SHA') == args.gchat_commit and env.get('GITHUB_WORKFLOW_SHA') == args.gchat_commit
+            and env.get('GITHUB_REF') == chat_ref
+            and env.get('GITHUB_WORKFLOW_REF') == f'{policy.REPO}/.github/workflows/ios-release.yml@{chat_ref}',
+            'workflow/source/ref identity differs from the selected protected GChat source')
+    for root, commit, ref in ((chat, args.gchat_commit, chat_ref), (coms, args.gcoms_commit, coms_ref)):
+        policy.source_commit(commit)
+        require(source_identity(root)['commit'] == commit, 'checkout differs from frozen source')
+        local = ref.replace('refs/heads/', 'refs/remotes/origin/', 1) if ref.startswith('refs/heads/') else ref
+        tip = output(['git', 'rev-parse', local + '^{commit}'], cwd=root)
+        if root == chat or ref.startswith('refs/tags/'):
+            require(tip == commit, 'protected release ref moved from frozen source')
+        else:
+            run(['git', 'merge-base', '--is-ancestor', commit, tip], cwd=root)
+
+
+def feature_graph(text):
+    found = {}
+    for line in text.splitlines():
+        if '|' not in line:
+            continue
+        package, features = line.split('|', 1)
+        name = package.split()[0]
+        if name == 'gcoms' or name.startswith('gcoms-'):
+            found.setdefault(name, set()).update(x.strip() for x in features.replace(' (*)', '').split(',') if x.strip())
+    require('network-client' in found.get('gcoms', set()), 'iOS application must enable network-client')
+    require('gcoms-node' in found and 'gcoms-runtime' in found, 'iOS graph omits the actual runtime')
+    require('relay-host' not in found['gcoms-node'], 'iOS application must compile out relay hosting')
+    # RPC can compile IPC types; this is distinct from the embedded/launch host backends.
+    require(not ({'embedded', 'launch'} & found['gcoms']), 'iOS graph enables a desktop host backend')
+    return {name: sorted(features) for name, features in sorted(found.items())}
+
+
+def validate_profile(value, pin, now=None):
+    now = now or datetime.now(timezone.utc)
+    expiry = value.get('ExpirationDate')
+    require(isinstance(expiry, datetime), 'provisioning profile has no expiry')
+    require(expiry.replace(tzinfo=timezone.utc) > now, 'provisioning profile expired')
+    require(value.get('TeamIdentifier') == [TEAM], 'provisioning profile team mismatch')
+    require('ProvisionedDevices' not in value and value.get('ProvisionsAllDevices') is not True,
+            'expected App Store distribution profile, not device/ad-hoc/enterprise')
+    entitlements = value.get('Entitlements', {})
+    validate_entitlements(entitlements, profile=True)
+    certificates = value.get('DeveloperCertificates', [])
+    require(len(certificates) == 1 and hashlib.sha256(certificates[0]).hexdigest() == pin,
+            'profile certificate does not match the single pinned distribution signer')
+    uuid = value.get('UUID', '')
+    require(re.fullmatch('[0-9a-fA-F-]{36}', uuid), 'invalid provisioning profile UUID')
+    return {'uuid': uuid, 'name': value.get('Name'), 'expires': expiry.isoformat(),
+            'team': TEAM, 'bundle': BUNDLE, 'certificate_sha256': pin}
+
+
+def validate_entitlements(value, profile=False):
+    require(value.get('application-identifier') == TEAM + '.' + BUNDLE, 'application entitlement mismatch')
+    require(value.get('com.apple.developer.team-identifier') == TEAM, 'team entitlement mismatch')
+    require(value.get('get-task-allow') is False, 'debugger entitlement must be explicitly disabled')
+    require(value.get('aps-environment') == 'production', 'production APNs entitlement missing')
+    groups = value.get('keychain-access-groups', [])
+    allowed = {TEAM + '.' + BUNDLE}
+    if profile:
+        allowed.add(TEAM + '.*')
+    require(isinstance(groups, list) and set(groups) <= allowed, 'unexpected shared Keychain access group')
+
+
+def decode_profile(path):
+    return plistlib.loads(subprocess.check_output(['security', 'cms', '-D', '-i', str(path)]))
+
+
+def keychains():
+    return shlex.split(output(['security', 'list-keychains', '-d', 'user']))
+
+
+def profile_files():
+    result = {}
+    for relative in ('Library/MobileDevice/Provisioning Profiles',
+                     'Library/Developer/Xcode/UserData/Provisioning Profiles'):
+        root = Path.home() / relative
+        if root.exists():
+            result.update({str(path): digest(path) for path in root.glob('*.mobileprovision')})
+    return result
+
+
+@contextmanager
+def signer(destination, profile, pin):
+    """Import only our key in an isolated keychain; restore the exact search list."""
+    before_keys, before_profiles = keychains(), profile_files()
+    require(not any(Path(path).name == profile['uuid'] + '.mobileprovision' for path in before_profiles),
+            'a profile with this UUID already exists; use a fresh isolated worker')
+    cleanup = {'passed': False, 'original_keychain_search_restored': False,
+               'temporary_keychain_removed': False, 'original_profiles_unchanged': False}
+    with tempfile.TemporaryDirectory(prefix='gchat-ios-sign-') as temporary:
+        private = Path(temporary)
+        private.chmod(0o700)
+        keychain = private / 'signing.keychain-db'
+        p12 = private / 'publisher.p12'
+        password = secrets.token_urlsafe(32)
+        created = False
+        try:
+            p12.write_bytes(base64.b64decode(os.environ['IOS_CERTIFICATE_BASE64'], validate=True))
+            p12.chmod(0o600)
+            secret_command(['security', 'create-keychain', '-p', password, keychain])
+            created = True
+            secret_command(['security', 'set-keychain-settings', '-lut', '7200', keychain])
+            secret_command(['security', 'unlock-keychain', '-p', password, keychain])
+            secret_command(['security', 'import', p12, '-k', keychain, '-P', os.environ['IOS_CERTIFICATE_PASSWORD'],
+                            '-T', '/usr/bin/codesign', '-T', '/usr/bin/security'])
+            secret_command(['security', 'set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:',
+                            '-s', '-k', password, keychain])
+            secret_command(['security', 'list-keychains', '-d', 'user', '-s', keychain, *before_keys])
+            pem = subprocess.check_output(['security', 'find-certificate', '-a', '-p', str(keychain)])
+            certificates = re.findall(rb'-----BEGIN CERTIFICATE-----\s*(.*?)\s*-----END CERTIFICATE-----', pem, re.S)
+            matching = [base64.b64decode(re.sub(rb'\s', b'', cert), validate=True) for cert in certificates]
+            matching = [cert for cert in matching if hashlib.sha256(cert).hexdigest() == pin]
+            require(len(matching) == 1, 'imported keychain does not contain the pinned distribution certificate')
+            sha1 = hashlib.sha1(matching[0]).hexdigest().upper()
+            identities = output(['security', 'find-identity', '-v', '-p', 'codesigning', keychain])
+            require(sha1 in identities, 'pinned certificate has no valid signing private key')
+            (destination / 'distribution-certificate.der').write_bytes(matching[0])
+            yield keychain, sha1
+        finally:
+            # Tauri may install the provided UUID; never delete another profile.
+            for path, sha in profile_files().items():
+                if path not in before_profiles and Path(path).name == profile['uuid'] + '.mobileprovision':
+                    candidate = Path(path)
+                    value = decode_profile(candidate)
+                    validate_profile(value, pin)
+                    require(value['UUID'] == profile['uuid'], 'temporary profile identity changed')
+                    candidate.unlink()
+            if created:
+                secret_command(['security', 'list-keychains', '-d', 'user', '-s', *before_keys])
+                secret_command(['security', 'delete-keychain', keychain])
+            p12.unlink(missing_ok=True)
+            cleanup['temporary_keychain_removed'] = not keychain.exists()
+            cleanup['original_keychain_search_restored'] = keychains() == before_keys
+            cleanup['original_profiles_unchanged'] = profile_files() == before_profiles
+            cleanup['passed'] = all(cleanup[name] for name in cleanup if name != 'passed')
+            write_json(destination / 'signing-cleanup.json', cleanup)
+            require(cleanup['passed'], 'iOS signer did not restore its keychain/profile boundary')
+
+
+def configure_project(generated):
+    files = sorted(generated.glob('*_iOS/*.entitlements'))
+    require(len(files) == 1, 'expected exactly one generated iOS entitlements file')
+    path = files[0]
+    value = plistlib.loads(path.read_bytes())
+    value.update({'application-identifier': TEAM + '.' + BUNDLE,
+                  'com.apple.developer.team-identifier': TEAM, 'aps-environment': 'production',
+                  'get-task-allow': False, 'keychain-access-groups': [TEAM + '.' + BUNDLE]})
+    path.write_bytes(plistlib.dumps(value))
+    return path
+
+
+def simulator_runtime():
+    runtimes = json.loads(output(['xcrun', 'simctl', 'list', 'runtimes', '--json']))['runtimes']
+    ios = [item for item in runtimes if item.get('isAvailable') and '.iOS-' in item.get('identifier', '')]
+    require(ios, 'install an available iOS simulator runtime before building')
+    return max(ios, key=lambda item: tuple(int(x) for x in item['version'].split('.')))['identifier']
+
+
+def simulator_smoke(app, destination):
+    destination.mkdir()
+    report = {'schema': 1, 'scope': 'ios_simulator_native_startup_relaunch', 'passed': False,
+              'physical_device_qualified': False, 'profile_journey_qualified': False,
+              'messaging_qualified': False, 'push_qualified': False, 'cleanup_complete': False}
+    device = None
+    try:
+        info = plistlib.loads((app / 'Info.plist').read_bytes())
+        require(info.get('CFBundleIdentifier') == BUNDLE, 'simulator bundle identity mismatch')
+        report['executable'] = reference(app / info['CFBundleExecutable'])
+        runtime = simulator_runtime()
+        types = json.loads(output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
+        phones = [item for item in types if item['name'].startswith('iPhone')]
+        require(phones, 'no iPhone simulator device type installed')
+        device = output(['xcrun', 'simctl', 'create', 'GChat-' + secrets.token_hex(6), phones[-1]['identifier'], runtime])
+        require(re.fullmatch('[0-9A-Fa-f-]{36}', device), 'unexpected created simulator ID')
+        report.update(device=device, runtime=runtime, device_type=phones[-1]['identifier'])
+        run(['xcrun', 'simctl', 'boot', device], timeout=120)
+        run(['xcrun', 'simctl', 'bootstatus', device, '-b'], timeout=180)
+        run(['xcrun', 'simctl', 'install', device, app], timeout=120)
+        report['launches'] = []
+        for phase in ('fresh', 'relaunch'):
+            line = output(['xcrun', 'simctl', 'launch', '--terminate-running-process', device, BUNDLE], timeout=60)
+            match = re.fullmatch(re.escape(BUNDLE) + r': ([1-9][0-9]*)', line)
+            require(match is not None, 'simulator did not report the actual app PID')
+            pid = int(match.group(1))
+            # A native crash or immediate shutdown must fail startup qualification.
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                os.kill(pid, 0)
+                time.sleep(1)
+            command = output(['ps', '-p', str(pid), '-o', 'command='])
+            require(str(app.name) + '/' in command, 'simulator PID no longer belongs to the installed app')
+            screenshot = destination / (phase + '.png')
+            run(['xcrun', 'simctl', 'io', device, 'screenshot', screenshot], timeout=30)
+            require(screenshot.stat().st_size > 1000, 'simulator screenshot is empty')
+            report['launches'].append({'phase': phase, 'pid': pid, 'alive_seconds': 15,
+                                       'screenshot': reference(screenshot)})
+            run(['xcrun', 'simctl', 'terminate', device, BUNDLE], timeout=30)
+        report['passed'] = True
+    finally:
+        if device:
+            subprocess.run(['xcrun', 'simctl', 'terminate', device, BUNDLE], capture_output=True, timeout=30)
+            subprocess.run(['xcrun', 'simctl', 'shutdown', device], capture_output=True, timeout=60)
+            run(['xcrun', 'simctl', 'delete', device], timeout=60)
+            remaining = output(['xcrun', 'simctl', 'list', 'devices', '--json'])
+            report['cleanup_complete'] = device not in remaining
+        else:
+            report['cleanup_complete'] = True
+        report['passed'] = report['passed'] and report['cleanup_complete']
+        write_json(destination / 'report.json', report)
+    require(report['passed'], 'simulator startup or teardown did not complete')
+    return reference(destination / 'report.json')
+
+
+def inspect_zip(archive):
+    require(archive.infolist(), 'empty IPA')
+    names = set()
+    for entry in archive.infolist():
+        name = PurePosixPath(entry.filename)
+        require(not name.is_absolute() and '..' not in name.parts and '\\' not in entry.filename,
+                'unsafe IPA archive path')
+        require(entry.filename not in names, 'duplicate IPA archive entry')
+        names.add(entry.filename)
+        if stat.S_ISLNK(entry.external_attr >> 16):
+            target = PurePosixPath(archive.read(entry).decode())
+            require(not target.is_absolute() and '..' not in target.parts, 'unsafe IPA symlink')
+
+
+def verify_ipa(ipa, destination, pin, version):
+    with zipfile.ZipFile(ipa) as archive:
+        inspect_zip(archive)
+    destination.mkdir()
+    run(['ditto', '-x', '-k', ipa, destination])
+    apps = list((destination / 'Payload').glob('*.app'))
+    require(len(apps) == 1, 'expected one main iOS application in IPA')
+    app = apps[0]
+    require(not list(app.glob('PlugIns/*.appex')), 'new app extensions require their own profile validation')
+    info = plistlib.loads((app / 'Info.plist').read_bytes())
+    require(info.get('CFBundleIdentifier') == BUNDLE, 'IPA bundle identifier mismatch')
+    require(info.get('CFBundleVersion') == version, 'IPA build number mismatch')
+    require(info.get('MinimumOSVersion') == '15.0', 'IPA minimum iOS version mismatch')
+    executable = info.get('CFBundleExecutable', '')
+    require(executable and Path(executable).name == executable, 'invalid IPA executable name')
+    binary = app / executable
+    require(output(['lipo', '-archs', binary]) == 'arm64', 'device IPA must contain only arm64')
+    build = output(['xcrun', 'vtool', '-show-build', binary])
+    require(re.search(r'platform\s+IOS\b', build) and 'IOSSIMULATOR' not in build,
+            'IPA executable is not an iOS device binary')
+    run(['codesign', '--verify', '--deep', '--strict', app])
+    entitlements = plistlib.loads(subprocess.check_output(['codesign', '-d', '--entitlements', ':-', str(app)],
+                                                         stderr=subprocess.DEVNULL))
+    validate_entitlements(entitlements)
+    leaf_prefix = destination / 'signer-'
+    run(['codesign', '-d', '--extract-certificates', leaf_prefix, app])
+    certificate = Path(str(leaf_prefix) + '0')
+    require(digest(certificate) == pin, 'IPA signer differs from pinned distribution certificate')
+    profile = validate_profile(decode_profile(app / 'embedded.mobileprovision'), pin)
+    # The executable and certificate remain recoverable from the retained IPA;
+    # avoid implying a separately uploaded extracted application exists.
+    executable_receipt = {key: value for key, value in reference(binary).items() if key != 'path'}
+    executable_receipt['ipa_member'] = str(binary.relative_to(destination))
+    certificate_copy = destination.parent / 'ipa-signer.der'
+    shutil.copyfile(certificate, certificate_copy)
+    return {'ipa': reference(ipa), 'executable': executable_receipt, 'certificate': reference(certificate_copy),
+            'entitlements': entitlements, 'profile': profile, 'build_number': version,
+            'bundle': BUNDLE, 'architectures': ['arm64'], 'minimum_ios': '15.0'}
+
+
+def build(args):
+    require(platform.system() == 'Darwin' and platform.machine() == 'arm64', 'use an Apple Silicon Mac worker')
+    originals = {'gchat': args.gchat.resolve(), 'gcoms': args.gcoms.resolve()}
+    before = {name: source_identity(root) for name, root in originals.items()}
+    destination = args.output.resolve()
+    destination.mkdir(parents=True, exist_ok=False)
+    version = build_number(args.build_number)
+    pin = signing_pin()
+    report = {'schema': 1, 'scope': 'ios_exact_pair_simulator_and_signed_ipa', 'passed': False,
+              'sources': before, 'bundle': BUNDLE, 'team': TEAM, 'app_store_id': APP_STORE_ID,
+              'build_number': version, 'harness': reference(Path(__file__)),
+              'physical_device_qualified': False, 'messaging_qualified': False, 'push_qualified': False}
+    environment = dict(os.environ, CARGO_INCREMENTAL='0', CI='true', APPLE_DEVELOPMENT_TEAM=TEAM)
+    # Build subprocesses never receive App Store upload credentials or raw key material.
+    for key in list(environment):
+        if key.startswith(('APP_STORE_CONNECT_', 'IOS_CERTIFICATE', 'IOS_PROVISIONING_', 'APPLE_API_')):
+            environment.pop(key)
+    try:
+        report['xcode'] = output(['xcodebuild', '-version'])
+        report['rustc'] = output(['rustc', '-vV'])
+        for root in originals.values():
+            pinned = tomllib.loads((root / 'rust-toolchain.toml').read_text())['toolchain']['channel']
+            require(report['rustc'].splitlines()[0].startswith('rustc ' + pinned), 'Rust does not match pinned sources')
+        run(['rustup', 'target', 'add', *TARGETS], env=environment)
+        chat, pair = prepare_pair(originals['gchat'], originals['gcoms'], destination / 'paired', TARGETS[0], environment)
+        report['dependency_inputs'] = pair
+        report['publisher'] = publisher_policy(chat / 'release/publication.json', pin)
+        report['publication'] = reference(chat / 'release/publication.json')
+        native = chat / 'apps/client/src-tauri'
+        cli = chat / 'node_modules/@tauri-apps/cli/tauri.js'
+        client = chat / 'apps/client'
+        run(['python3', chat / 'scripts/collect-notices.py'], cwd=chat, env=environment)
+        config = destination / 'ios-config.json'
+        write_json(config, {'identifier': BUNDLE, 'bundle': {'iOS': {
+            'developmentTeam': TEAM, 'minimumSystemVersion': '15.0', 'bundleVersion': version}}})
+        # GChat uses encryption; never silently declare an exemption for App Store review.
+        (native / 'Info.ios.plist').write_bytes(plistlib.dumps({'ITSAppUsesNonExemptEncryption': True}))
+        run(['node', cli, 'ios', 'init', '--ci', '--skip-targets-install', '--config', config], cwd=client, env=environment)
+        generated = native / 'gen/apple'
+        entitlement_path = configure_project(generated)
+        report['feature_graphs'] = {}
+        for triple in TARGETS:
+            metadata = json.loads(output(['cargo', 'metadata', '--locked', '--manifest-path', native / 'Cargo.toml',
+                                          '--filter-platform', triple, '--format-version=1'], cwd=chat, env=environment))
+            verify_resolved_protocol(metadata, chat.parent / 'gcoms')
+            tree = output(['cargo', 'tree', '--locked', '--manifest-path', native / 'Cargo.toml', '--target', triple,
+                           '--edges', 'normal', '--prefix', 'none', '--format', '{p}|{f}'], cwd=chat, env=environment)
+            (destination / ('features-' + triple + '.txt')).write_text(tree + '\n')
+            report['feature_graphs'][triple] = feature_graph(tree)
+        run(['node', cli, 'ios', 'build', '--ci', '--target', 'aarch64-sim', '--no-sign', '--config', config],
+            cwd=client, env=environment, timeout=5400)
+        simulator_apps = list((generated / 'build').glob('**/*.app'))
+        simulator_apps = [app for app in simulator_apps if '.xcarchive' not in str(app)]
+        require(len(simulator_apps) == 1, 'expected one simulator app output before the device build')
+        simulator_app = simulator_apps[0]
+        info = plistlib.loads((simulator_app / 'Info.plist').read_bytes())
+        require(info.get('CFBundleIdentifier') == BUNDLE, 'simulator application identifier mismatch')
+        report['simulator_executable'] = reference(simulator_app / info['CFBundleExecutable'])
+        simulator_archive = destination / 'simulator-app.zip'
+        run(['ditto', '-c', '-k', '--keepParent', simulator_app, simulator_archive])
+        report['simulator_archive'] = reference(simulator_archive)
+        report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
+        profile_bytes = base64.b64decode(os.environ['IOS_PROVISIONING_PROFILE_BASE64'], validate=True)
+        with tempfile.TemporaryDirectory(prefix='gchat-ios-profile-') as temporary:
+            profile_path = Path(temporary) / 'input.mobileprovision'
+            profile_path.write_bytes(profile_bytes)
+            profile_path.chmod(0o600)
+            profile = validate_profile(decode_profile(profile_path), pin)
+        with signer(destination, profile, pin) as (keychain, identity):
+            signing = dict(environment, IOS_MOBILE_PROVISION=base64.b64encode(profile_bytes).decode())
+            exports = generated / 'ExportOptions.plist'
+            export_options = plistlib.loads(exports.read_bytes()) if exports.exists() else {}
+            export_options.update({'method': 'app-store-connect', 'signingStyle': 'manual',
+                                   'teamID': TEAM, 'signingCertificate': identity,
+                                   'provisioningProfiles': {BUNDLE: profile['uuid']}})
+            exports.write_bytes(plistlib.dumps(export_options))
+            xcconfig = destination / 'signing.xcconfig'
+            xcconfig.write_text('CODE_SIGN_STYLE = Manual\nDEVELOPMENT_TEAM = ' + TEAM + '\n'
+                'CODE_SIGN_IDENTITY[sdk=iphoneos*] = ' + identity + '\n'
+                'PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ' + profile['uuid'] + '\n'
+                'CODE_SIGN_ENTITLEMENTS = ' + str(entitlement_path) + '\n'
+                'OTHER_CODE_SIGN_FLAGS = --keychain "' + str(keychain) + '"\n')
+            signing['XCODE_XCCONFIG_FILE'] = str(xcconfig)
+            run(['node', cli, 'ios', 'build', '--ci', '--target', 'aarch64', '--export-method', 'app-store-connect',
+                 '--config', config], cwd=client, env=signing, timeout=5400)
+            candidates = list((generated / 'build').glob('**/*.ipa'))
+            require(len(candidates) == 1, 'expected one signed IPA output')
+            artifact = destination / ('GChat-' + version + '.ipa')
+            shutil.copyfile(candidates[0], artifact)
+            report['application'] = verify_ipa(artifact, destination / 'ipa-verification', pin, version)
+        report['signing_cleanup'] = reference(destination / 'signing-cleanup.json')
+        verify_derived_inputs(chat, pair)
+        report['passed'] = True
+    except Exception as error:
+        # CalledProcessError from build commands contains no private key/password args.
+        report['error'] = type(error).__name__ + ': ' + str(error)
+        raise
+    finally:
+        report['sources_unchanged'] = all(source_identity(root) == before[name] for name, root in originals.items())
+        report['passed'] = report['passed'] and report['sources_unchanged']
+        write_json(destination / 'build.json', report)
+    require(report['passed'], 'iOS build source changed')
+
+
+def upload(args):
+    destination = args.output.resolve()
+    build_path = destination / 'build.json'
+    build_report = json.loads(build_path.read_text())
+    require(build_report.get('scope') == 'ios_exact_pair_simulator_and_signed_ipa'
+            and build_report.get('passed') is True and build_report.get('sources_unchanged') is True,
+            'upload requires a passed unchanged iOS build')
+    require(build_report.get('bundle') == BUNDLE and build_report.get('team') == TEAM,
+            'upload build identity mismatch')
+    cleanup = json.loads(verify_reference(build_report['signing_cleanup']).read_text())
+    smoke = json.loads(verify_reference(build_report['simulator']).read_text())
+    require(cleanup.get('passed') is True and smoke.get('passed') is True and smoke.get('cleanup_complete') is True,
+            'upload requires completed simulator and signing cleanup')
+    ipa = verify_reference(build_report['application']['ipa'])
+    pin = signing_pin()
+    require(publisher_policy(verify_reference(build_report['publication']), pin) == build_report.get('publisher'),
+            'upload publisher binding changed')
+    require(build_report['application']['profile']['certificate_sha256'] == pin, 'upload signer pin mismatch')
+    key_id = os.environ.get('APP_STORE_CONNECT_KEY_ID', '')
+    issuer = os.environ.get('APP_STORE_CONNECT_ISSUER_ID', '')
+    require(re.fullmatch('[A-Z0-9]{10}', key_id) and re.fullmatch('[0-9a-fA-F-]{36}', issuer),
+            'missing App Store Connect key/issuer IDs')
+    report = {'schema': 1, 'scope': 'app_store_connect_testflight_upload', 'passed': False,
+              'build': reference(build_path), 'ipa': reference(ipa), 'app_store_id': APP_STORE_ID,
+              'public_app_store_submission': False, 'apple_processing_qualified': False,
+              'export_compliance_review': 'required; no encryption exemption asserted'}
+    try:
+        with tempfile.TemporaryDirectory(prefix='gchat-ios-upload-') as temporary:
+            private = Path(temporary) / 'private_keys'
+            private.mkdir(mode=0o700)
+            key = private / ('AuthKey_' + key_id + '.p8')
+            key.write_text(os.environ['APP_STORE_CONNECT_PRIVATE_KEY'])
+            key.chmod(0o600)
+            # altool searches cwd/private_keys. Do not change HOME or install credentials globally.
+            command = ['xcrun', 'altool', '--upload-app', '--type', 'ios', '--file', ipa,
+                       '--apiKey', key_id, '--apiIssuer', issuer, '--output-format', 'json']
+            with (destination / 'upload.log').open('wb') as log:
+                result = subprocess.run([str(x) for x in command], cwd=temporary, stdout=log,
+                                        stderr=subprocess.STDOUT, timeout=1200)
+            report['exit_code'] = result.returncode
+            report['log'] = reference(destination / 'upload.log')
+            require(result.returncode == 0, 'App Store Connect did not accept the IPA upload')
+            report['passed'] = True
+    finally:
+        write_json(destination / 'upload.json', report)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest='command', required=True)
+    verify = commands.add_parser('verify-checkouts')
+    for name in ('gchat', 'gcoms'):
+        verify.add_argument('--' + name, type=Path, required=True)
+        verify.add_argument('--' + name + '-commit', required=True)
+        verify.add_argument('--' + name + '-ref', required=True)
+    compile_command = commands.add_parser('build')
+    for name in ('gchat', 'gcoms', 'output'):
+        compile_command.add_argument('--' + name, type=Path, required=True)
+    compile_command.add_argument('--build-number', required=True)
+    publish = commands.add_parser('upload')
+    publish.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    {'verify-checkouts': verify_checkouts, 'build': build, 'upload': upload}[args.command](args)
+
+
+if __name__ == '__main__':
+    main()
