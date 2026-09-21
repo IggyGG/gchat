@@ -58,6 +58,8 @@ jobs:
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
           python-version: '3.12.10'
+      - name: Install Python measurement-test dependency
+        run: python -m pip install --disable-pip-version-check numpy==2.3.5
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22.23.2'
