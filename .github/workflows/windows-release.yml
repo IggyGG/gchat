@@ -108,14 +108,52 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'GnuPG signature-test prerequisite is unusable' }
           python gchat/scripts/windows-build.py --prepare-webview --worker-evidence worker-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Windows/WebView prerequisite verification failed' }
+      - name: Qualify private filesystem ownership on native Windows
+        timeout-minutes: 10
+        working-directory: gcoms
+        env:
+          GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
+        run: |
+          @'
+          import hashlib, json, os, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path('../gchat/scripts').resolve()))
+          from release_evidence import source_identity
+          output = Path('../worker-evidence/private-fs')
+          output.mkdir(parents=True, exist_ok=False)
+          before = source_identity(Path.cwd())
+          if before['commit'] != os.environ['GCOMS_COMMIT']:
+              raise SystemExit('Private filesystem check source differs from requested GComs')
+          report = {'source': before, 'checks': [], 'passed': False, 'source_unchanged': False}
+          commands = [
+              ['cargo', 'test', '-p', 'gcoms-private-fs', '--lib', '--locked', '--', '--test-threads=1'],
+              ['cargo', 'test', '-p', 'gcoms-sdk', '--lib', '--locked', '--no-default-features',
+               'private_fs::tests::', '--', '--test-threads=1'],
+          ]
+          for index, command in enumerate(commands):
+              log = output / f'check-{index}.log'
+              with log.open('wb') as stream:
+                  try:
+                      code = subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, timeout=240).returncode
+                  except subprocess.TimeoutExpired:
+                      code = 124
+              print(log.read_text(encoding='utf-8', errors='replace'), flush=True)
+              report['checks'].append({'command': command, 'exit_code': code, 'log': log.name,
+                  'sha256': hashlib.sha256(log.read_bytes()).hexdigest()})
+          report['source_unchanged'] = source_identity(Path.cwd()) == before
+          report['passed'] = report['source_unchanged'] and all(row['exit_code'] == 0 for row in report['checks'])
+          (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          raise SystemExit(0 if report['passed'] else 1)
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Native private filesystem qualification failed' }
       - name: Qualify both native workspaces
-        timeout-minutes: 265
+        timeout-minutes: 250
         run: |
           python gchat/scripts/release-candidate.py init --gchat gchat --gcoms gcoms --target windows-x86_64 --output native-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Candidate initialization failed' }
-          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.windows-x86_64 --timeout 8400 -- python scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
+          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gchat --check native.gchat.windows-x86_64 --timeout 8100 -- python scripts/ci.py --gcoms ../gcoms --provenance-output ../native-evidence/paired-gchat
           if ($LASTEXITCODE -ne 0) { throw 'Native GChat qualification failed' }
-          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.windows-x86_64 --timeout 7200 -- python scripts/ci.py
+          python gchat/scripts/release-candidate.py record --candidate native-evidence/candidate.json --gchat gchat --gcoms gcoms --project gcoms --check native.gcoms.windows-x86_64 --timeout 6600 -- python scripts/ci.py
           if ($LASTEXITCODE -ne 0) { throw 'Native GComs qualification failed' }
       - name: Import only the existing pinned release certificate
         timeout-minutes: 5
