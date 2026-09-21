@@ -243,7 +243,7 @@ def downloads(data):
 <div class="sec-head"><p class="sec-label">Get GChat</p><h2>Download. Connect. Start talking.</h2>
 <p>Secure communication over GComs. Your relay settings are included.</p></div>
 ''' + links + '''
-<p>Android: emulator-tested; physical-device checks and push delivery remain unfinished. Mac downloads are Gh0st-signed and are not Apple-notarized. See each build evidence link for its exact validation scope.</p>
+<p>Android: emulator-tested; physical-device checks and push delivery remain unfinished. Mac signing and notarization details are included in each download’s build evidence. See each build evidence link for its exact validation scope.</p>
 <p><a href="https://github.com/IggyGG/gchat">GChat source</a> · <a href="https://github.com/IggyGG/gcoms">GComs protocol</a> · <a href="https://github.com/IggyGG/gchat/releases">Release notes</a></p>
 <ol class="steps">
 <li class="step"><span class="n">01</span><h3>Install</h3><p>Windows: run the installer. macOS: open the DMG and drag GChat to Applications. Ubuntu/Debian: open the .deb with your package installer. AppImage: allow execution, then launch it. Android: download the ARM64 APK for most phones, open it and allow installation from your browser when prompted.</p></li>
