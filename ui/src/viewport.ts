@@ -1,7 +1,8 @@
-/** Older touch WebViews report clicks as MouseEvent; keyboard activation has detail zero. */
-export function isTouchActivation(event: { detail: number; pointerType?: string } | undefined, coarse: boolean) {
-  if (!event) return false;
-  if (event.pointerType) return event.pointerType === 'touch' || event.pointerType === 'pen';
+/** WebKit may label a synthesized touch click as mouse; prefer its initiating pointer. */
+export function isTouchActivation(event: { detail: number; pointerType?: string } | undefined, coarse: boolean, initiatingPointer?: string) {
+  if (!event || event.detail === 0) return false;
+  const pointerType = initiatingPointer || event.pointerType;
+  if (pointerType) return pointerType === 'touch' || pointerType === 'pen';
   return event.detail > 0 && coarse;
 }
 

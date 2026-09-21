@@ -94,6 +94,10 @@
   let restoredSelection = false;
   let font = $state<ChatFont>('fixedsys');
   let navigationOpener: HTMLElement | null = null;
+  const navigationPointers = new WeakMap<EventTarget, string>();
+  function rememberNavigationPointer(event: PointerEvent) {
+    if (event.currentTarget) navigationPointers.set(event.currentTarget, event.pointerType);
+  }
   const active = $derived(snapshot?.conversations.find(c => c.id === selected));
   const details = $derived(snapshot?.conversations.find(c => c.id === detailsConversation));
   const locked = $derived(snapshot?.instance.locked ?? true);
@@ -257,6 +261,10 @@
     }
   }
   async function select(id: string | null, activation?: MouseEvent) {
+    // Capture before the first await: currentTarget is cleared after dispatch.
+    const initiatingPointer = activation?.currentTarget ? navigationPointers.get(activation.currentTarget) : undefined;
+    if (activation?.currentTarget) navigationPointers.delete(activation.currentTarget);
+    const touchActivation = isTouchActivation(activation, window.matchMedia('(pointer: coarse)').matches, initiatingPointer);
     const nextNetwork = id ? transport.networkFor(id) : selectedNetwork;
     if (nextNetwork !== selectedNetwork) { networkGeneration++; networkStatus = networks.find(n => n.id === nextNetwork)?.status; }
     selectedNetwork = nextNetwork; transport.select(selectedNetwork);
@@ -279,7 +287,7 @@
     channelsOpen = false; completions = [];
     if (fromDrawer) {
       await tick();
-      if (isTouchActivation(activation, window.matchMedia('(pointer: coarse)').matches)) document.querySelector<HTMLElement>('.active-title')?.focus();
+      if (touchActivation) document.querySelector<HTMLElement>('.active-title')?.focus();
       else composer?.focus();
     }
     if (id && workspaceReady) await loadHistory(false);
@@ -569,11 +577,11 @@
     {#if workspaceReady}<aside class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
       {#if channelsOpen}<button onclick={closeNavigation}>Close channels</button>{/if}
       <div class="channel-entries">
-      <button class:chosen={!selected} aria-current={!selected ? 'page' : undefined} onclick={event => void select(null, event)}><span class="symbol">◈</span> Status</button>
+      <button class:chosen={!selected} aria-current={!selected ? 'page' : undefined} onpointerdown={rememberNavigationPointer} onclick={event => void select(null, event)}><span class="symbol">◈</span> Status</button>
       {#each networks.length > 1 ? networks : [undefined] as network (network?.id ?? 'single')}
-      {#if network}<button class="network-group" aria-pressed={selectedNetwork === network.id} onclick={event => { selectedNetwork = network.id; transport.select(network.id); networkGeneration++; networkStatus = network.status; void select(null, event); }}><span class="connection-dot" class:connected={network.status.state === 'connected'} aria-hidden="true">●</span>{network.name}</button>{/if}
+      {#if network}<button class="network-group" aria-pressed={selectedNetwork === network.id} onpointerdown={rememberNavigationPointer} onclick={event => { selectedNetwork = network.id; transport.select(network.id); networkGeneration++; networkStatus = network.status; void select(null, event); }}><span class="connection-dot" class:connected={network.status.state === 'connected'} aria-hidden="true">●</span>{network.name}</button>{/if}
       {#each snapshot?.conversations.filter(c => !hidden.includes(c.id) && (!network || transport.networkFor(c.id) === network.id)) ?? [] as conversation (conversation.id)}
-        <button class:chosen={selected === conversation.id} aria-current={selected === conversation.id ? 'page' : undefined} class:unread={conversation.unread > 0} onclick={event => void select(conversation.id, event)} title={conversation.topic || conversation.name}>
+        <button class:chosen={selected === conversation.id} aria-current={selected === conversation.id ? 'page' : undefined} class:unread={conversation.unread > 0} onpointerdown={rememberNavigationPointer} onclick={event => void select(conversation.id, event)} title={conversation.topic || conversation.name}>
           <span class="symbol">{conversation.kind === 'query' ? '↳' : conversation.kind === 'archive' ? '·' : '#'}</span>
           <span class="room-name">{conversation.name.replace(/^#/, '')}</span>
           {#if conversation.unread}<span class="badge">{conversation.unread}</span>{/if}

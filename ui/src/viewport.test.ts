@@ -25,6 +25,9 @@ describe('touch keyboard viewport', () => {
     expect(isTouchActivation({ detail: 0 }, true)).toBe(false);
     expect(isTouchActivation({ detail: 1, pointerType: 'mouse' }, true)).toBe(false);
     expect(isTouchActivation(undefined, true)).toBe(false);
+    expect(isTouchActivation({ detail: 1, pointerType: 'mouse' }, true, 'touch')).toBe(true);
+    expect(isTouchActivation({ detail: 1, pointerType: 'mouse' }, true, 'mouse')).toBe(false);
+    expect(isTouchActivation({ detail: 0 }, true, 'touch')).toBe(false);
   });
   it('follows keyboard movement and rotation, ignores pinch zoom and removes listeners', () => {
     const { viewport, host, node, values } = setup();
