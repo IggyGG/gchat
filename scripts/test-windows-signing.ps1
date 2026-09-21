@@ -96,3 +96,4 @@ try {
 }
 if (-not $Report.passed) { throw 'Disposable signer import fixture failed; retain report.json' }
 Write-Output 'Disposable PFX import, wrong-password/pin refusal and store cleanup passed'
+exit 0
