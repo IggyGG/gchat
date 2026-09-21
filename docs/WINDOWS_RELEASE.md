@@ -33,6 +33,14 @@ store. The environment must allow only the approved release branches or version
 tags; the worker verifies its workflow SHA, checkout SHA and selected ref before
 using protected secrets.
 
+Before native compilation the worker exercises import/refusal/cleanup with a
+disposable PFX, then imports and removes the actual pinned signer once. A wrong
+password, wrong pin or unsupported PFX therefore stops before the expensive
+build. `X509Certificate2Collection.Import` receives its required string password;
+`Import-PfxCertificate` separately receives a `SecureString`. No private key
+remains installed during compilation. The final signing import and cleanup
+retain their separate receipts and remain required for release acceptance.
+
 Dispatch from an approved frozen release pair after mirroring those exact
 commits. The GChat ref must name the exact workflow commit. The GComs commit must
 belong to its selected branch, or exactly match its selected version tag.

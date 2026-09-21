@@ -87,7 +87,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Could not restrict signing-key directory permissions' }
     [IO.File]::WriteAllBytes($PfxPath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
     $Password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
-    $Collection.Import([IO.File]::ReadAllBytes($PfxPath), $Password,
+    # Collection.Import has a String overload, unlike Import-PfxCertificate.
+    # Passing SecureString here coerces it to its type name, not its contents.
+    $Collection.Import([IO.File]::ReadAllBytes($PfxPath), $env:WINDOWS_CERTIFICATE_PASSWORD,
         [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
     if ($Collection.Count -ne 1 -or -not $Collection[0].HasPrivateKey -or
         $Collection[0].Thumbprint -ne $Pin -or $Collection[0].Subject -ne $Collection[0].Issuer) {
