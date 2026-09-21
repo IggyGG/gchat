@@ -187,6 +187,15 @@ class ArtifactTests(unittest.TestCase):
             archive.writestr('Payload/GChat.app/GChat', b'binary')
             ios.inspect_zip(archive)
 
+    def test_zip_original_spelling_remains_checked_after_host_normalization(self):
+        for original in ('Payload\\outside', 'Payload/GChat.app\0ignored'):
+            with self.subTest(original=original), io.BytesIO() as data, zipfile.ZipFile(data, 'w') as archive:
+                entry = zipfile.ZipInfo('Payload/GChat.app')
+                entry.orig_filename = original
+                archive.writestr(entry, b'fixture')
+                with self.assertRaisesRegex(ValueError, 'archive path'):
+                    ios.inspect_zip(archive)
+
     def test_environment_pin_and_frozen_policy_must_agree(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / 'publication.json'

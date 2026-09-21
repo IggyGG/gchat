@@ -342,9 +342,12 @@ def inspect_zip(archive):
     require(archive.infolist(), 'empty IPA')
     names = set()
     for entry in archive.infolist():
-        name = PurePosixPath(entry.filename)
-        require(not name.is_absolute() and '..' not in name.parts and '\\' not in entry.filename,
-                'unsafe IPA archive path')
+        # ZipInfo normalizes the host separator and truncates NULs. Validate
+        # the original spelling as well, including on Windows CI workers.
+        for spelling in (entry.orig_filename, entry.filename):
+            name = PurePosixPath(spelling)
+            require(not name.is_absolute() and '..' not in name.parts and '\\' not in spelling
+                    and '\0' not in spelling, 'unsafe IPA archive path')
         require(entry.filename not in names, 'duplicate IPA archive entry')
         names.add(entry.filename)
         if stat.S_ISLNK(entry.external_attr >> 16):
