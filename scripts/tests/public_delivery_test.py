@@ -95,15 +95,46 @@ class PublicationTests(unittest.TestCase):
 class SignatureTests(unittest.TestCase):
     def test_real_signature_rejects_tampered_bytes_and_other_publisher(self):
         with tempfile.TemporaryDirectory() as temp:
-            home = Path(temp); home.chmod(0o700)
-            command = ['gpg', '--homedir', str(home), '--batch', '--pinentry-mode', 'loopback']
-            subprocess.run(command + ['--passphrase', '', '--quick-generate-key', 'GChat disposable test key', 'ed25519', 'sign', '1d'], check=True, capture_output=True)
-            listing = subprocess.check_output(command + ['--with-colons', '--list-keys'], text=True, stderr=subprocess.DEVNULL)
-            key = next(line.split(':')[9] for line in listing.splitlines() if line.startswith('fpr:'))
-            path = home/'artifact'; path.write_bytes(b'qualified fixture')
-            sig = home/'artifact.asc'
-            subprocess.run(command + ['--armor', '--detach-sign', str(path)], check=True, capture_output=True)
-            verify(sig, path, key, home)
-            with self.assertRaises(ValueError): verify(sig, path, 'B'*40, home)
-            path.write_bytes(b'tampered bytes')
-            with self.assertRaises(ValueError): verify(sig, path, key, home)
+            home = Path(temp).resolve(); home.chmod(0o700)
+            executable = shutil.which('gpg')
+            version = subprocess.run([executable, '--version'], capture_output=True, timeout=15)
+            diagnostics = (f'GnuPG executable: {executable}\n'
+                           + version.stdout.decode('utf-8', errors='replace')
+                           + version.stderr.decode('utf-8', errors='replace'))
+            self.assertEqual(version.returncode, 0, diagnostics)
+            print(diagnostics, file=sys.stderr)
+            command = [executable, '--homedir', str(home), '--batch', '--pinentry-mode', 'loopback']
+            def require_success(result):
+                self.assertEqual(result.returncode, 0, diagnostics + '\n'
+                                 + result.stderr.decode('utf-8', errors='replace'))
+            # Batch parameters avoid empty-passphrase argv parsing differences
+            # in Windows GnuPG. This unprotected key is disposable test data.
+            parameters = ("Key-Type: eddsa\nKey-Curve: ed25519\nKey-Usage: sign\n"
+                          "Name-Real: GChat disposable test key\nExpire-Date: 1d\n"
+                          "%no-protection\n%commit\n")
+            try:
+                result = subprocess.run(command + ['--generate-key'], input=parameters.encode('ascii'),
+                                        capture_output=True, timeout=60)
+                require_success(result)
+                result = subprocess.run(command + ['--with-colons', '--list-keys'],
+                                        capture_output=True, timeout=30)
+                require_success(result)
+                key = next(line.split(':')[9] for line in result.stdout.decode('utf-8').splitlines()
+                           if line.startswith('fpr:'))
+                path = home/'artifact'; path.write_bytes(b'qualified fixture')
+                sig = home/'artifact.asc'
+                result = subprocess.run(command + ['--armor', '--detach-sign', str(path)],
+                                        capture_output=True, timeout=30)
+                require_success(result)
+                verify(sig, path, key, home)
+                with self.assertRaises(ValueError): verify(sig, path, 'B'*40, home)
+                path.write_bytes(b'tampered bytes')
+                with self.assertRaises(ValueError): verify(sig, path, key, home)
+            finally:
+                # Windows cannot remove keyring files held by our test agent.
+                sibling = Path(executable).with_name('gpgconf.exe' if os.name == 'nt' else 'gpgconf')
+                gpgconf = str(sibling) if sibling.is_file() else shutil.which('gpgconf')
+                if gpgconf:
+                    result = subprocess.run([gpgconf, '--homedir', str(home), '--kill', 'gpg-agent'],
+                                            capture_output=True, timeout=15)
+                    require_success(result)

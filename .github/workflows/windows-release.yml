@@ -101,6 +101,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'NSIS prerequisite is unusable' }
           cmake --version
           if ($LASTEXITCODE -ne 0) { throw 'CMake prerequisite is missing' }
+          Get-Command gpg -All | Select-Object Source, Version | Format-Table -AutoSize
+          gpg --version
+          if ($LASTEXITCODE -ne 0) { throw 'GnuPG signature-test prerequisite is unusable' }
           python gchat/scripts/windows-build.py --prepare-webview --worker-evidence worker-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Windows/WebView prerequisite verification failed' }
       - name: Qualify both native workspaces
