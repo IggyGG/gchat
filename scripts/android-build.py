@@ -26,6 +26,8 @@ from paired_sources import prepare_pair, verify_resolved_protocol
 from release_evidence import digest, source_identity
 
 PACKAGE = 'boo.gchat.app'
+PICKER_FIXTURE_PATH = '/sdcard/Download/gchat-fixture.txt'
+PICKER_FIXTURE_TEXT = 'GCNI1-local-emulator-fixture-not-a-real-invitation'
 NDK = '28.2.13676358'
 BUILD_TOOLS = '36.0.0'
 TARGETS = {'arm64-v8a': ('aarch64', 'aarch64-linux-android'),
@@ -364,7 +366,7 @@ def root_emulator(adb, receipt, timeout=45):
         write_json(receipt, report)
 
 
-def cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created=True):
+def cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created=True, picker_file_created=False):
     errors = []
     if installed:
         for command in firewall:
@@ -383,6 +385,12 @@ def cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created=True)
             shell('rm', '-f', '/sdcard/gchat-fixture-ui.xml')
         except Exception:
             errors.append('failed to remove owned UI dump')
+    if picker_file_created:
+        try:
+            shell('rm', '-f', PICKER_FIXTURE_PATH)
+            shell('test', '!', '-e', PICKER_FIXTURE_PATH)
+        except Exception:
+            errors.append('failed to remove owned picker fixture')
     return {'passed': not errors, 'errors': errors}
 
 
@@ -445,6 +453,22 @@ def ui_nodes(shell, diagnostics):
         return []
 
 
+def select_picker_fixture(wait_node, tap):
+    """Select one exact harmless Downloads file through the real Documents UI."""
+    name = PurePosixPath(PICKER_FIXTURE_PATH).name
+    def label(value):
+        return lambda node: (node.attrib.get('package', '').endswith('.documentsui')
+                             and value in (node.attrib.get('text'), node.attrib.get('content-desc')))
+    node = wait_node(lambda n: label(name)(n) or label('Show roots')(n) or label('Downloads')(n), timeout=30)
+    if not label(name)(node):
+        if label('Show roots')(node):
+            tap(node)
+            node = wait_node(label('Downloads'), timeout=15)
+        tap(node)
+        node = wait_node(label(name), timeout=30)
+    tap(node)
+
+
 def smoke(args):
     root = args.output.resolve()
     signed_path = root / 'signing.json'
@@ -478,6 +502,7 @@ def smoke(args):
               'observations': [], 'ui_observation_errors': []}
     installed = False
     ui_dump_created = False
+    picker_file_created = False
     uid = None
     firewall = []
     try:
@@ -573,13 +598,51 @@ def smoke(args):
             tap(wait_node(text('Or choose an invitation file')))
             picker = wait_node(lambda n: n.attrib.get('package', '').endswith('.documentsui'), timeout=30)
             report['picker'] = {'opened': True, 'package': picker.attrib['package'], 'selected_file': False}
+            activity_state('picker_cancel_open', False)
+            time.sleep(2)  # Cross Android's process-background debounce.
             no_listener('invitation_picker_open')
             shell('input', 'keyevent', '4')
-            returned = wait_node(lambda n: text('Reconnect')(n) or text('Connect to GChat')(n), timeout=30)
-            report['picker']['returned_locked'] = text('Reconnect')(returned)
-            report['picker']['passed'] = not report['picker']['returned_locked']
+            wait_node(text('Reconnect'), timeout=30)
+            report['picker']['cancel_returned_locked'] = True
+            activity_state('picker_cancel_return', True)
             no_listener('invitation_picker_cancel_return')
-            require(report['picker']['passed'], 'invitation picker cancellation locked the profile')
+            fill_passphrase()
+            tap(wait_node(text('Reconnect')))
+            wait_node(text('Connect to GChat'), timeout=120)
+            require(not any(text('Continue selected file')(n) for n in nodes()),
+                    'cancelled picker retained a selected file')
+            report['picker']['cancel_manual_reopen_passed'] = True
+            # Only a public, invalid fixture string is placed in the disposable
+            # emulator. Do not click Connect or provision any network afterward.
+            fixture = dest / 'gchat-fixture.txt'
+            fixture.write_text(PICKER_FIXTURE_TEXT)
+            shell('mkdir', '-p', '/sdcard/Download')
+            shell('test', '!', '-e', PICKER_FIXTURE_PATH)
+            picker_file_created = True  # A failed push can leave a partial file.
+            run([*adb, 'push', fixture, PICKER_FIXTURE_PATH], timeout=30)
+            shell('am', 'broadcast', '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
+                  '-d', 'file://' + PICKER_FIXTURE_PATH)
+            tap(wait_node(text('Or choose an invitation file')))
+            wait_node(lambda n: n.attrib.get('package', '').endswith('.documentsui'), timeout=30)
+            activity_state('picker_select_open', False)
+            time.sleep(2)
+            select_picker_fixture(wait_node, tap)
+            wait_node(text('Reconnect'), timeout=30)
+            report['picker']['selected_file'] = True
+            report['picker']['selection_returned_locked'] = True
+            activity_state('picker_select_return', True)
+            wait_node(text('A selected file is waiting for this profile. Reconnect to continue.'), timeout=30)
+            require(not any(text(PICKER_FIXTURE_TEXT)(n) for n in nodes()),
+                    'invitation contents were exposed while the profile was locked')
+            fill_passphrase()
+            tap(wait_node(text('Reconnect')))
+            wait_node(text('Connect to GChat'), timeout=120)
+            tap(wait_node(text('Continue selected file')))
+            wait_node(lambda n: n.attrib.get('class') == 'android.widget.EditText'
+                      and n.attrib.get('text') == PICKER_FIXTURE_TEXT, timeout=30)
+            report['picker'].update({'same_profile_selection_continued': True,
+                                    'provider_submission_performed': False, 'passed': True})
+            no_listener('invitation_picker_selection_continued')
         report['passed'] = True
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
@@ -591,7 +654,7 @@ def smoke(args):
                 (dest / 'final-ui.xml').write_text(shell('cat', '/sdcard/gchat-fixture-ui.xml'))
             except Exception as error:
                 report['diagnostic_error'] = type(error).__name__
-        report['cleanup'] = cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created)
+        report['cleanup'] = cleanup_emulator(shell, adb, installed, uid, firewall, ui_dump_created, picker_file_created)
         report['inputs_unchanged'] = digest(apk) == artifact['sha256']
         report['passed'] = report['passed'] and report['cleanup']['passed'] and report['inputs_unchanged']
         write_json(dest / 'report.json', report)

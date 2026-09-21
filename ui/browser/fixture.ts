@@ -17,6 +17,8 @@ let revision = 1;
 let files: FileInfo[] = parameters.has('empty') ? [] : [{ id: 'existing-file', conversation: 'channel/general', name: 'notes.txt', size_bytes: '4096', verified_bytes: '4096', state: 'complete', sources: 1, verified_sources: 1, completed_by: 1, error: null }];
 const requests: Request[] = [];
 let hold = false, release: (() => void) | undefined;
+let holdSnapshots = false;
+const heldSnapshots: (() => void)[] = [];
 const snapshot = (): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: [] });
 const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', used_bytes: '4096', retention_days: 7 });
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
@@ -25,6 +27,12 @@ Object.assign(window, { fixture: {
   requests, unlockChoices, setNetwork(value: NetworkState) { state = value; revision++; },
   holdUpload() { hold = true; }, releaseUpload() { hold = false; release?.(); },
   getFiles: () => files, setLocked(value: boolean) { instance.locked = value; revision++; },
+  suspend() { instance.locked = true; instance.protocolLocked = true; revision++; },
+  replaceProfile(id: string) { instance.id = id; instance.bootId += '-replacement'; revision++; },
+  removeConversation(id: string) { const index = conversations.findIndex(c => c.id === id); if (index >= 0) conversations.splice(index, 1); revision++; },
+  holdSnapshots() { holdSnapshots = true; }, pendingSnapshots: () => heldSnapshots.length,
+  releaseSupersededSnapshots() { for (const finish of heldSnapshots.splice(0, heldSnapshots.length - 1)) finish(); },
+  releaseSnapshots() { holdSnapshots = false; for (const finish of heldSnapshots.splice(0)) finish(); },
 } });
 async function request(req: Request): Promise<Response> {
   if (req.kind !== 'events' && req.kind !== 'snapshot') requests.push(req);
@@ -45,7 +53,11 @@ async function request(req: Request): Promise<Response> {
       if (r.kind === 'call') return { kind: 'networks', response: { kind: 'result', network: r.network, response: await request(r.request) } };
       throw new Error('Unknown network operation');
     }
-    case 'snapshot': return { kind: 'snapshot', snapshot: snapshot() };
+    case 'snapshot': {
+      const current = snapshot();
+      if (holdSnapshots) await new Promise<void>(resolve => heldSnapshots.push(resolve));
+      return { kind: 'snapshot', snapshot: current };
+    }
     case 'events': await delay(100); return { kind: 'changed', revision: String(revision) };
     case 'network_status': return { kind: 'network_status', status: status() };
     case 'import_network_invitation':

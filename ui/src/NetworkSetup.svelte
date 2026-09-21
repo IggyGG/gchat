@@ -2,20 +2,35 @@
   import { onDestroy } from 'svelte';
   import { MAX_NETWORK_INVITATION_BYTES, type NetworkStatus, type InvitationPreview, type Response } from './api';
   import { chatError, type Transport } from './transport';
-  let { transport, status, imported, combined = false, joined }: { transport: Transport; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void } = $props();
+  let { transport, status, imported, combined = false, joined, chooseFile, selectedFile, fileConsumed }: { transport: Transport; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void; chooseFile?: () => void; selectedFile?: { id: number; file: File }; fileConsumed?: (id: number) => void } = $props();
   let invitation = $state(''), error = $state(''), busy = $state(false);
   let preview = $state<InvitationPreview>(), nickname = $state('');
   let pendingCode = '', operationId = '';
   let running = true, fileRevision = 0;
+  let consumedSelection: number | undefined;
   onDestroy(() => { running = false; fileRevision++; invitation = ''; pendingCode = ''; nickname = ''; });
+  $effect(() => {
+    if (selectedFile && selectedFile.id !== consumedSelection) {
+      consumedSelection = selectedFile.id;
+      void loadFile(selectedFile.file, selectedFile.id);
+    } else if (!selectedFile && consumedSelection !== undefined) {
+      consumedSelection = undefined; fileRevision++;
+    }
+  });
   async function readFile(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0]; input.value = '';
+    if (file) await loadFile(file);
+  }
+  async function loadFile(file: File, selectionId?: number) {
     const current = ++fileRevision;
-    if (!file) return;
-    if (file.size > MAX_NETWORK_INVITATION_BYTES) { error = 'This invitation file is too large.'; return; }
-    try { const text = await file.text(); if (running && !busy && current === fileRevision) { invitation = text.trim(); error = ''; } }
+    try {
+      if (file.size > MAX_NETWORK_INVITATION_BYTES) { error = 'This invitation file is too large.'; return; }
+      const text = await file.text();
+      if (running && !busy && current === fileRevision) { invitation = text.trim(); error = ''; }
+    }
     catch { if (running && current === fileRevision) error = 'Could not read the invitation file.'; }
+    finally { if (running && current === fileRevision && selectionId !== undefined) fileConsumed?.(selectionId); }
   }
   async function connect(event: SubmitEvent) {
     event.preventDefault();
@@ -70,8 +85,9 @@
   <form onsubmit={connect}>
     <label for="network-invitation">{combined ? 'Invitation' : 'Network invitation'}</label>
     <textarea id="network-invitation" bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} placeholder={combined ? 'Paste an invitation' : 'GCNI1-…'}></textarea>
-    <label for="network-invitation-file">Or choose an invitation file</label>
-    <input id="network-invitation-file" type="file" accept=".txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />
+    {#if chooseFile}<button type="button" disabled={busy} onclick={chooseFile}>Or choose an invitation file</button>
+    {:else}<label for="network-invitation-file">Or choose an invitation file</label>
+    <input id="network-invitation-file" type="file" accept=".txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />{/if}
     <button type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
   </form>
   {/if}

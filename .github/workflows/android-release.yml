@@ -111,7 +111,7 @@ jobs:
         timeout-minutes: 15
         run: |
           sudo chmod 666 /dev/kvm
-          python3 gchat/scripts/android-build.py emulator --output android-output
+          python3 gchat/scripts/android-build.py emulator --output android-output --probe-picker
       - name: Retain exact APKs and success/failure evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

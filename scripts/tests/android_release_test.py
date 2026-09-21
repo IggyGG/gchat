@@ -201,6 +201,20 @@ class EmulatorCleanup(unittest.TestCase):
             result = android.cleanup_emulator(lambda *a, **k: '', ['adb'], True, 10123, [])
         self.assertFalse(result['passed'])
 
+    def test_owned_picker_file_removed_and_absence_checked_after_failed_app_cleanup(self):
+        shell = Mock(return_value='')
+        with patch.object(android, 'run', side_effect=RuntimeError('uninstall failed')):
+            result = android.cleanup_emulator(shell, ['adb'], True, 10123, [], picker_file_created=True)
+        self.assertFalse(result['passed'])
+        shell.assert_any_call('rm', '-f', android.PICKER_FIXTURE_PATH)
+        shell.assert_any_call('test', '!', '-e', android.PICKER_FIXTURE_PATH)
+
+    def test_picker_cleanup_failure_cannot_pass(self):
+        shell = Mock(side_effect=RuntimeError('fixture remains'))
+        result = android.cleanup_emulator(shell, ['adb'], False, None, [], ui_dump_created=False, picker_file_created=True)
+        self.assertFalse(result['passed'])
+        self.assertEqual(result['errors'], ['failed to remove owned picker fixture'])
+
     def test_package_manager_uid_requires_one_exact_user_zero_app(self):
         self.assertEqual(android.installed_package_uid('package:boo.gchat.app uid:10123\n'), 10123)
         for text in ('package:boo.gchat.app.debug uid:10123', 'package:boo.gchat.app uid:0',
@@ -241,6 +255,38 @@ class UiObservation(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             android.ui_nodes(shell, [])
         self.assertEqual(shell.call_count, 1)
+
+
+class PickerSelection(unittest.TestCase):
+    def run_selection(self, screens):
+        tapped = []
+        def wait_node(predicate, timeout):
+            for attributes in screens.pop(0):
+                node = android.ET.Element('node', attributes)
+                if predicate(node):
+                    return node
+            raise ValueError('fixture screen has no exact selectable node')
+        android.select_picker_fixture(wait_node, lambda node: tapped.append(node.attrib))
+        return tapped
+
+    def test_navigates_downloads_and_selects_only_the_exact_fixture(self):
+        package = 'com.google.android.documentsui'
+        screens = [[{'package': package, 'content-desc': 'Show roots'}],
+                   [{'package': package, 'text': 'Downloads'}],
+                   [{'package': package, 'text': 'gchat-fixture.txt.other'},
+                    {'package': package, 'text': 'gchat-fixture.txt'}]]
+        self.assertEqual([n.get('text', n.get('content-desc')) for n in self.run_selection(screens)],
+                         ['Show roots', 'Downloads', 'gchat-fixture.txt'])
+
+    def test_recent_fixture_needs_no_extra_navigation(self):
+        node = {'package': 'com.google.android.documentsui', 'text': 'gchat-fixture.txt'}
+        self.assertEqual(self.run_selection([[node]]), [node])
+
+    def test_other_package_or_partial_name_cannot_select_a_document(self):
+        for node in ({'package': android.PACKAGE, 'text': 'gchat-fixture.txt'},
+                     {'package': 'com.google.android.documentsui', 'text': 'gchat-fixture.txt.old'}):
+            with self.subTest(node=node), self.assertRaisesRegex(ValueError, 'exact selectable'):
+                self.run_selection([[node]])
 
 
 class ActivityDriver(unittest.TestCase):

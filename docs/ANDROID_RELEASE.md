@@ -132,8 +132,18 @@ observer error retained; it cannot satisfy an assertion using a stale screen.
 
 [Android's documented AVD directory lookup](https://developer.android.com/tools/variables)
 defines these shared paths. The earlier native/signing artifact remains immutable;
-no new remote delivery or physical-device pass is implied. The smoke-only worker
-also opens the invitation file picker, cancels without selecting data and records
-whether the unlocked setup screen returns. Unexpected locking fails that separate
-picker check while preserving the completed profile lifecycle observations. No
-production invitation or provider request is used.
+no new remote delivery or physical-device pass is implied. Both build and reuse
+workers also check the invitation picker. Leaving GChat for Android Documents
+locks the default profile, just like Home. Cancellation must return to the manual
+unlock screen and reopen without a pending selection. A second picker selects a
+harmless local text fixture: the app must retain its opaque file handle across
+lock, require explicit same-profile unlock and Continue, then populate the
+invitation field. The worker never submits that invalid invitation. It removes
+the owned fixture on every terminal path and preserves earlier failed receipts.
+
+The mobile UI holds at most one opaque file handle in RAM for five minutes. It
+does not persist selection or plaintext. Expiry, profile replacement or explicit
+discard invalidates that handle; outgoing selections retain their original
+network/channel and cannot be redirected by navigation. Browser tests also cover
+outgoing continuation/cancellation and unavailable destinations. Native smoke
+does not qualify remote file transfer or invitations to an operated network.

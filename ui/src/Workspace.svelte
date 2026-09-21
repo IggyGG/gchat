@@ -16,6 +16,7 @@
   import { MAX_INPUT_BYTES } from './api';
   import { ConversationViews, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
   import { fitVisualViewport, isTouchActivation } from './viewport';
+  import { PendingPicker, type PendingPickerView, type PickerTarget } from './pending-picker';
 
   let { transport: attachmentTransport, tools, fileAccess, deviceUnlock }: { transport: Transport; tools?: Snippet; fileAccess?: FileAccess; deviceUnlock?: DeviceUnlock } = $props();
   let networks = $state<JoinedNetwork[]>([]);
@@ -73,6 +74,23 @@
   let fileStates = $state<Record<string, FileViewState>>({});
   let fileInput = $state<HTMLInputElement>();
   let fileTarget: { conversation: string; resumeId?: string; controller: FileController } | undefined;
+  let invitationInput = $state<HTMLInputElement>();
+  let outgoingPickerTicket: number | undefined, invitationPickerTicket: number | undefined;
+  let pickerInputGeneration = $state(0);
+  let pickerView = $state<PendingPickerView>();
+  let pickerNotice = $state(''), continuingPicker = $state(false);
+  let invitationSelection = $state<{ id: number; file: File; context: 'setup' | 'network' | 'join' }>();
+  const picker = new PendingPicker((view, reason) => {
+    pickerView = view;
+    if (!view) {
+      invitationSelection = undefined;
+      outgoingPickerTicket = undefined; invitationPickerTicket = undefined;
+      pickerInputGeneration++; // Replace inputs; late native results cannot own the next selection.
+    }
+    if (reason === 'expired') pickerNotice = 'File selection expired. Choose the file again.';
+    else if (reason === 'cancelled') pickerNotice = 'File selection cancelled. Reconnect if this profile is locked.';
+    else if (reason === 'profile_changed') pickerNotice = 'File selection discarded because the profile changed.';
+  });
   let dialog = $state<'join' | 'create' | null>(null);
   let destination = $state('');
   let nickname = $state('');
@@ -180,14 +198,88 @@
   function chooseFile(resumeId?: string) {
     if (!selected || !workspaceReady || !fileAccess || active?.kind === 'archive' || fileState.busy) return;
     if (!fileController) return;
+    if (deviceUnlock && snapshot) {
+      if (!canChooseFile()) return;
+      outgoingPickerTicket = picker.begin(snapshot.instance.id, { kind: 'outgoing', conversation: selected, network: transport.networkFor(selected), resumeId });
+      fileInput?.click(); return;
+    }
     fileTarget = { conversation: selected, resumeId, controller: fileController }; fileInput?.click();
   }
-  function pickedFile() {
-    const file = fileInput?.files?.[0], target = fileTarget;
+  function pickedFile(event: Event, inputGeneration: number) {
+    if (inputGeneration !== pickerInputGeneration) return;
+    const file = (event.currentTarget as HTMLInputElement).files?.[0], target = fileTarget;
+    if (outgoingPickerTicket !== undefined) {
+      picker.receive(outgoingPickerTicket, file); outgoingPickerTicket = undefined;
+      if (fileInput) fileInput.value = '';
+      return;
+    }
     fileTarget = undefined; if (fileInput) fileInput.value = '';
     if (!file || !target || !workspaceReady) return;
     panel = 'files'; channelsOpen = false;
     void target.controller.upload(file, target.conversation, target.resumeId);
+  }
+  function canChooseFile() {
+    pickerNotice = '';
+    if (outgoingPickerTicket !== undefined || invitationPickerTicket !== undefined || pickerView) {
+      pickerNotice = 'Finish or discard the current file selection first.'; return false;
+    }
+    return true;
+  }
+  function chooseInvitation(context: Extract<PickerTarget, { kind: 'invitation' }>['context']) {
+    if (!snapshot || locked || !canChooseFile()) return;
+    invitationPickerTicket = picker.begin(snapshot.instance.id, { kind: 'invitation', context, network: selectedNetwork });
+    invitationInput?.click();
+  }
+  function pickedInvitation(event: Event, inputGeneration: number) {
+    if (inputGeneration !== pickerInputGeneration) return;
+    const file = (event.currentTarget as HTMLInputElement).files?.[0];
+    if (invitationPickerTicket !== undefined) picker.receive(invitationPickerTicket, file);
+    invitationPickerTicket = undefined;
+    if (invitationInput) invitationInput.value = '';
+  }
+  function cancelFilePicker(kind: 'outgoing' | 'invitation', inputGeneration: number) {
+    if (inputGeneration !== pickerInputGeneration) return;
+    const id = kind === 'outgoing' ? outgoingPickerTicket : invitationPickerTicket;
+    if (id !== undefined) picker.receive(id, undefined);
+    if (kind === 'outgoing') { outgoingPickerTicket = undefined; fileTarget = undefined; if (fileInput) fileInput.value = ''; }
+    else { invitationPickerTicket = undefined; if (invitationInput) invitationInput.value = ''; }
+  }
+  function discardPicker() { picker.clear(); pickerNotice = ''; }
+  function invitationConsumed(id: number) { picker.complete(id); }
+  async function continuePicker() {
+    if (continuingPicker) return;
+    continuingPicker = true; pickerNotice = '';
+    try {
+      // Refresh from the host before reading the selected File: a native picker
+      // can return before the view has received its background-lock snapshot.
+      const refreshed = await refresh();
+      await tick(); // The unlocked snapshot creates fresh per-network controllers.
+      if (refreshed === undefined || refreshed !== snapshotGeneration || !snapshot) return;
+      const pending = picker.read(snapshot.instance.id, !locked);
+      if (!pending) return;
+      const { view, file } = pending, target = view.target;
+      if (target.network && !networks.some(network => network.id === target.network)) {
+        picker.clear(); pickerNotice = 'The original network is unavailable. Choose the file again after reconnecting.'; return;
+      }
+      if (target.kind === 'outgoing') {
+        const conversation = snapshot.conversations.find(value => value.id === target.conversation);
+        if (!conversation?.active || conversation.kind === 'archive' || transport.networkFor(target.conversation) !== target.network) {
+          picker.clear(); pickerNotice = 'The original conversation is unavailable. The file was not shared.'; return;
+        }
+        const controller = fileControllers.get(target.network ?? '');
+        if (!workspaceReady || !controller || controller.value.busy) { pickerNotice = 'Wait for the original conversation to reconnect, then continue.'; return; }
+        picker.complete(view.id);
+        panel = 'files'; channelsOpen = false;
+        void select(target.conversation);
+        void controller.upload(file, target.conversation, target.resumeId);
+      } else {
+        selectedNetwork = target.network; transport.select(target.network);
+        if (target.context === 'join') { utility = null; dialog = 'join'; browse = false; }
+        else if (target.context === 'network' || networkAccepted) { dialog = null; utility = 'network'; replacingInvitation = true; }
+        invitationSelection = { id: view.id, file, context: target.context === 'setup' && networkAccepted ? 'network' : target.context };
+      }
+    } catch (error) { pickerNotice = chatError(error).message; }
+    finally { continuingPicker = false; }
   }
   const draftError = $derived(inputError(draft, draft.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES));
   function failureTarget(id: string | null) {
@@ -205,7 +297,7 @@
     document.addEventListener('visibilitychange', visible);
     const disconnected = () => connectionFailed(new Error('Network unavailable. Drafts and loaded history remain available.'));
     window.addEventListener('online', visible); window.addEventListener('offline', disconnected);
-    return () => { running = false; clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
+    return () => { running = false; clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); picker.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
   });
   async function refreshInBackground() {
     try { await refresh(); }
@@ -217,8 +309,10 @@
     const response = await transport.request({ kind: 'snapshot' });
     if (revision !== snapshotGeneration || !running || response.kind !== 'snapshot') return;
     const next = response.snapshot;
+    picker.profile(next.instance.id);
     const changed = snapshot?.revision !== next.revision;
     if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && snapshot.instance.bootId !== next.instance.bootId)) {
+      invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
       generation++; searchGeneration++; views.clear(); outputs = {}; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
     }
     snapshot = next;
@@ -244,6 +338,7 @@
     if ((changed || historyStale || offline) && selected && workspaceReady) await loadHistory(false, true);
     offline = false;
     connectionError = undefined;
+    return revision === snapshotGeneration ? revision : undefined;
   }
   async function watch() {
     while (running) {
@@ -373,6 +468,7 @@
   async function operation(request: Request) {
     const scope = request.kind === 'submit' ? request.conversation ?? '' : null;
     if (lifecycleBusy || (scope !== null && pending[scope])) return false;
+    if (request.kind === 'lock' || request.kind === 'disconnect' || (request.kind === 'submit' && ['/lock', '/disconnect', '/quit'].includes(request.text.trim()))) discardPicker();
     const origin = selected;
     if (scope === null) lifecycleBusy = true;
     else pending = { ...pending, [scope]: snapshot?.conversations.find(c => c.id === scope)?.name ?? 'Status' };
@@ -571,7 +667,10 @@
       {#if tools}{@render tools()}{/if}
     </nav>
   </header>
-  <input class="file-picker" type="file" aria-label="Choose a file to share" bind:this={fileInput} onchange={pickedFile} />
+  {#each [pickerInputGeneration] as inputGeneration (inputGeneration)}
+    <input class="file-picker" type="file" aria-label="Choose a file to share" bind:this={fileInput} onchange={event => pickedFile(event, inputGeneration)} oncancel={() => cancelFilePicker('outgoing', inputGeneration)} />
+    {#if deviceUnlock}<input class="file-picker" type="file" accept=".txt,text/plain" aria-label="Choose an invitation file" bind:this={invitationInput} onchange={event => pickedInvitation(event, inputGeneration)} oncancel={() => cancelFilePicker('invitation', inputGeneration)} />{/if}
+  {/each}
   <div class="workspace">
     {#if navigationModal}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
     {#if workspaceReady}<aside class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
@@ -620,7 +719,7 @@
         <div class="welcome network-gate">
           <h1>Connect to GChat</h1>
           <p>Use an invitation to connect and start talking. A channel invitation can include everything you need.</p>
-          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} />
+          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('setup') : undefined} selectedFile={invitationSelection?.context === 'setup' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />
           {:else}<p role="status">{networkError || networkStatus?.message || 'Checking network setup…'}</p><button class="primary" onclick={() => void refreshNetwork()}>Retry</button>{/if}
         </div>
       {:else if !selected}
@@ -649,6 +748,10 @@
         </div>
         {#if !atBottom}<button class="jump" onclick={() => { atBottom = true; if (transcript) transcript.scrollTop = transcript.scrollHeight; void markRead(); }}>Jump to latest</button>{/if}
       {/if}
+      {#if pickerView?.selected && !invitationSelection}
+        <div class="notice" role="status"><span>{locked ? 'A selected file is waiting for this profile. Reconnect to continue.' : 'A selected file is ready to continue in its original destination.'}</span>{#if !locked}<button disabled={continuingPicker || (pickerView.target.kind === 'outgoing' && !workspaceReady)} onclick={() => void continuePicker()}>Continue selected file</button>{/if}<button onclick={discardPicker}>Discard selection</button></div>
+      {/if}
+      {#if pickerNotice}<div class="notice" role="status"><span>{pickerNotice}</span><button aria-label="Dismiss file selection notice" onclick={() => pickerNotice = ''}>×</button></div>{/if}
       {#if workspaceReady && outputs[selected ?? '']?.length}
         <div class="results" aria-label="Conversation command results">
           <button onclick={() => { outputs = { ...outputs, [selected ?? '']: [] }; }}>Close results</button>
@@ -694,7 +797,7 @@
         {#if networks.length > 1}<label for="network-detail-selection">Network</label><select id="network-detail-selection" bind:value={selectedNetwork} onchange={() => { transport.select(selectedNetwork); networkGeneration++; networkStatus = networks.find(n => n.id === selectedNetwork)?.status; }}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
         <p role="status">{networkStatus?.message || networkError || connectionLabel}</p>
         {#if networkError}<p role="alert">{networkError}</p>{/if}
-        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
+        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
       {:else if utility === 'font'}
         <p>Choose the font for messages and the composer. Saved on this device.</p>
@@ -745,7 +848,7 @@
       <header><h2 id="gchat-dialog-title">{dialog === 'join' ? 'Join a channel' : 'Create a channel'}</h2><button aria-label="Close dialog" onclick={() => dialog = null}>×</button></header>
       {#if dialog === 'join'}<nav aria-label="Join method"><button aria-pressed={!browse} onclick={() => browse = false}>Paste invitation</button><button aria-pressed={browse} onclick={() => void loadDirectory()}>Browse channels</button></nav>{/if}
       {#if browse && dialog === 'join'}<button onclick={() => void loadDirectory(true)}>Refresh public directory</button>{#if directory}<CommandResult output={directory} choose={chooseChannel} />{/if}{/if}
-      {#if dialog === 'join' && !browse && snapshot?.instance.capabilities.includes('networks.v1')}<NetworkSetup {transport} {imported} combined joined={invitationJoined} />{:else}
+      {#if dialog === 'join' && !browse && snapshot?.instance.capabilities.includes('networks.v1')}<NetworkSetup {transport} {imported} combined joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('join') : undefined} selectedFile={invitationSelection?.context === 'join' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else}
       {#if dialog === 'create' && networks.length > 1}<label for="create-network">Network</label><select id="create-network" bind:value={selectedNetwork} onchange={() => transport.select(selectedNetwork)}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
       <form onsubmit={join}><label for="gchat-destination">{dialog === 'join' ? 'Invitation link or public #channel' : 'Channel name'}</label><input id="gchat-destination" bind:value={destination} disabled={joinBusy} required placeholder={dialog === 'create' ? '#friends' : 'Paste an invitation'} /><label for="gchat-nickname">Your nickname in this channel</label><input id="gchat-nickname" bind:value={nickname} disabled={joinBusy} required autocomplete="nickname" />{#if joinError}<p role="alert">{joinError}</p>{/if}<button class="primary" type="submit" disabled={joinBusy}>{joinBusy ? 'Joining…' : dialog === 'join' ? 'Join' : 'Create'}</button></form>
       {/if}
