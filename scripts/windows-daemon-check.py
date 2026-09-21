@@ -40,6 +40,9 @@ def execute(command, cwd, environment, log, timeout):
 
 def check(gchat, gcoms, output, target, timeout=600):
     roots = {'gchat': gchat.resolve(), 'gcoms': gcoms.resolve()}
+    # TEMP may traverse a Windows junction/short-name alias. Compare canonical
+    # member paths with a canonical snapshot root, including library callers.
+    output = output.resolve()
     sources = {name: source_identity(root) for name, root in roots.items()}
     output.mkdir(parents=True, exist_ok=False)
     snapshots = output / 'inputs'

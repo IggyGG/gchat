@@ -70,6 +70,13 @@ class SnapshotTest(unittest.TestCase):
             self.assertEqual(daemon.digest(self.output / report[key]['path']), report[key]['sha256'])
         self.assertEqual(json.loads((self.output / 'report.json').read_text()), report)
 
+    def test_output_alias_does_not_look_like_an_escaped_member(self):
+        alias = self.root / 'alias'
+        alias.mkdir()
+        self.output = alias / '..' / 'evidence'
+        report = self.run_check()
+        self.assertTrue(report['passed'] and report['source_unchanged'])
+
     def test_unexpected_snapshot_mutation_refuses_success(self):
         report = self.run_check(mutate_source=True)
         self.assertFalse(report['passed'] or report['snapshot_sources_unchanged'])

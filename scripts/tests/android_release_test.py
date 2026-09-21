@@ -237,8 +237,13 @@ class ArtifactReuse(unittest.TestCase):
                 archive = root / 'input.zip'
                 with zipfile.ZipFile(archive, 'w') as bundle:
                     member = zipfile.ZipInfo(name)
+                    # ZipInfo normalizes the host separator at construction.
+                    # Preserve the hostile raw name on Windows as well as Unix.
+                    member.filename = name
                     member.external_attr = mode << 16
                     bundle.writestr(member, b'fixture')
+                with zipfile.ZipFile(archive) as bundle:
+                    self.assertEqual(bundle.namelist(), [name])
                 with self.assertRaisesRegex(ValueError, 'unsafe'):
                     android.extract_artifact(archive, root / 'original')
                 self.assertFalse((root / 'escape').exists())

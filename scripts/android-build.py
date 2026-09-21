@@ -10,7 +10,7 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shutil
 import struct
@@ -638,7 +638,9 @@ def extract_artifact(archive, destination):
                 'artifact archive exceeds extraction bounds')
         names = set()
         for member in members:
-            path = Path(member.filename)
+            # ZIP member names have POSIX semantics on every host; WindowsPath
+            # considers /absolute drive-relative and would miss this guard.
+            path = PurePosixPath(member.filename)
             require(not path.is_absolute() and '..' not in path.parts and '\\' not in member.filename and
                     ':' not in member.filename and (member.external_attr >> 16) & 0o170000 != 0o120000 and
                     member.filename not in names, 'unsafe artifact archive member')
