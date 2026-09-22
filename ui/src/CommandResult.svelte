@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invitationLink } from './invitation-link';
   import type { CommandOutput, DirectoryEntry } from './api';
-  let { output, choose, saveInvitation, prepareCommand }: { output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null> } = $props();
+  let { output, choose, saveInvitation, prepareCommand, helpHeading = true }: { helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null> } = $props();
   let feedback = $state('');
   async function copy(link: string) {
     try { await navigator.clipboard.writeText(link); feedback = 'Invitation copied'; }
@@ -36,8 +36,9 @@
 </script>
 <section class="result" aria-label="Command result">
   {#if output.kind === 'help'}
-    <h2>Commands</h2>
-    <dl>{#each output.commands as command}<dt><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button></dt><dd>{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</dd>{/each}</dl>
+    <!-- Descriptions wrap naturally, without a separate block per command. -->
+    {#if helpHeading}<h2>Commands</h2>{/if}
+    <ul class="commands">{#each output.commands as command}<li><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button><span>{' - '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></li>{/each}</ul>
   {:else if output.kind === 'directory'}
     <h2>Channels</h2>
     {#if !output.channels.length}<p>No channels found. Refresh the public directory or paste an invitation.</p>{/if}
@@ -64,8 +65,8 @@
   h2 { font:inherit; font-weight:600; margin:0 0 8px; } p { margin:8px 0; }
   button { font:inherit; color:var(--ink); background:transparent; border:0; text-decoration:underline; padding:8px; min-height:44px; margin:2px; cursor:pointer; }
   button:focus-visible,textarea:focus-visible,summary:focus-visible { outline:2px solid var(--accent); }
-  dl { margin:0; } dt { font-family:monospace; margin-top:8px; } dd { margin:2px 0 8px; color:var(--muted); }
+  .commands { list-style:none; padding:0; margin:0; font:inherit; }.commands li { margin:0; padding:0; line-height:inherit; }.commands span { color:var(--muted); }
   textarea { width:100%; color:var(--ink); background:var(--bg); font:inherit; resize:vertical; }
   pre { white-space:pre-wrap; font:inherit; margin:0; }
-  .command { margin:0; padding:0; color:var(--accent); }.command:disabled { color:var(--muted); cursor:default; }
+  .command { display:inline; min-height:0; min-width:0; line-height:inherit; margin:0; padding:0; color:var(--accent); }.command:disabled { color:var(--muted); cursor:default; }
 </style>

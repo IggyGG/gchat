@@ -2340,3 +2340,38 @@ async fn channel_visibility_and_operation_details_are_explicit_and_lock_private(
     service.disconnect().await.unwrap();
     runtime.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+async fn activity_sharing_preference_survives_profile_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    for (index, (previous, command, expected)) in [
+        (false, "/presence on", true),
+        (true, "/presence off", false),
+        (false, "/presence off", false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let runtime = open_runtime(dir.path(), index == 0).await;
+        let service = make_service(dir.path(), runtime.clone());
+        unlock(&service, index == 0).await;
+        assert_eq!(
+            service.snapshot().await.unwrap().presence_enabled,
+            Some(previous)
+        );
+        let response = submit(
+            &service,
+            &format!("activity-sharing-{index:04}"),
+            None,
+            command,
+        )
+        .await;
+        assert!(matches!(response, Response::Applied { .. }), "{response:?}");
+        assert_eq!(
+            service.snapshot().await.unwrap().presence_enabled,
+            Some(expected)
+        );
+        service.disconnect().await.unwrap();
+        runtime.shutdown().await.unwrap();
+    }
+}
