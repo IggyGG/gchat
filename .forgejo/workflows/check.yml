@@ -15,6 +15,7 @@ jobs:
         with:
           persist-credentials: false
           path: gchat
+          fetch-depth: 0
       # Qualify the unpublished SDK additions against an immutable source pair.
       - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

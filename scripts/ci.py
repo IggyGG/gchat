@@ -19,6 +19,10 @@ if args.gcoms:
     # The derived locks are this disposable checkout's baseline. Canonical
     # source commits and the exact derived inputs remain in provenance.
     execute(['git','init','-q'],checkout)
+    # Evidence regressions inspect retained historical source objects. Import
+    # history without replacing the independently derived paired build files.
+    execute(['git','fetch','--quiet','--no-tags',str(root),
+             inputs['sources']['gchat']['commit']],checkout)
     execute(['git','add','.'],checkout)
     execute(['git','-c','user.name=Gh0st build','-c','user.email=build@example.invalid',
              'commit','-qm','Frozen paired build inputs'],checkout)
