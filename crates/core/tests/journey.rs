@@ -86,6 +86,23 @@ async fn first_channel_journey_on_hosted_runtimes() {
         })
     })
     .await;
+    // The archive keeps the actual wire ID and only authenticated ACKs promote delivery.
+    let received_id = member
+        .channel(channel_id)
+        .unwrap()
+        .messages
+        .iter()
+        .find(|m| m.text == "hello member" && !m.mine)
+        .unwrap()
+        .id;
+    wait_for("sender authenticated delivery", || {
+        owner.channel(channel_id).is_some_and(|c| {
+            c.messages.iter().any(|m| {
+                m.mine && m.id == received_id && m.delivery == Some(gchat_api::Delivery::Delivered)
+            })
+        })
+    })
+    .await;
     member
         .send_channel(channel_id, "hello owner")
         .await

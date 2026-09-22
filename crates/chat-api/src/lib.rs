@@ -139,7 +139,10 @@ pub struct Message {
     #[ts(type = "number")]
     pub timestamp: u64,
     pub mine: bool,
-    /// Local archive acceptance is the only fact currently available for outgoing text.
+    #[serde(default)]
+    #[ts(optional)]
+    pub operation_id: Option<String>,
+    /// Delivered is an authenticated recipient acknowledgement, never a read receipt.
     pub delivery: Option<Delivery>,
     #[serde(default)]
     pub result: Option<ActionResult>,
@@ -168,6 +171,7 @@ pub struct Artifact {
 #[serde(rename_all = "snake_case")]
 pub enum Delivery {
     LocalAccepted,
+    Delivered,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]

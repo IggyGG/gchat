@@ -154,6 +154,9 @@ impl ChatService {
                     .clone();
                 let children = self.networks.lock().await;
                 for (id, record) in records {
+                    if *self.stopped.borrow() {
+                        break;
+                    }
                     let status = match children.get(&id) {
                         Some(child) => child.runtime.network_status().await?,
                         None => NetworkStatus::new(NetworkState::Unavailable),
@@ -376,11 +379,15 @@ impl ChatService {
             .lock()
             .await
             .as_ref()
+            .filter(|s| !s.ui_locked)
             .ok_or("Profile locked")?
             .state
             .networks
             .clone();
         for (id, record) in records {
+            if *self.stopped.borrow() {
+                break;
+            }
             // One failed network cannot prevent access to other networks/history.
             let _ = Box::pin(self.open_retained_network(&id, &record)).await;
         }

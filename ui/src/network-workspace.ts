@@ -121,6 +121,8 @@ export class NetworkWorkspace implements Transport {
       const lifecycle = this.lifecycle, presenceRevision = this.presenceRevision;
       const response = await this.base().request(request);
       if (lifecycle !== this.lifecycle) throw new ChatError('locked', 'Workspace changed during refresh');
+      // Authenticate locally first; the next independent snapshot aggregates networks.
+      if (request.kind === 'unlock') return response;
       return response.kind === 'snapshot' ? { ...response, snapshot: await this.aggregate(response.snapshot, presenceRevision) } : response;
     }
     if (request.kind === 'events' && this.networks.length > 1) {

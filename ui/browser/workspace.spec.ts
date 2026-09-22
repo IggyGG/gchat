@@ -301,25 +301,26 @@ test.describe('phone navigation', () => {
 test('original and recovered invitation share one transcript output and one local result', async ({ page }) => {
   await ready(page);
   await command(page, '/invite');
-  await expect(page.locator('.local-results')).toContainText('Invite to #general');
-  await expect.poll(() => page.evaluate(() => (window as any).fixture.checks())).toBeGreaterThan(0);
+  await expect(page.locator('.transcript')).toContainText('Invite to #general');
+  expect(await page.evaluate(() => (window as any).fixture.checks())).toBe(0);
+  await page.evaluate(() => (window as any).fixture.recoverInvitation());
   await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
   await page.waitForTimeout(450);
   await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Save as…', exact: true }).click();
-  await expect(page.locator('.local-results')).toContainText('Saved to /chosen/gchat-invitation.txt');
-  await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
+  await expect(page.locator('.transcript')).toContainText('Saved to /chosen/gchat-invitation.txt');
+  await page.locator('.transcript').getByRole('button', { name: 'Details', exact: true }).click();
   await page.getByRole('button', { name: 'Close details', exact: true }).click();
-  await expect(page.locator('.local-results').getByRole('button', { name: 'Details', exact: true })).toHaveCount(1);
+  await expect(page.locator('.transcript').getByRole('button', { name: 'Details', exact: true })).toHaveCount(1);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeFocused();
   await command(page, '/invite');
   await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(2);
-  await expect(page.locator('.local-results').getByRole('button', { name: 'Details', exact: true })).toHaveCount(2);
+  await expect(page.locator('.transcript').getByRole('button', { name: 'Details', exact: true })).toHaveCount(2);
 });
 
 test('Details explains a retained unknown outcome and refresh never resubmits', async ({ page }) => {
   await ready(page, '?saved-operation');
-  await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
+  await page.locator('.transcript').getByRole('button', { name: 'Details', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('saved-operation-001');
   await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('Outcome not confirmed');
   await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
@@ -327,7 +328,7 @@ test('Details explains a retained unknown outcome and refresh never resubmits', 
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
   await page.keyboard.press('Escape');
   await page.reload();
-  await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
+  await page.locator('.transcript').getByRole('button', { name: 'Details', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('saved-operation-001');
 });
 
@@ -350,7 +351,7 @@ test('cancelling invitation Save as is neutral and keeps a closable result', asy
   await ready(page, '?cancel-save');
   await command(page, '/invite');
   await page.getByRole('button', { name: 'Save as…', exact: true }).click();
-  await expect(page.locator('.local-results').getByText('Save cancelled.', { exact: true })).toBeVisible();
+  await expect(page.locator('.transcript').getByText('Save cancelled.', { exact: true })).toBeVisible();
   await expect(page.getByText(/^Saved to /)).toHaveCount(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
@@ -480,7 +481,9 @@ test('help is compact, collapses without sending, and reopens for the current co
   await disclosure.click(); await page.keyboard.press('Escape'); await expect(disclosure).toHaveAttribute('aria-expanded','false');
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /design/ }).click();
-  await expect(disclosure).toHaveAttribute('aria-expanded','false'); await disclosure.click(); await expect(disclosure).toHaveAttribute('aria-expanded','true');
+  await expect(page.getByRole('region', { name: 'Only you: help' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Help and commands' }).click();
+  await expect(page.getByRole('region', { name: 'Only you: help' })).toBeVisible();
 });
 
 async function activity(page: Page, suffix = '') {
@@ -522,4 +525,73 @@ test('activity settings target the selected network and keep a late response in 
   await expect(setting.getByRole('heading')).toHaveText('Activity sharing: Off');
   await page.locator('#network-detail-selection').selectOption('b'.repeat(64)); await expect(setting.getByRole('heading')).toHaveText('Activity sharing: On');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'networks' && r.request.kind === 'call' && r.request.request.kind === 'submit').at(-1).request)).toMatchObject({ network: 'b'.repeat(64), request: { conversation: null, text: '/presence on' } });
+});
+
+for (const width of [320, 390, 1100]) test(`conversation heading does not consume app-bar touch space at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 720 });
+  await ready(page);
+  const bar = (await page.locator('.titlebar').boundingBox())!;
+  const title = (await page.locator('.active-title').boundingBox())!;
+  expect(title.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+  await expect(page.locator('.titlebar .active-title')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Help and commands' }).click();
+  await expect(page.getByRole('button', { name: 'Commands', exact: true })).toBeVisible();
+});
+
+test('shows immediate unlock feedback and accepts another message while sends are pending', async ({ page }) => {
+  await page.goto('/?device-unlock&slow-unlock');
+  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Unlocking…', exact: true })).toBeVisible();
+  await expect(page.locator('.active-title')).toContainText('#general');
+  await page.evaluate(() => (window as any).fixture.holdSends());
+  await command(page, 'first pending message');
+  await command(page, 'second pending message');
+  await expect(page.locator('[data-operation]')).toHaveCount(2);
+  await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeEmpty();
+  await expect(page.getByText('Saved operation · outcome not confirmed', { exact: true })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit' && !r.text.startsWith('/')).length)).toBe(2);
+  await page.evaluate(() => (window as any).fixture.releaseSends());
+});
+
+
+test('help and invitations remain before later messages, which reconcile by operation ID and ACK', async ({ page }) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Help and commands' }).click();
+  await command(page, '/invite');
+  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
+  await page.evaluate(() => (window as any).fixture.holdSends());
+  await command(page, 'Hello @Ada.');
+  await expect(page.locator('[data-operation]').filter({ hasText: 'Hello @Ada.' })).toHaveCount(1);
+  await page.evaluate(() => (window as any).fixture.releaseSends());
+  await expect(page.locator('.message.mine')).toContainText('Hello @Ada.');
+  await expect(page.locator('[data-operation]').filter({ hasText: 'Hello @Ada.' })).toHaveCount(0);
+  await expect(page.locator('.message.mine .mention')).toHaveText('@Ada');
+  await expect(page.locator('.message.mine')).toContainText('accepted locally');
+  const positions = await page.locator('.transcript').evaluate(el => {
+    const children = [...el.children]; return {
+      help: children.indexOf(el.querySelector('.help-output')!),
+      invite: children.findIndex(c => !!c.querySelector('.invitation')),
+      message: children.indexOf(el.querySelector('.message.mine')!)
+    };
+  });
+  expect(positions.help).toBeGreaterThanOrEqual(0);
+  expect(positions.message).toBeGreaterThan(positions.help);
+  // Invitation content stays in the same chronological operation entry.
+  const invite = page.locator('[data-operation]').filter({ hasText: 'Invite to #general' });
+  expect((await invite.boundingBox())!.y).toBeLessThan((await page.locator('.message.mine').boundingBox())!.y);
+  await page.evaluate(() => (window as any).fixture.acknowledge());
+  await expect(page.locator('.message.mine')).toContainText('delivered');
+});
+
+test('download has immediate conversation progress after the files panel closes', async ({ page }) => {
+  await ready(page, '?offered-file');
+  await page.getByRole('button', { name: 'Files: 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Download & share', exact: true }).click();
+  await page.getByRole('button', { name: 'Close details', exact: true }).click();
+  const transfer = page.locator('.transfer');
+  await expect(transfer).toContainText('notes.txt');
+  await expect(transfer).toContainText('Starting…');
+  await expect(transfer.getByRole('progressbar')).toHaveAttribute('value', '1024');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'files' && r.request.action === 'accept').length)).toBe(1);
 });

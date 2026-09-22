@@ -19,7 +19,10 @@ const conversations: Conversation[] = ['general', 'design', 'archive'].map((name
 const commands: CommandSpec[] = ['help', 'lock', 'disconnect', 'quit', 'join', 'create', 'query'].map(name => ({ name: `/${name}`, usage: `/${name}`, description: `Fixture ${name}`, scope: 'instance', capability: null, available: true }));
 let state: NetworkState = parameters.has('fresh') ? 'invitation_required' : 'connected';
 let revision = 1;
-let files: FileInfo[] = parameters.has('empty') ? [] : [{ id: 'existing-file', conversation: 'channel/general', name: 'notes.txt', size_bytes: '4096', verified_bytes: '4096', state: 'complete', sources: 1, verified_sources: 1, completed_by: 1, error: null }];
+const sentMessages: import('../src/api').Message[] = [];
+let holdSends = false;
+const heldSends: (() => void)[] = [];
+let files: FileInfo[] = parameters.has('empty') ? [] : [{ id: 'existing-file', conversation: 'channel/general', name: 'notes.txt', size_bytes: '4096', verified_bytes: '4096', state: parameters.has('offered-file') ? 'offered' : 'complete', sources: 1, verified_sources: 1, completed_by: 1, error: null }];
 const requests: Request[] = [];
 let hold = false, release: (() => void) | undefined;
 let holdSnapshots = false;
@@ -27,13 +30,17 @@ const heldSnapshots: (() => void)[] = [];
 let savedId: string | undefined;
 let savedReply: Response | undefined;
 let checks = 0;
-const recovered = parameters.has('saved-operation') ? [{ id: 'saved-operation-001', instance: instance.id, conversation: 'channel/general', action: '/create', started: 1789910000, state: 'unknown', output: null, message: 'Interrupted after admission.' }] : [];
+const recovered: import('../src/api').OperationDetail[] = parameters.has('saved-operation') ? [{ id: 'saved-operation-001', instance: instance.id, conversation: 'channel/general', action: '/create', started: 1789910000, state: 'unknown', output: null, message: 'Interrupted after admission.' }] : [];
 const snapshot = (network = primaryNetwork): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: [], presenceEnabled: presence.get(network) ?? false, operations: instance.locked ? [] : recovered });
 const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', used_bytes: '4096', retention_days: 7 });
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
-  requests, unlockChoices, holdPresence() { holdPresence = true; }, releasePresence() { holdPresence = false; releasePresence?.(); }, setPresenceOutcome(value: string) { presenceOutcome = value; }, presence: (network = primaryNetwork) => presence.get(network) ?? false, checks: () => checks, setNetwork(value: NetworkState) { state = value; revision++; },
+  requests, unlockChoices, recoverInvitation() {
+    const request = requests.filter((r): r is Extract<Request, {kind: 'submit'}> => r.kind === 'submit' && r.text === '/invite').at(-1);
+    if (request && savedReply?.kind === 'output') recovered.push({ id: request.operation_id, instance: instance.id, conversation: request.conversation, action: '/invite', started: Math.floor(Date.now()/1000), state: 'complete', output: savedReply.output, message: null });
+    revision++;
+  }, acknowledge() { sentMessages.forEach(m => m.delivery = 'delivered'); revision++; }, holdSends() { holdSends = true; }, releaseSends() { holdSends = false; heldSends.splice(0).forEach(f => f()); }, holdPresence() { holdPresence = true; }, releasePresence() { holdPresence = false; releasePresence?.(); }, setPresenceOutcome(value: string) { presenceOutcome = value; }, presence: (network = primaryNetwork) => presence.get(network) ?? false, checks: () => checks, setNetwork(value: NetworkState) { state = value; revision++; },
   holdUpload() { hold = true; }, releaseUpload() { hold = false; release?.(); },
   getFiles: () => files, setLocked(value: boolean) { instance.locked = value; revision++; },
   suspend() { instance.locked = true; instance.protocolLocked = true; revision++; },
@@ -73,10 +80,11 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
       if (req.code !== 'GCNI1-valid-fixture') throw new Error('Invitation signature rejected');
       state = 'connecting'; revision++; return { kind: 'network_status', status: status() };
     case 'catalogue': return { kind: 'catalogue', commands };
-    case 'history': case 'search': return { kind: 'history', page: { messages: [{ id: `${req.conversation}/m1`, conversationId: req.conversation, memberId: 'peer', nickname: 'Ada', body: 'A clear space for the conversation.', timestamp: 1789910000, mine: false, delivery: null, result: null }], before: null } };
+    case 'history': case 'search': return { kind: 'history', page: { messages: [{ id: `${req.conversation}/m1`, conversationId: req.conversation, memberId: 'peer', nickname: 'Ada', body: 'A clear space for the conversation.', timestamp: 1789910000, mine: false, delivery: null, result: null }, ...sentMessages.filter(m => m.conversationId === req.conversation)], before: null } };
     case 'mark_read': return { kind: 'applied', conversation: req.conversation, notice: null };
     case 'complete': return { kind: 'completed', items: [] };
     case 'submit':
+      if (holdSends && !req.text.startsWith('/')) await new Promise<void>(resolve => heldSends.push(resolve));
       if (req.text.startsWith('/presence ')) {
         if (holdPresence) await new Promise<void>(resolve => releasePresence = resolve);
         if (presenceOutcome === 'rejected') throw new ChatError('rejected', 'Profile save failed.');
@@ -91,12 +99,14 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
         const result = savedReply;
         await delay(350); savedId = undefined; return result;
       }
+      if (!req.text.startsWith('/')) { sentMessages.push({ id: 'wire-' + req.operation_id, operationId: req.operation_id, conversationId: req.conversation!, memberId: 'self', nickname: 'Iggy', body: req.text, timestamp: Math.floor(Date.now()/1000), mine: true, delivery: 'local_accepted', result: null }); revision++; }
       if (req.text === '/lock' || req.text === '/disconnect') { instance.locked = true; instance.protocolLocked = req.text === '/disconnect'; revision++; }
       return { kind: 'applied', conversation: req.conversation, notice: null };
-    case 'unlock': instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };
+    case 'unlock': if (parameters.has('slow-unlock')) await delay(1200); instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };
     case 'files': {
       const r = req.request;
       if (r.action === 'prepare') files.push({ id: r.id, conversation: r.conversation, name: r.name, size_bytes: r.size_bytes, verified_bytes: '0', state: 'importing', sources: 0, verified_sources: 0, completed_by: 0, error: null });
+      if (r.action === 'accept') { await delay(750); files = files.map(f => f.id === r.id ? { ...f, state: 'downloading', verified_bytes: '1024' } : f); }
       if (r.action === 'commit') files = files.map(f => f.id === r.id ? { ...f, state: 'complete', verified_bytes: f.size_bytes } : f);
       if (r.action === 'pause' || r.action === 'resume' || r.action === 'cancel') files = files.map(f => f.id === r.id ? { ...f, state: r.action === 'pause' ? 'paused' : r.action === 'resume' ? 'downloading' : 'cancelled' } : f);
       return { kind: 'files', snapshot: fileSnapshot() };

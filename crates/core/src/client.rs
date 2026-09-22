@@ -1173,21 +1173,50 @@ impl ClientHandle {
         Ok(channel)
     }
     pub async fn send_channel(&self, id: ChannelId, text: &str) -> Result<(), String> {
+        self.send_channel_operation(id, text, None).await
+    }
+    pub(crate) async fn send_channel_operation(
+        &self,
+        id: ChannelId,
+        text: &str,
+        operation: Option<&str>,
+    ) -> Result<(), String> {
+        let started = now_unix();
         let channel = self.channel(id).ok_or("channel is not active")?;
-        self.0
-            .sdk
-            .send_channel(&channel.protocol_name, text.as_bytes())
-            .await
-            .map_err(|e| e.to_string())?;
+        // The tracked API requires a remote recipient. Preserve solo-channel
+        // notes through the ordinary API, deciding before any send (never retry
+        // an uncertain tracked send through another method).
+        let message_id = if channel.members.iter().any(|member| !member.is_self) {
+            self.0
+                .sdk
+                .send_channel_tracked(&channel.protocol_name, text.as_bytes())
+                .await
+                .map_err(|e| e.to_string())?
+                .0
+        } else {
+            self.0
+                .sdk
+                .send_channel(&channel.protocol_name, text.as_bytes())
+                .await
+                .map_err(|e| e.to_string())?;
+            rand::random::<[u8; 16]>() // Local archive identity; no recipient ACK claimed.
+        };
         let mut data = self.0.data.lock().unwrap();
+        let delivered = data.delivery_receipts.contains(&(id.0, message_id));
         if let Some(channel) = data
             .channels
             .iter_mut()
             .find(|candidate| candidate.active && candidate.id == id)
         {
             channel.messages.push(Message {
-                id: fresh_id(),
-                ts_unix: now_unix(),
+                id: message_id,
+                operation_id: operation.map(str::to_owned),
+                delivery: Some(if delivered {
+                    gchat_api::Delivery::Delivered
+                } else {
+                    gchat_api::Delivery::LocalAccepted
+                }),
+                ts_unix: started,
                 sender_member_id: channel.self_member_id,
                 sender_name: channel
                     .members
@@ -1203,6 +1232,15 @@ impl ClientHandle {
         Ok(())
     }
     pub async fn send_scoped_pm(&self, id: ScopedPmId, text: &str) -> Result<(), String> {
+        self.send_scoped_pm_operation(id, text, None).await
+    }
+    pub(crate) async fn send_scoped_pm_operation(
+        &self,
+        id: ScopedPmId,
+        text: &str,
+        operation: Option<&str>,
+    ) -> Result<(), String> {
+        let started = now_unix();
         let channel = self.channel(id.channel_id).ok_or("channel is not active")?;
         let message_id = self
             .0
@@ -1215,6 +1253,9 @@ impl ClientHandle {
             .await
             .map_err(|e| e.to_string())?;
         let mut data = self.0.data.lock().unwrap();
+        let delivered = data
+            .delivery_receipts
+            .contains(&(id.channel_id.0, message_id.0));
         let pm = data
             .scoped_pms
             .iter_mut()
@@ -1222,7 +1263,13 @@ impl ClientHandle {
             .ok_or("scoped PM is not active")?;
         pm.messages.push(Message {
             id: message_id.0,
-            ts_unix: now_unix(),
+            operation_id: operation.map(str::to_owned),
+            delivery: Some(if delivered {
+                gchat_api::Delivery::Delivered
+            } else {
+                gchat_api::Delivery::LocalAccepted
+            }),
+            ts_unix: started,
             sender_member_id: Some(id.self_member_id),
             sender_name: channel
                 .members
@@ -1493,6 +1540,48 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
     }
     let mut data = inner.data.lock().unwrap();
     match event {
+        ClientEvent::ChannelDelivered {
+            channel,
+            message_id,
+        }
+        | ClientEvent::ChannelDirectDelivered {
+            channel,
+            message_id,
+            ..
+        } => {
+            if let Some(id) = data
+                .channels
+                .iter()
+                .find(|c| c.protocol_name == *channel && c.active)
+                .map(|c| c.id)
+            {
+                let receipt = (id.0, message_id.0);
+                if !data.delivery_receipts.contains(&receipt) {
+                    data.delivery_receipts.push(receipt);
+                }
+                if data.delivery_receipts.len() > 1024 {
+                    data.delivery_receipts.remove(0);
+                }
+                for record in data.channels.iter_mut().filter(|c| c.id == id) {
+                    for message in record
+                        .messages
+                        .iter_mut()
+                        .filter(|m| m.mine && m.id == message_id.0)
+                    {
+                        message.delivery = Some(gchat_api::Delivery::Delivered);
+                    }
+                }
+                for pm in data.scoped_pms.iter_mut().filter(|p| p.id.channel_id == id) {
+                    for message in pm
+                        .messages
+                        .iter_mut()
+                        .filter(|m| m.mine && m.id == message_id.0)
+                    {
+                        message.delivery = Some(gchat_api::Delivery::Delivered);
+                    }
+                }
+            }
+        }
         ClientEvent::ChannelMessage {
             channel,
             message_id,
@@ -1521,6 +1610,8 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
                     .map(|member| member.id);
                 record.messages.push(Message {
                     id: message_id.0,
+                    operation_id: None,
+                    delivery: None,
                     ts_unix: *timestamp_unix,
                     sender_member_id: member,
                     sender_name: sender.clone(),
@@ -1580,6 +1671,8 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
             if !pm.messages.iter().any(|message| message.id == message_id.0) {
                 pm.messages.push(Message {
                     id: message_id.0,
+                    operation_id: None,
+                    delivery: None,
                     ts_unix: *timestamp_unix,
                     sender_member_id: Some(remote),
                     sender_name: pm.remote_display_name.clone(),
@@ -1643,12 +1736,6 @@ fn short_member(member: &MemberId) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
-}
-fn fresh_id() -> [u8; 16] {
-    use rand::RngCore;
-    let mut id = [0; 16];
-    rand::thread_rng().fill_bytes(&mut id);
-    id
 }
 fn now_unix() -> u64 {
     std::time::SystemTime::now()

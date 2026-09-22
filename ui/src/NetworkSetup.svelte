@@ -1,11 +1,17 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { MAX_NETWORK_INVITATION_BYTES, type NetworkStatus, type InvitationPreview, type Response } from './api';
+  import { MAX_NETWORK_INVITATION_BYTES, type NetworkStatus, type InvitationPreview, type Response, type Request } from './api';
   import { chatError, type Transport } from './transport';
-  let { transport, status, imported, combined = false, joined, chooseFile, selectedFile, fileConsumed, initialInvitation = '', privateComposer = false }: { transport: Transport; initialInvitation?: string; privateComposer?: boolean; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void; chooseFile?: () => void; selectedFile?: { id: number; file: File }; fileConsumed?: (id: number) => void } = $props();
+  let { transport, status, imported, combined = false, joined, performJoin, chooseFile, selectedFile, fileConsumed, initialInvitation = '', privateComposer = false }: { transport: Transport; initialInvitation?: string; privateComposer?: boolean; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void; performJoin?: (request: Extract<Request, { kind: 'networks' }>) => Promise<Response>; chooseFile?: () => void; selectedFile?: { id: number; file: File }; fileConsumed?: (id: number) => void } = $props();
   let invitation = $state(''), error = $state(''), busy = $state(false);
   let preview = $state<InvitationPreview>(), nickname = $state('');
   let pendingCode = '', operationId = '';
+  let joiningAt = $state(0), elapsed = $state(0);
+  $effect(() => {
+    if (!busy || !joiningAt) return;
+    const timer = setInterval(() => elapsed = Math.floor((Date.now() - joiningAt) / 1000), 1000);
+    return () => clearInterval(timer);
+  });
   let seenInitial = '';
   $effect(() => { if (initialInvitation && initialInvitation !== seenInitial && !busy && !preview) { seenInitial = initialInvitation; invitation = initialInvitation; } });
   let running = true, fileRevision = 0;
@@ -68,12 +74,13 @@
   async function accept(event: SubmitEvent) {
     event.preventDefault();
     if (!preview || busy) return;
-    busy = true; error = '';
+    busy = true; error = ''; joiningAt = Date.now(); elapsed = 0;
     try {
-      const response = await transport.request({ kind: 'networks', request: { kind: 'join', code: pendingCode, nickname, accepted_network: preview.network.id, operation_id: operationId } });
+      const request: Extract<Request, { kind: 'networks' }> = { kind: 'networks', request: { kind: 'join', code: pendingCode, nickname, accepted_network: preview.network.id, operation_id: operationId } };
+      const response = await (performJoin ? performJoin(request) : transport.request(request));
       if (!running) return;
       pendingCode = ''; nickname = ''; preview = undefined;
-      joined?.(response);
+      if (!performJoin) joined?.(response);
     } catch (failure) { if (running) error = chatError(failure).message; }
     finally { busy = false; }
   }
@@ -99,6 +106,7 @@
     <button type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
   </form>
   {/if}
+  {#if busy && joiningAt}<p role="status">Connecting and waiting for channel confirmation · {elapsed}s. You can continue using other conversations. This request will not be repeated.</p>{/if}
   {#if error}<p role="alert">{error}</p>{/if}
 </section>
 <style>

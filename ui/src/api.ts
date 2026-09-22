@@ -20,9 +20,9 @@ export type InstanceInfo = { id: string, label: string, bootId: string, locked: 
 export type Member = { id: string, nickname: string, isSelf: boolean, recentlyActive?: boolean, capabilities: Array<string>, };
 export type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };
 export type ConversationKind = "channel" | "query" | "archive";
-export type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,
+export type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean, operationId?: string,
 /**
- * Local archive acceptance is the only fact currently available for outgoing text.
+ * Delivered is an authenticated recipient acknowledgement, never a read receipt.
  */
 delivery: Delivery | null, result: ActionResult | null, };
 export type ActionResult = { id: string, messageId: string | null, state: string,
@@ -31,7 +31,7 @@ export type ActionResult = { id: string, messageId: string | null, state: string
  */
 outputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };
 export type Artifact = { name: string, url: string, };
-export type Delivery = "local_accepted";
+export type Delivery = "local_accepted" | "delivered";
 export type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };
 export type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };
 export type CommandOutput = { "kind": "help", commands: Array<CommandSpec>, } | { "kind": "directory", channels: Array<DirectoryEntry>, } | { "kind": "invitation", channel: string, link: string, expires: number, localOnly: boolean, } | { "kind": "text", title: string, text: string, } | { "kind": "status", text: string, } | { "kind": "close", conversation: string, };

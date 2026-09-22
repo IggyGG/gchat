@@ -11,7 +11,9 @@
   async function share(link: string, channel: string) {
     busy = true; feedback = '';
     try {
-      await navigator.share({ title: `Join #${channel}`, text: link });
+      const file = new File([link], 'gchat-invitation.txt', { type: 'text/plain' });
+      if (!navigator.canShare?.({ files: [file] })) { await save(link); return; }
+      await navigator.share({ title: `Join #${channel}`, files: [file] });
       feedback = 'Invitation handed to the share destination.';
     } catch (error) {
       feedback = error instanceof DOMException && error.name === 'AbortError' ? 'Sharing cancelled.' : 'Sharing failed. You can copy the invitation instead.';
@@ -50,7 +52,7 @@
     {#if output.localOnly}<p>This invitation is reachable only on this computer. Configure a relay before sharing with another computer.</p>{/if}
     {#if output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}
     <button disabled={busy} onclick={() => void copy(appLink ?? output.link)}>Copy invitation</button>
-    {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(appLink ?? output.link, output.channel)}>Share…</button>{/if}
+    {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(output.link, output.channel)}>Share invitation file…</button>{/if}
     <button disabled={busy} onclick={() => void save(output.link)}>{saveInvitation ? 'Save as…' : 'Download file'}</button>
     {#if !appLink}<p>This invitation is too large for an app link. Share the complete code or file.</p>{/if}
     <details><summary>Complete invitation</summary><button onclick={() => void copy(output.link)}>Copy raw code</button><textarea aria-label="Complete invitation" readonly value={output.link} rows="3"></textarea></details>

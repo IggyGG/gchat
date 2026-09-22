@@ -30,21 +30,30 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
     const instance = await client.identify({});
     if (instance.id !== hello.instance.id) throw new ChatError('instance', 'Selected instance changed');
   } catch (failure) { throw error(failure); }
-  const pendingOperations = () => handles.list().filter(h => h.destination === transport.destination && h.instance === rpc.instance && h.service === SERVICE && h.version === SERVICE_VERSION);
-  const find = (id: string) => pendingOperations().find(h => h.operation.id === id);
+  const retainedOperations = () => handles.list().filter(h => h.destination === transport.destination && h.instance === rpc.instance && h.service === SERVICE && h.version === SERVICE_VERSION);
+  const active = new Map<string, Promise<unknown>>();
+  const pendingOperations = () => retainedOperations().filter(h => !active.has(h.operation.id) && h.method !== "mark_read");
+  async function live<T>(id: string, run: () => Promise<T>): Promise<T> {
+    const existing = active.get(id);
+    if (existing) return existing as Promise<T>;
+    const result = Promise.resolve().then(run);
+    active.set(id, result);
+    try { return await result; } finally { active.delete(id); }
+  }
+  const find = (id: string) => retainedOperations().find(h => h.operation.id === id);
   const forget = (h: OperationHandle) => { try { handles.forget(h); } catch { /* A stale opaque handle is safe to check again. */ } };
   const checkOperation = async (id: string): Promise<Response> => {
     const h = find(id);
     if (!h) throw new ChatError('unavailable', 'No retained operation with this ID');
     try {
       if (h.method === 'submit') {
-        const result = await rpc.resume(methods.submit, h); forget(h); return result;
+        const result = await live(id, () => rpc.resume(methods.submit, h)); forget(h); return result;
       }
       if (h.method === 'mark_read') {
-        const result = await rpc.resume(methods.mark_read, h); forget(h); return { kind: 'applied', ...result };
+        const result = await live(id, () => rpc.resume(methods.mark_read, h)); forget(h); return { kind: 'applied', ...result };
       }
       if (h.method === 'network_operation') {
-        const response = await rpc.resume(methods.network_operation, h); forget(h); return { kind: 'networks', response };
+        const response = await live(id, () => rpc.resume(methods.network_operation, h)); forget(h); return { kind: 'networks', response };
       }
       throw new ChatError('protocol', 'Unknown saved operation method');
     } catch (failure) { throw error(failure); }
@@ -63,7 +72,7 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
             const retained = find(operationId);
             if (retained) p.handle = retained;
           }
-          const response = await rpc.startAndWait(p); forget(p.handle); return { kind: 'networks', response };
+          const response = await live(p.handle.operation.id, () => rpc.startAndWait(p)); forget(p.handle); return { kind: 'networks', response };
         }
         case 'files': return { kind: 'files', snapshot: await client.files({ request: request.request }) };
         case 'identify': return { kind: 'instance', instance: await client.identify({}) };
@@ -80,7 +89,7 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
         case 'events': return { kind: 'changed', revision: await client.events({ after: request.after, wait_ms: request.wait_ms }) };
         case 'mark_read': {
           const p = client.prepare_mark_read({ conversation: request.conversation, message_id: request.message_id });
-          const result = await rpc.startAndWait(p); forget(p.handle); return { kind: 'applied', ...result };
+          const result = await live(p.handle.operation.id, () => rpc.startAndWait(p)); forget(p.handle); return { kind: 'applied', ...result };
         }
         case 'submit': {
           if (request.text.trim() === '/lock') return { kind: 'instance', instance: await client.lock({}) };
@@ -94,7 +103,7 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
           p.handle.operation.id = request.operation_id;
           const retained = find(request.operation_id);
           if (retained) p.handle = retained;
-          const result = await rpc.startAndWait(p); forget(p.handle); return result;
+          const result = await live(p.handle.operation.id, () => rpc.startAndWait(p)); forget(p.handle); return result;
         }
       }
     } catch (failure) { throw error(failure); }

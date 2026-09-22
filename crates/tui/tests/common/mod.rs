@@ -198,6 +198,8 @@ pub fn member(n: u8, name: &str, is_self: bool) -> MemberRecord {
 pub fn message(n: u8, sender: (u8, &str), mine: bool, text: &str) -> Message {
     Message {
         id: [n; 16],
+        operation_id: None,
+        delivery: None,
         ts_unix: T0 + u64::from(n) * 60,
         sender_member_id: Some(member_id(sender.0)),
         sender_name: sender.1.into(),
@@ -292,6 +294,7 @@ pub fn public_descriptor() -> CachedDescriptor {
 /// signature at render time, so the public row only appears via `Public`.
 pub fn populated_archive() -> ArchiveData {
     ArchiveData {
+        delivery_receipts: Vec::new(),
         daemon_safety_number: "12345 67890 24680 13579 11223 34455".into(),
         channels: vec![ops_channel(), lounge_channel()],
         scoped_pms: vec![ada_pm()],

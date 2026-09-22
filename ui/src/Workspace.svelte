@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MessageText from './MessageText.svelte';
   import ResizeHandles from './ResizeHandles.svelte';
   import type { NativeShell } from './native-shell';
   import { onMount, tick, type Snippet } from 'svelte';
@@ -29,9 +30,6 @@
   let selected = $state<string | null>(null);
   let messages = $state<Message[]>([]);
   let before = $state<string | null>(null);
-  const timeline = $derived([...messages.map(message => ({ timestamp: message.timestamp, id: message.id, message, activity: undefined })),
-    ...(snapshot?.activity ?? []).filter(a => a.conversation === selected).map(activity => ({ timestamp: activity.timestamp, id: activity.id, message: undefined, activity }))]
-    .sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id)));
   let unreadMarkers = $state<Record<string, string>>({});
   let searchOpen = $state(false);
   let searchText = $state('');
@@ -45,7 +43,8 @@
   let rememberDevice = $state(false);
   let lifecycleBusy = $state(false);
   let pending = $state<Record<string, string>>({});
-  const busy = $derived(lifecycleBusy || !!pending[selected ?? '']);
+  const busy = $derived(lifecycleBusy);
+  const sendingFull = $derived(Object.keys(pending).length >= 32);
   type FailedOperation = { request: Extract<Request, { kind: 'submit' }>; code: string; message: string };
   let failures = $state<FailedOperation[]>([]);
   let savedOperations = $state<OperationHandle[]>([]);
@@ -105,6 +104,7 @@
   let networkAccepted = $state(false), networkError = $state('');
   let networkPolling = false, networkGeneration = 0;
   let helpVisible = $state(false), helpExpanded = $state(false);
+  let helpTimes = $state<Record<string, number>>({});
   let helpRegion = $state<HTMLElement>();
   let helpGeneration = 0;
   function collapseHelp() { helpExpanded = false; helpGeneration++; }
@@ -152,6 +152,15 @@
   let fileController = $state<FileController>();
   const fileControllers = new Map<string, FileController>();
   let fileStates = $state<Record<string, FileViewState>>({});
+  const visibleResults = $derived(results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '')
+    && !messages.some(m => m.operationId === r.id) && (r.output || r.body || r.state !== 'complete')));
+  const timeline = $derived([
+    ...messages.map(message => ({ timestamp: results.find(r => r.id === message.operationId)?.started ? results.find(r => r.id === message.operationId)!.started / 1000 : message.timestamp, id: message.id, message, activity: undefined, result: undefined, help: false, transfer: undefined })),
+    ...(snapshot?.activity ?? []).filter(a => a.conversation === selected).map(activity => ({ timestamp: activity.timestamp, id: activity.id, message: undefined, activity, result: undefined, help: false, transfer: undefined })),
+    ...visibleResults.map(result => ({ timestamp: result.started / 1000, id: result.key, message: undefined, activity: undefined, result, help: false, transfer: undefined })),
+    ...(helpVisible && helpTimes[selected ?? ''] ? [{ timestamp: helpTimes[selected ?? ''] / 1000, id: 'help', message: undefined, activity: undefined, result: undefined, help: true, transfer: undefined }] : []),
+    ...Object.values(fileState.transfers).filter(t => t.conversation === selected).map(transfer => ({ timestamp: transfer.started / 1000, id: 'file/' + transfer.id, message: undefined, activity: undefined, result: undefined, help: false, transfer }))
+  ].sort((a, b) => a.timestamp - b.timestamp));
   let fileInput = $state<HTMLInputElement>();
   let fileTarget: { conversation: string; resumeId?: string; controller: FileController } | undefined;
   let invitationInput = $state<HTMLInputElement>();
@@ -241,6 +250,25 @@
     if (hasNetworkSetup(status)) networkAccepted = true;
     replacingInvitation = false; utility = null; void refreshInBackground();
   }
+  async function performJoin(request: Extract<Request, { kind: 'networks' }>): Promise<Response> {
+    const id = request.request.kind === 'join' ? request.request.operation_id : crypto.randomUUID();
+    const origin = selected, instance = snapshot?.instance.id;
+    const key = beginResult(id, origin, '/join');
+    pending = { ...pending, [id]: origin ?? '' };
+    try {
+      const response = await transport.request(request);
+      if (running && !locked && snapshot?.instance.id === instance) {
+        if (response.kind === 'error') throw new ChatError(response.code, response.message);
+        resultStore.complete(key, response); syncResults();
+        if (selected === origin) await invitationJoined(response);
+        else { await refreshInBackground(); notice = 'Invitation completed. The channel is available in Channels.'; }
+      }
+      return response;
+    } catch (error) {
+      if (running && !locked && snapshot?.instance.id === instance) { const failure = chatError(error); resultStore.error(key, failure.code, failure.message); syncResults(); }
+      throw error;
+    } finally { const remaining = { ...pending }; delete remaining[id]; pending = remaining; }
+  }
   async function invitationJoined(response: Response) {
     selectedNetwork = transport.active;
     networkAccepted = true; replacingInvitation = false; utility = null; cancelPrompt();
@@ -262,7 +290,7 @@
     void operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation, text });
   }
   async function showHelp() {
-    closeNavigation(); helpVisible = true; helpExpanded = true; helpError = '';
+    closeNavigation(); helpVisible = true; if (!helpTimes[selected ?? '']) helpTimes = { ...helpTimes, [selected ?? '']: Date.now() }; helpExpanded = true; helpError = '';
     const revision = ++helpGeneration, conversation = selected;
     await scrollPrivate();
     helpCommands = viewCommands(!!selected);
@@ -388,6 +416,10 @@
     catch (error) { if (running) connectionFailed(error); }
   }
   function connectionFailed(error: unknown) { offline = true; connectionError = chatError(error); }
+  function clearPrivateView() {
+      invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
+      generation++; searchGeneration++; views.clear(); helpVisible = false; helpTimes = {}; collapseHelp(); presenceActions = {}; promptStep = null; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
+  }
   async function refresh() {
     const revision = ++snapshotGeneration;
     const response = await transport.request({ kind: 'snapshot' });
@@ -397,10 +429,10 @@
     if (snapshot && snapshot.instance.id !== next.instance.id) { discardInvitations?.(); selectedNetwork = undefined; }
     const changed = snapshot?.revision !== next.revision;
     if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && (snapshot.instance.bootId !== next.instance.bootId || snapshot.instance.id !== next.instance.id))) {
-      invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
-      generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptStep = null; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
+      clearPrivateView();
     }
     snapshot = next;
+
     if (!next.instance.locked) {
       resultStore.restore(next.operations ?? [], (conversation, instance) => conversation ? transport.networkFor(conversation) ?? '' : networks.some(n => n.id === instance) ? instance : transport.primary() ?? '');
       syncResults();
@@ -409,7 +441,7 @@
     if (!next.instance.locked && !networkStatus) void refreshNetwork();
     if (workspaceReady && transport.pendingOperations) {
       try {
-        savedOperations = transport.pendingOperations();
+        savedOperations = transport.pendingOperations().filter(h => !pending[h.operation.id]);
         for (const handle of savedOperations) {
           const id = handle.operation.id;
           const activity = Object.values(presenceActions).find(a => a.id === id);
@@ -556,17 +588,27 @@
       if (response.notice) notice = response.notice;
       if (response.conversation && selected === origin) await select(response.conversation);
     } else if (response.kind === 'completed' && !locked) completions = response.items;
-    // Submission has already completed. Refresh failure must not turn it into a failed send.
-    await refreshInBackground();
+    if (response.kind === 'instance' && response.instance.locked) {
+      snapshotGeneration++; clearPrivateView();
+      if (snapshot) snapshot = { ...snapshot, instance: response.instance, conversations: [], operations: [], activity: [] };
+    }
+    if (response.kind === 'snapshot') {
+      snapshotGeneration++;
+      if (response.snapshot.instance.locked) clearPrivateView();
+      snapshot = response.snapshot;
+
+    }
+    // Confirmed replies are immediately visible; a projection refresh is independent.
+    void refreshInBackground();
   }
   async function operation(request: Request) {
     const scope = request.kind === 'submit' ? request.conversation ?? '' : null;
-    if (lifecycleBusy || (scope !== null && pending[scope])) return false;
+    if (lifecycleBusy || (request.kind === 'submit' && (pending[request.operation_id] || sendingFull))) return false;
     if (request.kind === 'lock' || request.kind === 'disconnect' || (request.kind === 'submit' && ['/lock', '/disconnect', '/quit'].includes(request.text.trim()))) discardPicker();
     const origin = selected;
     const result = request.kind === 'submit' ? beginResult(request.operation_id, request.conversation, request.text) : undefined;
     if (scope === null) lifecycleBusy = true;
-    else pending = { ...pending, [scope]: snapshot?.conversations.find(c => c.id === scope)?.name ?? 'Status' };
+    else if (request.kind === 'submit') pending = { ...pending, [request.operation_id]: scope };
     if (request.kind === 'submit') dismissFailure(request.operation_id);
     notice = '';
     try {
@@ -577,7 +619,7 @@
       return true;
     }
     catch (error) { if (!running || (locked && request.kind === 'submit')) return false; const failure = chatError(error); if (result) { resultStore.error(result, failure.code, failure.message); syncResults(); } if (request.kind === 'submit' && !locked) failures = [...failures, { request, code: failure.code, message: failure.message }]; else notice = failure.message; return false; }
-    finally { if (scope === null) lifecycleBusy = false; else { const remaining = { ...pending }; delete remaining[scope]; pending = remaining; } }
+    finally { if (scope === null) lifecycleBusy = false; else { const remaining = { ...pending }; if (request.kind === 'submit') delete remaining[request.operation_id]; pending = remaining; } }
   }
   async function send(text = draft) {
     if (!text || !workspaceReady) return;
@@ -597,13 +639,14 @@
       else notice = 'Use /font, /font fixedsys or /font readable.';
       return;
     }
-    if (busy) return;
+    if (busy || sendingFull) { notice = 'The outgoing queue is full. Your draft is kept; send it when capacity becomes available.'; return; }
     const error = inputError(text, text.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES);
     if (error) { notice = error; return; }
     const request: Request = { kind: 'submit', operation_id: crypto.randomUUID(), conversation: selected, text };
     if (text === draft) draft = '';
     completions = []; historyPosition = undefined;
-    await operation(request);
+    const completed = await operation(request);
+    if (!completed && !draft && selected === request.conversation && failures.some(f => f.request.operation_id === request.operation_id && ['busy', 'rejected', 'invalid_argument'].includes(f.code))) draft = text;
   }
   async function checkSaved(id: string, capturedKey?: string) {
     if (!transport.checkOperation || checkingSaved[id]) return;
@@ -809,7 +852,7 @@
     {#if nativeShell}<div class="drag-region" role="presentation" onpointerdown={event => { if (event.button === 0) void nativeShell?.drag(); }} ondblclick={() => void nativeShell?.maximize()}></div>{/if}
       <button class="network-button" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
-    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span>{#if active?.topic}<span class="header-topic">{active.topic}</span>{/if}</button>{:else}<span class="active-title">{locked ? 'Welcome' : 'Connect to GChat'}</span>{/if}
+
     <nav class="header-actions" aria-label="Chat actions">
       <button class="help-button" disabled={locked || !networkAccepted} aria-label="Help and commands" title="Help and commands" onclick={() => void showHelp()}>?</button>
       {#if nativeShell && !nativeShell.mac}<div class="window-controls"><button aria-label="Minimize window" title="Minimize" onclick={() => void nativeShell?.minimize()}>−</button><button aria-label="Maximize or restore window" title="Maximize or restore" onclick={() => void nativeShell?.maximize()}>□</button><button aria-label="Close window" title="Close window (receiving continues)" onclick={() => void nativeShell?.close()}>×</button></div>{/if}
@@ -850,6 +893,7 @@
       <div class="channel-actions"><button class="circle" aria-label="Join or create a channel" title="Join or create a channel" disabled={busy} onclick={() => openDialog('choose')}>+</button></div>
     </aside>{/if}
     <main class="conversation" inert={navigationModal}>
+      <div class="conversation-heading">    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>{#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}{/if}</div>
       {#if !locked && snapshot?.providerErrors?.length}<div class="provider-errors" role="status">{#each snapshot.providerErrors as error}<p>{error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>{/each}<button onclick={() => void send('/refresh')}>Reconnect provider</button></div>{/if}
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
       {#if pendingInvitation && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation ?? ''; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); }}>Review invitation</button><button onclick={() => consumeInvitation?.()}>Dismiss</button></div>{/if}
@@ -861,14 +905,14 @@
             <label for="gchat-password">{creating ? 'Choose a passphrase' : snapshot?.instance.protocolLocked ? 'Instance passphrase' : 'Archive passphrase'}</label>
             <input id="gchat-password" type="password" autocomplete={creating ? 'new-password' : 'current-password'} bind:value={password} minlength={creating ? 8 : undefined} maxlength="4096" required disabled={busy} />
             {#if deviceUnlock}<label class="remember-device"><input type="checkbox" aria-describedby="device-unlock-hint" bind:checked={rememberDevice} disabled={busy} />Remember on this device</label><small id="device-unlock-hint">Uses secure device storage to reconnect after suspension. /lock removes the saved credential.</small>{/if}
-            <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Opening…' : creating ? 'Create identity' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
+            <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Unlocking…' : creating ? 'Create identity' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
           </form>
         </div>
       {:else if !networkAccepted}
         <div class="welcome network-gate">
           <h1>Connect to GChat</h1>
           <p>Use an invitation to connect and start talking. A channel invitation can include everything you need.</p>
-          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('setup') : undefined} selectedFile={invitationSelection?.context === 'setup' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />
+          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} chooseFile={deviceUnlock ? () => chooseInvitation('setup') : undefined} selectedFile={invitationSelection?.context === 'setup' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />
           {:else}<p role="status">{networkError || networkStatus?.message || 'Checking network setup…'}</p><button class="primary" onclick={() => void refreshNetwork()}>Retry</button>{/if}
         </div>
       {:else}
@@ -884,8 +928,27 @@
             {@const action = message.body.startsWith('\u0001ACTION ') && message.body.endsWith('\u0001')}
             {#if !index || new Date(timeline[index - 1].timestamp * 1000).toLocaleDateString() !== date}<div class="date">{date}</div>{/if}
             {#if selected && unreadMarkers[selected] === message.id}<div class="unread-divider">New messages</div>{/if}
-            <div class="message" class:mine={message.mine}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : `<${message.nickname}>`}</span><span class="body">{action ? message.body.slice(8, -1) : message.body}{#if message.delivery === 'local_accepted'}<small class="acceptance" title="Accepted by this instance; recipient delivery is not confirmed"> · accepted locally</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
-            {:else if item.activity}<div class="activity"><time>[{time(item.timestamp)}]</time> {item.activity.text}</div>{/if}
+            <div class="message" class:mine={message.mine}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : `<${message.nickname}>`}</span><span class="body"><MessageText text={action ? message.body.slice(8, -1) : message.body} members={active?.members ?? []} />{#if message.delivery}<small class="acceptance" title={message.delivery === 'delivered' ? 'Acknowledged by the recipients of this message; not a read receipt' : 'Accepted by this instance; recipient delivery is not confirmed'}> · {message.delivery === 'delivered' ? 'delivered' : 'accepted locally'}</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
+            {:else if item.activity}<div class="activity"><time>[{time(item.timestamp)}]</time> {item.activity.text}</div>
+            {:else if item.result}
+              {@const result = item.result}
+              <div class="private-line" class:mine={!!result.body} data-operation={result.id}>
+                {#if result.body}<time>[{time(item.timestamp)}]</time> <strong>You</strong> <span>{result.body}</span>{:else}<small>Only you</small> · {result.action}{/if}
+                <small role="status"> · {result.state === 'pending' ? (result.action === '/join' ? 'Connecting and waiting for channel confirmation…' : result.body ? 'Sending…' : 'Working…') : result.state === 'complete' ? 'Accepted locally' : result.state === 'unknown' ? 'Checking outcome…' : 'Not sent'}</small>
+                <button onclick={() => { utility = null; cancelPrompt(); resultKey = result.key; }}>Details</button>
+                {#if result.output}<CommandResult output={result.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} />{/if}
+              </div>
+            {:else if item.transfer}
+              {@const transfer = item.transfer}
+              {@const file = fileState.snapshot?.files.find(f => f.id === transfer.id)}
+              <div class="private-line transfer" aria-label={`Transfer: ${transfer.name}`}><strong>{transfer.name}</strong>
+                <p role="status">{transfer.pending ? 'Starting…' : transfer.error || (file?.state === 'complete' ? 'Downloaded · shared while unlocked' : file?.state.replaceAll('_', ' ') || 'Checking transfer…')}</p>
+                <progress aria-label={`Verified progress for ${transfer.name}`} value={Number(file?.verified_bytes ?? 0)} max={Math.max(1, Number(file?.size_bytes ?? 1))}></progress>
+                <small>{Number(file?.verified_bytes ?? 0).toLocaleString()} / {Number(file?.size_bytes ?? 0).toLocaleString()} bytes verified</small>
+                {#if file?.state === 'complete' && fileController && fileAccess}<button disabled={fileState.busy} onclick={() => fileController?.save(file)}>Save file…</button>{#if fileState.notice}<p role="status">{fileState.notice}</p>{/if}{#if fileState.error}<p role="alert">{fileState.error}</p>{/if}{/if}
+                {#if transfer.error && fileController}<button onclick={() => fileController?.act({ action: 'accept', id: transfer.id })}>Check and retry</button>{/if}
+              </div>
+            {:else if item.help}          {#if item.help}<section class="private-line help-output" aria-label="Only you: help" bind:this={helpRegion}><button class="help-disclosure" aria-expanded={helpExpanded} aria-controls="command-help" onclick={() => helpExpanded ? collapseHelp() : void showHelp()}><span aria-hidden="true">{helpExpanded ? '⌄' : '›'}</span> Commands</button>{#if helpExpanded}<div id="command-help"><CommandResult output={{ kind: 'help', commands: helpCommands }} helpHeading={false} choose={chooseChannel} {prepareCommand} />{#if helpError}<p role="status">{helpError}</p>{/if}<p class="help-keys">Enter sends · Shift+Enter adds a line · Tab completes · Alt+←/→ changes conversation · Escape cancels.</p></div>{/if}</section>{/if}{/if}
           {/each}
       {#if searchOpen && selected && !locked}
         <section class="search private-line" aria-label="Find in conversation">
@@ -897,14 +960,7 @@
           {#each searchResults as message (message.id)}<p><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> &lt;{message.nickname}&gt; {message.body}</p>{/each}
         </section>
       {/if}
-          {#if helpVisible}<section class="private-line help-output" aria-label="Only you: help" bind:this={helpRegion}><button class="help-disclosure" aria-expanded={helpExpanded} aria-controls="command-help" onclick={() => helpExpanded ? collapseHelp() : void showHelp()}><span aria-hidden="true">{helpExpanded ? '⌄' : '›'}</span> Commands</button>{#if helpExpanded}<div id="command-help"><CommandResult output={{ kind: 'help', commands: helpCommands }} helpHeading={false} choose={chooseChannel} {prepareCommand} />{#if helpError}<p role="status">{helpError}</p>{/if}<p class="help-keys">Enter sends · Shift+Enter adds a line · Tab completes · Alt+←/→ changes conversation · Escape cancels.</p></div>{/if}</section>{/if}
-      {#if workspaceReady && results.some(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? ''))}
-        <div class="local-results" aria-label="Only you: command results">
-          {#each results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '') && (r.output || r.state !== 'complete')).slice(-30) as result (result.key)}
-            <div class="private-line"><small>Only you</small> · {result.action} · {result.state === 'unknown' ? 'Outcome not confirmed' : result.state}<button onclick={() => { utility = null; cancelPrompt(); resultKey = result.key; void scrollPrivate(); }}>Details</button>{#if result.output}<CommandResult output={result.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} />{/if}</div>
-          {/each}
-        </div>
-      {/if}
+
   {#if resultDetails && !locked}
     <section class="private-detail" aria-label="Operation details">
       <header><h2 id="operation-title">{resultDetails.action} · Details</h2><button aria-label="Close details" onclick={() => { resultKey = null; composer?.focus(); }}>Close</button></header>
@@ -917,7 +973,7 @@
   {/if}
           {#if dialog}<section class="private-line" aria-label="Only you: add a channel"><small>Only you · {dialog === 'choose' ? 'Add a channel' : dialog === 'create' ? 'Create a channel' : 'Join a channel'}</small><button aria-label="Cancel private prompt" onclick={cancelPrompt}>×</button>
             {#if dialog === 'choose'}<p><button onclick={() => openDialog('join')}>Join with an invitation</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button onclick={() => openDialog('create')}>Create a channel</button>{/if}</p>
-            {:else if dialog === 'join' && !joiningPublic}<NetworkSetup bind:this={joinSetup} privateComposer {transport} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} initialInvitation={incomingInvitation} chooseFile={deviceUnlock ? () => chooseInvitation('join') : undefined} selectedFile={invitationSelection?.context === 'join' ? invitationSelection : undefined} fileConsumed={invitationConsumed} /><button onclick={() => void loadDirectory()}>Browse public channels</button>{#if browse && directory}<CommandResult output={directory} choose={chooseChannel} {prepareCommand} />{/if}
+            {:else if dialog === 'join' && !joiningPublic}<NetworkSetup bind:this={joinSetup} privateComposer {transport} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} initialInvitation={incomingInvitation} chooseFile={deviceUnlock ? () => chooseInvitation('join') : undefined} selectedFile={invitationSelection?.context === 'join' ? invitationSelection : undefined} fileConsumed={invitationConsumed} /><button onclick={() => void loadDirectory()}>Browse public channels</button>{#if browse && directory}<CommandResult output={directory} choose={chooseChannel} {prepareCommand} />{/if}
             {:else}<p>{promptStep === 'name' ? 'Channel name? Type it below.' : promptStep === 'visibility' ? 'Private or public? Both are encrypted; public discovery requires a separate directory publication.' : promptStep === 'nickname' ? 'Your nickname in this channel?' : dialog === 'create' ? 'Ready to create this channel?' : 'Ready to join this channel?'}</p>
               {#if promptStep === 'visibility'}<button onclick={() => void answerPrompt('private')}>Private</button><button onclick={() => void answerPrompt('public')}>Public</button>{/if}
               {#if promptStep === 'confirm'}<p>{destination} · {visibility} · {nickname}</p><button disabled={joinBusy} onclick={() => void join()}>{dialog === 'create' ? 'Create channel' : 'Join channel'}</button>{/if}
@@ -935,7 +991,7 @@
           {#if completions.length}<div class="completions" aria-label="Command completions">{#each completions as item}<button type="button" onclick={() => { draft = item.text + ' '; completions = []; composer?.focus(); }}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
           {#if !dialog && selected && fileAccess && fileController && active?.kind !== 'archive'}<button class="attach" type="button" aria-label="Share a file" title="Share a file" disabled={fileState.busy} onclick={() => chooseFile()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a7 7 0 0 1 10 10l-9 9" /></svg></button>{/if}
           <textarea bind:this={composer} bind:value={draft} aria-label={dialog ? "Private answer" : "Message or command"} aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={dialog ? 'Private answer · /cancel to return to your draft' : active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} oninput={() => { completions = []; historyPosition = undefined; }}></textarea>
-          <button class="send" type="submit" disabled={!draft || !!draftError || (!dialog && busy && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : dialog ? 'Continue' : 'Send'}</button>
+          <button class="send" type="submit" disabled={!draft || !!draftError || (!dialog && (busy || sendingFull) && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : dialog ? 'Continue' : 'Send'}</button>
         </form>
       {/if}
     </main>
@@ -961,7 +1017,7 @@
         {#if networks.length > 1}<label for="network-detail-selection">Network</label><select id="network-detail-selection" bind:value={selectedNetwork} onchange={() => { transport.select(selectedNetwork); networkGeneration++; networkStatus = networks.find(n => n.id === selectedNetwork)?.status; }}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
         <p role="status">{networkStatus?.message || networkError || connectionLabel}</p>
         {#if networkError}<p role="alert">{networkError}</p>{/if}
-        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
+        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
         <section class="activity-settings" aria-label="Activity sharing">
           <h3>Activity sharing: {presenceEnabled ? 'On' : 'Off'}</h3>
@@ -1050,14 +1106,17 @@
   .brand { display:inline-flex; align-items:center; gap:8px; flex:none; }
   .brand :global(.ghost-mark) { --ghost-mark-size:18px; }
   .brand strong { color:var(--accent); letter-spacing:1px; font-size:20px; line-height:1; }
-  .active-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .active-title { flex:0 1 auto; max-width:100%; min-height:44px; padding:4px 8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
   .header-actions { display:flex; align-items:center; flex:none; gap:2px; }
   .header-actions button { white-space:nowrap; }
   .connection-dot { color:#bd9866; font-size:10px; }
   .connection-dot.connected { color:#91b5a0; }
 
 
-  .header-topic { color:var(--muted); font-weight:normal; margin-left:14px; }
+  .conversation-heading { display:flex; align-items:center; flex-wrap:wrap; gap:0 8px; padding:0 var(--content-inset, 20px); min-width:0; }
+  .conversation-heading:empty { display:none; }
+  .header-actions { margin-left:auto; }
+  .header-topic { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; color:var(--muted); font-weight:normal; margin-left:0; }
   .workspace { display:flex; flex:1; min-height:0; position:relative; }
   .channels { background:#22262b; width:200px; flex-shrink:0; border-right:1px solid var(--line); display:none; flex-direction:column; padding-top:8px; }
   .channels.open { display:flex; position:absolute; inset:0 auto 0 0; z-index:4; width:min(300px,85vw); }
@@ -1092,7 +1151,7 @@
   .readable .transcript,.readable .composer { font-family:ui-monospace,'SFMono-Regular',Consolas,monospace; line-height:1.5; }
   .transcript { flex:1; overflow:auto; min-height:0; padding:16px 54px; scrollbar-color:#5a6561 #242728; }
   .activity { color:var(--muted); margin:10px 0; overflow-wrap:anywhere; }
-  .message { display:grid; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
+  .message { display:block; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
   time { color:#858f8e; font-size:14px; }
   .nick { color:#a9c7e8; max-width:24ch; overflow-wrap:anywhere; }
   .mine .nick { color:var(--accent); }
@@ -1103,8 +1162,6 @@
   .older { display:block; margin:0 auto 12px; border-color:var(--line); color:var(--accent); }
   .unread-divider { color:var(--accent); border-top:1px solid var(--accent); text-align:center; margin:12px 0; }
   .jump { align-self:center; min-height:40px; color:var(--accent); }
-  .local-results { color:var(--muted); }
-  .local-results button { color:var(--accent); }
   .operation-details dd { overflow-wrap:anywhere; }
 
 
@@ -1163,4 +1220,10 @@
   @media(pointer:coarse) { .circle,.channels .circle { width:44px; height:44px; min-height:44px; }.edge.left { left:1px; }.edge.right { right:1px; } }
   .titlebar { position:relative; }.gchat.mac { --native-inset:72px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region):not(.network-button) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
   .concealed { visibility:hidden; pointer-events:none; }
+  .message { display:block; padding:3px 0; overflow-wrap:anywhere; }
+  .message time { display:inline; margin-right:10px; }
+  .message .nick { display:inline; margin-right:8px; }
+  .message .body { display:inline; white-space:pre-wrap; }
+  .message.mine .nick, .private-line.mine strong { color:var(--accent); font-weight:bold; }
+  .transfer progress { width:100%; }
 </style>

@@ -34,3 +34,30 @@ The final cache compatibility change passed all 15 ordinary swarm cases,
 the GChat file/reopen regression, file-transfer Clippy and native checks.
 The separate 1 GiB swarm case remains excluded from this UI check. Earlier
 full-suite evidence is retained separately from these final affected-path checks.
+
+
+Responsiveness update (2026-09-22, candidate validation kept separately):
+
+- Unlock publishes authenticated local state before file-cache initialization and
+  retained-network restoration. The owned worker coordinates with lock/shutdown;
+  wrong-passphrase checks and encrypted stores are unchanged.
+- Ordinary sends have independent UI operations and shared service admission,
+  bounded to 32 active UI submissions. MLS wire ordering and durable native
+  admission remain authoritative. No uncertain message is automatically resent.
+- Recipient-tracked outgoing archive records use the protocol message ID. Solo
+  channel notes keep a local archive ID and cannot claim recipient delivery. Additive encrypted
+  JSON metadata binds the UI operation and authenticated recipient ACK. Positional
+  archive bytes stay compatible; old messages with unknown status stay unknown.
+- Live RPC watchers do not also appear as interrupted saved operations. Retained
+  operations remain recoverable by their original ID after detachment.
+- Channel/topic move below the app bar on every width. Message names and bodies
+  share a line; self and roster mentions are distinguished without injecting HTML.
+- Help, invitation outputs and transfer progress take their chronological place
+  in the conversation. Downloads start visibly, coalesce double taps and only
+  retry transient acceptance/resume after inspecting the same retained transfer.
+- Invitations share as a file; QR/relay-hosted short invitations remain follow-up
+  work. Per-hop delivery signals are not added; recipient ACK is not a read receipt.
+
+Cluster test receipts and mobile artifact receipts must name the exact candidate.
+Existing installed applications and previous release receipts are not upgraded
+by these source changes alone.
