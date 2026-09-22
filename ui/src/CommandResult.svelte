@@ -1,22 +1,37 @@
 <script lang="ts">
   import type { CommandOutput, DirectoryEntry } from './api';
-  let { output, choose }: { output: CommandOutput; choose: (entry: DirectoryEntry) => void } = $props();
+  let { output, choose, saveInvitation }: { output: CommandOutput; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null> } = $props();
   let feedback = $state('');
   async function copy(link: string) {
     try { await navigator.clipboard.writeText(link); feedback = 'Invitation copied'; }
     catch { feedback = 'Select and copy the complete invitation below, or save it as a file.'; }
   }
+  let busy = $state(false);
   async function share(link: string, channel: string) {
-    const file = new File([link], 'gchat-invitation.txt', { type: 'text/plain' });
+    busy = true; feedback = '';
     try {
-      if (navigator.canShare?.({ files: [file] })) await navigator.share({ title: `Join #${channel}`, files: [file] });
-      else {
-        const url = URL.createObjectURL(file), anchor = document.createElement('a');
-        anchor.href = url; anchor.download = file.name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-        feedback = 'Invitation saved as a file';
-      }
-    } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) feedback = 'Sharing failed. Copy the invitation or save it again.'; }
+      await navigator.share({ title: `Join #${channel}`, text: link });
+      feedback = 'Invitation handed to the share destination.';
+    } catch (error) {
+      feedback = error instanceof DOMException && error.name === 'AbortError' ? 'Sharing cancelled.' : 'Sharing failed. You can copy the invitation instead.';
+    } finally { busy = false; }
   }
+  async function save(link: string) {
+    busy = true; feedback = '';
+    try {
+      if (saveInvitation) {
+        const destination = await saveInvitation(link);
+        feedback = destination ? `Saved to ${destination}` : 'Save cancelled.';
+      } else {
+        const url = URL.createObjectURL(new Blob([link], { type: 'text/plain' }));
+        const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'gchat-invitation.txt'; anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        feedback = 'Download requested: gchat-invitation.txt. Check your browser downloads for its location.';
+      }
+    } catch (error) { feedback = `Invitation was not saved: ${error instanceof Error ? error.message : String(error)}`; }
+    finally { busy = false; }
+  }
+
 </script>
 <section class="result" aria-label="Command result">
   {#if output.kind === 'help'}
@@ -30,9 +45,12 @@
     <h2>Invite to #{output.channel.replace(/^#/, '')}</h2>
     <p>Single use · Expires {new Date(output.expires * 1000).toLocaleString()}</p>
     {#if output.localOnly}<p>This invitation is reachable only on this computer. Configure a relay before sharing with another computer.</p>{/if}
-    <button onclick={() => void copy(output.link)}>Copy invitation</button>
-    <button onclick={() => void share(output.link, output.channel)}>Share / Save file</button>
+    {#if output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}
+    <button disabled={busy} onclick={() => void copy(output.link)}>Copy invitation</button>
+    {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(output.link, output.channel)}>Share…</button>{/if}
+    <button disabled={busy} onclick={() => void save(output.link)}>{saveInvitation ? 'Save as…' : 'Download file'}</button>
     <details><summary>Complete invitation</summary><textarea aria-label="Complete invitation" readonly value={output.link} rows="3"></textarea></details>
+    {/if}
     {#if feedback}<p role="status">{feedback}</p>{/if}
   {:else if output.kind === 'text' || output.kind === 'status'}
     <h2>{output.kind === 'status' ? 'Status' : output.title}</h2><pre>{output.text}</pre>

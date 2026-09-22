@@ -167,6 +167,8 @@ impl ChatService {
         candidate.operations.insert(
             id,
             OperationRecord {
+                action: String::new(),
+                conversation: None,
                 digest: digest.into(),
                 at,
                 response: None,

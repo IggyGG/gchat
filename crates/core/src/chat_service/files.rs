@@ -122,6 +122,7 @@ fn snapshot(snapshot: api::Snapshot, archive: &ArchiveData, filter: Option<&str>
                 }
                 Some(FileInfo {
                     id: hex(&view.id),
+                    aliases: None,
                     conversation,
                     name: view.name,
                     size_bytes: view.size_bytes.to_string(),
@@ -180,7 +181,7 @@ impl ChatService {
                 name,
                 size_bytes: number(&size_bytes)?,
             },
-            FileRequest::Commit { id: handle } => api::Request::Commit { id: id(&handle)? },
+            FileRequest::Commit { id: handle } => api::Request::CommitReusing { id: id(&handle)? },
             FileRequest::Accept { id: handle } => api::Request::Accept { id: id(&handle)? },
             FileRequest::Pause { id: handle } => api::Request::Pause { id: id(&handle)? },
             FileRequest::Resume { id: handle } => api::Request::Resume { id: id(&handle)? },
@@ -209,6 +210,28 @@ impl ChatService {
         // Serialize against archive locking so a finished lock cannot admit another write.
         match files.request(operation).await? {
             api::Reply::Snapshot(value) => Ok(snapshot(value, &archive, filter.as_deref())),
+            api::Reply::Committed {
+                original,
+                canonical,
+                snapshot: value,
+            } => {
+                let mut value = snapshot(value, &archive, filter.as_deref());
+                if let Some(file) = value.files.iter_mut().find(|f| f.id == hex(&canonical)) {
+                    file.aliases = Some(vec![hex(&original)]);
+                    let mut candidate = unlocked.state.clone();
+                    if candidate.shared_files.insert(file.id.clone()) {
+                        record_activity(
+                            &mut candidate,
+                            file.conversation.clone(),
+                            "file",
+                            format!("File shared: {} ({} bytes)", file.name, file.size_bytes),
+                        );
+                        unlocked.store.save(&candidate)?;
+                        unlocked.state = candidate;
+                    }
+                }
+                Ok(value)
+            }
             _ => Err("Invalid file service reply".into()),
         }
     }
@@ -278,8 +301,8 @@ impl ChatService {
             loop {
                 tokio::select! { _ = stopped.changed() => break, _ = interval.tick() => {} }
                 let Some(service) = weak.upgrade() else { break };
-                let session = tokio::select! { _ = stopped.changed() => break, session = service.session.lock() => session };
-                let Some(unlocked) = session.as_ref().filter(|s| !s.ui_locked) else {
+                let mut session = tokio::select! { _ = stopped.changed() => break, session = service.session.lock() => session };
+                let Some(unlocked) = session.as_mut().filter(|s| !s.ui_locked) else {
                     continue;
                 };
                 let Some(files) = &unlocked.files else {
@@ -291,6 +314,40 @@ impl ChatService {
                 };
                 let archive = unlocked.client.file_context();
                 let mut changed = false;
+                let mut candidate = unlocked.state.clone();
+                // Track only retained cache entries, not every file ever encountered.
+                let retained: std::collections::BTreeSet<_> =
+                    snapshot.files.iter().map(|f| hex(&f.id)).collect();
+                candidate.shared_files.retain(|id| retained.contains(id));
+                for file in &snapshot.files {
+                    if !matches!(
+                        file.status,
+                        api::Status::Importing | api::Status::Failed | api::Status::Cancelled
+                    ) {
+                        if let Some(context) = conversation(&archive, &file.scope) {
+                            if candidate.shared_files.insert(hex(&file.id))
+                                && unlocked.state.files_observed
+                            {
+                                record_activity(
+                                    &mut candidate,
+                                    context,
+                                    "file",
+                                    format!(
+                                        "File shared: {} ({} bytes)",
+                                        file.name, file.size_bytes
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
+                candidate.files_observed = true;
+                if (candidate.shared_files != unlocked.state.shared_files
+                    || !unlocked.state.files_observed)
+                    && unlocked.store.save(&candidate).is_ok()
+                {
+                    unlocked.state = candidate;
+                }
                 for file in snapshot.files {
                     if file.scope.participants.len() != 2
                         || matches!(

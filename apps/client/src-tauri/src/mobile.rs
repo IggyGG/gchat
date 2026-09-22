@@ -516,6 +516,17 @@ async fn chat_file_save(
     crate::mobile_export::save(&app, state.host.clone(), &id).await
 }
 
+#[tauri::command]
+#[cfg(any(target_os = "android", target_os = "ios"))]
+async fn chat_invitation_save(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<Attachment>>,
+    invitation: String,
+) -> Result<Option<String>, String> {
+    state.require_foreground()?;
+    crate::mobile_export::save_invitation(&app, invitation).await
+}
+
 #[cfg(any(target_os = "android", target_os = "ios"))]
 pub fn run() {
     tauri::Builder::default()
@@ -573,6 +584,7 @@ pub fn run() {
             chat_rpc,
             chat_file_io,
             chat_file_save,
+            chat_invitation_save,
             chat_mobile_unlock,
             chat_mobile_available,
             chat_mobile_push_status,

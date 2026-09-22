@@ -77,3 +77,23 @@ authenticated migration and must not be silently reopened as GC/2 sessions.
 
 This option does not constitute a production migration decision or privacy
 qualification. Mobile qualification remains deferred.
+
+
+## Saving and repeated shares
+
+Native clients ask for an export destination. They report the returned path or
+document URI only after the write succeeds; cancellation is neutral. Invitation
+**Share…** and **Save as…** are separate actions. Browser-only downloads report a
+download request rather than claiming a known saved path.
+
+A repeated local import can reuse an existing complete, verified file in the
+same channel/private-conversation scope. Size and SHA-256 must match, retained
+bytes are reverified, and the original import ID remains a durable alias for
+commit recovery. Filename equality is insufficient. Existing encrypted pieces
+remain bound to their original manifest; they are never transplanted to a new
+share ID or another scope. Local verification may still read the selected file.
+
+An advertised matching digest without a verified local copy is not sufficient
+for this reuse path. Independently encrypted offers that have not been verified
+locally remain distinct transfers. Offering peers and peers that supplied
+verified pieces remain separate counts.

@@ -61,6 +61,9 @@ struct Inner {
     catalog_https_only: AtomicBool,
     events: broadcast::Sender<ClientEvent>,
     dirty: AtomicBool,
+    presence_enabled: AtomicBool,
+    presence_control: tokio::sync::Mutex<()>,
+    recent_members: Mutex<BTreeMap<(String, [u8; 32]), std::time::Instant>>,
     background: Mutex<Vec<tokio::task::JoinHandle<()>>>,
 }
 
@@ -431,6 +434,9 @@ impl ClientHandle {
             catalog_https_only: AtomicBool::new(true),
             events,
             dirty: AtomicBool::new(false),
+            presence_enabled: AtomicBool::new(false),
+            presence_control: tokio::sync::Mutex::new(()),
+            recent_members: Mutex::new(BTreeMap::new()),
             background: Mutex::new(Vec::new()),
         });
         let handle = Self(inner);
@@ -439,7 +445,49 @@ impl ClientHandle {
         }
         spawn_archiver(&handle.0);
         spawn_periodic_save(&handle.0);
+        spawn_presence(&handle.0);
         Ok(handle)
+    }
+
+    pub async fn configure_presence(&self, enabled: bool) -> Result<(), String> {
+        let _control = self.0.presence_control.lock().await;
+        self.0.presence_enabled.store(enabled, Ordering::Relaxed);
+        if !enabled {
+            self.0.recent_members.lock().unwrap().clear();
+        }
+        let mut failure = None;
+        for channel in self.archive_snapshot().channels.iter().filter(|c| c.active) {
+            if let Err(error) = self
+                .0
+                .sdk
+                .set_channel_presence_opt_in(&channel.protocol_name, enabled)
+                .await
+            {
+                // The SDK emits this error only after committing the local
+                // opt-out. An offline peer must not prevent profile reopening;
+                // its last activity signal expires normally. Other errors,
+                // including a failed local save, remain failures.
+                if !enabled
+                    && matches!(&error, gcoms::sdk::SdkError::Runtime(message)
+                    if message.starts_with("presence disabled locally; withdrawal failed:"))
+                {
+                    eprintln!("Activity sharing disabled locally; peer withdrawal unavailable");
+                } else if failure.is_none() {
+                    failure = Some(error.to_string());
+                }
+            }
+        }
+        failure.map_or(Ok(()), Err)
+    }
+    pub fn recently_active(&self, channel: &str, member: [u8; 32]) -> bool {
+        self.0.presence_enabled.load(Ordering::Relaxed)
+            && self
+                .0
+                .recent_members
+                .lock()
+                .unwrap()
+                .get(&(channel.to_string(), member))
+                .is_some_and(|at| at.elapsed() < Duration::from_secs(90))
     }
 
     pub fn safety_number(&self) -> &str {
@@ -1314,12 +1362,75 @@ fn validate_descriptor(
     Ok(())
 }
 
+fn spawn_presence(inner: &Arc<Inner>) {
+    let weak = Arc::downgrade(inner);
+    let task = tokio::spawn(async move {
+        let mut timer = tokio::time::interval(Duration::from_secs(60));
+        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        loop {
+            timer.tick().await;
+            let Some(inner) = weak.upgrade() else { break };
+            if !inner.presence_enabled.load(Ordering::Relaxed) {
+                continue;
+            }
+            let channels: Vec<_> = inner
+                .data
+                .lock()
+                .unwrap()
+                .channels
+                .iter()
+                .filter(|c| c.active)
+                .map(|c| c.protocol_name.clone())
+                .collect();
+            for channel in channels {
+                let _control = inner.presence_control.lock().await;
+                if !inner.presence_enabled.load(Ordering::Relaxed) {
+                    break;
+                }
+                let sdk = inner.sdk.clone();
+                let _ = tokio::time::timeout(Duration::from_secs(5), async {
+                    sdk.set_channel_presence_opt_in(&channel, true).await?;
+                    sdk.set_channel_presence(
+                        &channel,
+                        gcoms::sdk::PresenceMode::RecentlyReachable,
+                        90,
+                    )
+                    .await
+                })
+                .await;
+            }
+        }
+    });
+    inner.background.lock().unwrap().push(task);
+}
+
 fn spawn_archiver(inner: &Arc<Inner>) {
     let mut source = inner.sdk.subscribe_events();
     let weak = Arc::downgrade(inner);
     let task = tokio::spawn(async move {
         while let Some(event) = source.recv().await {
             let Some(inner) = weak.upgrade() else { break };
+            if let ClientEvent::ChannelPresenceChanged {
+                channel,
+                member_id,
+                reachability,
+            } = &event
+            {
+                let mut recent = inner.recent_members.lock().unwrap();
+                recent.retain(|_, at| at.elapsed() < Duration::from_secs(90));
+                let key = (channel.clone(), *member_id);
+                if inner.presence_enabled.load(Ordering::Relaxed)
+                    && *reachability == gcoms::sdk::Reachability::RecentlyReachable
+                {
+                    recent.insert(key, std::time::Instant::now());
+                } else {
+                    recent.remove(&key);
+                }
+                // Presence is deliberately RAM-only. Never persist or count it as a chat message.
+                drop(recent);
+                let _ = inner.events.send(event);
+                continue;
+            }
             if matches!(event, ClientEvent::ChannelRosterChanged { .. }) {
                 let _ = ClientHandle(inner.clone()).reconcile_channels().await;
             }
@@ -1329,7 +1440,8 @@ fn spawn_archiver(inner: &Arc<Inner>) {
                 continue;
             }
             archive_event(&inner, &event).await;
-            // Incoming state is durable before any UI observes the event.
+            // Attempt the archive checkpoint before notifying views. A failed save
+            // still leaves RAM state visible; it is not a durability acknowledgement.
             if let Err(error) = save_inner(&inner).await {
                 eprintln!("chat archive save failed: {error}");
             }
@@ -1834,5 +1946,47 @@ mod catalog_tests {
         oversized_server.abort();
         production.shutdown().await.unwrap();
         owner.shutdown().await.unwrap();
+    }
+}
+
+#[cfg(test)]
+mod presence_view_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn activity_is_opt_in_expires_and_is_cleared_on_disable() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::private_fs::make_private(dir.path(), true).unwrap();
+        let client = ClientHandle::create_profile_fixture(
+            &dir.path().join("profile"),
+            "test",
+            "127.0.0.1:0".parse().unwrap(),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        let key = ("room".to_string(), [9; 32]);
+        client
+            .0
+            .recent_members
+            .lock()
+            .unwrap()
+            .insert(key.clone(), std::time::Instant::now());
+        assert!(!client.recently_active("room", [9; 32]));
+        client.configure_presence(true).await.unwrap();
+        assert!(client.recently_active("room", [9; 32]));
+        client
+            .0
+            .recent_members
+            .lock()
+            .unwrap()
+            .insert(key, std::time::Instant::now() - Duration::from_secs(91));
+        assert!(!client.recently_active("room", [9; 32]));
+        client.configure_presence(false).await.unwrap();
+        assert!(client.0.recent_members.lock().unwrap().is_empty());
+        client.configure_presence(true).await.unwrap();
+        assert!(!client.recently_active("room", [9; 32]));
+        client.shutdown().await.unwrap();
     }
 }

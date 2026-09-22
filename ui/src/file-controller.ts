@@ -53,6 +53,12 @@ export class FileController {
     try {
       const prepared = await this.command({ action: 'prepare', id, conversation, name: file.name, size_bytes: String(file.size) });
       if (prepared.files.some(f => f.id === id && f.state === 'complete')) { this.update({ notice: 'File is already shared.' }); return; }
+      // A successful prepare without a visible import is a retained reuse alias.
+      // Recover its commit result instead of uploading the file again.
+      if (resumeId && !prepared.files.some(f => f.id === id)) {
+        await this.command({ action: 'commit', id });
+        this.update({ notice: 'File is already shared; the retained result was recovered.' }); return;
+      }
       for (let offset = 0, piece = 0; offset < file.size; offset += 262144, piece++) {
         this.assertAlive();
         this.update({ uploading: `${file.name} · ${Math.floor(offset / file.size * 100)}%` });
@@ -61,15 +67,16 @@ export class FileController {
         await this.access.exchange(encodeFileIo({ instance: this.instance, id, piece, upload: true }, bytes));
       }
       this.assertAlive();
-      await this.command({ action: 'commit', id });
-      this.update({ notice: 'File shared with its conversation.' });
+      const committed = await this.command({ action: 'commit', id });
+      const reused = committed.files.some(f => f.id !== id && f.aliases?.includes(id));
+      this.update({ notice: reused ? 'Already shared here. You now share the existing verified copy.' : 'File shared with its conversation.' });
     } catch (e) { this.update({ error: String(e) }); }
     finally { this.update({ busy: false, uploading: '' }); if (this.alive) await this.refresh(); }
   }
   async save(file: FileInfo) {
     if (!this.access || this.value.busy || !this.alive) return;
     this.update({ busy: true, error: '' });
-    try { this.update({ notice: `Saved to ${await this.access.save(file.id)}` }); }
+    try { const path = await this.access.save(file.id); this.update({ notice: path ? `Saved to ${path}` : 'Save cancelled.' }); }
     catch (e) { this.update({ error: String(e) }); }
     finally { this.update({ busy: false }); }
   }

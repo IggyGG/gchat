@@ -20,7 +20,7 @@
   {#if view.error}<p role="alert">{view.error}</p>{/if}
   {#each snapshot?.files.filter(f => (showAll || f.conversation === conversation) && f.state !== 'cancelled') ?? [] as file (file.id)}
     <article>
-      <div><strong>{file.name}</strong>{#if file.conversation !== conversation}<small>Another conversation</small>{/if}<small>{bytes(file.size_bytes)} · {file.state.replaceAll('_', ' ')} · {file.sources} peers{#if file.completed_by} · {file.completed_by} confirmed complete{/if}</small></div>
+      <div><strong>{file.name}</strong>{#if file.conversation !== conversation}<small>Another conversation</small>{/if}<small>{bytes(file.size_bytes)} · {file.state.replaceAll('_', ' ')} · {file.sources} offering peers{#if file.state === 'complete'} · you also share this copy{/if}{#if file.completed_by} · {file.completed_by} confirmed complete{/if}</small></div>
       {#if ['downloading', 'waiting_for_peers', 'paused', 'importing'].includes(file.state)}
         <progress aria-label={`Verified progress for ${file.name}`} value={Number(file.verified_bytes)} max={Math.max(1, Number(file.size_bytes))}></progress>
         <small>{bytes(file.verified_bytes)} verified</small>

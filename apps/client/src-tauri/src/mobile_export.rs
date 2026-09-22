@@ -320,10 +320,42 @@ mod native {
         let info = completed_file(&host, id).await?;
         let size = validated_size(&info.size_bytes, &info.verified_bytes)?;
         let staged = stage(app, host, &info).await?;
+        save_staged(app, staged, &info.name, size).await
+    }
+
+    pub async fn save_invitation(
+        app: &tauri::AppHandle,
+        invitation: String,
+    ) -> Result<Option<String>, String> {
+        if invitation.is_empty() || invitation.len() > gchat_api::MAX_NETWORK_INVITATION_BYTES {
+            return Err("Invalid invitation length".into());
+        }
+        let directory = app
+            .path()
+            .app_cache_dir()
+            .map_err(|e| e.to_string())?
+            .join("private-exports");
+        gchat_core::paths::ensure_private_dir(&directory, "private export staging")?;
+        let mut staged = tempfile::NamedTempFile::new_in(directory).map_err(|e| e.to_string())?;
+        staged
+            .write_all(invitation.as_bytes())
+            .map_err(|e| e.to_string())?;
+        staged.as_file().sync_all().map_err(|e| e.to_string())?;
+        let path =
+            save_staged(app, staged, "gchat-invitation.txt", invitation.len() as u64).await?;
+        Ok((!path.is_empty()).then_some(path))
+    }
+
+    async fn save_staged(
+        app: &tauri::AppHandle,
+        staged: tempfile::NamedTempFile,
+        name: &str,
+        size: u64,
+    ) -> Result<String, String> {
         #[cfg(target_os = "ios")]
         let mut dialog_source = {
             let app = app.clone();
-            let name = info.name.clone();
+            let name = name.to_string();
             let input = staged.reopen().map_err(|e| e.to_string())?;
             // Keep large disk copies off Tauri's async worker. The source is a
             // private complete file; passing its open handle never exposes a path to JS.
@@ -334,7 +366,7 @@ mod native {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         app.dialog()
             .file()
-            .set_file_name(&info.name)
+            .set_file_name(name)
             .save_file(move |selected| {
                 #[cfg(target_os = "ios")]
                 if let Some(path) = &selected {
@@ -346,10 +378,12 @@ mod native {
                 let _source = dialog_source;
                 let _ = sender.send(selected);
             });
-        let selected = receiver
+        let Some(selected) = receiver
             .await
             .map_err(|_| "Export destination dialog closed")?
-            .ok_or("File export cancelled or destination unavailable")?;
+        else {
+            return Ok(String::new());
+        };
         let app = app.clone();
         tokio::task::spawn_blocking(move || copy_selected(&app, staged, selected, size))
             .await
@@ -358,7 +392,7 @@ mod native {
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
-pub use native::save;
+pub use native::{save, save_invitation};
 
 #[cfg(test)]
 mod tests {

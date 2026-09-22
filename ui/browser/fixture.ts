@@ -1,4 +1,6 @@
 import { mount } from 'svelte';
+import type { OperationHandle } from '@gcoms/rpc';
+import { ChatError } from '../src/transport';
 import Workspace from '../src/Workspace.svelte';
 import type { DeviceUnlock } from '../src/device-unlock';
 import type { CommandSpec, Conversation, FileInfo, NetworkState, Request, Response, Snapshot } from '../src/api';
@@ -19,12 +21,16 @@ const requests: Request[] = [];
 let hold = false, release: (() => void) | undefined;
 let holdSnapshots = false;
 const heldSnapshots: (() => void)[] = [];
-const snapshot = (): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: [] });
+let savedId: string | undefined;
+let savedReply: Response | undefined;
+let checks = 0;
+const recovered = parameters.has('saved-operation') ? [{ id: 'saved-operation-001', instance: instance.id, conversation: 'channel/general', action: '/create', started: 1789910000, state: 'unknown', output: null, message: 'Interrupted after admission.' }] : [];
+const snapshot = (): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: [], operations: instance.locked ? [] : recovered });
 const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', used_bytes: '4096', retention_days: 7 });
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
-  requests, unlockChoices, setNetwork(value: NetworkState) { state = value; revision++; },
+  requests, unlockChoices, checks: () => checks, setNetwork(value: NetworkState) { state = value; revision++; },
   holdUpload() { hold = true; }, releaseUpload() { hold = false; release?.(); },
   getFiles: () => files, setLocked(value: boolean) { instance.locked = value; revision++; },
   suspend() { instance.locked = true; instance.protocolLocked = true; revision++; },
@@ -68,6 +74,12 @@ async function request(req: Request): Promise<Response> {
     case 'mark_read': return { kind: 'applied', conversation: req.conversation, notice: null };
     case 'complete': return { kind: 'completed', items: [] };
     case 'submit':
+      if (req.text === '/invite') {
+        savedId = req.operation_id;
+        savedReply = { kind: 'output', conversation: req.conversation, output: { kind: 'invitation', channel: 'general', link: 'GCI1-fixture-secret', expires: 2000000000, localOnly: false } };
+        const result = savedReply;
+        await delay(350); savedId = undefined; return result;
+      }
       if (req.text === '/lock' || req.text === '/disconnect') { instance.locked = true; instance.protocolLocked = req.text === '/disconnect'; revision++; }
       return { kind: 'applied', conversation: req.conversation, notice: null };
     case 'unlock': instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };
@@ -87,7 +99,11 @@ const deviceUnlock: DeviceUnlock | undefined = parameters.has('device-unlock') ?
     return { response: await request({ kind: 'unlock', passphrase, create }), warning: parameters.has('vault-failure') ? 'Secure device storage unavailable; enter your passphrase after suspension.' : undefined };
   },
 } : undefined;
-mount(Workspace, { target: document.getElementById('app')!, props: { transport: { request }, deviceUnlock, fileAccess: {
+mount(Workspace, { target: document.getElementById('app')!, props: { transport: { request,
+  pendingOperations: () => savedId ? [{ operation: { id: savedId } } as OperationHandle] : [],
+  async checkOperation() { checks++; if (savedReply) return savedReply; throw new ChatError('outcome_unknown', 'Interrupted after admission. No new result is available.'); },
+}, deviceUnlock, fileAccess: {
   async exchange() { if (hold) await new Promise<void>(resolve => release = resolve); return new Uint8Array(); },
   async save() { return '/Downloads/notes.txt'; },
+  async saveInvitation() { return parameters.has('cancel-save') ? null : '/chosen/gchat-invitation.txt'; },
 } } });

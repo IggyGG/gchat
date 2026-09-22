@@ -2,6 +2,7 @@ use gchat_api::{ChatClient, RequestEnvelope, ResponseEnvelope, VERSION};
 use gchat_core::chat_service::host::ensure_running;
 use gchat_core::chat_service::host::InstanceConfig;
 use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex;
 
 struct Attachment {
@@ -106,17 +107,57 @@ async fn chat_file_save(
     {
         return Err("Invalid export name".into());
     }
-    let destination = app
-        .path()
-        .download_dir()
-        .map_err(|e| e.to_string())?
-        .join(&file.name);
+    let (send, receive) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .set_file_name(&file.name)
+        .save_file(move |path| {
+            let _ = send.send(path);
+        });
+    let Some(destination) = receive.await.map_err(|_| "Save dialog closed")? else {
+        return Ok(String::new());
+    };
+    let destination = destination.into_path().map_err(|e| e.to_string())?;
     client.save_file(&id, &destination).await?;
     Ok(destination.display().to_string())
 }
 
+#[tauri::command]
+async fn chat_invitation_save(
+    app: tauri::AppHandle,
+    invitation: String,
+) -> Result<Option<String>, String> {
+    use std::io::Write;
+    if invitation.is_empty() || invitation.len() > gchat_api::MAX_NETWORK_INVITATION_BYTES {
+        return Err("Invalid invitation length".into());
+    }
+    let (send, receive) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .set_file_name("gchat-invitation.txt")
+        .save_file(move |path| {
+            let _ = send.send(path);
+        });
+    let Some(path) = receive.await.map_err(|_| "Save dialog closed")? else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || {
+        let mut file = tempfile::NamedTempFile::new_in(path.parent().ok_or("Invalid destination")?)
+            .map_err(|e| e.to_string())?;
+        file.write_all(invitation.as_bytes())
+            .map_err(|e| e.to_string())?;
+        file.as_file().sync_all().map_err(|e| e.to_string())?;
+        file.persist_noclobber(&path).map_err(|e| e.to_string())?;
+        Ok(Some(path.display().to_string()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let config = crate::startup::configuration(std::env::args_os())
                 .map_err(std::io::Error::other)?;
@@ -130,7 +171,8 @@ pub fn run() {
             chat_request,
             chat_rpc,
             chat_file_io,
-            chat_file_save
+            chat_file_save,
+            chat_invitation_save
         ])
         .run(tauri::generate_context!())
         .expect("gchat native application");

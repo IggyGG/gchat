@@ -18,6 +18,10 @@ export class NetworkWorkspace implements Transport {
   networks: JoinedNetwork[] = [];
   active?: string;
   private enabled = false;
+  private instances = new Map<string, string>();
+  private presence = new Map<string, boolean>();
+  instanceFor(network: string | undefined) { return this.instances.get(network ?? ''); }
+  presenceFor(network: string | undefined) { return this.presence.get(network ?? ''); }
   private lifecycle = 0;
   constructor(private base: () => Transport, private changed: (networks: JoinedNetwork[]) => void) {}
   primary() { return this.networks.find(n => n.primary)?.id; }
@@ -75,20 +79,28 @@ export class NetworkWorkspace implements Transport {
   private async aggregate(snapshot: Snapshot): Promise<Snapshot> {
     const lifecycle = this.lifecycle;
     this.enabled = snapshot.instance.capabilities.includes('networks.v1');
-    if (snapshot.instance.locked) { this.publish([]); this.active = undefined; return snapshot; }
+    if (snapshot.instance.locked) { this.publish([]); this.instances.clear(); this.presence.clear(); this.active = undefined; return snapshot; }
     if (!this.enabled) return snapshot;
     const result = await this.base().request({ kind: 'networks', request: { kind: 'list' } });
     if (lifecycle !== this.lifecycle) throw new ChatError('locked', 'Workspace changed during refresh');
     if (result.kind !== 'networks' || result.response.kind !== 'list') throw new ChatError('protocol', 'Invalid network list');
     this.publish(result.response.networks);
     this.active ??= this.primary();
-    const next = { ...snapshot, conversations: [...snapshot.conversations], inputHistory: [...snapshot.inputHistory], providerErrors: [...snapshot.providerErrors ?? []] };
+    this.instances.set(this.primary() ?? '', snapshot.instance.id);
+    this.presence.set(this.primary() ?? '', snapshot.presenceEnabled ?? false);
+    const next = { ...snapshot, conversations: [...snapshot.conversations], operations: [...snapshot.operations ?? []], activity: [...snapshot.activity ?? []], inputHistory: [...snapshot.inputHistory], providerErrors: [...snapshot.providerErrors ?? []] };
     for (const network of this.networks.filter(n => !n.primary)) {
       try {
         const response = await this.scoped(network.id, { kind: 'snapshot' });
         if (lifecycle !== this.lifecycle) throw new ChatError('locked', 'Workspace changed during refresh');
         if (response.kind !== 'snapshot') throw new Error('Invalid network snapshot');
+        this.instances.set(network.id, response.snapshot.instance.id);
+        this.presence.set(network.id, response.snapshot.presenceEnabled ?? false);
         next.conversations.push(...response.snapshot.conversations);
+        next.activity.push(...(response.snapshot.activity ?? []).map(a => ({ ...a, conversation: this.qualify(network.id, a.conversation) })));
+        next.operations.push(...(response.snapshot.operations ?? []).map(r => ({ ...r, network: network.id,
+          conversation: r.conversation ? this.qualify(network.id, r.conversation) : null })));
+
         next.inputHistory.push(...response.snapshot.inputHistory.map(h => ({ ...h, conversation: h.conversation ? this.qualify(network.id, h.conversation) : null })));
         next.revision += `:${network.id}:${response.snapshot.revision}`;
       } catch (error) {
@@ -99,7 +111,7 @@ export class NetworkWorkspace implements Transport {
   }
   async request(request: Request): Promise<Response> {
     if (request.kind === 'lock' || request.kind === 'disconnect' || (request.kind === 'submit' && ['/lock', '/disconnect', '/quit'].includes(request.text.trim()))) {
-      this.lifecycle++; this.publish([]); this.active = undefined; this.enabled = false;
+      this.lifecycle++; this.publish([]); this.instances.clear(); this.presence.clear(); this.active = undefined; this.enabled = false;
       return this.base().request(request);
     }
     if (request.kind === 'snapshot' || request.kind === 'unlock') {

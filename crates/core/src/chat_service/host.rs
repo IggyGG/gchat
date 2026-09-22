@@ -237,6 +237,9 @@ impl InstanceHost {
             command_history: Vec::new(),
             input_history: Vec::new(),
             provider_errors: Vec::new(),
+            operations: Some(Vec::new()),
+            activity: Some(Vec::new()),
+            presence_enabled: Some(false),
         }
     }
     async fn unlock(&self, passphrase: String, create: bool) -> Result<Running, String> {

@@ -99,6 +99,17 @@ async fn channel_owner_can_transfer_and_leave_without_replacing_channel_identity
     let archive = service.snapshot().await.unwrap();
     assert!(!archive.conversations[0].active);
     assert_eq!(
+        archive
+            .activity
+            .as_ref()
+            .unwrap()
+            .iter()
+            .filter(|a| a.kind == "left" && a.conversation == archive.conversations[0].id)
+            .count(),
+        1
+    );
+    assert_eq!(service.snapshot().await.unwrap().activity, archive.activity);
+    assert_eq!(
         archive.conversations[0].kind,
         gchat_api::ConversationKind::Archive
     );
@@ -185,6 +196,10 @@ async fn channel_topic_and_nickname_are_authenticated_shared_and_retained() {
         panic!("create");
     };
     let original = service.snapshot().await.unwrap();
+    assert!(
+        original.activity.as_ref().unwrap().is_empty(),
+        "initial roster is a baseline, not joins"
+    );
     let stable_id = original.conversations[0].members[0].id.clone();
     for (operation, text) in [
         ("metadata-topic-01", "/topic A shared topic"),
@@ -266,6 +281,29 @@ async fn channel_topic_and_nickname_are_authenticated_shared_and_retained() {
     unlock(&service, false).await;
     let state = service.snapshot().await.unwrap();
     assert_eq!(state.conversations[0].topic, "A shared topic");
+    let activity = state.activity.as_ref().unwrap();
+    assert_eq!(
+        activity
+            .iter()
+            .filter(|a| a.kind == "topic" && a.text == "Topic: A shared topic")
+            .count(),
+        1
+    );
+    let again = service.snapshot().await.unwrap();
+    assert_eq!(
+        again.activity, state.activity,
+        "refresh/reopen cannot repeat activity"
+    );
+    let operation = state
+        .operations
+        .as_ref()
+        .unwrap()
+        .iter()
+        .find(|r| r.id == "metadata-topic-01")
+        .unwrap();
+    assert_eq!(operation.action, "/topic");
+    assert_eq!(operation.state, "complete");
+    assert_eq!(operation.conversation.as_deref(), Some(channel.as_str()));
     let own = state.conversations[0]
         .members
         .iter()
@@ -1605,6 +1643,66 @@ async fn file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive(
     assert!(
         matches!(committed,Response::Files { snapshot } if matches!(snapshot.files[0].state,FileState::Complete))
     );
+    // Selecting already verified content again returns the original share. A lost
+    // commit response is recoverable using the second import ID after reopening.
+    let duplicate = "02020202020202020202020202020202";
+    let prepared = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Prepare {
+                id: duplicate.into(),
+                conversation: channel.clone(),
+                name: "again.bin".into(),
+                size_bytes: (PIECE_BYTES + 7).to_string(),
+            },
+        },
+    )
+    .await;
+    assert!(matches!(prepared, Response::Files { .. }));
+    for (index, data) in [(0, piece.as_slice()), (1, b"content".as_slice())] {
+        service
+            .clone()
+            .file_io(
+                encode_io(
+                    &FileIo {
+                        instance: instance.clone(),
+                        id: duplicate.into(),
+                        piece: index,
+                        upload: true,
+                    },
+                    data,
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+    let Response::Files { snapshot: reused } = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Commit {
+                id: duplicate.into(),
+            },
+        },
+    )
+    .await
+    else {
+        panic!("reuse failed")
+    };
+    assert_eq!(reused.files.len(), 1);
+    assert_eq!(reused.files[0].id, handle);
+    assert_eq!(
+        reused.files[0].aliases.as_deref(),
+        Some(&[duplicate.to_string()][..])
+    );
+    let activities = service.snapshot().await.unwrap().activity.unwrap();
+    assert_eq!(
+        activities
+            .iter()
+            .filter(|e| e.kind == "file" && e.conversation == channel)
+            .count(),
+        1
+    );
     assert_eq!(
         service.clone().file_io(frame(0, false, &[])).await.unwrap(),
         piece
@@ -1622,6 +1720,34 @@ async fn file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive(
         Response::Error { .. }
     ));
     unlock(&service, false).await;
+    let Response::Files {
+        snapshot: recovered,
+    } = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Commit {
+                id: duplicate.into(),
+            },
+        },
+    )
+    .await
+    else {
+        panic!("lost commit recovery")
+    };
+    assert_eq!(recovered.files.len(), 1);
+    assert_eq!(recovered.files[0].id, handle);
+    assert_eq!(
+        service
+            .snapshot()
+            .await
+            .unwrap()
+            .activity
+            .unwrap()
+            .iter()
+            .filter(|e| e.kind == "file" && e.conversation == channel)
+            .count(),
+        1
+    );
     let Response::History { page } = request(
         &service,
         Request::History {
@@ -2093,4 +2219,60 @@ async fn chat_host_uses_shared_gcoms_and_reopens_the_same_archive() {
     host.flush().await.unwrap();
     stop.send(()).unwrap();
     daemon.await.unwrap().unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn channel_visibility_and_operation_details_are_explicit_and_lock_private() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = open_runtime(dir.path(), true).await;
+    let service = make_service(dir.path(), runtime.clone());
+    unlock(&service, true).await;
+    for (id, command) in [
+        ("visibility-private-01", "/create #private owner"),
+        ("visibility-public-001", "/create --public #public owner"),
+    ] {
+        assert!(matches!(
+            submit(&service, id, None, command).await,
+            Response::Applied { .. }
+        ));
+    }
+    let snapshot = service.snapshot().await.unwrap();
+    let public = snapshot
+        .conversations
+        .iter()
+        .find(|c| c.name == "#public")
+        .unwrap();
+    assert_eq!(public.visibility.as_deref(), Some("public"));
+    assert!(public.directory.is_none(), "creation is not publication");
+    assert_eq!(
+        snapshot
+            .conversations
+            .iter()
+            .find(|c| c.name == "#private")
+            .unwrap()
+            .visibility
+            .as_deref(),
+        Some("private")
+    );
+    assert_eq!(snapshot.presence_enabled, Some(false));
+    assert!(snapshot
+        .operations
+        .as_ref()
+        .unwrap()
+        .iter()
+        .all(|r| r.action == "/create"));
+    assert!(matches!(
+        request(&service, Request::Lock).await,
+        Response::Instance { .. }
+    ));
+    let locked = service.snapshot().await.unwrap();
+    assert!(locked.operations.unwrap().is_empty());
+    assert!(locked.activity.unwrap().is_empty());
+    unlock(&service, false).await;
+    assert_eq!(
+        service.snapshot().await.unwrap().operations.unwrap().len(),
+        2
+    );
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
 }

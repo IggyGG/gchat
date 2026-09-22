@@ -28,3 +28,34 @@ inside the encrypted channel and saved before acknowledgment or publication.
 `/hide` only hides a conversation. It does not leave its membership. Use **Help**
 for the complete command list; `/font`, `/find`, `/lock` and `/disconnect` keep
 infrequent controls out of the main workspace.
+
+
+## Minimal workspace
+
+The channel drawer starts hidden. Open it with the channel button, use **+ Add
+channel** to join or create, and collapse it with the inward arrow. Topics appear
+next to the active channel and below its name in the drawer. Unread counts stay
+separate from optional recently-active observations.
+
+Creation defaults to private. `/create --public #name nickname` creates an
+encrypted public channel; it does not silently publish it. The owner can publish
+that same channel from Details or `/publish https://directory.example/`. A failed
+publication must be retried against the existing channel, not another creation.
+
+Invitations and command responses open in a full-screen Details view. A compact
+**Only you** entry reopens the retained result. Original and recovered replies
+are identified by network, instance and operation ID. Closing a view does not
+cancel a request. **Refresh status** checks the original operation without
+submitting it again. An unknown outcome is not a failed operation or confirmed
+delivery. The encrypted service journal retains safe command names and results;
+command arguments and message contents are not copied into request metadata.
+
+Member changes, topic changes and file offers observed by this profile appear in
+the conversation. Initial roster loading establishes a baseline. Change notices
+do not invent an actor or claim that removing a member was voluntary. The local
+observation timestamp is not a signed remote event time.
+
+Recently-active sharing is optional and defaults off. `/presence on` enables
+short-lived channel signals for this profile; `/presence off` stops them. Unknown
+means there is no fresh observation, not that the person is offline. Presence is
+kept in memory and never used as a condition for message delivery.

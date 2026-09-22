@@ -5,7 +5,7 @@ test('native remember choice defaults off and requires explicit consent', async 
   await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([false]);
-  await expect(page.locator('.active-title')).toHaveText('#general');
+  await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
 });
 test('native vault failure keeps a successful unlock and shows the storage warning', async ({ page }) => {
   await page.goto('/?device-unlock&vault-failure');
@@ -13,11 +13,11 @@ test('native vault failure keeps a successful unlock and shows the storage warni
   await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([true]);
-  await expect(page.locator('.active-title')).toHaveText('#general');
+  await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
   await expect(page.getByText('Secure device storage unavailable; enter your passphrase after suspension.', { exact: true })).toBeVisible();
   await expect(page.locator('#gchat-password')).toHaveCount(0);
 });
-async function ready(page: Page, suffix = '') { await page.goto('/' + suffix); await expect(page.locator('.active-title')).toHaveText('#general'); }
+async function ready(page: Page, suffix = '') { await page.goto('/' + suffix); await expect(page.locator('.active-title > span:first-child')).toHaveText('#general'); }
 async function command(page: Page, text: string) { const input = page.getByRole('textbox', { name: 'Message or command' }); await input.fill(text); await input.press('Enter'); }
 test('channel details expose real topic, nickname and explicit owner departure choices', async ({ page }) => {
   await ready(page);
@@ -50,7 +50,9 @@ test('members get a real leave request without owner controls', async ({ page })
 
 test('one invitation previews the other network and channel before joining', async ({ page }) => {
   await ready(page, '?networks');
-  await page.getByRole('button', { name: 'Join…', exact: true }).click();
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await page.getByRole('button', { name: 'Join or create a channel', exact: true }).click();
+  await page.getByRole('button', { name: 'Join with an invitation or browse public channels', exact: true }).click();
   await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Join #general on other.example');
@@ -72,7 +74,8 @@ test('one header, quiet default workspace, counters and keyboard-accessible tabs
   await expect(page.getByText('NICKS', { exact: true })).toHaveCount(0);
   await expect(page.locator('.inspector')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Replace network invitation…' })).toHaveCount(0);
-  await expect(page.locator('.channel-actions')).toContainText('Join…');
+  await expect(page.locator('.channels')).toBeHidden();
+  await expect(page.locator('.header-topic')).toHaveText('A little more room to talk.');
   await page.getByRole('button', { name: 'Users: 2', exact: true }).click();
   await expect(page.getByRole('tab', { name: 'Users 2' })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('tab', { name: 'Users 2' }).press('ArrowRight');
@@ -92,7 +95,7 @@ test('mandatory setup uses service validation and keeps established offline hist
   await expect(page.locator('.composer')).toHaveCount(0);
   await page.getByRole('textbox', { name: 'Network invitation', exact: true }).fill('GCNI1-valid-fixture');
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
-  await expect(page.locator('.active-title')).toHaveText('#general');
+  await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
   await page.evaluate(() => (window as any).fixture.setNetwork('reconnecting'));
   await expect(page.getByRole('button', { name: 'Network: Reconnecting', exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
@@ -117,7 +120,7 @@ test('view commands, help, find, font persistence and existing lifecycle command
   const sent = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'));
   expect(sent).toHaveLength(0);
   await page.reload(); await expect(page.locator('.gchat')).toHaveClass(/readable/);
-  await expect(page.locator('.active-title')).toHaveText('#general');
+  await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
   await command(page, '/say /font');
   await command(page, '/lock'); await expect(page.getByRole('heading', { name: 'Unlock chat' })).toBeVisible();
   await expect(page.locator('.inspector, .transcript, .composer')).toHaveCount(0);
@@ -132,15 +135,18 @@ test('paperclip works with zero files; closing and changing panels cannot cancel
   await expect(page.getByRole('tab', { name: /^Files/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tabpanel')).toContainText('Importing sample.bin');
   await page.getByRole('button', { name: 'Close details' }).click();
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /design/ }).click();
   await page.evaluate(() => (window as any).fixture.releaseUpload());
   await expect.poll(() => page.evaluate(() => (window as any).fixture.getFiles()[0]?.state)).toBe('complete');
   const record = await page.evaluate(() => (window as any).fixture.getFiles()[0]);
   expect(record.conversation).toBe('channel/general');
   await expect(page.getByRole('button', { name: /^Files:/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /general/ }).click();
   await page.getByRole('button', { name: 'Files: 1', exact: true }).click();
   await expect(page.getByRole('tabpanel')).toContainText('sample.bin');
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /archive/ }).click();
   await expect(page.getByRole('button', { name: 'Share a file', exact: true })).toHaveCount(0);
 });
@@ -150,7 +156,7 @@ for (const width of [320, 760, 1100, 1440]) test(`responsive layout ${width}px`,
   await page.getByRole('button', { name: 'Users: 2', exact: true }).click();
   await expect(page.getByRole('tab', { name: 'Users 2' })).toBeVisible();
   await page.keyboard.press('Escape'); await expect(page.locator('.inspector')).toHaveCount(0);
-  if (width <= 760) { await page.getByRole('button', { name: 'Channels', exact: true }).click(); await expect(page.getByRole('button', { name: 'Create…', exact: true })).toBeVisible(); await page.keyboard.press('Escape'); }
+  if (width <= 760) { await page.getByRole('button', { name: 'Channels', exact: true }).click(); await expect(page.getByRole('button', { name: 'Join or create a channel', exact: true })).toBeVisible(); await page.keyboard.press('Escape'); }
   await page.screenshot({ path: `../target/ui-layout-${width}.png` });
 });
 
@@ -181,7 +187,7 @@ test.describe('phone navigation', () => {
     }
     await page.getByRole('button', { name: 'Channels', exact: true }).tap();
     await page.locator('.channels').getByRole('button', { name: /design/ }).tap();
-    await expect(page.locator('.active-title')).toHaveText('#design');
+    await expect(page.locator('.active-title > span:first-child')).toHaveText('#design');
     await expect(composer).not.toBeFocused();
     await expect(page.locator('.active-title')).toBeFocused();
     await composer.fill('A draft for design');
@@ -229,7 +235,8 @@ test.describe('phone navigation', () => {
     expect(await page.locator('.gchat').boundingBox()).toEqual(bounds);
     await page.evaluate(() => (window as any).keyboardViewport(360, 24));
     await page.getByRole('button', { name: 'Channels', exact: true }).tap();
-    await page.getByRole('button', { name: 'Join…', exact: true }).tap();
+    await page.getByRole('button', { name: 'Join or create a channel', exact: true }).tap();
+    await page.getByRole('button', { name: 'Join with an invitation or browse public channels', exact: true }).tap();
     await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
     await page.getByRole('button', { name: 'Continue', exact: true }).tap();
     await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Phone guest');
@@ -244,4 +251,63 @@ test.describe('phone navigation', () => {
     await page.evaluate(() => (window as any).keyboardViewport(844));
     await expect(composer).toHaveValue('Keep this draft through the keyboard');
   });
+});
+
+
+test('original and recovered invitation share one overlay and one local result', async ({ page }) => {
+  await ready(page);
+  await command(page, '/invite');
+  await expect(page.getByRole('dialog')).toContainText('Invite to #general');
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.checks())).toBeGreaterThan(0);
+  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
+  await page.waitForTimeout(450);
+  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Save as…', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Saved to /chosen/gchat-invitation.txt');
+  await page.getByRole('button', { name: 'Close details', exact: true }).click();
+  await expect(page.locator('.local-results').getByRole('button', { name: 'Details', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeFocused();
+  await command(page, '/invite');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.local-results').getByRole('button', { name: 'Details', exact: true })).toHaveCount(2);
+});
+
+test('Details explains a retained unknown outcome and refresh never resubmits', async ({ page }) => {
+  await ready(page, '?saved-operation');
+  await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('saved-operation-001');
+  await expect(page.getByRole('dialog')).toContainText('Outcome not confirmed');
+  await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('No new result is available.');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+  await page.keyboard.press('Escape');
+  await page.reload();
+  await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('saved-operation-001');
+});
+
+test('channel chooser defaults private and submits an explicit public choice', async ({ page }) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await page.getByRole('button', { name: 'Join or create a channel', exact: true }).click();
+  await page.getByRole('button', { name: 'Create a channel', exact: true }).click();
+  await expect(page.getByLabel('Private — invitation required', { exact: true })).toBeChecked();
+  await page.getByLabel('Public — discoverable when published to a directory', { exact: true }).check();
+  await page.getByLabel('Channel name', { exact: true }).fill('#public');
+  await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Tester');
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').at(-1)?.text)).toBe('/create --public #public Tester');
+});
+
+
+test('cancelling invitation Save as is neutral and keeps a closable result', async ({ page }) => {
+  await ready(page, '?cancel-save');
+  await command(page, '/invite');
+  await page.getByRole('button', { name: 'Save as…', exact: true }).click();
+  await expect(page.getByRole('dialog').getByText('Save cancelled.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/^Saved to /)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close details', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
 });

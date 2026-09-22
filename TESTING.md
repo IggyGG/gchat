@@ -26,6 +26,11 @@ Before publication, qualify against GComs' extracted package staging using its
 `check-consumers.py --gchat /path/to/gchat`. An external Cargo patch file can select
 those extracted packages without adding sibling paths to public manifests.
 
+Native CI pins the companion source in `.forgejo/workflows/check.yml` and runs
+`python3 scripts/ci.py --gcoms ../gcoms` from a GChat checkout beside that exact
+GComs checkout. Update the pin with companion API changes; registry-only checks
+cannot qualify API additions that have not been published as packages yet.
+
 For current-source development, run GComs' `scripts/check-gchat.py --gchat
 /path/to/gchat --offline` from the separated GComs repository. Its default action
 runs this Rust workspace's all-feature tests; `--action check` and `--action

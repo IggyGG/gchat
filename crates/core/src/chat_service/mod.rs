@@ -41,6 +41,12 @@ struct InstanceMetadata {
 struct UiState {
     networks: BTreeMap<String, networks::RetainedNetwork>,
     topics: BTreeMap<String, String>,
+    observed_channels: BTreeMap<String, ObservedChannel>,
+    activity: Vec<gchat_api::Activity>,
+    shared_files: std::collections::BTreeSet<String>,
+    files_observed: bool,
+    publications: BTreeMap<String, String>,
+    presence_enabled: bool,
     instance_id: String,
     safety_number: String,
     read: BTreeMap<String, String>,
@@ -50,8 +56,32 @@ struct UiState {
     file_key: Option<[u8; 32]>,
     file_config: gcoms::sdk::sharing::CacheConfig,
 }
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+struct ObservedChannel {
+    members: BTreeMap<String, String>,
+    topic: String,
+    active: bool,
+}
+
+fn record_activity(state: &mut UiState, conversation: String, kind: &str, text: String) {
+    state.activity.push(gchat_api::Activity {
+        id: random_id(),
+        conversation,
+        kind: kind.into(),
+        text,
+        timestamp: now(),
+    });
+    if state.activity.len() > 2000 {
+        state.activity.drain(..state.activity.len() - 2000);
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 struct OperationRecord {
+    #[serde(default)]
+    action: String,
+    #[serde(default)]
+    conversation: Option<String>,
     digest: String,
     at: u64,
     response: Option<Response>,
@@ -455,6 +485,7 @@ impl ChatService {
                     &self.archive.with_extension("service"),
                     &passphrase,
                 )?;
+                client.configure_presence(state.presence_enabled).await?;
                 let safety = client.safety_number().to_string();
                 if (!state.instance_id.is_empty() && state.instance_id != self.id)
                     || (!state.safety_number.is_empty() && state.safety_number != safety)
@@ -755,6 +786,8 @@ impl ChatService {
                     unlocked.state.operations.insert(
                         operation_id.clone(),
                         OperationRecord {
+                            action: String::new(),
+                            conversation: None,
                             digest,
                             at: now(),
                             response: None,
@@ -763,6 +796,19 @@ impl ChatService {
                     );
                     unlocked.store.save(&unlocked.state)?;
                 }
+                // Keep only the command name, never arguments, credentials or message bodies.
+                if let Some(record) = unlocked.state.operations.get_mut(&operation_id) {
+                    record.action = if text.starts_with('/') {
+                        text.split_whitespace()
+                            .next()
+                            .unwrap_or("Command")
+                            .to_string()
+                    } else {
+                        "Send message".into()
+                    };
+                    record.conversation = conversation.clone();
+                }
+                unlocked.store.save(&unlocked.state)?;
                 // Persist admission before any protocol mutation. A crash cannot silently replay it.
                 let client = unlocked.client.clone();
                 drop(session);
@@ -827,18 +873,96 @@ impl ChatService {
 
     async fn refresh_channel_topics(current: &mut Unlocked) -> Result<(), String> {
         let mut candidate = current.state.clone();
-        for channel in current
-            .client
-            .archive_snapshot()
-            .channels
-            .iter()
-            .filter(|c| c.active)
-        {
-            if let Ok(topic) = current.client.channel_topic(channel.id).await {
-                candidate.topics.insert(channel_key(channel.id), topic);
+        let archive = current.client.archive_snapshot();
+        for channel in &archive.channels {
+            let key = record_key(channel);
+            let topic = if channel.active {
+                current.client.channel_topic(channel.id).await.ok()
+            } else {
+                None
+            };
+            if let Some(topic) = &topic {
+                candidate
+                    .topics
+                    .insert(channel_key(channel.id), topic.clone());
             }
+            let observed = ObservedChannel {
+                members: channel
+                    .members
+                    .iter()
+                    .map(|m| (hex(&m.id.0), m.display_name.clone()))
+                    .collect(),
+                topic: topic.unwrap_or_else(|| {
+                    candidate
+                        .topics
+                        .get(&channel_key(channel.id))
+                        .cloned()
+                        .unwrap_or_default()
+                }),
+                active: channel.active,
+            };
+            // First observation is a baseline, not a synthetic burst of joins.
+            let previous = candidate.observed_channels.get(&key).cloned().or_else(|| {
+                (!channel.active)
+                    .then(|| {
+                        candidate
+                            .observed_channels
+                            .get(&channel_key(channel.id))
+                            .cloned()
+                    })
+                    .flatten()
+            });
+            if let Some(old) = previous {
+                if old.active && !observed.active {
+                    record_activity(
+                        &mut candidate,
+                        key.clone(),
+                        "left",
+                        "This channel is no longer active for this profile.".into(),
+                    );
+                } else if observed.active {
+                    for (id, name) in &observed.members {
+                        if !old.members.contains_key(id) {
+                            record_activity(
+                                &mut candidate,
+                                key.clone(),
+                                "joined",
+                                format!("{name} joined."),
+                            );
+                        }
+                    }
+                    for (id, name) in &old.members {
+                        if !observed.members.contains_key(id) {
+                            record_activity(
+                                &mut candidate,
+                                key.clone(),
+                                "left",
+                                format!("{name} left or was removed."),
+                            );
+                        }
+                    }
+                    if old.topic != observed.topic {
+                        record_activity(
+                            &mut candidate,
+                            key.clone(),
+                            "topic",
+                            if observed.topic.is_empty() {
+                                "Topic cleared.".into()
+                            } else {
+                                format!("Topic: {}", observed.topic)
+                            },
+                        );
+                    }
+                }
+            }
+            if !channel.active {
+                candidate.observed_channels.remove(&channel_key(channel.id));
+            }
+            candidate.observed_channels.insert(key, observed);
         }
-        if candidate.topics != current.state.topics {
+        if candidate.topics != current.state.topics
+            || candidate.observed_channels != current.state.observed_channels
+        {
             current.store.save(&candidate)?;
             current.state = candidate;
         }
@@ -874,6 +998,19 @@ impl ChatService {
                         .unwrap_or_default(),
                     active: channel.active,
                     owner: channel.role == ChannelRole::Owner,
+                    visibility: Some(
+                        if channel.visibility == ChannelVisibility::Public {
+                            "public"
+                        } else {
+                            "private"
+                        }
+                        .into(),
+                    ),
+                    directory: session
+                        .state
+                        .publications
+                        .get(&channel_key(channel.id))
+                        .cloned(),
                     members: channel
                         .members
                         .iter()
@@ -881,6 +1018,11 @@ impl ChatService {
                             id: hex(&m.id.0),
                             nickname: m.display_name.clone(),
                             is_self: m.is_self,
+                            recently_active: Some(
+                                session
+                                    .client
+                                    .recently_active(&channel.protocol_name, m.id.0),
+                            ),
                             capabilities: Vec::new(),
                         })
                         .collect(),
@@ -910,6 +1052,8 @@ impl ChatService {
                         .unwrap_or_default(),
                     active: pm.active,
                     owner: false,
+                    visibility: None,
+                    directory: None,
                     members: archive
                         .channels
                         .iter()
@@ -922,6 +1066,11 @@ impl ChatService {
                                     id: hex(&m.id.0),
                                     nickname: m.display_name.clone(),
                                     is_self: m.is_self,
+                                    recently_active: Some(
+                                        session
+                                            .client
+                                            .recently_active(&channel.protocol_name, m.id.0),
+                                    ),
                                     capabilities: Vec::new(),
                                 })
                                 .collect()
@@ -943,6 +1092,8 @@ impl ChatService {
                     topic: "Legacy archive · read only · channel identity unavailable".into(),
                     active: false,
                     owner: false,
+                    visibility: None,
+                    directory: None,
                     members: Vec::new(),
                     unread: 0,
                     last_message_id: legacy.messages().last().map(|m| hex(&m.id)),
@@ -962,6 +1113,27 @@ impl ChatService {
                 .into_iter()
                 .collect()
         };
+        let activity = session
+            .filter(|s| !s.ui_locked)
+            .map(|s| s.state.activity.clone())
+            .unwrap_or_default();
+        let mut operations: Vec<_> = session.filter(|s| !s.ui_locked).into_iter()
+            .flat_map(|s| s.state.operations.iter())
+            .filter(|(_, r)| !r.action.is_empty() && r.at.saturating_add(7 * 24 * 3600) > now())
+            .map(|(id, r)| {
+                let (state, output, message) = match &r.response {
+                    Some(Response::Output { output, .. }) => ("complete", Some(output.clone()), None),
+                    Some(Response::Applied { notice, .. }) => ("complete", None, notice.clone()),
+                    Some(Response::Error { code, message }) => (if code == "rejected" { "rejected" } else { "unknown" }, None, Some(message.clone())),
+                    Some(_) => ("complete", None, None),
+                    None => ("unknown", None, Some("No confirmed result retained. This operation will not run again automatically.".into())),
+                };
+                gchat_api::OperationDetail { network: None, id: id.clone(), instance: self.id.clone(), conversation: r.conversation.clone(), action: r.action.clone(), started: r.at, state: state.into(), output, message }
+            }).collect();
+        operations.sort_by_key(|r| r.started);
+        if operations.len() > 30 {
+            operations.drain(..operations.len() - 30);
+        }
         let revision = hex(&Sha256::digest(
             serde_json::to_vec(&(
                 &instance,
@@ -969,6 +1141,8 @@ impl ChatService {
                 &command_history,
                 &input_history,
                 &provider_errors,
+                &operations,
+                &activity,
                 &self.projection.read().expect("projection lock").1,
             ))
             .expect("serializable projection"),
@@ -980,6 +1154,11 @@ impl ChatService {
             command_history,
             input_history,
             provider_errors,
+            operations: Some(operations),
+            activity: Some(activity),
+            presence_enabled: Some(
+                session.is_some_and(|s| !s.ui_locked && s.state.presence_enabled),
+            ),
         }
     }
 
@@ -1260,7 +1439,7 @@ impl ChatService {
                     return Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: format!("Topic for #{}", channel.title), text: client.channel_topic(channel.id).await? } });
                 }
                 client.change_channel(channel.id, gcoms::sdk::ChannelChange::Topic(if args == "--clear" { String::new() } else { args.into() })).await?;
-                applied(conversation.map(str::to_owned), Some("Topic updated.".into()))
+                applied(conversation.map(str::to_owned), None)
             }
             "owner" => {
                 let channel = context_channel(&archive, conversation)?;
@@ -1292,18 +1471,43 @@ impl ChatService {
                 let channel = context_channel(&archive, conversation)?;
                 Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Text { title: format!("Nicks in #{}", channel.title), text: channel.members.iter().map(|m| m.display_name.clone()).collect::<Vec<_>>().join("  ") } })
             }
+            "presence" => {
+                let enabled = match args { "on" => true, "off" => false, _ => return Err("Usage: /presence on|off".into()) };
+                client.configure_presence(enabled).await?;
+                let mut session = self.session.lock().await;
+                let unlocked = session.as_mut().ok_or("Unlock the profile first")?;
+                let mut candidate = unlocked.state.clone(); candidate.presence_enabled = enabled;
+                unlocked.store.save(&candidate)?; unlocked.state = candidate;
+                applied(None, Some(if enabled { "Recently-active sharing enabled. Signals expire; they do not confirm delivery." } else { "Recently-active sharing disabled." }.into()))
+            }
+            "publish" => {
+                self.require(Capability::ChannelAdmin)?;
+                let channel = context_channel(&archive, conversation)?;
+                client.publish_channel(channel.id, "", args).await?;
+                let mut session = self.session.lock().await;
+                let unlocked = session.as_mut().ok_or("Unlock the profile first")?;
+                let mut candidate = unlocked.state.clone(); candidate.publications.insert(channel_key(channel.id), args.into());
+                unlocked.store.save(&candidate)?; unlocked.state = candidate;
+                applied(conversation.map(str::to_string), Some("Channel published. You can retry publication without creating another channel.".into()))
+            }
             "create" => {
                 self.require(Capability::ChannelAdmin)?;
+                let (choice, remaining) = split_head(args);
+                let (visibility, args) = match choice {
+                    "--public" => (ChannelVisibility::Public, remaining),
+                    "--private" => (ChannelVisibility::Private, remaining),
+                    _ => (ChannelVisibility::Private, args),
+                };
                 let (channel, nick) = split_head(args);
                 if channel.is_empty() || nick.is_empty() {
-                    return Err("Usage: /create #channel nickname".into());
+                    return Err("Usage: /create [--private|--public] #channel nickname".into());
                 }
                 let id = client
                     .create_channel(
                         channel.trim_start_matches('#'),
                         nick,
                         64,
-                        ChannelVisibility::Private,
+                        visibility,
                     )
                     .await?;
                 applied(
@@ -1433,6 +1637,14 @@ impl ChatService {
 
     fn commands(&self) -> Vec<Completion> {
         let mut commands = command_catalogue(&self.capabilities);
+        commands.push(Completion {
+            text: "/presence".into(),
+            description: "Optional recently-active signals: /presence on|off (default off)".into(),
+        });
+        commands.push(Completion {
+            text: "/publish".into(),
+            description: "Publish this public channel: /publish https://directory.example/".into(),
+        });
         if self.command_extension.is_some() {
             commands.extend(
                 [
@@ -1462,7 +1674,9 @@ impl ChatService {
             .into_iter()
             .map(|c| {
                 let capability = match c.text.as_str() {
-                    "/create" | "/invite" | "/kick" | "/owner" => Some("ChannelAdmin".into()),
+                    "/create" | "/invite" | "/kick" | "/owner" | "/publish" => {
+                        Some("ChannelAdmin".into())
+                    }
                     "/join" | "/query" | "/msg" | "/say" | "/me" | "/nick" => {
                         Some("ChannelMember".into())
                     }
@@ -1484,6 +1698,7 @@ impl ChatService {
                             | "/nick"
                             | "/topic"
                             | "/owner"
+                            | "/publish"
                             | "/part"
                     ) {
                         "conversation"
@@ -1804,7 +2019,7 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
         commands.extend([
             (
                 "/create",
-                "Create a private channel: /create #channel nickname",
+                "Create an encrypted channel: /create [--private|--public] #channel nickname",
             ),
             ("/invite", "Create a single-use invitation"),
             ("/kick", "Remove a channel member"),
@@ -1824,8 +2039,10 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
 }
 fn command_usage(name: &str) -> &str {
     match name {
+        "/presence" => "/presence on|off",
+        "/publish" => "/publish https://directory.example/",
         "/network" => "/network join invitation-code | dns on|off|status",
-        "/create" => "/create #channel nickname",
+        "/create" => "/create [--private|--public] #channel nickname",
         "/join" => "/join invitation-or-#channel nickname",
         "/query" => "/query nickname-or-member-id",
         "/msg" => "/msg nickname-or-member-id text",
@@ -1929,6 +2146,7 @@ fn completions(
                 id: hex(&m.id.0),
                 nickname: m.display_name.clone(),
                 is_self: m.is_self,
+                recently_active: None,
                 capabilities: Vec::new(),
             })
             .collect::<Vec<_>>();

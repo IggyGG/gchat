@@ -83,6 +83,9 @@ pub struct Member {
     pub nickname: String,
     pub is_self: bool,
     #[serde(default)]
+    #[ts(optional)]
+    pub recently_active: Option<bool>,
+    #[serde(default)]
     pub capabilities: Vec<String>,
 }
 
@@ -98,6 +101,12 @@ pub struct Conversation {
     pub topic: String,
     pub active: bool,
     pub owner: bool,
+    #[serde(default)]
+    #[ts(optional)]
+    pub visibility: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub directory: Option<String>,
     pub members: Vec<Member>,
     pub unread: u32,
     pub last_message_id: Option<String>,
@@ -225,6 +234,36 @@ pub struct ProviderStatus {
     pub retryable: bool,
 }
 
+/// Authenticated state changes observed by this profile, retained before publication.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Activity {
+    pub id: String,
+    pub conversation: String,
+    pub kind: String,
+    pub text: String,
+    #[ts(type = "number")]
+    pub timestamp: u64,
+}
+
+/// Safe metadata plus the protected result retained in the encrypted operation journal.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct OperationDetail {
+    #[serde(default)]
+    #[ts(optional)]
+    pub network: Option<String>,
+    pub id: String,
+    pub instance: String,
+    pub conversation: Option<String>,
+    pub action: String,
+    #[ts(type = "number")]
+    pub started: u64,
+    pub state: String,
+    pub output: Option<CommandOutput>,
+    pub message: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
@@ -235,6 +274,15 @@ pub struct Snapshot {
     pub input_history: Vec<InputHistoryEntry>,
     #[serde(default)]
     pub provider_errors: Vec<ProviderStatus>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub operations: Option<Vec<OperationDetail>>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub activity: Option<Vec<Activity>>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub presence_enabled: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
@@ -420,6 +468,8 @@ pub fn typescript() -> String {
         CommandOutput::decl(),
         InputHistoryEntry::decl(),
         ProviderStatus::decl(),
+        Activity::decl(),
+        OperationDetail::decl(),
         Snapshot::decl(),
         HistoryPage::decl(),
         Completion::decl(),

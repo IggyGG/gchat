@@ -653,6 +653,36 @@
               ],
               "type": "object"
             },
+            "Activity": {
+              "description": "Authenticated state changes observed by this profile, retained before publication.",
+              "properties": {
+                "conversation": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversation",
+                "kind",
+                "text",
+                "timestamp"
+              ],
+              "type": "object"
+            },
             "Artifact": {
               "properties": {
                 "name": {
@@ -855,6 +885,13 @@
                   },
                   "type": "array"
                 },
+                "directory": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "id": {
                   "type": "string"
                 },
@@ -899,6 +936,13 @@
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
+                },
+                "visibility": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -952,6 +996,16 @@
             "FileInfo": {
               "additionalProperties": false,
               "properties": {
+                "aliases": {
+                  "default": null,
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
                 "completed_by": {
                   "format": "uint16",
                   "maximum": 65535,
@@ -1206,6 +1260,13 @@
                 },
                 "nickname": {
                   "type": "string"
+                },
+                "recentlyActive": {
+                  "default": null,
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -1302,6 +1363,65 @@
               "required": [
                 "state",
                 "message"
+              ],
+              "type": "object"
+            },
+            "OperationDetail": {
+              "description": "Safe metadata plus the protected result retained in the encrypted operation journal.",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "network": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "output": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/CommandOutput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "started": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "instance",
+                "action",
+                "started",
+                "state"
               ],
               "type": "object"
             },
@@ -1573,6 +1693,16 @@
             },
             "Snapshot": {
               "properties": {
+                "activity": {
+                  "default": null,
+                  "items": {
+                    "$ref": "#/$defs/Activity"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
                 "commandHistory": {
                   "items": {
                     "type": "string"
@@ -1593,6 +1723,23 @@
                 },
                 "instance": {
                   "$ref": "#/$defs/InstanceInfo"
+                },
+                "operations": {
+                  "default": null,
+                  "items": {
+                    "$ref": "#/$defs/OperationDetail"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
+                "presenceEnabled": {
+                  "default": null,
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 },
                 "providerErrors": {
                   "default": [],
@@ -2329,6 +2476,36 @@
               ],
               "type": "object"
             },
+            "Activity": {
+              "description": "Authenticated state changes observed by this profile, retained before publication.",
+              "properties": {
+                "conversation": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversation",
+                "kind",
+                "text",
+                "timestamp"
+              ],
+              "type": "object"
+            },
             "Artifact": {
               "properties": {
                 "name": {
@@ -2531,6 +2708,13 @@
                   },
                   "type": "array"
                 },
+                "directory": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "id": {
                   "type": "string"
                 },
@@ -2575,6 +2759,13 @@
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
+                },
+                "visibility": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -2628,6 +2819,16 @@
             "FileInfo": {
               "additionalProperties": false,
               "properties": {
+                "aliases": {
+                  "default": null,
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
                 "completed_by": {
                   "format": "uint16",
                   "maximum": 65535,
@@ -2882,6 +3083,13 @@
                 },
                 "nickname": {
                   "type": "string"
+                },
+                "recentlyActive": {
+                  "default": null,
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -2978,6 +3186,65 @@
               "required": [
                 "state",
                 "message"
+              ],
+              "type": "object"
+            },
+            "OperationDetail": {
+              "description": "Safe metadata plus the protected result retained in the encrypted operation journal.",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "network": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "output": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/CommandOutput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "started": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "instance",
+                "action",
+                "started",
+                "state"
               ],
               "type": "object"
             },
@@ -3249,6 +3516,16 @@
             },
             "Snapshot": {
               "properties": {
+                "activity": {
+                  "default": null,
+                  "items": {
+                    "$ref": "#/$defs/Activity"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
                 "commandHistory": {
                   "items": {
                     "type": "string"
@@ -3269,6 +3546,23 @@
                 },
                 "instance": {
                   "$ref": "#/$defs/InstanceInfo"
+                },
+                "operations": {
+                  "default": null,
+                  "items": {
+                    "$ref": "#/$defs/OperationDetail"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
+                "presenceEnabled": {
+                  "default": null,
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 },
                 "providerErrors": {
                   "default": [],
@@ -3558,6 +3852,16 @@
             "FileInfo": {
               "additionalProperties": false,
               "properties": {
+                "aliases": {
+                  "default": null,
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
                 "completed_by": {
                   "format": "uint16",
                   "maximum": 65535,
@@ -3784,6 +4088,160 @@
         "kind": "session",
         "output_schema": {
           "$defs": {
+            "Activity": {
+              "description": "Authenticated state changes observed by this profile, retained before publication.",
+              "properties": {
+                "conversation": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversation",
+                "kind",
+                "text",
+                "timestamp"
+              ],
+              "type": "object"
+            },
+            "CommandOutput": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "help",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channels": {
+                      "items": {
+                        "$ref": "#/$defs/DirectoryEntry"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "directory",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channels"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channel": {
+                      "type": "string"
+                    },
+                    "expires": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "const": "invitation",
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    },
+                    "localOnly": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channel",
+                    "link",
+                    "expires"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "text",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "title",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "status",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "close",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
             "CommandSpec": {
               "properties": {
                 "available": {
@@ -3832,6 +4290,13 @@
                   },
                   "type": "array"
                 },
+                "directory": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "id": {
                   "type": "string"
                 },
@@ -3876,6 +4341,13 @@
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
+                },
+                "visibility": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -3898,6 +4370,27 @@
                 "archive"
               ],
               "type": "string"
+            },
+            "DirectoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "joined": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "joined"
+              ],
+              "type": "object"
             },
             "InputHistoryEntry": {
               "properties": {
@@ -3979,12 +4472,78 @@
                 },
                 "nickname": {
                   "type": "string"
+                },
+                "recentlyActive": {
+                  "default": null,
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 }
               },
               "required": [
                 "id",
                 "nickname",
                 "isSelf"
+              ],
+              "type": "object"
+            },
+            "OperationDetail": {
+              "description": "Safe metadata plus the protected result retained in the encrypted operation journal.",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "network": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "output": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/CommandOutput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "started": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "instance",
+                "action",
+                "started",
+                "state"
               ],
               "type": "object"
             },
@@ -4014,6 +4573,16 @@
           },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "properties": {
+            "activity": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/Activity"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "commandHistory": {
               "items": {
                 "type": "string"
@@ -4034,6 +4603,23 @@
             },
             "instance": {
               "$ref": "#/$defs/InstanceInfo"
+            },
+            "operations": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/OperationDetail"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "presenceEnabled": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "providerErrors": {
               "default": [],
@@ -4056,7 +4642,7 @@
           "title": "Snapshot",
           "type": "object"
         },
-        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, }"
+        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, }"
       },
       {
         "args_schema": {
@@ -4168,6 +4754,160 @@
         "kind": "session",
         "output_schema": {
           "$defs": {
+            "Activity": {
+              "description": "Authenticated state changes observed by this profile, retained before publication.",
+              "properties": {
+                "conversation": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversation",
+                "kind",
+                "text",
+                "timestamp"
+              ],
+              "type": "object"
+            },
+            "CommandOutput": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "help",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channels": {
+                      "items": {
+                        "$ref": "#/$defs/DirectoryEntry"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "directory",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channels"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channel": {
+                      "type": "string"
+                    },
+                    "expires": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "const": "invitation",
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    },
+                    "localOnly": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channel",
+                    "link",
+                    "expires"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "text",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "title",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "status",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "close",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
             "CommandSpec": {
               "properties": {
                 "available": {
@@ -4216,6 +4956,13 @@
                   },
                   "type": "array"
                 },
+                "directory": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "id": {
                   "type": "string"
                 },
@@ -4260,6 +5007,13 @@
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
+                },
+                "visibility": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -4282,6 +5036,27 @@
                 "archive"
               ],
               "type": "string"
+            },
+            "DirectoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "joined": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "joined"
+              ],
+              "type": "object"
             },
             "InputHistoryEntry": {
               "properties": {
@@ -4363,12 +5138,78 @@
                 },
                 "nickname": {
                   "type": "string"
+                },
+                "recentlyActive": {
+                  "default": null,
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 }
               },
               "required": [
                 "id",
                 "nickname",
                 "isSelf"
+              ],
+              "type": "object"
+            },
+            "OperationDetail": {
+              "description": "Safe metadata plus the protected result retained in the encrypted operation journal.",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "network": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "output": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/CommandOutput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "started": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "instance",
+                "action",
+                "started",
+                "state"
               ],
               "type": "object"
             },
@@ -4398,6 +5239,16 @@
           },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "properties": {
+            "activity": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/Activity"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "commandHistory": {
               "items": {
                 "type": "string"
@@ -4418,6 +5269,23 @@
             },
             "instance": {
               "$ref": "#/$defs/InstanceInfo"
+            },
+            "operations": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/OperationDetail"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "presenceEnabled": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "providerErrors": {
               "default": [],
@@ -4440,7 +5308,7 @@
           "title": "Snapshot",
           "type": "object"
         },
-        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, }"
+        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, }"
       },
       {
         "args_schema": {
@@ -4473,6 +5341,160 @@
         "kind": "query",
         "output_schema": {
           "$defs": {
+            "Activity": {
+              "description": "Authenticated state changes observed by this profile, retained before publication.",
+              "properties": {
+                "conversation": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "conversation",
+                "kind",
+                "text",
+                "timestamp"
+              ],
+              "type": "object"
+            },
+            "CommandOutput": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "commands": {
+                      "items": {
+                        "$ref": "#/$defs/CommandSpec"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "help",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "commands"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channels": {
+                      "items": {
+                        "$ref": "#/$defs/DirectoryEntry"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "const": "directory",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channels"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "channel": {
+                      "type": "string"
+                    },
+                    "expires": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "const": "invitation",
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    },
+                    "localOnly": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "channel",
+                    "link",
+                    "expires"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "text",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "title",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "status",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "conversation": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "close",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "conversation"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
             "CommandSpec": {
               "properties": {
                 "available": {
@@ -4521,6 +5543,13 @@
                   },
                   "type": "array"
                 },
+                "directory": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "id": {
                   "type": "string"
                 },
@@ -4565,6 +5594,13 @@
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
+                },
+                "visibility": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -4587,6 +5623,27 @@
                 "archive"
               ],
               "type": "string"
+            },
+            "DirectoryEntry": {
+              "properties": {
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "joined": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "joined"
+              ],
+              "type": "object"
             },
             "InputHistoryEntry": {
               "properties": {
@@ -4668,12 +5725,78 @@
                 },
                 "nickname": {
                   "type": "string"
+                },
+                "recentlyActive": {
+                  "default": null,
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 }
               },
               "required": [
                 "id",
                 "nickname",
                 "isSelf"
+              ],
+              "type": "object"
+            },
+            "OperationDetail": {
+              "description": "Safe metadata plus the protected result retained in the encrypted operation journal.",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "conversation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "network": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "output": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/CommandOutput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "started": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "instance",
+                "action",
+                "started",
+                "state"
               ],
               "type": "object"
             },
@@ -4703,6 +5826,16 @@
           },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "properties": {
+            "activity": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/Activity"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "commandHistory": {
               "items": {
                 "type": "string"
@@ -4723,6 +5856,23 @@
             },
             "instance": {
               "$ref": "#/$defs/InstanceInfo"
+            },
+            "operations": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/OperationDetail"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "presenceEnabled": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "providerErrors": {
               "default": [],
@@ -4745,7 +5895,7 @@
           "title": "Snapshot",
           "type": "object"
         },
-        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, }"
+        "output_typescript": "{ instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, }"
       },
       {
         "args_schema": {
@@ -5846,5 +6996,5 @@
     "name": "ghost.chat",
     "version": 1
   },
-  "typescript": "// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = 2;\nexport const MAX_INPUT_BYTES = 12000;\nexport const MAX_NETWORK_INVITATION_BYTES = 174778;\nexport type JoinedNetwork = { id: string, name: string, fingerprint: string, primary: boolean, status: NetworkStatus, };\nexport type InvitationPreview = { network: JoinedNetwork, channel: string | null, newNetwork: boolean, expires: number, };\nexport type NetworkRequest = { \"kind\": \"list\" } | { \"kind\": \"inspect\", code: string, } | { \"kind\": \"join\", code: string, nickname: string, accepted_network: string, operation_id: string, } | { \"kind\": \"call\", network: string, request: Request, };\nexport type NetworkResponse = { \"kind\": \"list\", networks: Array<JoinedNetwork>, } | { \"kind\": \"preview\", preview: InvitationPreview, } | { \"kind\": \"result\", network: string, response: Response, };\nexport type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,\n/**\n * Peers contributing verified pieces since this process opened the cache.\n */\nverified_sources: number, completed_by: number, error: string | null, };\nexport type FileRequest = { \"action\": \"list\", conversation: string | null, } | { \"action\": \"prepare\", id: string, conversation: string, name: string, size_bytes: string, } | { \"action\": \"commit\", id: string, } | { \"action\": \"accept\", id: string, } | { \"action\": \"pause\", id: string, } | { \"action\": \"resume\", id: string, } | { \"action\": \"cancel\", id: string, } | { \"action\": \"configure\", quota_bytes: string, retention_days: number, };\nexport type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };\nexport type FileState = \"offered\" | \"importing\" | \"downloading\" | \"waiting_for_peers\" | \"paused\" | \"complete\" | \"failed\" | \"cancelled\";\nexport type NetworkState = \"locked\" | \"local_only\" | \"invitation_required\" | \"connecting\" | \"connected\" | \"reconnecting\" | \"invitation_expired\" | \"unavailable\";\nexport type NetworkStatus = { state: NetworkState, message: string, };\nexport type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };\nexport type Member = { id: string, nickname: string, isSelf: boolean, capabilities: Array<string>, };\nexport type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };\nexport type ConversationKind = \"channel\" | \"query\" | \"archive\";\nexport type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,\n/**\n * Local archive acceptance is the only fact currently available for outgoing text.\n */\ndelivery: Delivery | null, result: ActionResult | null, };\nexport type ActionResult = { id: string, messageId: string | null, state: string,\n/**\n * Exact signed bytes, base64 encoded; views decode only for display.\n */\noutputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };\nexport type Artifact = { name: string, url: string, };\nexport type Delivery = \"local_accepted\";\nexport type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };\nexport type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };\nexport type CommandOutput = { \"kind\": \"help\", commands: Array<CommandSpec>, } | { \"kind\": \"directory\", channels: Array<DirectoryEntry>, } | { \"kind\": \"invitation\", channel: string, link: string, expires: number, localOnly: boolean, } | { \"kind\": \"text\", title: string, text: string, } | { \"kind\": \"status\", text: string, } | { \"kind\": \"close\", conversation: string, };\nexport type InputHistoryEntry = { conversation: string | null, text: string, };\nexport type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };\nexport type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, };\nexport type HistoryPage = { messages: Array<Message>, before: string | null, };\nexport type Completion = { text: string, description: string, };\nexport type Request = { \"kind\": \"networks\", request: NetworkRequest, } | { \"kind\": \"files\", request: FileRequest, } | { \"kind\": \"identify\" } | { \"kind\": \"unlock\", passphrase: string, create: boolean, } | { \"kind\": \"lock\" } | { \"kind\": \"disconnect\" } | { \"kind\": \"snapshot\" } | { \"kind\": \"network_status\" } | { \"kind\": \"import_network_invitation\", code: string, } | { \"kind\": \"catalogue\", conversation: string | null, } | { \"kind\": \"history\", conversation: string, before: string | null, limit: number, } | { \"kind\": \"search\", conversation: string, text: string, before: string | null, limit: number, } | { \"kind\": \"submit\", operation_id: string, conversation: string | null, text: string, } | { \"kind\": \"complete\", conversation: string | null, text: string, } | { \"kind\": \"mark_read\", conversation: string, message_id: string, } | { \"kind\": \"events\", after: string, wait_ms: number, };\nexport type Response = { \"kind\": \"networks\", response: NetworkResponse, } | { \"kind\": \"files\", snapshot: FileSnapshot, } | { \"kind\": \"network_status\", status: NetworkStatus, } | { \"kind\": \"instance\", instance: InstanceInfo, } | { \"kind\": \"snapshot\", snapshot: Snapshot, } | { \"kind\": \"history\", page: HistoryPage, } | { \"kind\": \"completed\", items: Array<Completion>, } | { \"kind\": \"catalogue\", commands: Array<CommandSpec>, } | { \"kind\": \"projection\", conversations: Array<Conversation>, revision: string, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, } | { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"changed\", revision: string, } | { \"kind\": \"error\", code: string, message: string, };\nexport type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };\nexport type ResponseEnvelope = { version: number, instance_id: string, response: Response, };\n\nexport type ChatError = { code: string, message: string, };\nexport type Applied = { conversation: string | null, notice: string | null, };\nexport type SubmitOutcome = { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, };\n"
+  "typescript": "// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = 2;\nexport const MAX_INPUT_BYTES = 12000;\nexport const MAX_NETWORK_INVITATION_BYTES = 174778;\nexport type JoinedNetwork = { id: string, name: string, fingerprint: string, primary: boolean, status: NetworkStatus, };\nexport type InvitationPreview = { network: JoinedNetwork, channel: string | null, newNetwork: boolean, expires: number, };\nexport type NetworkRequest = { \"kind\": \"list\" } | { \"kind\": \"inspect\", code: string, } | { \"kind\": \"join\", code: string, nickname: string, accepted_network: string, operation_id: string, } | { \"kind\": \"call\", network: string, request: Request, };\nexport type NetworkResponse = { \"kind\": \"list\", networks: Array<JoinedNetwork>, } | { \"kind\": \"preview\", preview: InvitationPreview, } | { \"kind\": \"result\", network: string, response: Response, };\nexport type FileInfo = { id: string, aliases?: Array<string>, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,\n/**\n * Peers contributing verified pieces since this process opened the cache.\n */\nverified_sources: number, completed_by: number, error: string | null, };\nexport type FileRequest = { \"action\": \"list\", conversation: string | null, } | { \"action\": \"prepare\", id: string, conversation: string, name: string, size_bytes: string, } | { \"action\": \"commit\", id: string, } | { \"action\": \"accept\", id: string, } | { \"action\": \"pause\", id: string, } | { \"action\": \"resume\", id: string, } | { \"action\": \"cancel\", id: string, } | { \"action\": \"configure\", quota_bytes: string, retention_days: number, };\nexport type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };\nexport type FileState = \"offered\" | \"importing\" | \"downloading\" | \"waiting_for_peers\" | \"paused\" | \"complete\" | \"failed\" | \"cancelled\";\nexport type NetworkState = \"locked\" | \"local_only\" | \"invitation_required\" | \"connecting\" | \"connected\" | \"reconnecting\" | \"invitation_expired\" | \"unavailable\";\nexport type NetworkStatus = { state: NetworkState, message: string, };\nexport type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };\nexport type Member = { id: string, nickname: string, isSelf: boolean, recentlyActive?: boolean, capabilities: Array<string>, };\nexport type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };\nexport type ConversationKind = \"channel\" | \"query\" | \"archive\";\nexport type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,\n/**\n * Local archive acceptance is the only fact currently available for outgoing text.\n */\ndelivery: Delivery | null, result: ActionResult | null, };\nexport type ActionResult = { id: string, messageId: string | null, state: string,\n/**\n * Exact signed bytes, base64 encoded; views decode only for display.\n */\noutputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };\nexport type Artifact = { name: string, url: string, };\nexport type Delivery = \"local_accepted\";\nexport type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };\nexport type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };\nexport type CommandOutput = { \"kind\": \"help\", commands: Array<CommandSpec>, } | { \"kind\": \"directory\", channels: Array<DirectoryEntry>, } | { \"kind\": \"invitation\", channel: string, link: string, expires: number, localOnly: boolean, } | { \"kind\": \"text\", title: string, text: string, } | { \"kind\": \"status\", text: string, } | { \"kind\": \"close\", conversation: string, };\nexport type InputHistoryEntry = { conversation: string | null, text: string, };\nexport type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };\nexport type Activity = { id: string, conversation: string, kind: string, text: string, timestamp: number, };\nexport type OperationDetail = { network?: string, id: string, instance: string, conversation: string | null, action: string, started: number, state: string, output: CommandOutput | null, message: string | null, };\nexport type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, };\nexport type HistoryPage = { messages: Array<Message>, before: string | null, };\nexport type Completion = { text: string, description: string, };\nexport type Request = { \"kind\": \"networks\", request: NetworkRequest, } | { \"kind\": \"files\", request: FileRequest, } | { \"kind\": \"identify\" } | { \"kind\": \"unlock\", passphrase: string, create: boolean, } | { \"kind\": \"lock\" } | { \"kind\": \"disconnect\" } | { \"kind\": \"snapshot\" } | { \"kind\": \"network_status\" } | { \"kind\": \"import_network_invitation\", code: string, } | { \"kind\": \"catalogue\", conversation: string | null, } | { \"kind\": \"history\", conversation: string, before: string | null, limit: number, } | { \"kind\": \"search\", conversation: string, text: string, before: string | null, limit: number, } | { \"kind\": \"submit\", operation_id: string, conversation: string | null, text: string, } | { \"kind\": \"complete\", conversation: string | null, text: string, } | { \"kind\": \"mark_read\", conversation: string, message_id: string, } | { \"kind\": \"events\", after: string, wait_ms: number, };\nexport type Response = { \"kind\": \"networks\", response: NetworkResponse, } | { \"kind\": \"files\", snapshot: FileSnapshot, } | { \"kind\": \"network_status\", status: NetworkStatus, } | { \"kind\": \"instance\", instance: InstanceInfo, } | { \"kind\": \"snapshot\", snapshot: Snapshot, } | { \"kind\": \"history\", page: HistoryPage, } | { \"kind\": \"completed\", items: Array<Completion>, } | { \"kind\": \"catalogue\", commands: Array<CommandSpec>, } | { \"kind\": \"projection\", conversations: Array<Conversation>, revision: string, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, } | { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"changed\", revision: string, } | { \"kind\": \"error\", code: string, message: string, };\nexport type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };\nexport type ResponseEnvelope = { version: number, instance_id: string, response: Response, };\n\nexport type ChatError = { code: string, message: string, };\nexport type Applied = { conversation: string | null, notice: string | null, };\nexport type SubmitOutcome = { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, };\n"
 }

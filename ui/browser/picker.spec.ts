@@ -8,7 +8,7 @@ async function unlock(page: Page) {
 test('outgoing selection waits for same-profile unlock and keeps its original channel', async ({ page }) => {
   await page.goto('/?device-unlock&empty');
   await unlock(page);
-  await expect(page.locator('.active-title')).toHaveText('#general');
+  await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Share a file', exact: true }).click();
   const pending = await chooser;
@@ -19,6 +19,7 @@ test('outgoing selection waits for same-profile unlock and keeps its original ch
   expect(await page.evaluate(() => (window as any).fixture.getFiles())).toEqual([]);
   await unlock(page);
   await expect(page.getByRole('button', { name: 'Continue selected file', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /design/ }).click();
   await page.getByRole('button', { name: 'Continue selected file', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.getFiles()[0]?.state)).toBe('complete');
@@ -41,7 +42,7 @@ test('invitation selection survives locked rendering without importing before co
   await expect(page.getByRole('textbox', { name: 'Network invitation', exact: true })).toHaveValue('GCNI1-valid-fixture');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'import_network_invitation'))).toBe(false);
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
-  await expect(page.locator('.active-title')).toHaveText('#general');
+  await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
 });
 
 for (const kind of ['invitation', 'outgoing']) test(`${kind} picker cancellation preserves manual unlock without a pending operation`, async ({ page }) => {

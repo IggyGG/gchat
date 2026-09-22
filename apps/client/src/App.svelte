@@ -32,6 +32,7 @@
   const fileAccess: FileAccess | undefined = isTauri() ? {
     exchange: async frame => new Uint8Array(await invoke<ArrayBuffer>('chat_file_io', frame)),
     save: id => invoke<string>('chat_file_save', { id }),
+    saveInvitation: invitation => invoke<string | null>('chat_invitation_save', { invitation }),
   } : undefined;
 </script>
 {#if lifecycleError}<aside role="alert">{lifecycleError}<button onclick={() => lifecycleError = ''}>Dismiss</button></aside>{/if}

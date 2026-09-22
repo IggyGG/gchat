@@ -53,6 +53,9 @@ pub enum FileState {
 #[serde(deny_unknown_fields)]
 pub struct FileInfo {
     pub id: String,
+    #[serde(default)]
+    #[ts(optional)]
+    pub aliases: Option<Vec<String>>,
     pub conversation: String,
     pub name: String,
     pub size_bytes: String,

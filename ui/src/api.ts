@@ -6,7 +6,7 @@ export type JoinedNetwork = { id: string, name: string, fingerprint: string, pri
 export type InvitationPreview = { network: JoinedNetwork, channel: string | null, newNetwork: boolean, expires: number, };
 export type NetworkRequest = { "kind": "list" } | { "kind": "inspect", code: string, } | { "kind": "join", code: string, nickname: string, accepted_network: string, operation_id: string, } | { "kind": "call", network: string, request: Request, };
 export type NetworkResponse = { "kind": "list", networks: Array<JoinedNetwork>, } | { "kind": "preview", preview: InvitationPreview, } | { "kind": "result", network: string, response: Response, };
-export type FileInfo = { id: string, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,
+export type FileInfo = { id: string, aliases?: Array<string>, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,
 /**
  * Peers contributing verified pieces since this process opened the cache.
  */
@@ -17,8 +17,8 @@ export type FileState = "offered" | "importing" | "downloading" | "waiting_for_p
 export type NetworkState = "locked" | "local_only" | "invitation_required" | "connecting" | "connected" | "reconnecting" | "invitation_expired" | "unavailable";
 export type NetworkStatus = { state: NetworkState, message: string, };
 export type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };
-export type Member = { id: string, nickname: string, isSelf: boolean, capabilities: Array<string>, };
-export type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };
+export type Member = { id: string, nickname: string, isSelf: boolean, recentlyActive?: boolean, capabilities: Array<string>, };
+export type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };
 export type ConversationKind = "channel" | "query" | "archive";
 export type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,
 /**
@@ -37,7 +37,9 @@ export type DirectoryEntry = { name: string, joined: boolean, conversation: stri
 export type CommandOutput = { "kind": "help", commands: Array<CommandSpec>, } | { "kind": "directory", channels: Array<DirectoryEntry>, } | { "kind": "invitation", channel: string, link: string, expires: number, localOnly: boolean, } | { "kind": "text", title: string, text: string, } | { "kind": "status", text: string, } | { "kind": "close", conversation: string, };
 export type InputHistoryEntry = { conversation: string | null, text: string, };
 export type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };
-export type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, };
+export type Activity = { id: string, conversation: string, kind: string, text: string, timestamp: number, };
+export type OperationDetail = { network?: string, id: string, instance: string, conversation: string | null, action: string, started: number, state: string, output: CommandOutput | null, message: string | null, };
+export type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, };
 export type HistoryPage = { messages: Array<Message>, before: string | null, };
 export type Completion = { text: string, description: string, };
 export type Request = { "kind": "networks", request: NetworkRequest, } | { "kind": "files", request: FileRequest, } | { "kind": "identify" } | { "kind": "unlock", passphrase: string, create: boolean, } | { "kind": "lock" } | { "kind": "disconnect" } | { "kind": "snapshot" } | { "kind": "network_status" } | { "kind": "import_network_invitation", code: string, } | { "kind": "catalogue", conversation: string | null, } | { "kind": "history", conversation: string, before: string | null, limit: number, } | { "kind": "search", conversation: string, text: string, before: string | null, limit: number, } | { "kind": "submit", operation_id: string, conversation: string | null, text: string, } | { "kind": "complete", conversation: string | null, text: string, } | { "kind": "mark_read", conversation: string, message_id: string, } | { "kind": "events", after: string, wait_ms: number, };

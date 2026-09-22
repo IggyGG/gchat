@@ -1,6 +1,7 @@
 export interface FileAccess {
   exchange(frame: ArrayBuffer): Promise<Uint8Array>;
   save(id: string): Promise<string>;
+  saveInvitation?(invitation: string): Promise<string | null>;
 }
 export function encodeFileIo(header: { instance: string; id: string; piece: number; upload: boolean }, bytes = new Uint8Array()): ArrayBuffer {
   const encoded = new TextEncoder().encode(JSON.stringify(header));
