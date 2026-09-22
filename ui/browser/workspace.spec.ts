@@ -631,3 +631,17 @@ test('notification setup is explicit, distinguishes registration and offers devi
   await page.reload(); await page.getByLabel('Instance passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
   await expect(page.locator('.active-title')).toBeVisible(); await expect(screen).toHaveCount(0);
 });
+
+for (const width of [390, 1100]) test(`mentions suggest local members without submitting at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 720 }); await ready(page);
+  const input = page.getByRole('textbox', { name: 'Message or command' });
+  await input.fill('Hello @');
+  const choices = page.getByRole('listbox', { name: 'Mention a member' });
+  await expect(choices.getByRole('option', { name: '@Ada', exact: true })).toBeVisible();
+  await choices.getByRole('option', { name: '@Ada', exact: true }).click();
+  await expect(input).toHaveValue('Hello @Ada '); await expect(choices).toHaveCount(0);
+  await input.fill('@ig'); await input.press('Enter');
+  await expect(input).toHaveValue('@Iggy ');
+  await input.fill('@'); await input.press('Escape'); await expect(choices).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').length)).toBe(0);
+});

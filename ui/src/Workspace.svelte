@@ -1,6 +1,7 @@
 <script lang="ts">
   import FocusScreen from './FocusScreen.svelte';
   import { followTail } from './follow-tail';
+  import { mentionSuggestions, insertMention } from './mentions';
   import MessageText from './MessageText.svelte';
   import ResizeHandles from './ResizeHandles.svelte';
   import type { NativeShell } from './native-shell';
@@ -210,6 +211,21 @@
   let joinRequest = $state<Extract<Request, { kind: 'submit' }>>();
   const views = new ConversationViews();
   let completions = $state<Completion[]>([]);
+  let mentionContext = $state<{ text: string; conversation: string | null; start: number; end: number; items: string[] } | null>(null);
+  let mentionIndex = $state(0);
+  function updateMentions() {
+    completions = []; historyPosition = undefined; mentionIndex = 0;
+    if (!composer || locked || composer.selectionStart !== composer.selectionEnd) { mentionContext = null; return; }
+    const text = composer.value;
+    const result = mentionSuggestions(text, composer.selectionStart, active?.members.map(member => member.nickname) ?? []);
+    mentionContext = result ? { ...result, text, conversation: selected } : null;
+  }
+  async function chooseMention(name: string) {
+    if (!mentionContext || !mentions.includes(name)) return;
+    const inserted = insertMention(draft, mentionContext.start, mentionContext.end, name);
+    draft = inserted.text; mentionContext = null;
+    await tick(); composer?.focus(); composer?.setSelectionRange(inserted.caret, inserted.caret);
+  }
   let historyPosition: number | undefined;
   let savedDraft = '';
   let transcript = $state<HTMLDivElement>();
@@ -230,6 +246,7 @@
   const active = $derived(snapshot?.conversations.find(c => c.id === selected));
   const details = $derived(snapshot?.conversations.find(c => c.id === detailsConversation));
   const locked = $derived(snapshot?.instance.locked ?? true);
+  const mentions = $derived(!locked && mentionContext?.text === draft && mentionContext.conversation === selected ? mentionContext.items : []);
   const creating = $derived(snapshot?.instance.protocolLocked ? !snapshot.instance.profileExists : !snapshot?.instance.archiveExists);
   const title = $derived(active?.name ?? 'GChat');
   const workspaceReady = $derived(!locked && networkAccepted);
@@ -721,6 +738,13 @@
   function keydown(event: KeyboardEvent) {
     if (event.isComposing) return;
     if (dialog && !['Enter', 'Escape'].includes(event.key)) return;
+    if (mentions.length && ['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key) && !event.shiftKey) {
+      event.preventDefault();
+      if (event.key === 'Escape') mentionContext = null;
+      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') mentionIndex = (mentionIndex + (event.key === 'ArrowDown' ? 1 : mentions.length - 1)) % mentions.length;
+      else void chooseMention(mentions[mentionIndex]);
+      return;
+    }
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); }
     else if (shouldComplete(event, draft, completions.length > 0)) { event.preventDefault(); void complete(); }
     else if (event.key === 'Escape') { event.preventDefault(); cancelPrompt(); completions = []; channelsOpen = false; panel = null; }
@@ -959,9 +983,10 @@
       {#if draftError}<p class="input-error" id="gchat-input-error">{draftError}</p>{/if}
       {#if workspaceReady}
         <form class="composer" onsubmit={event => { event.preventDefault(); void send(); }}>
+          {#if mentions.length}<div class="completions" role="listbox" id="mention-suggestions" aria-label="Mention a member">{#each mentions as name, index}<button type="button" role="option" id={'mention-option-' + index} aria-selected={mentionIndex === index} tabindex="-1" onclick={() => void chooseMention(name)}>@{name}</button>{/each}</div>{/if}
           {#if completions.length}<div class="completions" aria-label="Command completions">{#each completions as item}<button type="button" onclick={() => { draft = item.text + ' '; completions = []; composer?.focus(); }}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
           {#if !dialog && selected && fileAccess && fileController && active?.kind !== 'archive'}<button class="attach" type="button" aria-label="Share a file" title="Share a file" disabled={fileState.busy} onclick={() => chooseFile()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a7 7 0 0 1 10 10l-9 9" /></svg></button>{/if}
-          <textarea bind:this={composer} bind:value={draft} aria-label="Message or command" aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} oninput={() => { completions = []; historyPosition = undefined; }}></textarea>
+          <textarea bind:this={composer} bind:value={draft} aria-label="Message or command" aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} aria-controls={mentions.length ? 'mention-suggestions' : undefined} aria-activedescendant={mentions.length ? 'mention-option-' + mentionIndex : undefined} oninput={updateMentions} onclick={updateMentions} onkeyup={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) updateMentions(); }}></textarea>
           <button class="send" type="submit" disabled={!draft || !!draftError || (!dialog && (busy || sendingFull) && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : 'Send'}</button>
         </form>
       {/if}
@@ -1191,6 +1216,7 @@
   textarea { resize:none; flex:1; width:0; min-height:36px; max-height:160px; padding:8px 3px; border:0; background:transparent; field-sizing:content; }
   .attach { display:flex; align-items:center; justify-content:center; color:var(--muted); padding:8px; }
   .send { color:var(--accent); border-color:#566476; }
+  .completions [aria-selected="true"] { background:#3a4652; }
   .completions { position:absolute; bottom:100%; left:0; right:0; z-index:2; background:#303739; border:1px solid #566476; max-height:240px; overflow:auto; }
   .completions button { display:flex; gap:20px; width:100%; padding:9px 12px; }.completions span { color:var(--muted); }
   .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,85vw); flex:none; overflow:auto; border-left:1px solid var(--line); background:#22262b; }
