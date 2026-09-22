@@ -49,6 +49,7 @@ deny = [
     { crate = "ring", wrappers = ["rustls-webpki", "rustls"], reason = "Ring is confined to the reviewed rustls/reqwest TLS dependency path" },
 ]
 skip = [
+    { crate = "hashbrown@0.14.5", reason = "tauri-plugin-deep-link 2.4.10 uses rust-ini/ordered-multimap for desktop URI registration, pinning hashbrown 0.14 while indexmap uses 0.17; reviewed 2026-09-22, remove when the plugin dependency converges. No advisory exception." },
     # Native Save As: rfd 0.16 requires windows-sys 0.60 and its 0.53 import libraries.
     { crate = "windows-sys@0.60.2", reason = "rfd 0.16 requires windows-sys 0.60; Tauri/runtime dependencies use 0.61; revisit when the dialog plugin converges" },
     { crate = "windows-targets@0.53.5", reason = "rfd/windows-sys 0.60 requires the 0.53 Windows import-library generation while ring retains 0.52; revisit with their next compatible upgrades" },

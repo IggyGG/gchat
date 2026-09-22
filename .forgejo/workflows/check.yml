@@ -20,7 +20,7 @@ jobs:
       - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: ghost-local/gcoms
-          ref: 2dff2d97ff119bbbcc709016ffb52a3b3ae1aa72
+          ref: b6f9bb084daf40a54f33c7284bede1ef6b98f3fb
           path: gcoms
           persist-credentials: false
       - run: python3 gchat/scripts/ci.py --gcoms gcoms

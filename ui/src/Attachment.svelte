@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ResizeHandles from './ResizeHandles.svelte';
+  import type { NativeShell } from './native-shell';
   import { onMount, type Snippet } from 'svelte';
   import GhostMark from './GhostMark.svelte';
   import type { FileAccess } from './files';
@@ -6,7 +8,7 @@
   import Workspace from './Workspace.svelte';
   import { attach, chatError, type ChatError, type Exchange, type Transport } from './transport';
   import { attachRpc, type RpcTransport } from './rpc-transport';
-  let { exchange, rpcTransport, expectedInstance, tools, fileAccess, deviceUnlock }: { exchange: Exchange; rpcTransport?: RpcTransport; expectedInstance?: string; tools?: Snippet; fileAccess?: FileAccess; deviceUnlock?: DeviceUnlock } = $props();
+  let { exchange, rpcTransport, expectedInstance, tools, fileAccess, deviceUnlock, nativeShell, pendingInvitation, consumeInvitation, discardInvitations }: { exchange: Exchange; rpcTransport?: RpcTransport; expectedInstance?: string; tools?: Snippet; fileAccess?: FileAccess; deviceUnlock?: DeviceUnlock; nativeShell?: NativeShell; pendingInvitation?: string; consumeInvitation?: () => void; discardInvitations?: () => void } = $props();
   let transport = $state<Transport>();
   let error = $state<ChatError>();
   let running = false, connecting = false;
@@ -25,14 +27,14 @@
     finally { connecting = false; }
   }
 </script>
-{#if transport}<Workspace {transport} {tools} {fileAccess} {deviceUnlock} />{:else}
-  <main><h1 class="brand">GChat.<GhostMark /></h1><p role="status">{error ? error.retryable ? 'Reconnecting to this instance…' : error.message : 'Connecting to this instance…'}</p>
+{#if transport}<Workspace {transport} {tools} {fileAccess} {deviceUnlock} {nativeShell} {pendingInvitation} {consumeInvitation} {discardInvitations} />{:else}
+  <main><ResizeHandles shell={nativeShell} />{#if nativeShell && !nativeShell.mac}<nav aria-label="Window controls"><button onclick={() => void nativeShell?.minimize()}>−</button><button onclick={() => void nativeShell?.maximize()}>□</button><button onclick={() => void nativeShell?.close()}>×</button></nav>{/if}<h1 class="brand">GChat.<GhostMark /></h1><p role="status">{error ? error.retryable ? 'Reconnecting to this instance…' : error.message : 'Connecting to this instance…'}</p>
     {#if error}<button onclick={() => error?.retryable ? void connect() : location.reload()}>{error.action}</button><details><summary>Connection details</summary>{error.message}</details>{/if}
     {#if tools}{@render tools()}{/if}
   </main>
 {/if}
 <style>
-  main { min-height:100dvh; background:#1c1e22; color:#e4e7eb; padding:2rem; font:16px/1.5 ui-sans-serif,system-ui,sans-serif; }
+  main { position:relative; box-sizing:border-box; min-height:100dvh; background:#1c1e22; color:#e4e7eb; padding:2rem; font:16px/1.5 ui-sans-serif,system-ui,sans-serif; }
   .brand { display:flex; align-items:center; gap:8px; margin:0 0 12px; font-size:20px; line-height:1; letter-spacing:1px; --ghost-mark-size:18px; }
   .brand :global(.ghost-mark) { --ghost-mark-size:18px; transform:translateY(0.5px); }
   button { font:inherit; min-height:44px; cursor:pointer; } details { margin-top:16px; }

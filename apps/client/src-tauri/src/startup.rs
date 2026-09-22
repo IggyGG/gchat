@@ -3,7 +3,7 @@ use clap::Parser;
 use gchat_core::chat_service::host::InstanceConfig;
 use std::{ffi::OsString, path::PathBuf};
 
-#[derive(Debug, Parser)]
+#[derive(Parser)]
 #[command(name = "gchat-desktop")]
 struct Arguments {
     /// Use a separate saved identity and archive directory.
@@ -12,6 +12,9 @@ struct Arguments {
     /// Attach a local fleet controller to this selected identity.
     #[arg(long, env = "GCHAT_FLEET_CONFIG")]
     fleet_config: Option<PathBuf>,
+    /// An app invitation opens a preview only. Never print its bearer code.
+    #[arg(value_parser = parse_invitation)]
+    invitation: Option<String>,
     /// Select the current carrier explicitly (the default in official builds).
     #[arg(long, conflicts_with = "legacy_carrier")]
     gc2_carrier: bool,
@@ -23,12 +26,33 @@ struct Arguments {
     no_network_bootstrap: bool,
 }
 
+fn parse_invitation(value: &str) -> Result<String, String> {
+    if value.len() <= 174800
+        && value.starts_with("gcoms://join#GCI1-")
+        && value["gcoms://join#GCI1-".len()..]
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        && value.len() > "gcoms://join#GCI1-".len()
+    {
+        Ok(value.into())
+    } else {
+        Err("Invalid invitation link".into())
+    }
+}
+
 pub(crate) fn configuration<I, T>(args: I) -> Result<InstanceConfig, String>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
-    let args = Arguments::try_parse_from(args).map_err(|error| error.to_string())?;
+    let args = Arguments::try_parse_from(args).map_err(|error| {
+        // Clap includes invalid argument values. Never expose an invitation in logs.
+        if error.kind() == clap::error::ErrorKind::ValueValidation {
+            "Invalid invitation link".into()
+        } else {
+            error.to_string()
+        }
+    })?;
     if args.gc2_carrier && !cfg!(feature = "gc2-carrier") {
         return Err("this application was built without GC/2 carrier support".into());
     }
@@ -44,6 +68,26 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn invitation_launch_retains_carrier_and_is_not_provisioning() {
+        let config = configuration([
+            "gchat-desktop",
+            "--no-network-bootstrap",
+            "gcoms://join#GCI1-fixture",
+        ])
+        .unwrap();
+        assert!(!config.network_recovery);
+        assert_eq!(config.gc2_carrier, cfg!(feature = "gc2-carrier"));
+        for bad in [
+            "gcoms://evil#GCI1-secret",
+            "gcoms://join#GCI1-",
+            "gcoms://join#GCI1-%61",
+        ] {
+            let error = configuration(["gchat-desktop", bad]).err().unwrap();
+            assert!(!error.contains(bad));
+        }
+    }
 
     #[test]
     fn official_feature_selects_current_carrier_by_default() {

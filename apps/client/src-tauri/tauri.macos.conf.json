@@ -1,0 +1,16 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "GChat",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 320,
+        "minHeight": 320,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      }
+    ]
+  }
+}

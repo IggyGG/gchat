@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ResizeHandles from './ResizeHandles.svelte';
+  import type { NativeShell } from './native-shell';
   import { onMount, tick, type Snippet } from 'svelte';
   import type { OperationHandle } from '@gcoms/rpc';
   import type { CommandOutput, CommandSpec, Completion, DirectoryEntry, JoinedNetwork, Message, NetworkStatus, Request, Response, Snapshot } from './api';
@@ -14,12 +16,12 @@
   import { hasNetworkSetup, networkLabel, localCommand, mergeViewCommands, viewCommands, readFont, writeFont, type ChatFont } from './workspace-state';
   import MessageResult from './MessageResult.svelte';
   import { chatError, ChatError, type Transport } from './transport';
-  import { MAX_INPUT_BYTES } from './api';
+  import { MAX_INPUT_BYTES, MAX_NETWORK_INVITATION_BYTES } from './api';
   import { ConversationViews, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
   import { fitVisualViewport, isTouchActivation } from './viewport';
   import { PendingPicker, type PendingPickerView, type PickerTarget } from './pending-picker';
 
-  let { transport: attachmentTransport, tools, fileAccess, deviceUnlock }: { transport: Transport; tools?: Snippet; fileAccess?: FileAccess; deviceUnlock?: DeviceUnlock } = $props();
+  let { transport: attachmentTransport, tools, fileAccess, deviceUnlock, nativeShell, pendingInvitation, consumeInvitation, discardInvitations }: { transport: Transport; tools?: Snippet; fileAccess?: FileAccess; deviceUnlock?: DeviceUnlock; nativeShell?: NativeShell; pendingInvitation?: string; consumeInvitation?: () => void; discardInvitations?: () => void } = $props();
   let networks = $state<JoinedNetwork[]>([]);
   let selectedNetwork = $state<string>();
   const transport = new NetworkWorkspace(() => attachmentTransport, value => networks = value);
@@ -63,7 +65,8 @@
     syncResults(); return value.key;
   }
   function showResult(id: string, conversation = selected, text?: string) {
-    utility = null; dialog = null; closeNavigation();
+    utility = null; cancelPrompt(); closeNavigation();
+    void scrollPrivate();
     resultKey = beginResult(id, conversation, text);
   }
   let hidden = $state<string[]>([]);
@@ -73,8 +76,8 @@
   let connectionError = $state<ChatError>();
   let channelsOpen = $state(false);
   let panel = $state<'users' | 'files' | null>(null);
-  let narrow = $state(false);
-  const navigationModal = $derived(channelsOpen || (!!panel && narrow));
+
+  const navigationModal = $derived(channelsOpen || !!panel);
   let utility = $state<'network' | 'help' | 'font' | 'info' | null>(null);
   let pushStatus = $state<MobilePushStatus>();
   let pushBusy = $state(false), pushError = $state('');
@@ -101,6 +104,11 @@
   let networkStatus = $state<NetworkStatus>();
   let networkAccepted = $state(false), networkError = $state('');
   let networkPolling = false, networkGeneration = 0;
+  let helpVisible = $state(false);
+  async function scrollPrivate() { await tick(); if (transcript) transcript.scrollTop = transcript.scrollHeight; }
+  function prepareCommand(usage: string) {
+    cancelPrompt(); draft = usage.split(/\s/)[0] + ' '; completions = []; void tick().then(() => composer?.focus());
+  }
   let helpCommands = $state<CommandSpec[]>([]), helpError = $state('');
   let fileState = $state<FileViewState>(emptyFiles());
   let fileController = $state<FileController>();
@@ -125,6 +133,7 @@
     else if (reason === 'cancelled') pickerNotice = 'File selection cancelled. Reconnect if this profile is locked.';
     else if (reason === 'profile_changed') pickerNotice = 'File selection discarded because the profile changed.';
   });
+  let joiningPublic = $state(false);
   let dialog = $state<'choose' | 'join' | 'create' | null>(null);
   let visibility = $state<'private' | 'public'>('private');
   let destination = $state('');
@@ -155,7 +164,7 @@
   const details = $derived(snapshot?.conversations.find(c => c.id === detailsConversation));
   const locked = $derived(snapshot?.instance.locked ?? true);
   const creating = $derived(snapshot?.instance.protocolLocked ? !snapshot.instance.profileExists : !snapshot?.instance.archiveExists);
-  const title = $derived(active?.name ?? 'Status');
+  const title = $derived(active?.name ?? 'GChat');
   const workspaceReady = $derived(!locked && networkAccepted);
   const fileIdentity = $derived(workspaceReady && snapshot?.instance.capabilities.includes('files.v1') ? `${snapshot.instance.id}/${snapshot.instance.bootId}` : null);
   const fileCount = $derived(fileState.snapshot?.files.filter(f => f.conversation === selected && f.state !== 'cancelled').length ?? 0);
@@ -196,13 +205,13 @@
   }
   async function invitationJoined(response: Response) {
     selectedNetwork = transport.active;
-    networkAccepted = true; replacingInvitation = false; utility = null; dialog = null;
+    networkAccepted = true; replacingInvitation = false; utility = null; cancelPrompt();
     await refreshInBackground();
     await apply(response, selected);
     void refreshNetwork();
   }
   function openUtility(value: typeof utility) {
-    closeNavigation(); resultKey = null; dialog = null; utility = value; replacingInvitation = false;
+    closeNavigation(); resultKey = null; cancelPrompt(); utility = value; replacingInvitation = false;
     if (value === 'info') {
       detailsConversation = selected; channelTopic = active?.topic ?? ''; channelNickname = active?.members.find(m => m.isSelf)?.nickname ?? '';
       leavingChannel = false; nextOwner = active?.members.find(m => !m.isSelf)?.id ?? '';
@@ -215,12 +224,13 @@
     void operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation, text });
   }
   async function showHelp() {
-    openUtility('help'); helpError = '';
+    closeNavigation(); helpVisible = true; helpError = '';
+    await scrollPrivate();
     helpCommands = viewCommands(!!selected);
     try {
       const response = await transport.request({ kind: 'catalogue', conversation: workspaceReady ? selected : null });
-      if (utility === 'help' && response.kind === 'catalogue') helpCommands = mergeViewCommands(response.commands, !!selected && workspaceReady);
-    } catch (error) { if (utility === 'help') helpError = chatError(error).message; }
+      if (helpVisible && response.kind === 'catalogue') helpCommands = mergeViewCommands(response.commands, !!selected && workspaceReady);
+    } catch (error) { if (helpVisible) helpError = chatError(error).message; }
   }
   function chooseFont(value: ChatFont) { font = value; writeFont(value); }
   async function find(text = '') {
@@ -316,7 +326,7 @@
     } catch (error) { pickerNotice = chatError(error).message; }
     finally { continuingPicker = false; }
   }
-  const draftError = $derived(inputError(draft, draft.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES));
+  const draftError = $derived(inputError(draft, dialog === 'join' && !joiningPublic ? MAX_NETWORK_INVITATION_BYTES : draft.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES));
   function failureTarget(id: string | null) {
     const conversation = snapshot?.conversations.find(c => c.id === id);
     return conversation ? `${conversation.name}${conversation.kind === 'query' ? ` · ${conversation.topic}` : ''}` : id ? 'Original conversation' : 'Status';
@@ -325,7 +335,7 @@
 
 
   onMount(() => {
-    running = true; font = readFont(); narrow = window.innerWidth < 1000;
+    running = true; font = readFont();
     const networkTimer = setInterval(() => { void refreshNetwork(); void refreshPush(); }, 2000);
     void watch();
     const visible = () => { if (!document.hidden && (!connectionError || connectionError.retryable)) void refreshInBackground(); };
@@ -345,10 +355,11 @@
     if (revision !== snapshotGeneration || !running || response.kind !== 'snapshot') return;
     const next = response.snapshot;
     picker.profile(next.instance.id);
+    if (snapshot && snapshot.instance.id !== next.instance.id) { discardInvitations?.(); selectedNetwork = undefined; }
     const changed = snapshot?.revision !== next.revision;
-    if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && snapshot.instance.bootId !== next.instance.bootId)) {
+    if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && (snapshot.instance.bootId !== next.instance.bootId || snapshot.instance.id !== next.instance.id))) {
       invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
-      generation++; searchGeneration++; views.clear(); resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
+      generation++; searchGeneration++; views.clear(); helpVisible = false; promptStep = null; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
     }
     snapshot = next;
     if (!next.instance.locked) {
@@ -369,9 +380,9 @@
     if (workspaceReady && !restoredSelection) {
       restoredSelection = true;
       const remembered = readNavigation(next.instance.id);
-      await select(remembered && (remembered.selected === null || next.conversations.some(c => c.id === remembered.selected)) ? remembered.selected : next.conversations[0]?.id ?? null);
+      await select(remembered && (remembered.selected !== null && next.conversations.some(c => c.id === remembered.selected)) ? remembered.selected : next.conversations[0]?.id ?? null);
     }
-    if (selected && !next.conversations.some(c => c.id === selected)) await select(null);
+    if (selected && !next.conversations.some(c => c.id === selected)) await select(next.conversations.find(c => !hidden.includes(c.id))?.id ?? null);
     views.retain(next.conversations.map(c => c.id));
     if ((changed || historyStale || offline) && selected && workspaceReady) await loadHistory(false, true);
     offline = false;
@@ -394,6 +405,7 @@
     }
   }
   async function select(id: string | null, activation?: MouseEvent) {
+    if (id !== selected) { if (dialog) cancelPrompt(); helpVisible = false; resultKey = null; }
     // Capture before the first await: currentTarget is cleared after dispatch.
     const initiatingPointer = activation?.currentTarget ? navigationPointers.get(activation.currentTarget) : undefined;
     if (activation?.currentTarget) navigationPointers.delete(activation.currentTarget);
@@ -493,10 +505,10 @@
     if (response.kind === 'output' && !locked) {
       if (response.output.kind === 'close') {
         hidden = [...hidden, response.output.conversation];
-        if (selected === response.output.conversation) await select(null);
+        if (selected === response.output.conversation) await select(snapshot?.conversations.find(c => !hidden.includes(c.id))?.id ?? null);
       } else {
-        if (result && response.output.kind !== 'status') { utility = null; dialog = null; closeNavigation(); resultKey = result; }
-        if (response.output.kind === 'status' && selected === origin) await select(null);
+        if (result) { utility = null; closeNavigation(); await scrollPrivate(); }
+
       }
     }
     if (response.kind === 'applied' && !locked) {
@@ -528,6 +540,11 @@
   }
   async function send(text = draft) {
     if (!text || !workspaceReady) return;
+    if (text.trim() === '/cancel') { cancelPrompt(); return; }
+    if (dialog) { await answerPrompt(text); return; }
+    if (['/join', '/create'].includes(text.trim())) { if (text === draft) draft = ''; openDialog(text.trim() === '/join' ? 'join' : 'create'); return; }
+    if (/^\/join\s+gcoms:/.test(text.trim())) { incomingInvitation = text.trim().slice(6).trim(); if (text === draft) draft = ''; openDialog('join'); return; }
+    if (text.trim().startsWith('gcoms:')) { incomingInvitation = text.trim(); if (text === draft) draft = ''; openDialog('join'); return; }
     const local = localCommand(text);
     if (local) {
       if (text === draft) draft = '';
@@ -595,9 +612,10 @@
   }
   function keydown(event: KeyboardEvent) {
     if (event.isComposing) return;
+    if (dialog && !['Enter', 'Escape'].includes(event.key)) return;
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); }
     else if (shouldComplete(event, draft, completions.length > 0)) { event.preventDefault(); void complete(); }
-    else if (event.key === 'Escape') { completions = []; channelsOpen = false; panel = null; dialog = null; }
+    else if (event.key === 'Escape') { event.preventDefault(); cancelPrompt(); completions = []; channelsOpen = false; panel = null; }
     else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !draft.includes('\n')) {
       const history = snapshot?.inputHistory.filter(item => item.conversation === selected).map(item => item.text) ?? [];
       if (!history.length) return;
@@ -608,7 +626,9 @@
     }
   }
   function cycle(event: KeyboardEvent) {
-    if (event.isComposing || dialog || utility || resultKey) return;
+    if (event.isComposing || utility) return;
+    if (event.key === 'Escape' && resultKey) { resultKey = null; composer?.focus(); return; }
+    if (dialog && event.key === 'Escape') { event.preventDefault(); cancelPrompt(); return; }
     if (navigationModal) {
       if (event.key === 'Escape') { event.preventDefault(); closeNavigation(); return; }
       if (event.key === 'Tab') {
@@ -625,7 +645,8 @@
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f' && selected && workspaceReady) { event.preventDefault(); void find(searchText); return; }
     if (workspaceReady && event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
       event.preventDefault();
-      const ids = [null, ...snapshot?.conversations.filter(c => !hidden.includes(c.id)).map(c => c.id) ?? []];
+      const ids: (string | null)[] = snapshot?.conversations.filter(c => !hidden.includes(c.id)).map(c => c.id) ?? [];
+      if (!ids.length) return;
       const index = ids.indexOf(selected);
       void select(ids[(index + ids.length + (event.key === 'ArrowRight' ? 1 : -1)) % ids.length]);
     }
@@ -643,11 +664,34 @@
     node.showModal(); (node.querySelector<HTMLElement>('input, textarea') ?? node.querySelector<HTMLElement>('button:not(:disabled)'))?.focus();
     return { destroy() { opener?.focus(); } };
   }
+  let joinSetup = $state<NetworkSetup>();
+  let promptStep = $state<'name' | 'visibility' | 'nickname' | 'confirm' | null>(null);
+  let promptDraft = '';
+  let incomingInvitation = $state('');
+  function cancelPrompt() {
+    if (dialog) draft = promptDraft;
+    dialog = null; joiningPublic = false; promptStep = null; promptDraft = ''; incomingInvitation = ''; joinError = '';
+    void tick().then(() => composer?.focus());
+  }
+  async function answerPrompt(text: string) {
+    const answer = text.trim();
+    if (dialog === 'join' && !joiningPublic && joinSetup) { await joinSetup.answer(text); draft = ''; await scrollPrivate(); return; }
+    if (dialog === 'choose') { if (answer === 'join' || answer === 'create') openDialog(answer); else joinError = 'Choose join or create.'; return; }
+    if (!answer || /[\r\n\t]/.test(answer)) { joinError = 'Enter one line.'; return; }
+    joinError = '';
+    if (promptStep === 'name') { if (/\s/.test(answer)) { joinError = 'Channel names cannot contain spaces.'; return; } destination = answer; promptStep = dialog === 'create' ? 'visibility' : 'nickname'; }
+    else if (promptStep === 'visibility') { if (!['private', 'public'].includes(answer)) { joinError = 'Choose private or public.'; return; } visibility = answer as typeof visibility; promptStep = 'nickname'; }
+    else if (promptStep === 'nickname') { nickname = answer; promptStep = 'confirm'; }
+    else if (promptStep === 'confirm') { if (['create', 'join'].includes(answer.toLowerCase())) await join(); else joinError = 'Confirm the action above, or /cancel.'; return; }
+    draft = ''; await scrollPrivate(); composer?.focus();
+  }
   function openDialog(mode: 'choose' | 'join' | 'create') {
-    if (!workspaceReady) return;
-    closeNavigation(); utility = null; resultKey = null;
-    nickname ||= active?.members.find(m => m.isSelf)?.nickname ?? snapshot?.conversations.flatMap(c => c.members).find(m => m.isSelf)?.nickname ?? '';
-    if (!joinBusy) { joinError = ''; if (mode === 'choose' || mode === 'create') visibility = 'private'; dialog = mode; } else dialog = joinRequest?.text.startsWith('/create ') ? 'create' : 'join';
+    if (!workspaceReady || joinBusy) return;
+    if (!dialog) { promptDraft = draft; draft = ''; }
+    closeNavigation(); utility = null; resultKey = null; joinError = ''; dialog = mode; joiningPublic = mode === 'join' && !snapshot?.instance.capabilities.includes('networks.v1'); browse = false;
+    if (joiningPublic) promptStep = 'name';
+    if (mode === 'create') { visibility = 'private'; destination = ''; promptStep = 'name'; }
+    void scrollPrivate().then(() => composer?.focus());
   }
   async function search(older = false) {
     const conversation = selected, text = searchText.trim(), revision = ++searchGeneration;
@@ -661,8 +705,8 @@
     } catch (error) { if (revision === searchGeneration) searchError = chatError(error).message; }
     finally { if (revision === searchGeneration) searchBusy = false; }
   }
-  async function join(event: SubmitEvent) {
-    event.preventDefault();
+  async function join(event?: SubmitEvent) {
+    event?.preventDefault();
     if (!destination || !nickname || joinBusy) return;
     const target = destination.trim(), nick = nickname.trim();
     if (/\s/.test(target)) { joinError = 'Use one invitation or channel name, without spaces.'; return; }
@@ -678,13 +722,13 @@
     try {
       const response = await transport.request(submitted);
       if (!running || locked || joinRequest !== submitted) return;
-      await apply(response, origin, result); dialog = null; destination = ''; joinRequest = undefined;
+      cancelPrompt(); await apply(response, origin, result); destination = ''; joinRequest = undefined;
     } catch (error) { if (!running || locked || joinRequest !== submitted) return; const failure = chatError(error); joinError = failure.message; if (failure.code === 'rejected') joinRequest = undefined; }
     finally { joinBusy = false; }
   }
   function chooseChannel(entry: DirectoryEntry) {
     if (entry.conversation && entry.joined) { dialog = null; void select(entry.conversation); }
-    else { openDialog('join'); destination = entry.conversation ?? entry.name; browse = false; }
+    else { openDialog('join'); destination = entry.conversation ?? entry.name; joiningPublic = true; promptStep = 'nickname'; browse = false; }
   }
   async function loadDirectory(refreshDirectory = false) {
     joinError = ''; browse = true;
@@ -697,19 +741,34 @@
   function time(timestamp: number) { return new Date(timestamp * 1000).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }); }
 </script>
 
-<svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} onresize={() => { narrow = window.innerWidth < 1000; }} />
+{#snippet outcomes()}
+      {#if pickerView?.selected && !invitationSelection}
+        <div class="notice" role="status"><span>{locked ? 'A selected file is waiting for this profile. Reconnect to continue.' : 'A selected file is ready to continue in its original destination.'}</span>{#if !locked}<button disabled={continuingPicker || (pickerView.target.kind === 'outgoing' && !workspaceReady)} onclick={() => void continuePicker()}>Continue selected file</button>{/if}<button onclick={discardPicker}>Discard selection</button></div>
+      {/if}
+      {#if pickerNotice}<div class="notice" role="status"><span>{pickerNotice}</span><button aria-label="Dismiss file selection notice" onclick={() => pickerNotice = ''}>×</button></div>{/if}
+      {#if workspaceReady && (Object.keys(pending).length || joinBusy)}<div class="progress" role="status">{Object.values(pending).map(name => `${name}: waiting for instance`).join(' · ')}{joinBusy ? joinRequest?.text.startsWith('/create ') ? ' Creating channel…' : ' Joining channel…' : ''}</div>{/if}
+      {#if notice}<div class="notice" role="status"><pre>{notice}</pre><button aria-label="Dismiss notice" onclick={() => notice = ''}>×</button></div>{/if}
+      {#each failures as failure (failure.request.operation_id)}
+        <div class="retry" role="status"><span>{failureTarget(failure.request.conversation)}: {failure.message} {failure.code === 'rejected' ? 'Command was not accepted.' : 'Outcome not confirmed. Checking uses the original operation.'}</span><button onclick={() => showResult(failure.request.operation_id, failure.request.conversation, failure.request.text)}>Details</button><button onclick={() => void editFailed(failure.request)}>{failure.code === 'rejected' ? 'Edit command' : 'Edit as new'}</button><button aria-label="Dismiss failed operation" onclick={() => dismissFailure(failure.request.operation_id)}>×</button></div>
+      {/each}
+      {#if !locked}
+        {#each savedOperations.filter(h => !failures.some(f => f.request.operation_id === h.operation.id)) as handle (handle.operation.id)}
+          <div class="retry" role="status"><span>{recoveryMessages[handle.operation.id] ?? 'Saved operation · outcome not confirmed'}</span><button onclick={() => showResult(handle.operation.id)}>Details</button><button onclick={() => forgetSaved(handle.operation.id)}>Dismiss</button></div>
+        {/each}
+      {/if}
+{/snippet}
+
+<svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} />
 <div class="gchat" class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
-  <header class="titlebar" inert={navigationModal}>
-    {#if workspaceReady}<button class="channel-toggle" aria-label="Channels" title="Show channels" aria-controls="channel-navigation" aria-expanded={channelsOpen} onclick={event => void openNavigation('channels', event.currentTarget)}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></svg><span>Channels</span></button>{/if}
+  <ResizeHandles shell={nativeShell} />
+  <header class="titlebar" class:mac={nativeShell?.mac} inert={navigationModal}>
+    {#if nativeShell}<div class="drag-region" role="presentation" onpointerdown={event => { if (event.button === 0) void nativeShell?.drag(); }} ondblclick={() => void nativeShell?.maximize()}></div>{/if}
+      <button class="network-button circle" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
     {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span>{#if active?.topic}<span class="header-topic">{active.topic}</span>{/if}</button>{:else}<span class="active-title">{locked ? 'Welcome' : 'Connect to GChat'}</span>{/if}
     <nav class="header-actions" aria-label="Chat actions">
-      <button class="network-button" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
-      <button class="help-button" title="Help and commands" onclick={() => void showHelp()}>Help</button>
-      {#if workspaceReady && active}
-        <button class="count" aria-label={`Users: ${active.members.length}`} aria-expanded={panel === 'users'} title="Users" onclick={event => void openNavigation('users', event.currentTarget)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="7" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m3 11v-3a6 6 0 0 0-2-4" /></svg> {active.members.length}</button>
-        {#if fileCount}<button class="count" aria-label={`Files: ${fileCount}`} aria-expanded={panel === 'files'} title="Files" onclick={event => void openNavigation('files', event.currentTarget)}><span aria-hidden="true">▤</span> {fileCount}</button>{/if}
-      {/if}
+      <button class="help-button circle" disabled={locked || !networkAccepted} aria-label="Help and commands" title="Help and commands" onclick={() => void showHelp()}>?</button>
+      {#if nativeShell && !nativeShell.mac}<div class="window-controls"><button aria-label="Minimize window" title="Minimize" onclick={() => void nativeShell?.minimize()}>−</button><button aria-label="Maximize or restore window" title="Maximize or restore" onclick={() => void nativeShell?.maximize()}>□</button><button aria-label="Close window" title="Close window (receiving continues)" onclick={() => void nativeShell?.close()}>×</button></div>{/if}
       {#if tools}{@render tools()}{/if}
     </nav>
   </header>
@@ -718,13 +777,20 @@
     {#if deviceUnlock}<input class="file-picker" type="file" accept=".txt,text/plain" aria-label="Choose an invitation file" bind:this={invitationInput} onchange={event => pickedInvitation(event, inputGeneration)} oncancel={() => cancelFilePicker('invitation', inputGeneration)} />{/if}
   {/each}
   <div class="workspace">
+    {#if workspaceReady}
+      <button class="circle edge left" class:concealed={navigationModal} aria-label="Channels" title="Show channels" aria-controls="channel-navigation" aria-expanded={false} onclick={event => void openNavigation('channels', event.currentTarget)}>#</button>
+      {#if active}<div class="edge right" class:concealed={navigationModal}>
+        <button class="circle" aria-label={`Users: ${active.members.length}`} title="Users" onclick={event => void openNavigation('users', event.currentTarget)}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m3 11v-3a6 6 0 0 0-2-4"/></svg>{#if active.members.length}<small class="edge-count">{active.members.length}</small>{/if}</button>
+        {#if fileController}<button class="circle" aria-label={`Files: ${fileCount}`} title="Files" onclick={event => void openNavigation('files', event.currentTarget)}>▤{#if fileCount}<small class="edge-count">{fileCount}</small>{/if}</button>{/if}
+      </div>{/if}
+    {/if}
     {#if navigationModal}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
     {#if workspaceReady}<aside id="channel-navigation" class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
-      {#if channelsOpen}<button aria-label="Hide channels" onclick={closeNavigation}>← Hide channels</button>{/if}
+      {#if channelsOpen}<button class="circle fold-left" aria-label="Hide channels" onclick={closeNavigation}>←</button>{/if}
       <div class="channel-entries">
-      <button class:chosen={!selected} aria-current={!selected ? 'page' : undefined} onpointerdown={rememberNavigationPointer} onclick={event => void select(null, event)}><span class="symbol">◈</span> Status</button>
+
       {#each networks.length > 1 ? networks : [undefined] as network (network?.id ?? 'single')}
-      {#if network}<button class="network-group" aria-pressed={selectedNetwork === network.id} onpointerdown={rememberNavigationPointer} onclick={event => { selectedNetwork = network.id; transport.select(network.id); networkGeneration++; networkStatus = network.status; void select(null, event); }}><span class="connection-dot" class:connected={network.status.state === 'connected'} aria-hidden="true">●</span>{network.name}</button>{/if}
+      {#if network}<button class="network-group" aria-pressed={selectedNetwork === network.id} onpointerdown={rememberNavigationPointer} onclick={event => { selectedNetwork = network.id; transport.select(network.id); networkGeneration++; networkStatus = network.status; void select(snapshot?.conversations.find(c => !hidden.includes(c.id) && transport.networkFor(c.id) === network.id)?.id ?? null, event); }}><span class="connection-dot" class:connected={network.status.state === 'connected'} aria-hidden="true">●</span>{network.name}</button>{/if}
       {#each snapshot?.conversations.filter(c => !hidden.includes(c.id) && (!network || transport.networkFor(c.id) === network.id)) ?? [] as conversation (conversation.id)}
         <button class:chosen={selected === conversation.id} aria-current={selected === conversation.id ? 'page' : undefined} class:unread={conversation.unread > 0} onpointerdown={rememberNavigationPointer} onclick={event => void select(conversation.id, event)} title={conversation.topic || conversation.name}>
           <span class="symbol">{conversation.kind === 'query' ? '↳' : conversation.kind === 'archive' ? '·' : '#'}</span>
@@ -737,20 +803,12 @@
       {/each}
       {/each}
       </div>
-      <div class="channel-actions"><button aria-label="Join or create a channel" disabled={busy} onclick={() => openDialog('choose')}>+ Add channel</button></div>
+      <div class="channel-actions"><button class="circle" aria-label="Join or create a channel" title="Join or create a channel" disabled={busy} onclick={() => openDialog('choose')}>+</button></div>
     </aside>{/if}
     <main class="conversation" inert={navigationModal}>
       {#if !locked && snapshot?.providerErrors?.length}<div class="provider-errors" role="status">{#each snapshot.providerErrors as error}<p>{error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>{/each}<button onclick={() => void send('/refresh')}>Reconnect provider</button></div>{/if}
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
-      {#if searchOpen && selected && !locked}
-        <section class="search" aria-label="Find in conversation">
-          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><input id="gchat-search" bind:value={searchText} required /><button disabled={searchBusy}>Find</button><button type="button" onclick={closeSearch}>Close search</button></form>
-          {#if searchError}<p role="status">{searchError}</p>{/if}
-          {#if searchBefore}<button disabled={searchBusy} onclick={() => void search(true)}>Search earlier messages</button>{/if}
-          <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} matches`}</p>
-          {#each searchResults as message (message.id)}<p><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> &lt;{message.nickname}&gt; {message.body}</p>{/each}
-        </section>
-      {/if}
+      {#if pendingInvitation && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation ?? ''; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); }}>Review invitation</button><button onclick={() => consumeInvitation?.()}>Dismiss</button></div>{/if}
       {#if locked}
         <div class="welcome">
           <h1>{creating ? 'Create your GChat identity' : snapshot?.instance.protocolLocked ? 'Reconnect this instance' : 'Unlock chat'}</h1>
@@ -766,25 +824,15 @@
         <div class="welcome network-gate">
           <h1>Connect to GChat</h1>
           <p>Use an invitation to connect and start talking. A channel invitation can include everything you need.</p>
-          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('setup') : undefined} selectedFile={invitationSelection?.context === 'setup' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />
+          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('setup') : undefined} selectedFile={invitationSelection?.context === 'setup' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />
           {:else}<p role="status">{networkError || networkStatus?.message || 'Checking network setup…'}</p><button class="primary" onclick={() => void refreshNetwork()}>Retry</button>{/if}
-        </div>
-      {:else if !selected}
-        <div class="welcome status">
-          {#if !snapshot?.conversations.length}
-          <h1>Your channels. Your conversations.</h1>
-          <p>Join with an invitation, or create a channel and invite someone.</p>
-          <p>Select a user to open a private chat in that channel.</p>
-          {:else}<h1>Status</h1><p>{offline ? 'Reconnecting to the selected instance. You can keep drafting.' : 'Attached to this instance. Closing this view keeps receiving messages.'}</p>{/if}
-          <dl><dt>/join</dt><dd>Join with an invitation</dd><dt>/query nick</dt><dd>Open a private chat</dd><dt>/help</dt><dd>All commands available here</dd></dl>
-          <p class="muted">Tab completes text · Shift+Tab leaves the input · Escape dismisses suggestions · ↑↓ command history · Alt+←/→ switches conversations</p>
-          <details><summary>Instance identity</summary><p class="identity">{snapshot?.instance.id}</p><p class="identity">{snapshot?.instance.safetyNumber}</p></details>
         </div>
       {:else}
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard scrollback is intentional.) -->
         <div class="transcript" bind:this={transcript} role="log" aria-label={`${title} messages`} aria-live="polite" tabindex="0" onscroll={() => { atBottom = !!transcript && transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 35; rememberPosition(); if (atBottom) void markRead(); }}>
+          {#if !selected}<div class="welcome"><h1>Your channels. Your conversations.</h1><p>Join with an invitation, or create a channel and invite someone.</p><button onclick={() => openDialog('join')}>Join</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button onclick={() => openDialog('create')}>Create</button>{/if}</div>{/if}
           {#if before}<button class="older" disabled={loadingHistory} onclick={() => void loadHistory(true)}>Load earlier messages</button>{/if}
-          {#if !messages.length}<p class="empty">{loadingHistory ? 'Loading…' : '*** Beginning of this conversation'}</p>{/if}
+          {#if selected && !messages.length}<p class="empty">{loadingHistory ? 'Loading…' : '*** Beginning of this conversation'}</p>{/if}
           {#each timeline as item, index (item.id)}
             {@const message = item.message}
             {#if message}
@@ -795,62 +843,83 @@
             <div class="message" class:mine={message.mine}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : `<${message.nickname}>`}</span><span class="body">{action ? message.body.slice(8, -1) : message.body}{#if message.delivery === 'local_accepted'}<small class="acceptance" title="Accepted by this instance; recipient delivery is not confirmed"> · accepted locally</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
             {:else if item.activity}<div class="activity"><time>[{time(item.timestamp)}]</time> {item.activity.text}</div>{/if}
           {/each}
-        </div>
-        {#if !atBottom}<button class="jump" onclick={() => { atBottom = true; if (transcript) transcript.scrollTop = transcript.scrollHeight; void markRead(); }}>Jump to latest</button>{/if}
+      {#if searchOpen && selected && !locked}
+        <section class="search private-line" aria-label="Find in conversation">
+          <small>Only you · Find</small>
+          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><input id="gchat-search" bind:value={searchText} required /><button disabled={searchBusy}>Find</button><button type="button" onclick={closeSearch}>Close search</button></form>
+          {#if searchError}<p role="status">{searchError}</p>{/if}
+          {#if searchBefore}<button disabled={searchBusy} onclick={() => void search(true)}>Search earlier messages</button>{/if}
+          <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} matches`}</p>
+          {#each searchResults as message (message.id)}<p><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> &lt;{message.nickname}&gt; {message.body}</p>{/each}
+        </section>
       {/if}
-      {#if pickerView?.selected && !invitationSelection}
-        <div class="notice" role="status"><span>{locked ? 'A selected file is waiting for this profile. Reconnect to continue.' : 'A selected file is ready to continue in its original destination.'}</span>{#if !locked}<button disabled={continuingPicker || (pickerView.target.kind === 'outgoing' && !workspaceReady)} onclick={() => void continuePicker()}>Continue selected file</button>{/if}<button onclick={discardPicker}>Discard selection</button></div>
-      {/if}
-      {#if pickerNotice}<div class="notice" role="status"><span>{pickerNotice}</span><button aria-label="Dismiss file selection notice" onclick={() => pickerNotice = ''}>×</button></div>{/if}
-      {#if workspaceReady && results.some(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? ''))}
+          {#if helpVisible}<section class="private-line" aria-label="Only you: help"><small>Only you · Help</small><button aria-label="Dismiss help" onclick={() => helpVisible = false}>×</button><CommandResult output={{ kind: 'help', commands: helpCommands }} choose={chooseChannel} {prepareCommand} />{#if helpError}<p role="status">{helpError}</p>{/if}<p>Enter sends · Shift+Enter adds a line · Tab completes · Alt+←/→ changes conversation · Escape cancels a private prompt.</p></section>{/if}
+      {#if workspaceReady && results.some(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? ''))}
         <div class="local-results" aria-label="Only you: command results">
-          {#each results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? '') && (r.output || r.state !== 'complete')).slice(-30) as result (result.key)}
-            <div><small>Only you</small> · {result.action} · {result.state === 'unknown' ? 'Outcome not confirmed' : result.state}<button onclick={() => { utility = null; dialog = null; resultKey = result.key; }}>Details</button></div>
+          {#each results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '') && (r.output || r.state !== 'complete')).slice(-30) as result (result.key)}
+            <div class="private-line"><small>Only you</small> · {result.action} · {result.state === 'unknown' ? 'Outcome not confirmed' : result.state}<button onclick={() => { utility = null; cancelPrompt(); resultKey = result.key; void scrollPrivate(); }}>Details</button>{#if result.output}<CommandResult output={result.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} />{/if}</div>
           {/each}
         </div>
       {/if}
-      {#if workspaceReady && (Object.keys(pending).length || joinBusy)}<div class="progress" role="status">{Object.values(pending).map(name => `${name}: waiting for instance`).join(' · ')}{joinBusy ? joinRequest?.text.startsWith('/create ') ? ' Creating channel…' : ' Joining channel…' : ''}</div>{/if}
-      {#if notice}<div class="notice" role="status"><pre>{notice}</pre><button aria-label="Dismiss notice" onclick={() => notice = ''}>×</button></div>{/if}
-      {#each failures as failure (failure.request.operation_id)}
-        <div class="retry" role="status"><span>{failureTarget(failure.request.conversation)}: {failure.message} {failure.code === 'rejected' ? 'Command was not accepted.' : 'Outcome not confirmed. Checking uses the original operation.'}</span><button onclick={() => showResult(failure.request.operation_id, failure.request.conversation, failure.request.text)}>Details</button><button onclick={() => void editFailed(failure.request)}>{failure.code === 'rejected' ? 'Edit command' : 'Edit as new'}</button><button aria-label="Dismiss failed operation" onclick={() => dismissFailure(failure.request.operation_id)}>×</button></div>
-      {/each}
-      {#if !locked}
-        {#each savedOperations.filter(h => !failures.some(f => f.request.operation_id === h.operation.id)) as handle (handle.operation.id)}
-          <div class="retry" role="status"><span>{recoveryMessages[handle.operation.id] ?? 'Saved operation · outcome not confirmed'}</span><button onclick={() => showResult(handle.operation.id)}>Details</button><button onclick={() => forgetSaved(handle.operation.id)}>Dismiss</button></div>
-        {/each}
+  {#if resultDetails && !locked}
+    <section class="private-detail" aria-label="Operation details">
+      <header><h2 id="operation-title">{resultDetails.action} · Details</h2><button aria-label="Close details" onclick={() => { resultKey = null; composer?.focus(); }}>Close</button></header>
+      <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
+      <dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl>
+      <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
+
+      {#if resultDetails.state !== 'complete'}<button class="primary" disabled={checkingSaved[resultDetails.id]} onclick={() => void checkSaved(resultDetails.id, resultDetails.key)}>{checkingSaved[resultDetails.id] ? 'Checking…' : 'Refresh status'}</button><p class="muted">Checks the original request. It will not submit it again. Older requests may not have retained details.</p>{/if}
+    </section>
+  {/if}
+          {#if dialog}<section class="private-line" aria-label="Only you: add a channel"><small>Only you · {dialog === 'choose' ? 'Add a channel' : dialog === 'create' ? 'Create a channel' : 'Join a channel'}</small><button aria-label="Cancel private prompt" onclick={cancelPrompt}>×</button>
+            {#if dialog === 'choose'}<p><button onclick={() => openDialog('join')}>Join with an invitation</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button onclick={() => openDialog('create')}>Create a channel</button>{/if}</p>
+            {:else if dialog === 'join' && !joiningPublic}<NetworkSetup bind:this={joinSetup} privateComposer {transport} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} initialInvitation={incomingInvitation} chooseFile={deviceUnlock ? () => chooseInvitation('join') : undefined} selectedFile={invitationSelection?.context === 'join' ? invitationSelection : undefined} fileConsumed={invitationConsumed} /><button onclick={() => void loadDirectory()}>Browse public channels</button>{#if browse && directory}<CommandResult output={directory} choose={chooseChannel} {prepareCommand} />{/if}
+            {:else}<p>{promptStep === 'name' ? 'Channel name? Type it below.' : promptStep === 'visibility' ? 'Private or public? Both are encrypted; public discovery requires a separate directory publication.' : promptStep === 'nickname' ? 'Your nickname in this channel?' : dialog === 'create' ? 'Ready to create this channel?' : 'Ready to join this channel?'}</p>
+              {#if promptStep === 'visibility'}<button onclick={() => void answerPrompt('private')}>Private</button><button onclick={() => void answerPrompt('public')}>Public</button>{/if}
+              {#if promptStep === 'confirm'}<p>{destination} · {visibility} · {nickname}</p><button disabled={joinBusy} onclick={() => void join()}>{dialog === 'create' ? 'Create channel' : 'Join channel'}</button>{/if}
+            {/if}
+            {#if joinError}<p role="alert">{joinError}</p>{/if}<p class="muted">Private prompt · Nothing here is sent to the channel. Escape or /cancel returns to your draft.</p>
+          </section>{/if}
+          {@render outcomes()}
+        </div>
+        {#if !atBottom}<button class="jump" onclick={() => { atBottom = true; if (transcript) transcript.scrollTop = transcript.scrollHeight; void markRead(); }}>Jump to latest</button>{/if}
       {/if}
+      {#if !workspaceReady}{@render outcomes()}{/if}
       {#if draftError}<p class="input-error" id="gchat-input-error">{draftError}</p>{/if}
       {#if workspaceReady}
         <form class="composer" onsubmit={event => { event.preventDefault(); void send(); }}>
           {#if completions.length}<div class="completions" aria-label="Command completions">{#each completions as item}<button type="button" onclick={() => { draft = item.text + ' '; completions = []; composer?.focus(); }}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
-          {#if selected && fileAccess && fileController && active?.kind !== 'archive'}<button class="attach" type="button" aria-label="Share a file" title="Share a file" disabled={fileState.busy} onclick={() => chooseFile()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a7 7 0 0 1 10 10l-9 9" /></svg></button>{/if}
-          <textarea bind:this={composer} bind:value={draft} aria-label="Message or command" aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} oninput={() => { completions = []; historyPosition = undefined; }}></textarea>
-          <button class="send" type="submit" disabled={!draft || !!draftError || (busy && !localCommand(draft)) || (offline && !localCommand(draft))}>{busy ? '…' : 'Send'}</button>
+          {#if !dialog && selected && fileAccess && fileController && active?.kind !== 'archive'}<button class="attach" type="button" aria-label="Share a file" title="Share a file" disabled={fileState.busy} onclick={() => chooseFile()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a7 7 0 0 1 10 10l-9 9" /></svg></button>{/if}
+          <textarea bind:this={composer} bind:value={draft} aria-label={dialog ? "Private answer" : "Message or command"} aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={dialog ? 'Private answer · /cancel to return to your draft' : active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} oninput={() => { completions = []; historyPosition = undefined; }}></textarea>
+          <button class="send" type="submit" disabled={!draft || !!draftError || (!dialog && busy && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : dialog ? 'Continue' : 'Send'}</button>
         </form>
       {/if}
     </main>
     {#if workspaceReady && active && panel}
-      <aside class="inspector open" aria-label="Conversation details" role={narrow ? 'dialog' : undefined} aria-modal={narrow ? true : undefined}>
+      <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role (Modal drawer traps focus and restores its opener.) -->
+      <aside class="inspector open" aria-label="Conversation details" role="dialog" aria-modal="true">
+        <button class="circle fold-right" aria-label="Close details" onclick={closeNavigation}>→</button>
         <div class="inspector-heading"><div role="tablist" tabindex="-1" aria-label="Conversation details" onkeydown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !fileController) return;
           event.preventDefault(); panel = event.key === 'Home' ? 'users' : event.key === 'End' ? 'files' : panel === 'users' ? 'files' : 'users';
           void tick().then(() => document.getElementById(`${panel}-tab`)?.focus());
-        }}><button role="tab" id="users-tab" tabindex={panel === 'users' ? 0 : -1} aria-selected={panel === 'users'} aria-controls="users-panel" onclick={() => panel = 'users'}>Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex={panel === 'files' ? 0 : -1} aria-selected={panel === 'files'} aria-controls="files-panel" onclick={() => panel = 'files'}>Files <small>{fileCount}</small></button>{/if}</div><button aria-label="Close details" onclick={closeNavigation}>×</button></div>
-        {#if panel === 'users'}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`/query ${member.id}`)} title={member.isSelf ? 'Your channel identity' : 'Open private chat'}>{member.nickname}<small>{member.recentlyActive ? 'Recently active' : 'Unknown'}</small>{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}</div>
+        }}><button role="tab" id="users-tab" tabindex={panel === 'users' ? 0 : -1} aria-selected={panel === 'users'} aria-controls="users-panel" onclick={() => panel = 'users'}>Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex={panel === 'files' ? 0 : -1} aria-selected={panel === 'files'} aria-controls="files-panel" onclick={() => panel = 'files'}>Files <small>{fileCount}</small></button>{/if}</div></div>
+        {#if panel === 'users'}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`/query ${member.id}`)} title={member.isSelf ? 'Your channel identity' : 'Open private chat'}>{member.nickname}{#if !member.isSelf && member.recentlyActive}<small>Recently active</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}</div>
         {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
       </aside>
     {/if}
   </div>
   {#if utility}
     <dialog class="modal utility-modal" use:showModal aria-labelledby="utility-title" onclose={() => { utility = null; replacingInvitation = false; }}>
-      <header><h2 id="utility-title">{utility === 'network' ? 'Network' : utility === 'help' ? 'Help' : utility === 'font' ? 'Chat font' : title}</h2><button aria-label="Close dialog" onclick={() => utility = null}>×</button></header>
+      <header><h2 id="utility-title">{utility === 'network' ? 'Network' : utility === 'font' ? 'Chat font' : title}</h2><button aria-label="Close dialog" onclick={() => utility = null}>×</button></header>
       {#if utility === 'network'}
+        <details><summary>Your identity</summary><p>This is this instance’s identity, not a password or invitation. Compare its safety number when verifying who you are talking to.</p><p class="identity">{snapshot?.instance.id}</p><p class="identity">{snapshot?.instance.safetyNumber}</p></details>
         {#if networks.length > 1}<label for="network-detail-selection">Network</label><select id="network-detail-selection" bind:value={selectedNetwork} onchange={() => { transport.select(selectedNetwork); networkGeneration++; networkStatus = networks.find(n => n.id === selectedNetwork)?.status; }}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
         <p role="status">{networkStatus?.message || networkError || connectionLabel}</p>
         {#if networkError}<p role="alert">{networkError}</p>{/if}
-        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
+        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
-        <section><h3>Recently active</h3><p class="muted">Optional activity signals for this profile. Off by default. Signals expire to Unknown and do not confirm message delivery.</p><button disabled={busy} onclick={() => void send((transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled) ? '/presence off' : '/presence on')}>{(transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled) ? 'Turn activity sharing off' : 'Enable activity sharing'}</button></section>
+        <section><h3>Recently active</h3><p class="muted">Optional activity signals for this profile. Off by default. Only recent activity is shown. No label means no recent signal; it does not mean an unknown identity or confirm delivery.</p><button disabled={busy} onclick={() => void send((transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled) ? '/presence off' : '/presence on')}>{(transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled) ? 'Turn activity sharing off' : 'Enable activity sharing'}</button></section>
         {#if deviceUnlock?.notifications}
           <section class="notification-settings">
             <h3>Notifications</h3>
@@ -863,9 +932,6 @@
       {:else if utility === 'font'}
         <p>Choose the font for messages and the composer. Saved on this device.</p>
         <div class="font-options"><button aria-pressed={font === 'fixedsys'} onclick={() => chooseFont('fixedsys')}>Fixedsys <span class="font-fixed">The quick brown fox</span></button><button aria-pressed={font === 'readable'} onclick={() => chooseFont('readable')}>Readable <span class="font-readable">The quick brown fox</span></button></div>
-      {:else if utility === 'help'}
-        {#if helpError}<p role="alert">{helpError}</p>{/if}<CommandResult output={{ kind: 'help', commands: helpCommands }} choose={chooseChannel} />
-        <section class="shortcuts"><h3>Keyboard</h3><p>Enter sends · Shift+Enter adds a line<br />Tab completes · Shift+Tab moves focus<br />↑↓ recalls commands · Alt+←/→ changes conversation<br />Ctrl/Cmd+F finds messages · Escape closes panels</p><p>/lock hides the archive while receiving continues. /disconnect stops this instance in every view.</p></section>
       {:else}
         {#if details?.kind === 'channel' && details.active}
           <p>{details.visibility === 'public' ? 'Public · encrypted channel' : details.visibility === 'private' ? 'Private · invitation required' : 'Channel visibility unavailable'}</p>
@@ -909,30 +975,8 @@
       {/if}
     </dialog>
   {/if}
-  {#if resultDetails && !locked}
-    <dialog class="modal" use:showModal aria-labelledby="operation-title" onclose={() => resultKey = null}>
-      <header><h2 id="operation-title">{resultDetails.action} · Details</h2><button aria-label="Close details" onclick={() => resultKey = null}>Close</button></header>
-      <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
-      <dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl>
-      <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
-      {#if resultDetails.output}<CommandResult output={resultDetails.output} choose={chooseChannel} saveInvitation={fileAccess?.saveInvitation} />{/if}
-      {#if resultDetails.state !== 'complete'}<button class="primary" disabled={checkingSaved[resultDetails.id]} onclick={() => void checkSaved(resultDetails.id, resultDetails.key)}>{checkingSaved[resultDetails.id] ? 'Checking…' : 'Refresh status'}</button><p class="muted">Checks the original request. It will not submit it again. Older requests may not have retained details.</p>{/if}
-    </dialog>
-  {/if}
-  {#if dialog}
-    <dialog class="modal" use:showModal aria-labelledby="gchat-dialog-title" onclose={() => dialog = null}>
-      <header><h2 id="gchat-dialog-title">{dialog === 'choose' ? 'Add a channel' : dialog === 'join' ? 'Join a channel' : 'Create a channel'}</h2><button aria-label="Close dialog" onclick={() => dialog = null}>×</button></header>
-      {#if dialog === 'choose'}<div class="channel-choices"><button onclick={() => openDialog('join')}>Join with an invitation or browse public channels</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button onclick={() => openDialog('create')}>Create a channel</button>{/if}</div>{:else}
-      {#if dialog === 'join'}<nav aria-label="Join method"><button aria-pressed={!browse} onclick={() => browse = false}>Paste invitation</button><button aria-pressed={browse} onclick={() => void loadDirectory()}>Browse channels</button></nav>{/if}
-      {#if browse && dialog === 'join'}<button onclick={() => void loadDirectory(true)}>Refresh public directory</button>{#if directory}<CommandResult output={directory} choose={chooseChannel} />{/if}{/if}
-      {#if dialog === 'join' && !browse && snapshot?.instance.capabilities.includes('networks.v1')}<NetworkSetup {transport} {imported} combined joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('join') : undefined} selectedFile={invitationSelection?.context === 'join' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else}
-      {#if dialog === 'create' && networks.length > 1}<label for="create-network">Network</label><select id="create-network" bind:value={selectedNetwork} onchange={() => transport.select(selectedNetwork)}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
-      {#if dialog === 'create'}<fieldset><legend>Who can join?</legend><label><input type="radio" bind:group={visibility} value="private" disabled={joinBusy} /> Private — invitation required</label><label><input type="radio" bind:group={visibility} value="public" disabled={joinBusy} /> Public — discoverable when published to a directory</label><p class="muted">Both use encrypted conversations. Public channels require a separate directory publication.</p></fieldset>{/if}
-      <form onsubmit={join}><label for="gchat-destination">{dialog === 'join' ? 'Invitation link or public #channel' : 'Channel name'}</label><input id="gchat-destination" bind:value={destination} disabled={joinBusy} required placeholder={dialog === 'create' ? '#friends' : 'Paste an invitation'} /><label for="gchat-nickname">Your nickname in this channel</label><input id="gchat-nickname" bind:value={nickname} disabled={joinBusy} required autocomplete="nickname" />{#if joinError}<p role="alert">{joinError}</p>{/if}<button class="primary" type="submit" disabled={joinBusy}>{joinBusy ? dialog === 'create' ? 'Creating…' : 'Joining…' : dialog === 'join' ? 'Join' : 'Create'}</button></form>
-      {/if}
-      {/if}
-    </dialog>
-  {/if}
+
+
 </div>
 
 <style>
@@ -958,15 +1002,15 @@
   .active-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
   .header-actions { display:flex; align-items:center; flex:none; gap:2px; }
   .header-actions button { white-space:nowrap; }
-  .connection-dot { color:#bd9866; font-size:10px; margin-left:6px; }
+  .connection-dot { color:#bd9866; font-size:10px; }
   .connection-dot.connected { color:#91b5a0; }
-  .count { display:inline-flex; align-items:center; gap:5px; font-variant-numeric:tabular-nums; }.count[aria-expanded=true] { background:#343b46; }
-  .channel-toggle { display:inline-flex; align-items:center; gap:6px; flex:none; border-color:var(--line); border-radius:4px; min-height:44px; }
+
+
   .header-topic { color:var(--muted); font-weight:normal; margin-left:14px; }
   .workspace { display:flex; flex:1; min-height:0; position:relative; }
   .channels { background:#22262b; width:200px; flex-shrink:0; border-right:1px solid var(--line); display:none; flex-direction:column; padding-top:8px; }
   .channels.open { display:flex; position:absolute; inset:0 auto 0 0; z-index:4; width:min(300px,85vw); }
-  .channel-entries { overflow:auto; flex:1; min-height:0; }
+  .channel-entries { overflow:auto; flex:0 1 auto; min-height:0; }
   .channels button { width:100%; display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:8px 12px; }
   .channels button small { width:100%; padding-left:22px; font-size:12px; overflow:hidden; text-overflow:ellipsis; }
   .channels .chosen { background:#303741; box-shadow:inset 2px 0 var(--accent); }
@@ -974,7 +1018,7 @@
   .room-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .unread .room-name { color:var(--accent); font-weight:600; }
   .badge { font-size:12px; background:#3b4b62; border-radius:3px; padding:1px 5px; }
-  .channel-actions { display:flex; flex-shrink:0; gap:4px; padding:8px; border-top:1px solid var(--line); }
+  .channel-actions { display:flex; flex-shrink:0; justify-content:center; padding:8px; }
   .channel-actions button { justify-content:center; padding:8px; }
   .conversation { flex:1; min-width:0; display:flex; flex-direction:column; }
   .welcome { flex:1; min-height:0; overflow:auto; padding:clamp(20px,4vw,48px); }
@@ -994,7 +1038,7 @@
   .identity { overflow-wrap:anywhere; font-size:12px; }
   .transcript,.composer { font:16px/1.4 GchatFixedsys,'Lucida Console',monospace; }
   .readable .transcript,.readable .composer { font-family:ui-monospace,'SFMono-Regular',Consolas,monospace; line-height:1.5; }
-  .transcript { flex:1; overflow:auto; min-height:0; padding:16px; scrollbar-color:#5a6561 #242728; }
+  .transcript { flex:1; overflow:auto; min-height:0; padding:16px 54px; scrollbar-color:#5a6561 #242728; }
   .activity { color:var(--muted); margin:10px 0; overflow-wrap:anywhere; }
   .message { display:grid; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
   time { color:#858f8e; font-size:14px; }
@@ -1007,18 +1051,18 @@
   .older { display:block; margin:0 auto 12px; border-color:var(--line); color:var(--accent); }
   .unread-divider { color:var(--accent); border-top:1px solid var(--accent); text-align:center; margin:12px 0; }
   .jump { align-self:center; min-height:40px; color:var(--accent); }
-  .local-results { max-height:20%; overflow:auto; padding:4px 16px; color:var(--muted); font-size:13px; }
+  .local-results { color:var(--muted); }
   .local-results button { color:var(--accent); }
   .operation-details dd { overflow-wrap:anywhere; }
-  .channel-choices { display:grid; gap:16px; }.channel-choices button { border:1px solid var(--line); padding:20px; }
-  fieldset { border:1px solid var(--line); }fieldset label { display:flex; align-items:center; gap:10px; }fieldset input { width:auto; min-height:0; }
-  .notice { display:flex; background:#2b3037; border-top:1px solid #566476; max-height:38%; overflow:auto; padding:8px 12px; gap:10px; }
+
+
+  .notice { display:flex; background:transparent; padding:8px 0; gap:10px; }
   .notice pre { font:inherit; white-space:pre-wrap; overflow-wrap:anywhere; flex:1; margin:0; min-width:0; }
   .notice button { align-self:flex-start; }
-  .retry { padding:8px 12px; background:#4b3a27; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
-  .retry button { border-color:#806640; }
+  .retry { padding:8px 0; color:#d5b58b; background:transparent; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .retry button { text-decoration:underline; }
   .provider-errors,.progress { padding:6px 16px; color:var(--muted); }
-  .search { max-height:50%; overflow:auto; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .search { padding:8px 0; }
   .search p { overflow-wrap:anywhere; white-space:pre-wrap; }.search label { margin-top:0; }
   .composer { position:relative; display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); background:#191d22; padding:10px 12px; }
   textarea { resize:none; flex:1; width:0; min-height:36px; max-height:160px; padding:8px 3px; border:0; background:transparent; field-sizing:content; }
@@ -1026,27 +1070,36 @@
   .send { color:var(--accent); border-color:#566476; }
   .completions { position:absolute; bottom:100%; left:0; right:0; z-index:2; background:#303739; border:1px solid #566476; max-height:240px; overflow:auto; }
   .completions button { display:flex; gap:20px; width:100%; padding:9px 12px; }.completions span { color:var(--muted); }
-  .inspector { width:300px; flex:none; overflow:auto; border-left:1px solid var(--line); background:#22262b; }
+  .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,85vw); flex:none; overflow:auto; border-left:1px solid var(--line); background:#22262b; }
   .inspector-heading { display:flex; align-items:center; gap:4px; padding:8px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#22262b; z-index:1; }
   .inspector-heading [role=tablist] { flex:1; display:flex; gap:4px; }.inspector-heading [aria-selected=true] { background:#343b46; }
   .inspector-heading small { margin-left:4px; }.users-list { padding:8px; }.users-list button { display:flex; justify-content:space-between; gap:8px; width:100%; overflow-wrap:anywhere; }.users-list .self { color:var(--accent); }
   .scrim { position:absolute; inset:0; z-index:3; background:#0008; width:100%;border:0; }
   .modal::backdrop { background:#0009; }.modal { color:var(--ink); margin:0; inset:0; width:100%; max-width:none; height:100dvh; max-height:none; overflow:auto; background:var(--panel); border:1px solid #566476; padding:20px; box-shadow:0 14px 60px #0008; }
   .modal header { position:sticky; top:-20px; padding:16px 0; background:var(--panel); z-index:1; display:flex; align-items:center; gap:12px; margin-bottom:12px; }.modal h2 { flex:1; font-size:20px; font-weight:normal; margin:0; color:var(--accent); }
-  .utility-modal { width:100%; }.font-options { display:grid; gap:8px; }.font-options button { border:1px solid var(--line); padding:12px; }.font-options [aria-pressed=true] { border-color:var(--accent); }.font-options span { display:block; margin-top:8px; font-size:16px; }.font-fixed { font-family:GchatFixedsys,monospace; }.font-readable { font-family:ui-monospace,monospace; }.shortcuts { padding:12px; color:var(--muted); }.shortcuts h3 { font:inherit; color:var(--ink); }
+  .utility-modal { width:100%; }.font-options { display:grid; gap:8px; }.font-options button { border:1px solid var(--line); padding:12px; }.font-options [aria-pressed=true] { border-color:var(--accent); }.font-options span { display:block; margin-top:8px; font-size:16px; }.font-fixed { font-family:GchatFixedsys,monospace; }.font-readable { font-family:ui-monospace,monospace; }
   @media(max-width:999px) { .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,90vw); box-shadow:-4px 0 20px #0006; } }
   @media(max-width:760px) {
     .brand strong { display:none; }.titlebar { padding:6px 8px; gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:44px; }
     .channels { display:none; position:absolute; top:0; bottom:0; left:0; z-index:4; width:min(280px,85vw); box-shadow:4px 0 20px #0006; }.channels.open { display:flex; }.channels button { min-height:44px; }
-    .transcript { padding:12px; }.message { grid-template-columns:6ch 1fr; column-gap:6px; margin:7px 0; }.body { grid-column:2; }.nick { max-width:none; }time { font-size:12px; }
+    .transcript { padding:12px 48px; }.message { grid-template-columns:6ch 1fr; column-gap:6px; margin:7px 0; }.body { grid-column:2; }.nick { max-width:none; }time { font-size:12px; }
     .composer { padding:8px; }.composer textarea,.send,.attach { min-height:44px; }.welcome { padding:24px; }h1 { font-size:22px; }
-    .completions button { flex-wrap:wrap; gap:4px; }.completions span { width:100%; font-size:12px; }.notice { max-height:32%; }
+    .completions button { flex-wrap:wrap; gap:4px; }.completions span { width:100%; font-size:12px; }
   }
-  @media(max-width:440px) { .channel-toggle { padding:6px 4px; font-size:14px; }.channel-toggle svg { display:none; }.brand { display:none; }.connection-dot { margin:0; font-size:12px; }.active-title { padding-left:2px; }.header-actions { gap:0; } }
+  @media(max-width:440px) { .brand { display:inline-flex; }.connection-dot { margin:0; font-size:12px; }.active-title { padding-left:2px; }.header-actions { gap:0; } }
   @media(pointer:coarse) {
     button,summary { min-height:44px; min-width:44px; }
     input,textarea,select { font-size:16px; }
     .titlebar button { min-height:44px; }
     .modal { top:var(--gchat-viewport-top,0px); bottom:auto; margin:0; height:var(--gchat-viewport-height,100dvh); max-height:var(--gchat-viewport-height,100dvh); }
   }
+  .circle { display:inline-flex; align-items:center; justify-content:center; flex:none; width:44px; height:44px; min-height:44px; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--bg); position:relative; }
+  .edge { position:absolute; top:50%; transform:translateY(-50%); z-index:2; }.edge.left { left:5px; }.edge.right { right:5px; display:flex; flex-direction:column; gap:14px; }
+  .edge-count { position:absolute; right:-3px; bottom:-5px; font:11px/1.4 system-ui; background:var(--bg); border-radius:8px; padding:0 3px; }
+  .channels .circle { width:44px; padding:0; flex-wrap:nowrap; }.fold-left { position:absolute; right:5px; top:50%; transform:translateY(-50%); z-index:1; }.channels.open { padding-right:48px; }.fold-right { position:absolute; left:4px; top:50%; transform:translateY(-50%); z-index:2; }.inspector { display:flex; flex-direction:column; padding-left:48px; overflow:hidden; }.users-list,#files-panel { overflow:auto; min-height:0; flex:1; }.inspector-heading { flex:none; }
+  .private-line { margin:18px 0; color:var(--muted); overflow-wrap:anywhere; }.private-line button,.private-detail button { color:var(--accent); text-decoration:underline; }.private-line small { font:12px system-ui; }
+  .private-detail { margin:12px 0; }.private-detail header { display:flex; align-items:center; gap:12px; }.private-detail h2 { font:inherit; }.operation-details { grid-template-columns:auto minmax(0,1fr); }
+  @media(pointer:coarse) { .circle,.channels .circle { width:44px; height:44px; min-height:44px; }.edge.left { left:1px; }.edge.right { right:1px; } }
+  .titlebar { position:relative; }.titlebar.mac { padding-left:84px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
+  .concealed { visibility:hidden; pointer-events:none; }
 </style>

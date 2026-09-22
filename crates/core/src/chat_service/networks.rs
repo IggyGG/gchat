@@ -58,7 +58,7 @@ impl ChatService {
         &self,
         code: &str,
     ) -> Result<(JoinInvitation, Option<String>, u64), String> {
-        let code = code.trim();
+        let code = gcoms_network::invitation_code(code)?;
         if code.len() > gchat_api::MAX_NETWORK_INVITATION_BYTES {
             return Err("Invitation exceeds size limit".into());
         }

@@ -48,6 +48,9 @@ export class OperationResults {
       const key = this.key(detail.instance, network, detail.id);
       const old = this.records.get(key);
       if (old?.state === 'complete') continue;
+      // Polling snapshots contain the original admission error, not the newer
+      // check response. Keep that response visible until a terminal result arrives.
+      if (old?.checked && detail.state !== 'complete' && detail.state !== 'rejected') continue;
       // A durable terminal snapshot can finish an interrupted original request.
       if (old?.state === 'pending' && detail.state !== 'complete' && detail.state !== 'rejected') continue;
       this.records.set(key, { key, id: detail.id, instance: detail.instance, network,

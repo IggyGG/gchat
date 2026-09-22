@@ -26,4 +26,18 @@ describe('operation results', () => {
     results.clear();
     expect(results.values()).toEqual([]);
   });
+  it('does not erase a fresh check response with an older unknown snapshot', () => {
+    const results = new OperationResults();
+    const detail = { id: 'one', instance: 'instance', network: 'network', conversation: 'channel/a', action: '/create', started: 1, state: 'unknown' as const, output: null, message: 'Interrupted after admission.' };
+    results.restore([detail], () => 'network');
+    const key = results.key('instance', 'network', 'one');
+    results.error(key, 'outcome_unknown', 'No new result is available.');
+    const checked = results.get(key)?.checked;
+    results.restore([detail], () => 'network');
+    expect(results.get(key)?.message).toBe('No new result is available.');
+    expect(results.get(key)?.checked).toBe(checked);
+    results.restore([{ ...detail, state: 'complete', message: 'Completed.' }], () => 'network');
+    expect(results.get(key)?.state).toBe('complete');
+  });
+
 });

@@ -14,7 +14,7 @@ for (const width of [320, 760, 1100, 1440]) test(`channel drawer has visible ope
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   const toggle = page.getByRole('button', { name: 'Channels', exact: true });
   await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveText('Channels');
+  await expect(toggle).toHaveText('#');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('#channel-navigation')).toBeHidden();
   const bounds = (await toggle.boundingBox())!;
@@ -80,12 +80,13 @@ test('one invitation previews the other network and channel before joining', asy
   await ready(page, '?networks');
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.getByRole('button', { name: 'Join or create a channel', exact: true }).click();
-  await page.getByRole('button', { name: 'Join with an invitation or browse public channels', exact: true }).click();
-  await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('Join #general on other.example');
+  await page.getByRole('button', { name: 'Join with an invitation', exact: true }).click();
+  await page.getByLabel('Private answer', { exact: true }).fill('GCI1-valid-fixture');
+  await page.getByLabel('Private answer', { exact: true }).press('Enter');
+  await expect(page.getByRole('region', { name: 'Only you: add a channel' })).toContainText('Join #general on other.example');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
-  await page.getByLabel('Your nickname in this channel', { exact: true }).fill('New guest');
+  await page.getByLabel('Private answer', { exact: true }).fill('New guest');
+  await page.getByLabel('Private answer', { exact: true }).press('Enter');
   await page.getByRole('button', { name: 'Join', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.network-group')).toHaveCount(2);
@@ -142,9 +143,9 @@ test('view commands, help, find, font persistence and existing lifecycle command
   await expect(page.locator('.search')).toContainText('1 matches'); await page.keyboard.press('Escape');
   await expect(page.locator('.search')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeFocused();
-  await page.getByRole('button', { name: 'Help', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('/font [fixedsys|readable]');
-  await expect(page.getByRole('dialog')).toContainText('/disconnect'); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Help and commands', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Only you: help' })).toContainText('/font [fixedsys|readable]');
+  await expect(page.getByRole('region', { name: 'Only you: help' })).toContainText('/disconnect'); await page.keyboard.press('Escape');
   const sent = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'));
   expect(sent).toHaveLength(0);
   await page.reload(); await expect(page.locator('.gchat')).toHaveClass(/readable/);
@@ -155,7 +156,7 @@ test('view commands, help, find, font persistence and existing lifecycle command
 });
 test('paperclip works with zero files; closing and changing panels cannot cancel or retarget import', async ({ page }) => {
   await ready(page, '?empty');
-  await expect(page.getByRole('button', { name: /^Files:/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Files: 0', exact: true })).toBeVisible();
   await page.evaluate(() => (window as any).fixture.holdUpload());
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Share a file', exact: true }).click();
@@ -169,11 +170,12 @@ test('paperclip works with zero files; closing and changing panels cannot cancel
   await expect.poll(() => page.evaluate(() => (window as any).fixture.getFiles()[0]?.state)).toBe('complete');
   const record = await page.evaluate(() => (window as any).fixture.getFiles()[0]);
   expect(record.conversation).toBe('channel/general');
-  await expect(page.getByRole('button', { name: /^Files:/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Files: 0', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /general/ }).click();
   await page.getByRole('button', { name: 'Files: 1', exact: true }).click();
   await expect(page.getByRole('tabpanel')).toContainText('sample.bin');
+  await page.getByRole('button', { name: 'Close details', exact: true }).click();
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /archive/ }).click();
   await expect(page.getByRole('button', { name: 'Share a file', exact: true })).toHaveCount(0);
@@ -191,10 +193,10 @@ for (const width of [320, 760, 1100, 1440]) test(`responsive layout ${width}px`,
 test('200% text zoom keeps actions and transcript reachable', async ({ page }) => {
   await page.setViewportSize({ width: 760, height: 720 }); await ready(page);
   await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
-  await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Help and commands', exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
-  await page.getByRole('button', { name: 'Help', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('/find');
+  await page.getByRole('button', { name: 'Help and commands', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Only you: help' })).toContainText('/find');
 });
 
 test.describe('phone navigation', () => {
@@ -264,17 +266,18 @@ test.describe('phone navigation', () => {
     await page.evaluate(() => (window as any).keyboardViewport(360, 24));
     await page.getByRole('button', { name: 'Channels', exact: true }).tap();
     await page.getByRole('button', { name: 'Join or create a channel', exact: true }).tap();
-    await page.getByRole('button', { name: 'Join with an invitation or browse public channels', exact: true }).tap();
-    await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
-    await page.getByRole('button', { name: 'Continue', exact: true }).tap();
-    await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Phone guest');
+    await page.getByRole('button', { name: 'Join with an invitation', exact: true }).tap();
+    await page.getByLabel('Private answer', { exact: true }).fill('GCI1-valid-fixture');
+    await page.getByLabel('Private answer', { exact: true }).press('Enter');
+    await page.getByLabel('Private answer', { exact: true }).fill('Phone guest');
+    await page.getByLabel('Private answer', { exact: true }).press('Enter');
     const join = page.getByRole('button', { name: 'Join', exact: true });
     await join.scrollIntoViewIfNeeded();
     const action = await join.boundingBox();
     expect(action!.y).toBeGreaterThanOrEqual(24);
     expect(action!.y + action!.height).toBeLessThanOrEqual(384);
-    expect(await page.getByLabel('Your nickname in this channel', { exact: true }).evaluate(node => getComputedStyle(node).fontSize)).toBe('16px');
-    await page.getByRole('button', { name: 'Close dialog', exact: true }).tap();
+    expect(await page.getByLabel('Private answer', { exact: true }).evaluate(node => getComputedStyle(node).fontSize)).toBe('16px');
+    await page.getByRole('button', { name: 'Cancel private prompt', exact: true }).tap();
     await expect(composer).toHaveValue('Keep this draft through the keyboard');
     await page.evaluate(() => (window as any).keyboardViewport(844));
     await expect(composer).toHaveValue('Keep this draft through the keyboard');
@@ -282,37 +285,37 @@ test.describe('phone navigation', () => {
 });
 
 
-test('original and recovered invitation share one overlay and one local result', async ({ page }) => {
+test('original and recovered invitation share one transcript output and one local result', async ({ page }) => {
   await ready(page);
   await command(page, '/invite');
-  await expect(page.getByRole('dialog')).toContainText('Invite to #general');
+  await expect(page.locator('.local-results')).toContainText('Invite to #general');
   await expect.poll(() => page.evaluate(() => (window as any).fixture.checks())).toBeGreaterThan(0);
   await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
   await page.waitForTimeout(450);
   await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Save as…', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('Saved to /chosen/gchat-invitation.txt');
+  await expect(page.locator('.local-results')).toContainText('Saved to /chosen/gchat-invitation.txt');
+  await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
   await page.getByRole('button', { name: 'Close details', exact: true }).click();
   await expect(page.locator('.local-results').getByRole('button', { name: 'Details', exact: true })).toHaveCount(1);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeFocused();
   await command(page, '/invite');
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(2);
   await expect(page.locator('.local-results').getByRole('button', { name: 'Details', exact: true })).toHaveCount(2);
 });
 
 test('Details explains a retained unknown outcome and refresh never resubmits', async ({ page }) => {
   await ready(page, '?saved-operation');
   await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('saved-operation-001');
-  await expect(page.getByRole('dialog')).toContainText('Outcome not confirmed');
+  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('saved-operation-001');
+  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('Outcome not confirmed');
   await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('No new result is available.');
+  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('No new result is available.');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
   await page.keyboard.press('Escape');
   await page.reload();
   await page.locator('.local-results').getByRole('button', { name: 'Details', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('saved-operation-001');
+  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('saved-operation-001');
 });
 
 test('channel chooser defaults private and submits an explicit public choice', async ({ page }) => {
@@ -320,11 +323,12 @@ test('channel chooser defaults private and submits an explicit public choice', a
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.getByRole('button', { name: 'Join or create a channel', exact: true }).click();
   await page.getByRole('button', { name: 'Create a channel', exact: true }).click();
-  await expect(page.getByLabel('Private — invitation required', { exact: true })).toBeChecked();
-  await page.getByLabel('Public — discoverable when published to a directory', { exact: true }).check();
-  await page.getByLabel('Channel name', { exact: true }).fill('#public');
-  await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Tester');
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  const answer = page.getByRole('textbox', { name: 'Private answer', exact: true });
+  await answer.fill('#public'); await answer.press('Enter');
+  await page.getByRole('button', { name: 'Public', exact: true }).click();
+  await answer.fill('Tester'); await answer.press('Enter');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+  await page.getByRole('button', { name: 'Create channel', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').at(-1)?.text)).toBe('/create --public #public Tester');
 });
 
@@ -333,9 +337,83 @@ test('cancelling invitation Save as is neutral and keeps a closable result', asy
   await ready(page, '?cancel-save');
   await command(page, '/invite');
   await page.getByRole('button', { name: 'Save as…', exact: true }).click();
-  await expect(page.getByRole('dialog').getByText('Save cancelled.', { exact: true })).toBeVisible();
+  await expect(page.locator('.local-results').getByText('Save cancelled.', { exact: true })).toBeVisible();
   await expect(page.getByText(/^Saved to /)).toHaveCount(0);
-  await page.getByRole('button', { name: 'Close details', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
+});
+
+test('private help inserts commands and create cancellation preserves the unsent draft', async ({ page }) => {
+  await ready(page);
+  const input = page.getByRole('textbox', { name: 'Message or command' });
+  await page.getByRole('button', { name: 'Help and commands' }).click();
+  await page.getByRole('button', { name: '/find [text]', exact: true }).click();
+  await expect(input).toHaveValue('/find ');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+  await input.fill('my unsent draft');
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await expect(page.locator('.channels').getByRole('button', { name: 'Status', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Join or create a channel' }).click();
+  await page.getByRole('button', { name: 'Create a channel', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Private answer' }).fill('private answer never sent');
+  await page.keyboard.press('Escape');
+  await expect(input).toHaveValue('my unsent draft');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+});
+test('missing activity is omitted and panels overlay without changing message width', async ({ page }) => {
+  await ready(page);
+  const before = await page.locator('.conversation').boundingBox();
+  await page.getByRole('button', { name: 'Users: 2' }).click();
+  await expect(page.getByText('Unknown', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.users-list')).toContainText('you');
+  expect((await page.locator('.conversation').boundingBox())!.width).toBe(before!.width);
+});
+
+test('old Status selection falls back to a conversation and last conversation survives reload', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('gchat.navigation.ui-test-instance')) sessionStorage.setItem('gchat.navigation.ui-test-instance', JSON.stringify({ selected: null, positions: {} }));
+  });
+  await ready(page);
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await page.locator('.channels').getByRole('button', { name: /design/ }).click();
+  await page.reload();
+  await expect(page.locator('.active-title > span:first-child')).toHaveText('#design');
+});
+
+test('an app link waits through unlock and requires review and signed-network acceptance', async ({ page }) => {
+  await page.goto('/?device-unlock&networks&app-link');
+  expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && ['inspect', 'join'].includes(r.request.kind)))).toBe(false);
+  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  await page.getByRole('button', { name: 'Review invitation', exact: true }).click();
+  await expect(page.getByText('Invitation ready. Continue to review its signed network and channel.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
+  await expect(page.getByRole('region', { name: 'Only you: add a channel' })).toContainText('Join #general on other.example');
+  expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
+  await page.getByRole('button', { name: 'Cancel private prompt' }).click();
+  expect(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }))).not.toContain('GCI1-');
+});
+test('pasted /join app link opens review without submitting it as a chat command', async ({ page }) => {
+  await ready(page, '?networks');
+  await command(page, '/join gcoms://join#GCI1-valid-fixture');
+  await expect(page.getByText('Invitation ready. Continue to review its signed network and channel.', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+});
+
+test('native header exposes window actions without extra chrome on browsers or macOS', async ({ page }) => {
+  await ready(page, '?native-shell');
+  await page.evaluate(() => {
+    Object.assign(window, { nativeActions: [] });
+    for (const action of ['minimize', 'maximize', 'close']) window.addEventListener(`fixture-${action}`, () => (window as any).nativeActions.push(action));
+  });
+  await page.getByRole('button', { name: 'Minimize window', exact: true }).click();
+  await page.getByRole('button', { name: 'Maximize or restore window', exact: true }).click();
+  await page.getByRole('button', { name: 'Close window', exact: true }).click();
+  expect(await page.evaluate(() => (window as any).nativeActions)).toEqual(['minimize', 'maximize', 'close']);
+  await expect(page.locator('.resize')).toHaveCount(8);
+  await ready(page, '?native-shell&mac');
+  await expect(page.locator('.titlebar')).toHaveClass(/mac/);
+  await expect(page.locator('.window-controls,.resize')).toHaveCount(0);
+  await ready(page);
+  await expect(page.locator('.window-controls,.resize,.drag-region')).toHaveCount(0);
 });
