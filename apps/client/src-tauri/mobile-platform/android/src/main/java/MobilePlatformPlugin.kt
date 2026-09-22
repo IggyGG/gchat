@@ -4,8 +4,13 @@ import android.Manifest
 import android.os.Build
 import android.content.Intent
 import android.app.Activity
+import android.graphics.Color
 import android.util.Log
+import android.view.View
 import android.webkit.WebView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import app.tauri.annotation.Permission
 import app.tauri.annotation.PermissionCallback
 import app.tauri.annotation.Command
@@ -57,7 +62,26 @@ class MobilePlatformPlugin(private val activity: Activity) : Plugin(activity) {
         // Tauri 2.11.5 defines its process observer but does not register it.
         // Bind directly instead of relying on unconnected Plugin lifecycle hooks.
         // ProcessLifecycleOwner debounces configuration recreation itself.
-        activity.runOnUiThread { ProcessLifecycleBridge.bind(lifecycleTarget) }
+        activity.runOnUiThread {
+            // Android 15+ draws behind system bars. This native container owns
+            // its insets so WebView controls never sit under bars, cutouts or IME.
+            WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+            WindowCompat.getInsetsController(activity.window, webView).apply {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+            }
+            val content = activity.findViewById<View>(android.R.id.content)
+            content.setBackgroundColor(Color.rgb(28, 30, 34))
+            ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                val keyboard = insets.getInsets(WindowInsetsCompat.Type.ime())
+                view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, keyboard.bottom))
+                // Do not apply the same padding again inside the WebView.
+                WindowInsetsCompat.CONSUMED
+            }
+            ViewCompat.requestApplyInsets(content)
+            ProcessLifecycleBridge.bind(lifecycleTarget)
+        }
     }
 
     override fun onNewIntent(intent: Intent) { PushNotifications.consumeIntent(intent) }

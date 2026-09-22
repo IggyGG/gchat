@@ -1,4 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
+for (const width of [320, 390]) test(`mobile unlock action follows the complete device-storage explanation at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 720 });
+  await page.goto('/?device-unlock');
+  const hint = page.locator('#device-unlock-hint');
+  const action = page.getByRole('button', { name: 'Reconnect', exact: true });
+  await expect(hint).toBeVisible();
+  await expect(action).toBeVisible();
+  const explanation = (await hint.boundingBox())!;
+  const button = (await action.boundingBox())!;
+  expect(button.y).toBeGreaterThanOrEqual(explanation.y + explanation.height + 11);
+  expect(button.x).toBeCloseTo(explanation.x, 0);
+  expect(button.x + button.width).toBeLessThanOrEqual(width);
+});
 test('native remember choice defaults off and requires explicit consent', async ({ page }) => {
   await page.goto('/?device-unlock');
   await expect(page.getByLabel('Remember on this device')).not.toBeChecked();

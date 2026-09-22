@@ -860,7 +860,7 @@
           <form onsubmit={unlock}>
             <label for="gchat-password">{creating ? 'Choose a passphrase' : snapshot?.instance.protocolLocked ? 'Instance passphrase' : 'Archive passphrase'}</label>
             <input id="gchat-password" type="password" autocomplete={creating ? 'new-password' : 'current-password'} bind:value={password} minlength={creating ? 8 : undefined} maxlength="4096" required disabled={busy} />
-            {#if deviceUnlock}<label class="remember-device"><input type="checkbox" bind:checked={rememberDevice} disabled={busy} />Remember on this device</label><small>Uses secure device storage to reconnect after suspension. /lock removes the saved credential.</small>{/if}
+            {#if deviceUnlock}<label class="remember-device"><input type="checkbox" aria-describedby="device-unlock-hint" bind:checked={rememberDevice} disabled={busy} />Remember on this device</label><small id="device-unlock-hint">Uses secure device storage to reconnect after suspension. /lock removes the saved credential.</small>{/if}
             <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Opening…' : creating ? 'Create identity' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
           </form>
         </div>
@@ -1077,6 +1077,7 @@
   p { margin:12px 0; }
   .welcome form,.network-gate { width:100%; max-width:640px; }
   .welcome form { max-width:400px; margin-top:24px; }
+  .welcome form small,.welcome form .primary { display:block; }
   .network-gate { align-self:center; }
   label { display:block; margin:12px 0 6px; }
   input { display:block; width:100%; border:1px solid #626969; background:#16181c; padding:10px; min-height:40px; }
