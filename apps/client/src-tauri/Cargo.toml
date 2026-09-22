@@ -37,7 +37,7 @@ gchat-core = { version = "0.1.0", path = "../../../crates/core", features = ["mo
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 rand = "0.8"
 sha2 = "0.10"
-tauri-plugin-gchat-mobile-platform = { path = "mobile-platform" }
+tauri-plugin-gchat-mobile-platform = { version = "0.1.0", path = "mobile-platform" }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-fs = "2.5"
 tempfile = "3"
@@ -49,7 +49,7 @@ gchat-core = { version = "0.1.0", path = "../../../crates/core", features = ["mo
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 rand = "0.8"
 sha2 = "0.10"
-tauri-plugin-gchat-mobile-platform = { path = "mobile-platform" }
+tauri-plugin-gchat-mobile-platform = { version = "0.1.0", path = "mobile-platform" }
 tempfile = "3"
 serde = { version = "1", features = ["derive"] }
 zeroize = "1"
