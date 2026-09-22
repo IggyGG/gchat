@@ -150,9 +150,9 @@ fn snapshot(snapshot: api::Snapshot, archive: &ArchiveData, filter: Option<&str>
     }
 }
 impl ChatService {
-    pub(super) async fn files_request(&self, request: FileRequest) -> Result<FileSnapshot, String> {
-        self.require(Capability::ChannelMember)?;
-        // File calls may wait for local initialization; unlocking/history never do.
+    // Both control calls and binary reads/writes can race a successful unlock.
+    // Wait without the session lock so startup, history and lock can all progress.
+    async fn wait_for_file_cache(&self) -> Result<(), String> {
         tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 let session = self.session.lock().await;
@@ -169,7 +169,12 @@ impl ChatService {
             }
         })
         .await
-        .map_err(|_| "File cache is still preparing. Try again shortly.")?;
+        .map_err(|_| "File cache is still preparing. Try again shortly.".to_string())
+    }
+
+    pub(super) async fn files_request(&self, request: FileRequest) -> Result<FileSnapshot, String> {
+        self.require(Capability::ChannelMember)?;
+        self.wait_for_file_cache().await?;
         let mut session = self.session.lock().await;
         let unlocked = session
             .as_mut()
@@ -280,6 +285,7 @@ impl ChatService {
         if !header.upload && !bytes.is_empty() {
             return Err("Download request contains unexpected bytes".into());
         }
+        self.wait_for_file_cache().await?;
         let session = self.session.lock().await;
         let unlocked = session
             .as_ref()
