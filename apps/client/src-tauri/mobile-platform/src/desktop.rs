@@ -14,6 +14,10 @@ pub(crate) fn init<R: Runtime, C: DeserializeOwned>(
 pub struct MobilePlatform<R: Runtime>(std::marker::PhantomData<fn() -> R>);
 
 impl<R: Runtime> MobilePlatform<R> {
+    pub async fn push_settings(&self) -> Result<()> {
+        Err(Error::Unsupported)
+    }
+
     pub async fn push_device(&self, _enabled: Option<bool>) -> Result<crate::PushDevice> {
         Err(Error::Unsupported)
     }

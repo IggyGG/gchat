@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invitationLink } from './invitation-link';
   import type { CommandOutput, DirectoryEntry } from './api';
-  let { output, choose, saveInvitation, prepareCommand, helpHeading = true }: { helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null> } = $props();
+  let { output, choose, saveInvitation, prepareCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null> } = $props();
   let feedback = $state('');
   async function copy(link: string) {
     try { await navigator.clipboard.writeText(link); feedback = 'Invitation copied'; }
@@ -47,7 +47,8 @@
     {#each output.channels as channel}<button onclick={() => choose(channel)}>{channel.name} · {channel.joined ? 'Open' : 'Join public channel'}</button>{/each}
   {:else if output.kind === 'invitation'}
     {@const appLink = invitationLink(output.link)}
-    <h2>Invite to #{output.channel.replace(/^#/, '')}</h2>
+    {#if invitationHeading}<h2>Invite to #{output.channel.replace(/^#/, '')}</h2>{/if}
+    <p>Send this single-use invitation to the person you want to join. It includes the network and channel.</p>
     <p>Single use · Expires {new Date(output.expires * 1000).toLocaleString()}</p>
     {#if output.localOnly}<p>This invitation is reachable only on this computer. Configure a relay before sharing with another computer.</p>{/if}
     {#if output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}

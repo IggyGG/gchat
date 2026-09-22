@@ -33,6 +33,18 @@ final class MobilePlatformPlugin: Plugin {
 
     deinit { observers.forEach(NotificationCenter.default.removeObserver) }
 
+    @objc public func pushSettings(_ invoke: Invoke) {
+        DispatchQueue.main.async {
+            guard let url = URL(string: UIApplication.openSettingsURLString) else {
+                invoke.reject("Could not open notification settings", code: "SETTINGS_UNAVAILABLE"); return
+            }
+            UIApplication.shared.open(url) { opened in
+                if opened { invoke.resolve() }
+                else { invoke.reject("Could not open notification settings", code: "SETTINGS_UNAVAILABLE") }
+            }
+        }
+    }
+
     @objc public func pushDevice(_ invoke: Invoke) {
         let args: PushArgs
         do { args = try invoke.parseArgs(PushArgs.self) }

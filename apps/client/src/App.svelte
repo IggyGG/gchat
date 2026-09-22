@@ -34,6 +34,7 @@
           notifications: {
             status: () => invoke('chat_mobile_push_status'),
             configure: enabled => invoke('chat_mobile_push_configure', { enabled }),
+            openSettings: () => invoke('chat_mobile_push_settings'),
           },
         };
         void listen<string>('gchat-lifecycle-error', event => { lifecycleError = event.payload; }).then(unlisten => {

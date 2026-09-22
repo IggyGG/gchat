@@ -12,6 +12,8 @@ let holdPresence = false, releasePresence: (() => void) | undefined;
 let presenceOutcome = parameters.get('presence-result') ?? 'ok';
 const instance = { id: 'ui-test-instance', label: 'gchat-production', bootId: 'fixture-boot', locked: false, protocolLocked: false, profileExists: true, archiveExists: true, safetyNumber: 'fixture', capabilities: ['ChannelAdmin', 'files.v1'] };
 if (parameters.has('device-unlock')) { instance.locked = true; instance.protocolLocked = true; }
+let push = { enabled:false, permission:'denied', registered:false, message:'Notifications off' };
+const pushRequests:boolean[]=[]; let settingsOpened=0;
 const unlockChoices: boolean[] = [];
 if (parameters.has('networks')) instance.capabilities.push('networks.v1');
 const members = [{ id: 'self', nickname: 'Iggy', isSelf: true, capabilities: [] }, { id: 'peer', nickname: 'Ada', isSelf: false, capabilities: [] }];
@@ -42,7 +44,11 @@ Object.assign(window, { fixture: {
     revision++;
   }, acknowledge() { sentMessages.forEach(m => m.delivery = 'delivered'); revision++; }, holdSends() { holdSends = true; }, releaseSends() { holdSends = false; heldSends.splice(0).forEach(f => f()); }, holdPresence() { holdPresence = true; }, releasePresence() { holdPresence = false; releasePresence?.(); }, setPresenceOutcome(value: string) { presenceOutcome = value; }, presence: (network = primaryNetwork) => presence.get(network) ?? false, checks: () => checks, setNetwork(value: NetworkState) { state = value; revision++; },
   holdUpload() { hold = true; }, releaseUpload() { hold = false; release?.(); },
-  getFiles: () => files, setLocked(value: boolean) { instance.locked = value; revision++; },
+  seedMessages(count: number) {
+    for (let i=0;i<count;i++) sentMessages.push({ id:'old-'+i, conversationId:'channel/general', memberId:'peer', nickname:'Ada', body:'Earlier message '+i, timestamp:Math.floor(Date.now()/1000)-count+i, mine:false, delivery:null, result:null });
+    revision++;
+  }, receive(body: string) { sentMessages.push({ id:'incoming-'+crypto.randomUUID(), conversationId:'channel/general', memberId:'peer', nickname:'Ada', body, timestamp:Math.floor(Date.now()/1000), mine:false, delivery:null, result:null }); revision++; },
+  pushRequests, setPush(value: Partial<typeof push>) { push={...push,...value}; }, settingsOpened:()=>settingsOpened, getFiles: () => files, setLocked(value: boolean) { instance.locked = value; revision++; },
   suspend() { instance.locked = true; instance.protocolLocked = true; revision++; },
   replaceProfile(id: string) { instance.id = id; instance.bootId += '-replacement'; revision++; },
   removeConversation(id: string) { const index = conversations.findIndex(c => c.id === id); if (index >= 0) conversations.splice(index, 1); revision++; },
@@ -115,6 +121,7 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
   }
 }
 const deviceUnlock: DeviceUnlock | undefined = parameters.has('device-unlock') ? {
+  notifications: parameters.has('notifications') ? { status:async()=>push, configure:async(enabled:boolean)=>{pushRequests.push(enabled);push={enabled,permission:'granted',registered:false,message:enabled?'Registering securely':'Notifications off'};return push;},openSettings:async()=>{settingsOpened++;} } : undefined,
   async unlock(passphrase, create, remember) {
     unlockChoices.push(remember);
     return { response: await request({ kind: 'unlock', passphrase, create }), warning: parameters.has('vault-failure') ? 'Secure device storage unavailable; enter your passphrase after suspension.' : undefined };

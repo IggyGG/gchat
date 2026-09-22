@@ -364,6 +364,7 @@ impl Push {
             networks.rotate_left(start);
         }
         let mut failure = None;
+        let mut bound = 0usize;
         for network in &networks {
             // Advance before I/O: a stalled network or suspension cannot always
             // consume the next reconciliation budget ahead of other networks.
@@ -495,6 +496,10 @@ impl Push {
                 (now() + 23 * 3600).min(state.expires),
             )
             .await?;
+            bound += 1;
+        }
+        if enabled && bound == 0 {
+            return Err("Waiting for a connected network before registering notifications".into());
         }
         if let Some(failure) = failure {
             return Err(failure);

@@ -470,6 +470,14 @@ async fn chat_mobile_unlock(
 }
 
 #[tauri::command]
+async fn chat_mobile_push_settings(app: tauri::AppHandle) -> Result<(), String> {
+    app.mobile_platform()
+        .push_settings()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn chat_mobile_push_status(
     state: tauri::State<'_, Arc<Attachment>>,
 ) -> Result<crate::mobile_push::Status, String> {
@@ -589,6 +597,7 @@ pub fn run() {
             chat_mobile_unlock,
             chat_mobile_available,
             chat_mobile_push_status,
+            chat_mobile_push_settings,
             chat_mobile_push_configure,
         ])
         .run(tauri::generate_context!())

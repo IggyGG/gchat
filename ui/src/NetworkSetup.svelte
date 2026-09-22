@@ -2,7 +2,7 @@
   import { onDestroy } from 'svelte';
   import { MAX_NETWORK_INVITATION_BYTES, type NetworkStatus, type InvitationPreview, type Response, type Request } from './api';
   import { chatError, type Transport } from './transport';
-  let { transport, status, imported, combined = false, joined, performJoin, chooseFile, selectedFile, fileConsumed, initialInvitation = '', privateComposer = false }: { transport: Transport; initialInvitation?: string; privateComposer?: boolean; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void; performJoin?: (request: Extract<Request, { kind: 'networks' }>) => Promise<Response>; chooseFile?: () => void; selectedFile?: { id: number; file: File }; fileConsumed?: (id: number) => void } = $props();
+  let { transport, status, imported, combined = false, joined, performJoin, chooseFile, selectedFile, fileConsumed, initialInvitation = '' }: { transport: Transport; initialInvitation?: string; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void; performJoin?: (request: Extract<Request, { kind: 'networks' }>) => Promise<Response>; chooseFile?: () => void; selectedFile?: { id: number; file: File }; fileConsumed?: (id: number) => void } = $props();
   let invitation = $state(''), error = $state(''), busy = $state(false);
   let preview = $state<InvitationPreview>(), nickname = $state('');
   let pendingCode = '', operationId = '';
@@ -39,11 +39,6 @@
     }
     catch { if (running && current === fileRevision) error = 'Could not read the invitation file.'; }
     finally { if (running && current === fileRevision && selectionId !== undefined) fileConsumed?.(selectionId); }
-  }
-  export async function answer(text: string) {
-    if (busy) return;
-    if (preview) { nickname = text.trim(); error = ''; return; }
-    invitation = text.trim(); await connect();
   }
   async function connect(event?: SubmitEvent) {
     event?.preventDefault();
@@ -90,20 +85,19 @@
   <form onsubmit={accept}>
     <p>{preview.channel ? `Join #${preview.channel.replace(/^#/, '')} on ${preview.network.name}` : `Connect to ${preview.network.name}`}</p>
     {#if preview.newNetwork}<p>This adds a new network. Your existing networks stay connected.</p><details><summary>Network identity</summary><code>{preview.network.fingerprint}</code></details>{/if}
-    {#if preview.channel && privateComposer}<p>{nickname ? `Nickname: ${nickname}. Confirm Join when ready.` : 'Type your nickname in the private answer below, then confirm Join.'}</p>{:else if preview.channel}<label for="invitation-nickname">Your nickname in this channel</label><input id="invitation-nickname" bind:value={nickname} required maxlength="256" autocomplete="nickname" disabled={busy} />{/if}
+    {#if preview.channel}<label for="invitation-nickname">Your nickname in this channel</label><input id="invitation-nickname" bind:value={nickname} required maxlength="256" autocomplete="nickname" disabled={busy} />{/if}
     <p>Expires {new Date(preview.expires * 1000).toLocaleString()}</p>
-    <div><button type="submit" disabled={busy || (!!preview.channel && !nickname.trim())}>{busy ? 'Joining…' : preview.channel ? 'Join' : 'Connect'}</button><button type="button" disabled={busy} onclick={() => { preview = undefined; pendingCode = ''; error = ''; }}>Cancel</button></div>
+    <div><button class="primary" type="submit" disabled={busy || (!!preview.channel && !nickname.trim())}>{busy ? 'Joining…' : preview.channel ? 'Join' : 'Connect'}</button><button type="button" disabled={busy} onclick={() => { preview = undefined; pendingCode = ''; error = ''; }}>Cancel</button></div>
   </form>
   {:else}
   <p>{combined ? 'Paste an invitation to connect to its network and join its channel.' : 'Enter a network invitation from the person inviting you.'}</p>
   <form onsubmit={connect}>
-    {#if privateComposer}<p>{invitation ? 'Invitation ready. Continue to review its signed network and channel.' : 'Paste your invitation in the private answer below, or choose a file.'}</p>{:else}
     <label for="network-invitation">{combined ? 'Invitation' : 'Network invitation'}</label>
-    <textarea id="network-invitation" bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} placeholder={combined ? 'Paste an invitation' : 'GCNI1-…'}></textarea>{/if}
+    <textarea id="network-invitation" bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} placeholder={combined ? 'Paste an invitation' : 'GCNI1-…'}></textarea>
     {#if chooseFile}<button type="button" disabled={busy} onclick={chooseFile}>Or choose an invitation file</button>
     {:else}<label for="network-invitation-file">Or choose an invitation file</label>
     <input id="network-invitation-file" type="file" accept=".txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />{/if}
-    <button type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
+    <button class="primary" type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
   </form>
   {/if}
   {#if busy && joiningAt}<p role="status">Connecting and waiting for channel confirmation · {elapsed}s. You can continue using other conversations. This request will not be repeated.</p>{/if}

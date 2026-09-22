@@ -87,6 +87,17 @@ class MobilePlatformPlugin(private val activity: Activity) : Plugin(activity) {
     override fun onNewIntent(intent: Intent) { PushNotifications.consumeIntent(intent) }
 
     @Command
+    fun pushSettings(invoke: Invoke) {
+        activity.runOnUiThread {
+            try {
+                activity.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, activity.packageName))
+                invoke.resolve()
+            } catch (_: Exception) { invoke.reject("Could not open notification settings", "SETTINGS_UNAVAILABLE") }
+        }
+    }
+
+    @Command
     fun pushDevice(invoke: Invoke) {
         val args = try { invoke.parseArgs(PushArgs::class.java) } catch (_: Exception) {
             invoke.reject("Invalid notification request", "INVALID_ARGUMENT"); return

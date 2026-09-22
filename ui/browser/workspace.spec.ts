@@ -94,12 +94,11 @@ test('one invitation previews the other network and channel before joining', asy
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.getByRole('button', { name: 'Join or create a channel', exact: true }).click();
   await page.getByRole('button', { name: 'Join with an invitation', exact: true }).click();
-  await page.getByLabel('Private answer', { exact: true }).fill('GCI1-valid-fixture');
-  await page.getByLabel('Private answer', { exact: true }).press('Enter');
-  await expect(page.getByRole('region', { name: 'Only you: add a channel' })).toContainText('Join #general on other.example');
+  await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Join a channel', exact: true })).toContainText('Join #general on other.example');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
-  await page.getByLabel('Private answer', { exact: true }).fill('New guest');
-  await page.getByLabel('Private answer', { exact: true }).press('Enter');
+  await page.getByLabel('Your nickname in this channel', { exact: true }).fill('New guest');
   await page.getByRole('button', { name: 'Join', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.network-group')).toHaveCount(2);
@@ -121,9 +120,9 @@ test('one header, quiet default workspace, counters and keyboard-accessible tabs
   await page.getByRole('button', { name: 'Users: 2', exact: true }).click();
   await expect(page.getByRole('tab', { name: 'Users 2' })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('tab', { name: 'Users 2' }).press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'Files 1' })).toBeFocused();
+  await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toBeVisible();
   await expect(page.getByText('notes.txt', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Close details' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await expect(page.getByRole('button', { name: 'Users: 2', exact: true })).toBeFocused();
   await page.screenshot({ path: '../target/ui-layout-desktop.png' });
 });
@@ -152,13 +151,13 @@ test('mandatory setup uses service validation and keeps established offline hist
 test('view commands, help, find, font persistence and existing lifecycle commands', async ({ page }) => {
   await ready(page);
   await command(page, '/font readable'); await expect(page.locator('.gchat')).toHaveClass(/readable/);
-  await command(page, '/find clear space'); await expect(page.getByLabel('Find in #general', { exact: true })).toHaveValue('clear space');
+  await command(page, '/find clear space'); await expect(page.getByRole('textbox', { name: 'Find in #general', exact: true })).toHaveValue('clear space');
   await expect(page.locator('.search')).toContainText('1 matches'); await page.keyboard.press('Escape');
   await expect(page.locator('.search')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeFocused();
   await page.getByRole('button', { name: 'Help and commands', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Only you: help' })).toContainText('/font [fixedsys|readable]');
-  await expect(page.getByRole('region', { name: 'Only you: help' })).toContainText('/disconnect'); await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Commands', exact: true })).toContainText('/font [fixedsys|readable]');
+  await expect(page.getByRole('dialog', { name: 'Commands', exact: true })).toContainText('/disconnect'); await page.keyboard.press('Escape');
   const sent = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'));
   expect(sent).toHaveLength(0);
   await page.reload(); await expect(page.locator('.gchat')).toHaveClass(/readable/);
@@ -174,9 +173,9 @@ test('paperclip works with zero files; closing and changing panels cannot cancel
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Share a file', exact: true }).click();
   await (await chooser).setFiles({ name: 'sample.bin', mimeType: 'application/octet-stream', buffer: Buffer.alloc(524288, 7) });
-  await expect(page.getByRole('tab', { name: /^Files/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel')).toContainText('Importing sample.bin');
-  await page.getByRole('button', { name: 'Close details' }).click();
+  await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toContainText('Importing sample.bin');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /design/ }).click();
   await page.evaluate(() => (window as any).fixture.releaseUpload());
@@ -187,8 +186,8 @@ test('paperclip works with zero files; closing and changing panels cannot cancel
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /general/ }).click();
   await page.getByRole('button', { name: 'Files: 1', exact: true }).click();
-  await expect(page.getByRole('tabpanel')).toContainText('sample.bin');
-  await page.getByRole('button', { name: 'Close details', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toContainText('sample.bin');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await page.locator('.channels').getByRole('button', { name: /archive/ }).click();
   await expect(page.getByRole('button', { name: 'Share a file', exact: true })).toHaveCount(0);
@@ -209,7 +208,7 @@ test('200% text zoom keeps actions and transcript reachable', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Help and commands', exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
   await page.getByRole('button', { name: 'Help and commands', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Only you: help' })).toContainText('/find');
+  await expect(page.getByRole('dialog', { name: 'Commands', exact: true })).toContainText('/find');
 });
 
 test.describe('phone navigation', () => {
@@ -242,7 +241,7 @@ test.describe('phone navigation', () => {
     const save = page.getByRole('button', { name: 'Save file…', exact: true });
     await expect(save).toBeVisible();
     expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await page.getByRole('button', { name: 'Close details', exact: true }).tap();
+    await page.getByRole('button', { name: 'Close dialog', exact: true }).tap();
     await expect(page.locator('.inspector')).toHaveCount(0);
     await page.getByRole('button', { name: 'Channels', exact: true }).tap();
     await page.getByRole('button', { name: 'Close navigation', exact: true }).tap({ position: { x: width - 8, y: 20 } });
@@ -280,17 +279,16 @@ test.describe('phone navigation', () => {
     await page.getByRole('button', { name: 'Channels', exact: true }).tap();
     await page.getByRole('button', { name: 'Join or create a channel', exact: true }).tap();
     await page.getByRole('button', { name: 'Join with an invitation', exact: true }).tap();
-    await page.getByLabel('Private answer', { exact: true }).fill('GCI1-valid-fixture');
-    await page.getByLabel('Private answer', { exact: true }).press('Enter');
-    await page.getByLabel('Private answer', { exact: true }).fill('Phone guest');
-    await page.getByLabel('Private answer', { exact: true }).press('Enter');
+    await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Phone guest');
     const join = page.getByRole('button', { name: 'Join', exact: true });
     await join.scrollIntoViewIfNeeded();
     const action = await join.boundingBox();
     expect(action!.y).toBeGreaterThanOrEqual(24);
     expect(action!.y + action!.height).toBeLessThanOrEqual(384);
-    expect(await page.getByLabel('Private answer', { exact: true }).evaluate(node => getComputedStyle(node).fontSize)).toBe('16px');
-    await page.getByRole('button', { name: 'Cancel private prompt', exact: true }).tap();
+    expect(await page.getByLabel('Your nickname in this channel', { exact: true }).evaluate(node => getComputedStyle(node).fontSize)).toBe('16px');
+    await page.getByRole('button', { name: 'Close dialog', exact: true }).tap();
     await expect(composer).toHaveValue('Keep this draft through the keyboard');
     await page.evaluate(() => (window as any).keyboardViewport(844));
     await expect(composer).toHaveValue('Keep this draft through the keyboard');
@@ -298,49 +296,47 @@ test.describe('phone navigation', () => {
 });
 
 
-test('original and recovered invitation share one transcript output and one local result', async ({ page }) => {
-  await ready(page);
-  await command(page, '/invite');
-  await expect(page.locator('.transcript')).toContainText('Invite to #general');
+test('original and recovered invitation share one focused output and one compact receipt', async ({ page }) => {
+  await ready(page); await command(page, '/invite');
+  const dialog = page.getByRole('dialog', { name: 'Invite to #general', exact: true });
+  await expect(dialog).toBeVisible();
   expect(await page.evaluate(() => (window as any).fixture.checks())).toBe(0);
   await page.evaluate(() => (window as any).fixture.recoverInvitation());
-  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
+  await expect(dialog.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
   await page.waitForTimeout(450);
-  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
-  await page.getByRole('button', { name: 'Save as…', exact: true }).click();
-  await expect(page.locator('.transcript')).toContainText('Saved to /chosen/gchat-invitation.txt');
+  await expect(page.locator('[data-operation]')).toHaveCount(1);
+  await dialog.getByRole('button', { name: 'Save as…', exact: true }).click();
+  await expect(dialog).toContainText('Saved to /chosen/gchat-invitation.txt');
+  await dialog.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(page.locator('.transcript')).not.toContainText('GCI1-fixture-secret');
+  await expect(page.locator('.transcript')).toContainText('Invitation created');
   await page.locator('.transcript').getByRole('button', { name: 'Details', exact: true }).click();
-  await page.getByRole('button', { name: 'Close details', exact: true }).click();
-  await expect(page.locator('.transcript').getByRole('button', { name: 'Details', exact: true })).toHaveCount(1);
-  await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeFocused();
+  await expect(dialog).toBeVisible(); await page.keyboard.press('Escape');
   await command(page, '/invite');
-  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(2);
-  await expect(page.locator('.transcript').getByRole('button', { name: 'Details', exact: true })).toHaveCount(2);
+  await expect(dialog.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
+  await expect(page.locator('[data-operation]')).toHaveCount(2);
 });
 
 test('Details explains a retained unknown outcome and refresh never resubmits', async ({ page }) => {
   await ready(page, '?saved-operation');
   await page.locator('.transcript').getByRole('button', { name: 'Details', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('saved-operation-001');
-  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('Outcome not confirmed');
+  await expect(page.locator('.private-detail')).toContainText('saved-operation-001');
+  await expect(page.locator('.private-detail')).toContainText('Outcome not confirmed');
   await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('No new result is available.');
+  await expect(page.locator('.private-detail')).toContainText('No new result is available.');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
   await page.keyboard.press('Escape');
   await page.reload();
   await page.locator('.transcript').getByRole('button', { name: 'Details', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Operation details' })).toContainText('saved-operation-001');
+  await expect(page.locator('.private-detail')).toContainText('saved-operation-001');
 });
 
-test('channel chooser defaults private and submits an explicit public choice', async ({ page }) => {
-  await ready(page);
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
-  await page.getByRole('button', { name: 'Join or create a channel', exact: true }).click();
-  await page.getByRole('button', { name: 'Create a channel', exact: true }).click();
-  const answer = page.getByRole('textbox', { name: 'Private answer', exact: true });
-  await answer.fill('#public'); await answer.press('Enter');
-  await page.getByRole('button', { name: 'Public', exact: true }).click();
-  await answer.fill('Tester'); await answer.press('Enter');
+test('channel form defaults private and submits an explicit public choice', async ({ page }) => {
+  await ready(page); await command(page, '/create');
+  await expect(page.getByLabel('Who can join?')).toHaveValue('private');
+  await page.getByLabel('Channel name', { exact: true }).fill('#public');
+  await page.getByLabel('Who can join?').selectOption('public');
+  await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Tester');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
   await page.getByRole('button', { name: 'Create channel', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').at(-1)?.text)).toBe('/create --public #public Tester');
@@ -348,28 +344,22 @@ test('channel chooser defaults private and submits an explicit public choice', a
 
 
 test('cancelling invitation Save as is neutral and keeps a closable result', async ({ page }) => {
-  await ready(page, '?cancel-save');
-  await command(page, '/invite');
+  await ready(page, '?cancel-save'); await command(page, '/invite');
   await page.getByRole('button', { name: 'Save as…', exact: true }).click();
-  await expect(page.locator('.transcript').getByText('Save cancelled.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog')).toContainText('Save cancelled.');
   await expect(page.getByText(/^Saved to /)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
 });
 
-test('private help inserts commands and create cancellation preserves the unsent draft', async ({ page }) => {
-  await ready(page);
-  const input = page.getByRole('textbox', { name: 'Message or command' });
-  await page.getByRole('button', { name: 'Help and commands' }).click();
-  await page.getByRole('button', { name: '/find [text]', exact: true }).click();
-  await expect(input).toHaveValue('/find ');
-  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+test('focused forms preserve the chat draft and never send field answers', async ({ page }) => {
+  await ready(page); const input = page.getByRole('textbox', { name: 'Message or command' });
   await input.fill('my unsent draft');
   await page.getByRole('button', { name: 'Channels', exact: true }).click();
-  await expect(page.locator('.channels').getByRole('button', { name: 'Status', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Join or create a channel' }).click();
   await page.getByRole('button', { name: 'Create a channel', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Private answer' }).fill('private answer never sent');
+  await page.getByLabel('Channel name', { exact: true }).fill('private field never sent');
   await page.keyboard.press('Escape');
   await expect(input).toHaveValue('my unsent draft');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
@@ -400,17 +390,17 @@ test('an app link waits through unlock and requires review and signed-network ac
   await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await page.getByRole('button', { name: 'Review invitation', exact: true }).click();
-  await expect(page.getByText('Invitation ready. Continue to review its signed network and channel.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Invitation', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
-  await expect(page.getByRole('region', { name: 'Only you: add a channel' })).toContainText('Join #general on other.example');
+  await expect(page.getByRole('dialog', { name: 'Join a channel', exact: true })).toContainText('Join #general on other.example');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
-  await page.getByRole('button', { name: 'Cancel private prompt' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   expect(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }))).not.toContain('GCI1-');
 });
 test('pasted /join app link opens review without submitting it as a chat command', async ({ page }) => {
   await ready(page, '?networks');
   await command(page, '/join gcoms://join#GCI1-valid-fixture');
-  await expect(page.getByText('Invitation ready. Continue to review its signed network and channel.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Invitation', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
 });
 
@@ -460,30 +450,22 @@ for (const width of [320,1100]) test(`drawer rows fill the panel and carets stay
   expect(await page.locator('.inspector').evaluate(el => getComputedStyle(el).paddingLeft)).toBe('0px');
 });
 
-test('help is compact, collapses without sending, and reopens for the current context', async ({ page }) => {
-  await ready(page); const input = page.getByRole('textbox', { name: 'Message or command' });
+test('focused help opens guided actions or prepares commands without sending', async ({ page }) => {
+  await ready(page);
   await page.getByRole('button', { name: 'Help and commands' }).click();
-  const help = page.getByRole('region', { name: 'Only you: help' }), disclosure = help.getByRole('button', { name: 'Commands', exact: true });
-  await expect(disclosure).toHaveAttribute('aria-expanded','true');
-  const styles = await help.locator('.commands li').first().evaluate(el => {
-    const button = el.querySelector('button')!, description = el.querySelector('span')!;
-    return { buttonFont: getComputedStyle(button).font, descriptionFont: getComputedStyle(description).font, rowHeight: el.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight) };
-  });
-  expect(styles.buttonFont).toBe(styles.descriptionFont); expect(styles.rowHeight).toBeLessThanOrEqual(styles.lineHeight + 1);
+  const help = page.getByRole('dialog', { name: 'Commands', exact: true });
+  await expect(help).toBeVisible();
   await help.getByRole('button', { name: '/find [text]', exact: true }).click();
-  await expect(input).toHaveValue('/find '); await expect(input).toBeFocused(); await expect(disclosure).toHaveAttribute('aria-expanded','false');
-  await expect(help).toHaveText('› Commands');
-  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
-  await disclosure.click(); await expect(disclosure).toHaveAttribute('aria-expanded','true');
-  await help.locator('.commands span').first().click(); await expect(disclosure).toHaveAttribute('aria-expanded','true');
-  await input.click(); await expect(disclosure).toHaveAttribute('aria-expanded','false');
-  await disclosure.click(); await input.focus(); await expect(disclosure).toHaveAttribute('aria-expanded','false');
-  await disclosure.click(); await page.keyboard.press('Escape'); await expect(disclosure).toHaveAttribute('aria-expanded','false');
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
-  await page.locator('.channels').getByRole('button', { name: /design/ }).click();
-  await expect(page.getByRole('region', { name: 'Only you: help' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Find in #general' })).toBeVisible();
+  await expect(help).toHaveCount(0); await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Help and commands' }).click();
-  await expect(page.getByRole('region', { name: 'Only you: help' })).toBeVisible();
+  await help.getByRole('button', { name: '/query', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Message or command' })).toHaveValue('/query ');
+  await expect(help).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+  await page.getByRole('button', { name: 'Help and commands' }).click();
+  await page.keyboard.press('Escape'); await expect(help).toHaveCount(0);
+  await expect(page.locator('.transcript .commands')).toHaveCount(0);
 });
 
 async function activity(page: Page, suffix = '') {
@@ -535,7 +517,7 @@ for (const width of [320, 390, 1100]) test(`conversation heading does not consum
   expect(title.y).toBeGreaterThanOrEqual(bar.y + bar.height);
   await expect(page.locator('.titlebar .active-title')).toHaveCount(0);
   await page.getByRole('button', { name: 'Help and commands' }).click();
-  await expect(page.getByRole('button', { name: 'Commands', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Commands', exact: true })).toBeVisible();
 });
 
 test('shows immediate unlock feedback and accepts another message while sends are pending', async ({ page }) => {
@@ -555,31 +537,22 @@ test('shows immediate unlock feedback and accepts another message while sends ar
 });
 
 
-test('help and invitations remain before later messages, which reconcile by operation ID and ACK', async ({ page }) => {
-  await ready(page);
-  await page.getByRole('button', { name: 'Help and commands' }).click();
-  await command(page, '/invite');
-  await expect(page.getByRole('button', { name: 'Copy invitation', exact: true })).toHaveCount(1);
+test('compact invitation receipt precedes messages with exact operation and ACK reconciliation', async ({ page }) => {
+  await ready(page); await command(page, '/invite');
+  await expect(page.getByRole('dialog', { name: 'Invite to #general', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await page.evaluate(() => (window as any).fixture.holdSends());
-  await command(page, 'Hello @Ada.');
-  await expect(page.locator('[data-operation]').filter({ hasText: 'Hello @Ada.' })).toHaveCount(1);
+  await command(page, 'Hello @Ada and @Iggy.');
+  await expect(page.locator('[data-operation]').filter({ hasText: 'Hello @Ada' })).toHaveCount(1);
   await page.evaluate(() => (window as any).fixture.releaseSends());
-  await expect(page.locator('.message.mine')).toContainText('Hello @Ada.');
-  await expect(page.locator('[data-operation]').filter({ hasText: 'Hello @Ada.' })).toHaveCount(0);
-  await expect(page.locator('.message.mine .mention')).toHaveText('@Ada');
-  await expect(page.locator('.message.mine')).toContainText('accepted locally');
-  const positions = await page.locator('.transcript').evaluate(el => {
-    const children = [...el.children]; return {
-      help: children.indexOf(el.querySelector('.help-output')!),
-      invite: children.findIndex(c => !!c.querySelector('.invitation')),
-      message: children.indexOf(el.querySelector('.message.mine')!)
-    };
-  });
-  expect(positions.help).toBeGreaterThanOrEqual(0);
-  expect(positions.message).toBeGreaterThan(positions.help);
-  // Invitation content stays in the same chronological operation entry.
-  const invite = page.locator('[data-operation]').filter({ hasText: 'Invite to #general' });
+  await expect(page.locator('.message.mine')).toContainText('Hello @Ada and @Iggy.');
+  await expect(page.locator('[data-operation]').filter({ hasText: 'Hello @Ada' })).toHaveCount(0);
+  await expect(page.locator('.message.mine .mention.self')).toHaveText('@Iggy');
+  const colors = await page.locator('.message.mine').evaluate(el => ({ self:getComputedStyle(el.querySelector('.nick')!).color, mention:getComputedStyle(el.querySelector('.mention.self')!).color, peer:getComputedStyle(el.querySelector('.mention:not(.self)')!).color }));
+  expect(colors.self).toBe(colors.mention); expect(colors.self).not.toBe(colors.peer);
+  const invite = page.locator('[data-operation]').filter({ hasText: 'Invitation created' });
   expect((await invite.boundingBox())!.y).toBeLessThan((await page.locator('.message.mine').boundingBox())!.y);
+  await expect(page.locator('.message.mine')).toContainText('accepted locally');
   await page.evaluate(() => (window as any).fixture.acknowledge());
   await expect(page.locator('.message.mine')).toContainText('delivered');
 });
@@ -588,10 +561,73 @@ test('download has immediate conversation progress after the files panel closes'
   await ready(page, '?offered-file');
   await page.getByRole('button', { name: 'Files: 1', exact: true }).click();
   await page.getByRole('button', { name: 'Download & share', exact: true }).click();
-  await page.getByRole('button', { name: 'Close details', exact: true }).click();
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
   const transfer = page.locator('.transfer');
   await expect(transfer).toContainText('notes.txt');
   await expect(transfer).toContainText('Starting…');
   await expect(transfer.getByRole('progressbar')).toHaveAttribute('value', '1024');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'files' && r.request.action === 'accept').length)).toBe(1);
+});
+
+for (const width of [390, 1100]) test(`chat follows optimistic sends and resizing but respects scrollback at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 720 }); await ready(page);
+  const log = page.getByRole('log');
+  const gap = () => log.evaluate(el => el.scrollHeight-el.scrollTop-el.clientHeight);
+  await page.evaluate(() => (window as any).fixture.seedMessages(80));
+  await expect(log).toContainText('Earlier message 79');
+  await expect.poll(gap).toBeLessThan(3);
+  await page.evaluate(() => (window as any).fixture.holdSends());
+  for (const text of ['first optimistic', 'second optimistic', 'third optimistic']) await command(page,text);
+  await expect(page.locator('[data-operation]')).toHaveCount(3);
+  await expect.poll(gap).toBeLessThan(3);
+  await page.setViewportSize({ width, height: 400 }); await expect.poll(gap).toBeLessThan(3);
+  await page.evaluate(() => (window as any).fixture.releaseSends());
+  await expect(page.locator('.message.mine')).toHaveCount(3); await expect.poll(gap).toBeLessThan(3);
+  await page.evaluate(() => (window as any).fixture.acknowledge());
+  await expect(page.locator('.message.mine').last()).toContainText('delivered'); await expect.poll(gap).toBeLessThan(3);
+  const box = (await log.boundingBox())!; await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.wheel(0,-600);
+  await expect(page.getByRole('button',{name:'Jump to latest'})).toBeVisible();
+  const top = await log.evaluate(el => el.scrollTop);
+  await page.evaluate(() => (window as any).fixture.receive('incoming while reading'));
+  await expect(log).toContainText('incoming while reading');
+  await expect.poll(() => log.evaluate(el => el.scrollTop)).toBeCloseTo(top,0);
+  await command(page,'my reply follows latest'); await expect.poll(gap).toBeLessThan(3);
+  await expect(page.getByRole('button',{name:'Jump to latest'})).toHaveCount(0);
+});
+for (const width of [320,390,1100]) test(`focused forms fit ${width}px and never reuse the chat input`, async ({ page }) => {
+  await page.setViewportSize({width,height:720}); await ready(page,'?networks');
+  const input=page.getByRole('textbox',{name:'Message or command'}); await input.fill('keep my draft');
+  await page.getByRole('button',{name:'Channels',exact:true}).click();
+  await page.getByRole('button',{name:'Join or create a channel'}).click();
+  await page.getByRole('button',{name:'Join with an invitation',exact:true}).click();
+  const screen=page.getByRole('dialog',{name:'Join a channel',exact:true});
+  await expect(screen).toBeVisible(); await expect(page.getByLabel('Private answer')).toHaveCount(0);
+  const bounds=(await screen.boundingBox())!;
+  if(width<=640){expect(bounds.x).toBe(0);expect(bounds.width).toBe(width);expect(bounds.height).toBe(720);}
+  else {expect(bounds.width).toBeLessThan(width);expect(bounds.x).toBeGreaterThan(0);}
+  await page.getByLabel('Invitation',{exact:true}).fill('invalid'); await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await expect(screen.getByRole('alert')).toBeVisible();
+  expect(await page.evaluate(()=>(window as any).fixture.requests.filter((r:any)=>r.kind==='submit'))).toEqual([]);
+  await screen.getByRole('button',{name:'Close dialog'}).click(); await expect(input).toHaveValue('keep my draft');
+});
+
+test('notification setup is explicit, distinguishes registration and offers device settings', async ({page}) => {
+  await page.goto('/?device-unlock&notifications');
+  await page.getByLabel('Instance passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
+  const screen=page.getByRole('dialog',{name:'Notifications',exact:true});
+  await expect(screen).toBeVisible();
+  expect(await page.evaluate(()=>(window as any).fixture.pushRequests)).toEqual([]);
+  await screen.getByRole('button',{name:'Enable notifications',exact:true}).click();
+  await expect(screen).toContainText('Notifications: Registering');
+  expect(await page.evaluate(()=>(window as any).fixture.pushRequests)).toEqual([true]);
+  await page.evaluate(()=>(window as any).fixture.setPush({registered:true,message:'Notifications on'}));
+  await expect(screen).toContainText('Notifications: On');
+  await page.evaluate(()=>(window as any).fixture.setPush({permission:'denied',registered:false}));
+  await expect(screen).toContainText('Permission needed');
+  await screen.getByRole('button',{name:'Open device notification settings'}).click();
+  expect(await page.evaluate(()=>(window as any).fixture.settingsOpened())).toBe(1);
+  await screen.getByRole('button',{name:'Turn notifications off'}).click();
+  await screen.getByRole('button',{name:'Not now'}).click();
+  await page.reload(); await page.getByLabel('Instance passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
+  await expect(page.locator('.active-title')).toBeVisible(); await expect(screen).toHaveCount(0);
 });
