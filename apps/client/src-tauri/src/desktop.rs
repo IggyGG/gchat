@@ -2,6 +2,7 @@ use gchat_api::{ChatClient, RequestEnvelope, ResponseEnvelope, VERSION};
 use gchat_core::chat_service::host::ensure_running;
 use gchat_core::chat_service::host::InstanceConfig;
 use tauri::Manager;
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex;
 
@@ -155,10 +156,54 @@ async fn chat_invitation_save(
     .map_err(|e| e.to_string())?
 }
 
+fn forward_invitation(app: &tauri::AppHandle, args: Vec<String>) {
+    if let Some(link) = args
+        .into_iter()
+        .skip(1)
+        .find(|arg| arg.starts_with("gcoms://join#"))
+    {
+        // The UI/backend validate before any network work; never log link contents.
+        if link.len() <= 174800 {
+            app.deep_link()
+                .handle_cli_arguments(["gchat-desktop".to_owned(), link].into_iter());
+        }
+    }
+}
+
+#[tauri::command]
+fn chat_desktop_platform() -> &'static str {
+    std::env::consts::OS
+}
+
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    // Explicit separate profiles keep independent GUI processes; the receiving
+    // service dispatches --interactive before reaching this builder.
+    if !std::env::args_os()
+        .any(|arg| arg == "--home" || arg.to_string_lossy().starts_with("--home="))
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            forward_invitation(app, args);
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+    builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_decorations(false)?;
+            }
+            forward_invitation(
+                app.handle(),
+                std::env::args_os()
+                    .filter_map(|arg| arg.into_string().ok())
+                    .collect(),
+            );
             let config = crate::startup::configuration(std::env::args_os())
                 .map_err(std::io::Error::other)?;
             app.manage(Attachment {
@@ -168,6 +213,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            chat_desktop_platform,
             chat_request,
             chat_rpc,
             chat_file_io,

@@ -63,5 +63,22 @@
     "shortDescription": "Secure communication over GComs",
     "longDescription": "GChat provides encrypted conversations with invitation-based access and signed relay defaults.",
     "publisher": "Gh0st"
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "gcoms"
+        ]
+      },
+      "mobile": [
+        {
+          "scheme": [
+            "gcoms"
+          ],
+          "appLink": false
+        }
+      ]
+    }
   }
 }

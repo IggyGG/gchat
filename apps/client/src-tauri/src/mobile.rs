@@ -530,6 +530,7 @@ async fn chat_invitation_save(
 #[cfg(any(target_os = "android", target_os = "ios"))]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_gchat_mobile_platform::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

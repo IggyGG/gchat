@@ -48,7 +48,7 @@ async function request(req: Request): Promise<Response> {
       const network = (id: string) => ({ id, name: id === primaryNetwork ? 'home.example' : 'other.example', fingerprint: id, primary: id === primaryNetwork, status: { state: 'connected' as const, message: 'Connected' } });
       if (r.kind === 'list') return { kind: 'networks', response: { kind: 'list', networks: [network(primaryNetwork), ...(joinedNetwork ? [network(otherNetwork)] : [])] } };
       if (r.kind === 'inspect') {
-        if (r.code !== 'GCI1-valid-fixture') throw new Error('Invitation signature rejected');
+        if (!['GCI1-valid-fixture', 'gcoms://join#GCI1-valid-fixture'].includes(r.code)) throw new Error('Invitation signature rejected');
         return { kind: 'networks', response: { kind: 'preview', preview: { network: network(otherNetwork), channel: 'general', expires: 2000000000, newNetwork: !joinedNetwork } } };
       }
       if (r.kind === 'join') {
@@ -102,7 +102,11 @@ const deviceUnlock: DeviceUnlock | undefined = parameters.has('device-unlock') ?
 mount(Workspace, { target: document.getElementById('app')!, props: { transport: { request,
   pendingOperations: () => savedId ? [{ operation: { id: savedId } } as OperationHandle] : [],
   async checkOperation() { checks++; if (savedReply) return savedReply; throw new ChatError('outcome_unknown', 'Interrupted after admission. No new result is available.'); },
-}, deviceUnlock, fileAccess: {
+}, deviceUnlock, nativeShell: parameters.has('native-shell') ? {
+  mac: parameters.has('mac'), minimize: async () => { window.dispatchEvent(new Event('fixture-minimize')); },
+  maximize: async () => { window.dispatchEvent(new Event('fixture-maximize')); }, close: async () => { window.dispatchEvent(new Event('fixture-close')); },
+  drag: async () => {}, resize: async () => {},
+} : undefined, pendingInvitation: parameters.has('app-link') ? 'gcoms://join#GCI1-valid-fixture' : undefined, fileAccess: {
   async exchange() { if (hold) await new Promise<void>(resolve => release = resolve); return new Uint8Array(); },
   async save() { return '/Downloads/notes.txt'; },
   async saveInvitation() { return parameters.has('cancel-save') ? null : '/chosen/gchat-invitation.txt'; },
