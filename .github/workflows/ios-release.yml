@@ -142,6 +142,7 @@ jobs:
             ios-output/native-tests/
             ios-output/device-xcode/
             ios-output/simulator-smoke/
+            ios-output/lifecycle/
             ios-output/simulator-signing/
             ios-output/paired/provenance/
             ios-output/paired/inputs/gchat/apps/client/src-tauri/gen/apple/build/*.xcarchive/

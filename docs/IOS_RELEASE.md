@@ -147,3 +147,7 @@ accepted. A separate
 same device IPA after these checks pass. It explicitly records whether the
 original final derived-input check was reached. This is not a physical-device,
 message/file, live-push, export-compliance or App Store approval receipt.
+
+The release build now runs the same retained-application lifecycle journey before
+upload eligibility and retains its XCTest screenshots under `ios-output/lifecycle`.
+The device IPA remains separate from this simulator UI qualification.
