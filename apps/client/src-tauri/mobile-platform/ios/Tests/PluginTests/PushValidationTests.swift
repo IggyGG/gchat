@@ -3,9 +3,10 @@ import XCTest
 
 final class PushValidationTests: XCTestCase {
     func testOnlyOpaqueGenericHintsAreAccepted() {
-        XCTAssertTrue(PushNotifications.isHint(["activity": "message", "reference": String(repeating: "ab", count: 32)]))
-        XCTAssertFalse(PushNotifications.isHint(["activity": "file", "reference": String(repeating: "ab", count: 32)]))
-        XCTAssertFalse(PushNotifications.isHint(["activity": "message", "reference": "text"]))
+        XCTAssertTrue(PushNotifications.isHint(["gcoms_activity": "message", "gcoms_reference": String(repeating: "ab", count: 32)]))
+        XCTAssertFalse(PushNotifications.isHint(["gcoms_activity": "file", "gcoms_reference": String(repeating: "ab", count: 32)]))
+        XCTAssertFalse(PushNotifications.isHint(["gcoms_activity": "message", "gcoms_reference": "text"]))
+        XCTAssertFalse(PushNotifications.isHint(["activity": "message", "reference": String(repeating: "ab", count: 32)]))
         XCTAssertFalse(PushNotifications.isHint(["aps": ["alert": "unexpected"]]))
     }
 }

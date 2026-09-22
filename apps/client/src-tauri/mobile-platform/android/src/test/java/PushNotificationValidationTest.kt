@@ -16,6 +16,14 @@ class PushNotificationValidationTest {
         assertTrue(gate.current(reenabled))
     }
 
+    @Test fun gatewayPayloadIsAcceptedWithoutDisplayingItsData() {
+        val reference = "ab".repeat(32)
+        assertTrue(PushNotifications.isHint(mapOf("gcoms_activity" to "message", "gcoms_reference" to reference)))
+        assertFalse(PushNotifications.isHint(mapOf("activity" to "message", "reference" to reference)))
+        assertFalse(PushNotifications.isHint(mapOf("gcoms_activity" to "file", "gcoms_reference" to reference)))
+        assertFalse(PushNotifications.isHint(mapOf("gcoms_activity" to "message", "gcoms_reference" to "text")))
+    }
+
     @Test fun onlyOpaqueReferencesAreAccepted() {
         assertTrue(PushNotifications.validReference("ab".repeat(32)))
         for (value in listOf(null, "", "message text", "a".repeat(63), "a".repeat(65), "z".repeat(64))) {

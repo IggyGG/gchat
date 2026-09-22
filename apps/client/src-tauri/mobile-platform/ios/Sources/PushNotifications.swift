@@ -110,7 +110,7 @@ final class PushNotifications: NSObject, UNUserNotificationCenterDelegate {
         }
     }
     static func isHint(_ values: [AnyHashable: Any]) -> Bool {
-        guard values["activity"] as? String == "message", let reference = values["reference"] as? String,
+        guard values["gcoms_activity"] as? String == "message", let reference = values["gcoms_reference"] as? String,
               reference.count == 64 else { return false }
         return reference.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
     }
