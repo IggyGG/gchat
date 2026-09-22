@@ -73,3 +73,32 @@ it('qualifies recovered operation results using the receipt network, not the act
   workspace.select(primary);
   await expect(workspace.checkOperation('original')).resolves.toMatchObject({ conversation: `network/${secondary}/channel/same` });
 });
+
+
+it('a snapshot already in flight cannot undo a confirmed activity setting', async () => {
+  const { workspace, base } = setup(); await workspace.request({ kind: 'snapshot' });
+  const original = base.request;
+  let release!: (response: Response) => void;
+  base.request = request => request.kind === 'snapshot' ? new Promise(resolve => release = resolve) : original(request);
+  const stale = workspace.request({ kind: 'snapshot' });
+  workspace.confirmPresence(secondary, true);
+  release({ kind: 'snapshot', snapshot: { ...snapshot, presenceEnabled: false } });
+  await stale;
+  expect(workspace.presenceFor(secondary)).toBe(true);
+  expect(workspace.presenceFor(primary)).toBe(false);
+  base.request = original;
+  await workspace.request({ kind: 'snapshot' });
+  expect(workspace.presenceFor(secondary)).toBe(false); // a later authoritative snapshot wins
+});
+
+it('locking invalidates a base snapshot before it can restore activity state', async () => {
+  const { workspace, base } = setup(); await workspace.request({ kind: 'snapshot' });
+  const original = base.request;
+  let release!: (response: Response) => void;
+  base.request = request => request.kind === 'snapshot' ? new Promise(resolve => release = resolve) : original(request);
+  const stale = workspace.request({ kind: 'snapshot' });
+  await workspace.request({ kind: 'lock' });
+  release({ kind: 'snapshot', snapshot: { ...snapshot, presenceEnabled: true } });
+  await expect(stale).rejects.toThrow('Workspace changed');
+  expect(workspace.presenceFor(primary)).toBeUndefined();
+});

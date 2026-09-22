@@ -1,3 +1,4 @@
+import { SvelteMap } from 'svelte/reactivity';
 import type { JoinedNetwork, Request, Response, Snapshot } from './api';
 import type { Transport } from './transport';
 import { ChatError } from './transport';
@@ -19,7 +20,9 @@ export class NetworkWorkspace implements Transport {
   active?: string;
   private enabled = false;
   private instances = new Map<string, string>();
-  private presence = new Map<string, boolean>();
+  private presence = new SvelteMap<string, boolean>();
+  private presenceRevision = 0;
+  confirmPresence(network: string | undefined, enabled: boolean) { this.presenceRevision++; this.presence.set(network ?? this.primary() ?? '', enabled); }
   instanceFor(network: string | undefined) { return this.instances.get(network ?? ''); }
   presenceFor(network: string | undefined) { return this.presence.get(network ?? ''); }
   private lifecycle = 0;
@@ -76,18 +79,18 @@ export class NetworkWorkspace implements Transport {
       }
     };
   }
-  private async aggregate(snapshot: Snapshot): Promise<Snapshot> {
+  private async aggregate(snapshot: Snapshot, presenceRevision: number): Promise<Snapshot> {
     const lifecycle = this.lifecycle;
     this.enabled = snapshot.instance.capabilities.includes('networks.v1');
     if (snapshot.instance.locked) { this.publish([]); this.instances.clear(); this.presence.clear(); this.active = undefined; return snapshot; }
-    if (!this.enabled) return snapshot;
+    if (!this.enabled) { if (presenceRevision === this.presenceRevision) this.presence.set('', snapshot.presenceEnabled ?? false); return snapshot; }
     const result = await this.base().request({ kind: 'networks', request: { kind: 'list' } });
     if (lifecycle !== this.lifecycle) throw new ChatError('locked', 'Workspace changed during refresh');
     if (result.kind !== 'networks' || result.response.kind !== 'list') throw new ChatError('protocol', 'Invalid network list');
     this.publish(result.response.networks);
     this.active ??= this.primary();
     this.instances.set(this.primary() ?? '', snapshot.instance.id);
-    this.presence.set(this.primary() ?? '', snapshot.presenceEnabled ?? false);
+    if (presenceRevision === this.presenceRevision) this.presence.set(this.primary() ?? '', snapshot.presenceEnabled ?? false);
     const next = { ...snapshot, conversations: [...snapshot.conversations], operations: [...snapshot.operations ?? []], activity: [...snapshot.activity ?? []], inputHistory: [...snapshot.inputHistory], providerErrors: [...snapshot.providerErrors ?? []] };
     for (const network of this.networks.filter(n => !n.primary)) {
       try {
@@ -95,7 +98,7 @@ export class NetworkWorkspace implements Transport {
         if (lifecycle !== this.lifecycle) throw new ChatError('locked', 'Workspace changed during refresh');
         if (response.kind !== 'snapshot') throw new Error('Invalid network snapshot');
         this.instances.set(network.id, response.snapshot.instance.id);
-        this.presence.set(network.id, response.snapshot.presenceEnabled ?? false);
+        if (presenceRevision === this.presenceRevision) this.presence.set(network.id, response.snapshot.presenceEnabled ?? false);
         next.conversations.push(...response.snapshot.conversations);
         next.activity.push(...(response.snapshot.activity ?? []).map(a => ({ ...a, conversation: this.qualify(network.id, a.conversation) })));
         next.operations.push(...(response.snapshot.operations ?? []).map(r => ({ ...r, network: network.id,
@@ -115,8 +118,10 @@ export class NetworkWorkspace implements Transport {
       return this.base().request(request);
     }
     if (request.kind === 'snapshot' || request.kind === 'unlock') {
+      const lifecycle = this.lifecycle, presenceRevision = this.presenceRevision;
       const response = await this.base().request(request);
-      return response.kind === 'snapshot' ? { ...response, snapshot: await this.aggregate(response.snapshot) } : response;
+      if (lifecycle !== this.lifecycle) throw new ChatError('locked', 'Workspace changed during refresh');
+      return response.kind === 'snapshot' ? { ...response, snapshot: await this.aggregate(response.snapshot, presenceRevision) } : response;
     }
     if (request.kind === 'events' && this.networks.length > 1) {
       // Root changes do not describe child journals; refresh the aggregate on a bounded cadence.

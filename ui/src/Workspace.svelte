@@ -104,10 +104,48 @@
   let networkStatus = $state<NetworkStatus>();
   let networkAccepted = $state(false), networkError = $state('');
   let networkPolling = false, networkGeneration = 0;
-  let helpVisible = $state(false);
+  let helpVisible = $state(false), helpExpanded = $state(false);
+  let helpRegion = $state<HTMLElement>();
+  let helpGeneration = 0;
+  function collapseHelp() { helpExpanded = false; helpGeneration++; }
+  let pointerInsideHelp = false;
+  function outsideHelp(event: Event) {
+    const target = event.target;
+    if (event.type === 'pointerdown') {
+      pointerInsideHelp = target instanceof Node && !!helpRegion?.contains(target);
+      setTimeout(() => { pointerInsideHelp = false; }, 0);
+    }
+    // Clicking non-focusable help text can focus the surrounding transcript.
+    if (event.type === 'focusin' && pointerInsideHelp && target instanceof Node && helpRegion && target.contains(helpRegion)) return;
+    if (helpExpanded && target instanceof Node && !helpRegion?.contains(target) && !(target instanceof Element && target.closest('.help-button'))) collapseHelp();
+  }
+  type PresenceAction = { key: string; id: string; enabled: boolean; network?: string };
+  let presenceActions = $state<Record<string, PresenceAction>>({});
+  const presenceAction = $derived(presenceActions[selectedNetwork ?? '']);
+  const presenceResult = $derived(results.find(r => r.key === presenceAction?.key));
+  const presenceEnabled = $derived(transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled ?? false);
+  const presencePending = $derived(presenceResult?.state === 'pending' || !!(presenceAction && checkingSaved[presenceAction.id]));
+  async function configurePresence() {
+    if (locked || !networkAccepted || presencePending || presenceResult?.state === 'unknown') return;
+    const network = selectedNetwork, enabled = !presenceEnabled, id = crypto.randomUUID();
+    const instance = snapshot?.instance.id, boot = snapshot?.instance.bootId;
+    const record = resultStore.begin(transport.instanceFor(network) ?? instance ?? '', network ?? '', id, null, enabled ? '/presence on' : '/presence off');
+    presenceActions = { ...presenceActions, [network ?? '']: { key: record.key, id, enabled, network } }; syncResults();
+    try {
+      const response = await transport.scoped(network, { kind: 'submit', operation_id: id, conversation: null, text: enabled ? '/presence on' : '/presence off' });
+      if (!running || locked || snapshot?.instance.id !== instance || snapshot?.instance.bootId !== boot) return;
+      if (response.kind === 'error') throw new ChatError(response.code, response.message);
+      if (response.kind !== 'applied') throw new ChatError('outcome_unknown', 'Activity-sharing change was not confirmed.');
+      transport.confirmPresence(network, enabled); resultStore.complete(record.key, response); syncResults();
+      await refreshInBackground();
+    } catch (error) {
+      if (!running || locked || snapshot?.instance.id !== instance || snapshot?.instance.bootId !== boot) return;
+      const failure = chatError(error); resultStore.error(record.key, failure.code, failure.message); syncResults();
+    }
+  }
   async function scrollPrivate() { await tick(); if (transcript) transcript.scrollTop = transcript.scrollHeight; }
   function prepareCommand(usage: string) {
-    cancelPrompt(); draft = usage.split(/\s/)[0] + ' '; completions = []; void tick().then(() => composer?.focus());
+    collapseHelp(); cancelPrompt(); draft = usage.split(/\s/)[0] + ' '; completions = []; void tick().then(() => composer?.focus());
   }
   let helpCommands = $state<CommandSpec[]>([]), helpError = $state('');
   let fileState = $state<FileViewState>(emptyFiles());
@@ -224,13 +262,14 @@
     void operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation, text });
   }
   async function showHelp() {
-    closeNavigation(); helpVisible = true; helpError = '';
+    closeNavigation(); helpVisible = true; helpExpanded = true; helpError = '';
+    const revision = ++helpGeneration, conversation = selected;
     await scrollPrivate();
     helpCommands = viewCommands(!!selected);
     try {
       const response = await transport.request({ kind: 'catalogue', conversation: workspaceReady ? selected : null });
-      if (helpVisible && response.kind === 'catalogue') helpCommands = mergeViewCommands(response.commands, !!selected && workspaceReady);
-    } catch (error) { if (helpVisible) helpError = chatError(error).message; }
+      if (helpVisible && revision === helpGeneration && conversation === selected && response.kind === 'catalogue') helpCommands = mergeViewCommands(response.commands, !!selected && workspaceReady);
+    } catch (error) { if (helpVisible && revision === helpGeneration) helpError = chatError(error).message; }
   }
   function chooseFont(value: ChatFont) { font = value; writeFont(value); }
   async function find(text = '') {
@@ -359,7 +398,7 @@
     const changed = snapshot?.revision !== next.revision;
     if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && (snapshot.instance.bootId !== next.instance.bootId || snapshot.instance.id !== next.instance.id))) {
       invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
-      generation++; searchGeneration++; views.clear(); helpVisible = false; promptStep = null; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
+      generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptStep = null; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
     }
     snapshot = next;
     if (!next.instance.locked) {
@@ -373,7 +412,9 @@
         savedOperations = transport.pendingOperations();
         for (const handle of savedOperations) {
           const id = handle.operation.id;
-          if (!checkedSaved.has(id)) { checkedSaved.add(id); void checkSaved(id); }
+          const activity = Object.values(presenceActions).find(a => a.id === id);
+          if (activity && results.find(r => r.key === activity.key)?.state === 'pending') continue;
+          if (!checkedSaved.has(id)) { checkedSaved.add(id); void checkSaved(id, activity?.key); }
         }
       } catch (error) { notice = chatError(error).message; }
     } else savedOperations = [];
@@ -405,7 +446,7 @@
     }
   }
   async function select(id: string | null, activation?: MouseEvent) {
-    if (id !== selected) { if (dialog) cancelPrompt(); helpVisible = false; resultKey = null; }
+    if (id !== selected) { if (dialog) cancelPrompt(); collapseHelp(); resultKey = null; }
     // Capture before the first await: currentTarget is cleared after dispatch.
     const initiatingPointer = activation?.currentTarget ? navigationPointers.get(activation.currentTarget) : undefined;
     if (activation?.currentTarget) navigationPointers.delete(activation.currentTarget);
@@ -574,6 +615,8 @@
       if (!running || locked) return;
       dismissFailure(id);
       savedOperations = savedOperations.filter(h => h.operation.id !== id);
+      const activity = Object.values(presenceActions).find(a => a.key === key);
+      if (activity && result.kind === 'applied') transport.confirmPresence(activity.network, activity.enabled);
       await apply(result, existing?.conversation ?? selected, key);
     } catch (error) {
       if (!running || locked) return;
@@ -627,6 +670,7 @@
   }
   function cycle(event: KeyboardEvent) {
     if (event.isComposing || utility) return;
+    if (event.key === 'Escape' && helpExpanded) { event.preventDefault(); collapseHelp(); composer?.focus(); return; }
     if (event.key === 'Escape' && resultKey) { resultKey = null; composer?.focus(); return; }
     if (dialog && event.key === 'Escape') { event.preventDefault(); cancelPrompt(); return; }
     if (navigationModal) {
@@ -651,7 +695,7 @@
       void select(ids[(index + ids.length + (event.key === 'ArrowRight' ? 1 : -1)) % ids.length]);
     }
   }
-  function closeNavigation() { channelsOpen = false; panel = null; void tick().then(() => navigationOpener?.focus()); }
+  function closeNavigation() { const wasOpen = channelsOpen || !!panel; channelsOpen = false; panel = null; if (wasOpen) void tick().then(() => navigationOpener?.focus()); }
   async function openNavigation(mode: 'channels' | 'users' | 'files', opener: HTMLElement | null = document.activeElement as HTMLElement | null) {
     if ((mode === 'channels' && channelsOpen) || (mode !== 'channels' && panel === mode)) { closeNavigation(); return; }
     // Safari may not focus a clicked button. Preserve the actual opener.
@@ -758,16 +802,16 @@
       {/if}
 {/snippet}
 
-<svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} />
-<div class="gchat" class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
+<svelte:window onpointerdown={outsideHelp} onfocusin={outsideHelp} onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} />
+<div class="gchat" class:mac={nativeShell?.mac} class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
   <ResizeHandles shell={nativeShell} />
   <header class="titlebar" class:mac={nativeShell?.mac} inert={navigationModal}>
     {#if nativeShell}<div class="drag-region" role="presentation" onpointerdown={event => { if (event.button === 0) void nativeShell?.drag(); }} ondblclick={() => void nativeShell?.maximize()}></div>{/if}
-      <button class="network-button circle" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
+      <button class="network-button" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
     {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span>{#if active?.topic}<span class="header-topic">{active.topic}</span>{/if}</button>{:else}<span class="active-title">{locked ? 'Welcome' : 'Connect to GChat'}</span>{/if}
     <nav class="header-actions" aria-label="Chat actions">
-      <button class="help-button circle" disabled={locked || !networkAccepted} aria-label="Help and commands" title="Help and commands" onclick={() => void showHelp()}>?</button>
+      <button class="help-button" disabled={locked || !networkAccepted} aria-label="Help and commands" title="Help and commands" onclick={() => void showHelp()}>?</button>
       {#if nativeShell && !nativeShell.mac}<div class="window-controls"><button aria-label="Minimize window" title="Minimize" onclick={() => void nativeShell?.minimize()}>−</button><button aria-label="Maximize or restore window" title="Maximize or restore" onclick={() => void nativeShell?.maximize()}>□</button><button aria-label="Close window" title="Close window (receiving continues)" onclick={() => void nativeShell?.close()}>×</button></div>{/if}
       {#if tools}{@render tools()}{/if}
     </nav>
@@ -786,7 +830,7 @@
     {/if}
     {#if navigationModal}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
     {#if workspaceReady}<aside id="channel-navigation" class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
-      {#if channelsOpen}<button class="circle fold-left" aria-label="Hide channels" onclick={closeNavigation}>←</button>{/if}
+      {#if channelsOpen}<button class="fold-left" aria-label="Hide channels" onclick={closeNavigation}>‹</button>{/if}
       <div class="channel-entries">
 
       {#each networks.length > 1 ? networks : [undefined] as network (network?.id ?? 'single')}
@@ -853,7 +897,7 @@
           {#each searchResults as message (message.id)}<p><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> &lt;{message.nickname}&gt; {message.body}</p>{/each}
         </section>
       {/if}
-          {#if helpVisible}<section class="private-line" aria-label="Only you: help"><small>Only you · Help</small><button aria-label="Dismiss help" onclick={() => helpVisible = false}>×</button><CommandResult output={{ kind: 'help', commands: helpCommands }} choose={chooseChannel} {prepareCommand} />{#if helpError}<p role="status">{helpError}</p>{/if}<p>Enter sends · Shift+Enter adds a line · Tab completes · Alt+←/→ changes conversation · Escape cancels a private prompt.</p></section>{/if}
+          {#if helpVisible}<section class="private-line help-output" aria-label="Only you: help" bind:this={helpRegion}><button class="help-disclosure" aria-expanded={helpExpanded} aria-controls="command-help" onclick={() => helpExpanded ? collapseHelp() : void showHelp()}><span aria-hidden="true">{helpExpanded ? '⌄' : '›'}</span> Commands</button>{#if helpExpanded}<div id="command-help"><CommandResult output={{ kind: 'help', commands: helpCommands }} helpHeading={false} choose={chooseChannel} {prepareCommand} />{#if helpError}<p role="status">{helpError}</p>{/if}<p class="help-keys">Enter sends · Shift+Enter adds a line · Tab completes · Alt+←/→ changes conversation · Escape cancels.</p></div>{/if}</section>{/if}
       {#if workspaceReady && results.some(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? ''))}
         <div class="local-results" aria-label="Only you: command results">
           {#each results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '') && (r.output || r.state !== 'complete')).slice(-30) as result (result.key)}
@@ -898,7 +942,7 @@
     {#if workspaceReady && active && panel}
       <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role (Modal drawer traps focus and restores its opener.) -->
       <aside class="inspector open" aria-label="Conversation details" role="dialog" aria-modal="true">
-        <button class="circle fold-right" aria-label="Close details" onclick={closeNavigation}>→</button>
+        <button class="fold-right" aria-label="Close details" onclick={closeNavigation}>›</button>
         <div class="inspector-heading"><div role="tablist" tabindex="-1" aria-label="Conversation details" onkeydown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !fileController) return;
           event.preventDefault(); panel = event.key === 'Home' ? 'users' : event.key === 'End' ? 'files' : panel === 'users' ? 'files' : 'users';
@@ -919,7 +963,14 @@
         {#if networkError}<p role="alert">{networkError}</p>{/if}
         {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
-        <section><h3>Recently active</h3><p class="muted">Optional activity signals for this profile. Off by default. Only recent activity is shown. No label means no recent signal; it does not mean an unknown identity or confirm delivery.</p><button disabled={busy} onclick={() => void send((transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled) ? '/presence off' : '/presence on')}>{(transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled) ? 'Turn activity sharing off' : 'Enable activity sharing'}</button></section>
+        <section class="activity-settings" aria-label="Activity sharing">
+          <h3>Activity sharing: {presenceEnabled ? 'On' : 'Off'}</h3>
+          <p class="muted">Share recent activity on this network. Other users appear active after their signals arrive; this does not confirm message delivery.</p>
+          <button disabled={locked || !networkAccepted || presencePending || presenceResult?.state === 'unknown'} onclick={() => void configurePresence()}>{presencePending ? 'Saving…' : presenceEnabled ? 'Turn activity sharing off' : 'Enable activity sharing'}</button>
+          {#if presenceResult?.state === 'complete'}<p role="status">Activity sharing {presenceAction?.enabled ? 'enabled' : 'disabled'}.</p>
+          {:else if presenceResult?.state === 'rejected'}<p role="alert">Could not save activity sharing. {presenceResult.message}</p>
+          {:else if presenceResult?.state === 'unknown'}<p role="status">Change not confirmed. {presenceResult.message}</p><button disabled={presencePending} onclick={() => presenceAction && void checkSaved(presenceAction.id, presenceAction.key)}>Check result</button>{/if}
+        </section>
         {#if deviceUnlock?.notifications}
           <section class="notification-settings">
             <h3>Notifications</h3>
@@ -985,7 +1036,7 @@
   .danger { color:var(--danger, #ed9b9b); }
   .network-group { font-size:12px; color:var(--muted); margin-top:12px; }
   @font-face { font-family:GchatFixedsys; src:url('/fonts/fixedsys-excelsior.ttf') format('truetype'); font-display:swap; }
-  .gchat { --bg:#1c1e22; --panel:#25282e; --line:#363c44; --ink:#e4e7eb; --muted:#a8b0bb; --accent:#b7cbe4; color-scheme:dark; position:var(--gchat-viewport-position,relative); top:var(--gchat-viewport-top,auto); width:100%; height:var(--gchat-viewport-height,100dvh); min-height:min(260px,var(--gchat-viewport-height,100dvh)); display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
+  .gchat { --content-inset:clamp(44px,4vw,48px); --native-inset:0px; --bg:#1c1e22; --panel:#25282e; --line:#363c44; --ink:#e4e7eb; --muted:#a8b0bb; --accent:#b7cbe4; color-scheme:dark; position:var(--gchat-viewport-position,relative); top:var(--gchat-viewport-top,auto); width:100%; height:var(--gchat-viewport-height,100dvh); min-height:min(260px,var(--gchat-viewport-height,100dvh)); display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
   .gchat :global(*) { box-sizing:border-box; }
   button,input,textarea { font:inherit; color:inherit; }
   button { background:transparent; border:1px solid transparent; padding:6px 10px; cursor:pointer; text-align:left; min-height:36px; }
@@ -995,7 +1046,7 @@
   small,.muted { color:var(--muted); }
   .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
   .file-picker { display:none; }
-  .titlebar { min-height:52px; display:flex; gap:12px; align-items:center; padding:6px 12px; background:#17191c; border-bottom:1px solid var(--line); }
+  .titlebar { min-height:52px; display:flex; gap:12px; align-items:center; padding:6px 12px 6px calc(var(--content-inset) + var(--native-inset)); background:#17191c; border-bottom:1px solid var(--line); }
   .brand { display:inline-flex; align-items:center; gap:8px; flex:none; }
   .brand :global(.ghost-mark) { --ghost-mark-size:18px; }
   .brand strong { color:var(--accent); letter-spacing:1px; font-size:20px; line-height:1; }
@@ -1021,7 +1072,7 @@
   .channel-actions { display:flex; flex-shrink:0; justify-content:center; padding:8px; }
   .channel-actions button { justify-content:center; padding:8px; }
   .conversation { flex:1; min-width:0; display:flex; flex-direction:column; }
-  .welcome { flex:1; min-height:0; overflow:auto; padding:clamp(20px,4vw,48px); }
+  .welcome { flex:1; min-height:0; overflow:auto; padding:clamp(20px,4vw,48px) calc(var(--content-inset) + var(--native-inset)); }
   h1 { font-size:24px; font-weight:normal; color:var(--accent); margin:16px 0; }
   p { margin:12px 0; }
   .welcome form,.network-gate { width:100%; max-width:640px; }
@@ -1080,10 +1131,10 @@
   .utility-modal { width:100%; }.font-options { display:grid; gap:8px; }.font-options button { border:1px solid var(--line); padding:12px; }.font-options [aria-pressed=true] { border-color:var(--accent); }.font-options span { display:block; margin-top:8px; font-size:16px; }.font-fixed { font-family:GchatFixedsys,monospace; }.font-readable { font-family:ui-monospace,monospace; }
   @media(max-width:999px) { .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,90vw); box-shadow:-4px 0 20px #0006; } }
   @media(max-width:760px) {
-    .brand strong { display:none; }.titlebar { padding:6px 8px; gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:44px; }
+    .titlebar { padding:6px 8px 6px calc(var(--content-inset) + var(--native-inset)); gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:44px; }
     .channels { display:none; position:absolute; top:0; bottom:0; left:0; z-index:4; width:min(280px,85vw); box-shadow:4px 0 20px #0006; }.channels.open { display:flex; }.channels button { min-height:44px; }
     .transcript { padding:12px 48px; }.message { grid-template-columns:6ch 1fr; column-gap:6px; margin:7px 0; }.body { grid-column:2; }.nick { max-width:none; }time { font-size:12px; }
-    .composer { padding:8px; }.composer textarea,.send,.attach { min-height:44px; }.welcome { padding:24px; }h1 { font-size:22px; }
+    .composer { padding:8px; }.composer textarea,.send,.attach { min-height:44px; }.welcome { padding:24px calc(var(--content-inset) + var(--native-inset)); }h1 { font-size:22px; }
     .completions button { flex-wrap:wrap; gap:4px; }.completions span { width:100%; font-size:12px; }
   }
   @media(max-width:440px) { .brand { display:inline-flex; }.connection-dot { margin:0; font-size:12px; }.active-title { padding-left:2px; }.header-actions { gap:0; } }
@@ -1096,10 +1147,19 @@
   .circle { display:inline-flex; align-items:center; justify-content:center; flex:none; width:44px; height:44px; min-height:44px; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--bg); position:relative; }
   .edge { position:absolute; top:50%; transform:translateY(-50%); z-index:2; }.edge.left { left:5px; }.edge.right { right:5px; display:flex; flex-direction:column; gap:14px; }
   .edge-count { position:absolute; right:-3px; bottom:-5px; font:11px/1.4 system-ui; background:var(--bg); border-radius:8px; padding:0 3px; }
-  .channels .circle { width:44px; padding:0; flex-wrap:nowrap; }.fold-left { position:absolute; right:5px; top:50%; transform:translateY(-50%); z-index:1; }.channels.open { padding-right:48px; }.fold-right { position:absolute; left:4px; top:50%; transform:translateY(-50%); z-index:2; }.inspector { display:flex; flex-direction:column; padding-left:48px; overflow:hidden; }.users-list,#files-panel { overflow:auto; min-height:0; flex:1; }.inspector-heading { flex:none; }
+  .channels .circle { width:44px; padding:0; flex-wrap:nowrap; }
+  .channels.open { width:min(300px,calc(100% - 44px)); padding-right:0; }
+  .inspector { display:flex; flex-direction:column; width:min(340px,calc(100% - 44px)); padding-left:0; overflow:visible; }
+  .users-list,#files-panel { overflow:auto; min-height:0; flex:1; }.inspector-heading { flex:none; }
+  .fold-left,.fold-right { position:absolute; top:50%; transform:translateY(-50%); z-index:2; width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; font:28px/1 system-ui; }
+  .channels .fold-left { right:-44px; width:44px; padding:0; justify-content:center; }.fold-right { left:-44px; }
+  .help-output { margin:10px 0; }.help-output .help-disclosure { font:inherit; padding:0; min-height:0; text-decoration:none; }.help-disclosure span { display:inline-block; width:1ch; }.help-output .help-keys { margin:6px 0 0; font:inherit; }
+  .titlebar .network-button { position:absolute; left:var(--native-inset); top:50%; transform:translateY(-50%); width:var(--content-inset); height:44px; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; background:transparent; }
+  .titlebar .help-button { width:44px; height:44px; padding:0; border:0; border-radius:0; background:transparent; text-align:center; }
+
   .private-line { margin:18px 0; color:var(--muted); overflow-wrap:anywhere; }.private-line button,.private-detail button { color:var(--accent); text-decoration:underline; }.private-line small { font:12px system-ui; }
   .private-detail { margin:12px 0; }.private-detail header { display:flex; align-items:center; gap:12px; }.private-detail h2 { font:inherit; }.operation-details { grid-template-columns:auto minmax(0,1fr); }
   @media(pointer:coarse) { .circle,.channels .circle { width:44px; height:44px; min-height:44px; }.edge.left { left:1px; }.edge.right { right:1px; } }
-  .titlebar { position:relative; }.titlebar.mac { padding-left:84px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
+  .titlebar { position:relative; }.gchat.mac { --native-inset:72px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region):not(.network-button) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
   .concealed { visibility:hidden; pointer-events:none; }
 </style>

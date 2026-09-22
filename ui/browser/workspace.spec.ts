@@ -417,3 +417,96 @@ test('native header exposes window actions without extra chrome on browsers or m
   await ready(page);
   await expect(page.locator('.window-controls,.resize,.drag-region')).toHaveCount(0);
 });
+
+
+test('bare header controls align the brand with the reconnect form', async ({ page }) => {
+  await page.goto('/?device-unlock&native-shell');
+  const brand = page.locator('.brand strong'), heading = page.getByRole('heading', { name: 'Reconnect this instance' });
+  await expect(heading).toBeVisible();
+  expect(Math.abs((await brand.boundingBox())!.x - (await heading.boundingBox())!.x)).toBeLessThanOrEqual(1);
+  for (const selector of ['.network-button', '.help-button']) {
+    const style = await page.locator(selector).evaluate(el => { const s = getComputedStyle(el); return [s.borderTopWidth,s.backgroundColor,s.borderRadius]; });
+    expect(style).toEqual(['0px','rgba(0, 0, 0, 0)','0px']);
+  }
+  const dot = (await page.locator('.network-button').boundingBox())!, ghost = (await page.locator('.brand .ghost-mark').boundingBox())!;
+  expect(Math.abs(dot.y + dot.height / 2 - ghost.y - ghost.height / 2)).toBeLessThanOrEqual(2);
+});
+
+for (const width of [320,1100]) test(`drawer rows fill the panel and carets stay outside content at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 720 }); await ready(page);
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  const drawer = (await page.locator('.channels.open').boundingBox())!, row = (await page.locator('.channels .chosen').boundingBox())!;
+  expect(drawer.x + drawer.width - row.x - row.width).toBeLessThanOrEqual(2);
+  const caret = (await page.getByRole('button', { name: 'Hide channels', exact: true }).boundingBox())!;
+  expect(caret.x).toBeGreaterThanOrEqual(drawer.x + drawer.width - 2); expect(caret.x + caret.width).toBeLessThanOrEqual(width);
+  await page.getByRole('button', { name: 'Hide channels', exact: true }).click();
+  await page.getByRole('button', { name: 'Users: 2', exact: true }).click();
+  const inspector = (await page.locator('.inspector').boundingBox())!, close = (await page.getByRole('button', { name: 'Close details', exact: true }).boundingBox())!;
+  expect(close.x).toBeGreaterThanOrEqual(0); expect(close.x + close.width).toBeLessThanOrEqual(inspector.x + 2);
+  expect(await page.locator('.inspector').evaluate(el => getComputedStyle(el).paddingLeft)).toBe('0px');
+});
+
+test('help is compact, collapses without sending, and reopens for the current context', async ({ page }) => {
+  await ready(page); const input = page.getByRole('textbox', { name: 'Message or command' });
+  await page.getByRole('button', { name: 'Help and commands' }).click();
+  const help = page.getByRole('region', { name: 'Only you: help' }), disclosure = help.getByRole('button', { name: 'Commands', exact: true });
+  await expect(disclosure).toHaveAttribute('aria-expanded','true');
+  const styles = await help.locator('.commands li').first().evaluate(el => {
+    const button = el.querySelector('button')!, description = el.querySelector('span')!;
+    return { buttonFont: getComputedStyle(button).font, descriptionFont: getComputedStyle(description).font, rowHeight: el.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight) };
+  });
+  expect(styles.buttonFont).toBe(styles.descriptionFont); expect(styles.rowHeight).toBeLessThanOrEqual(styles.lineHeight + 1);
+  await help.getByRole('button', { name: '/find [text]', exact: true }).click();
+  await expect(input).toHaveValue('/find '); await expect(input).toBeFocused(); await expect(disclosure).toHaveAttribute('aria-expanded','false');
+  await expect(help).toHaveText('› Commands');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
+  await disclosure.click(); await expect(disclosure).toHaveAttribute('aria-expanded','true');
+  await help.locator('.commands span').first().click(); await expect(disclosure).toHaveAttribute('aria-expanded','true');
+  await input.click(); await expect(disclosure).toHaveAttribute('aria-expanded','false');
+  await disclosure.click(); await input.focus(); await expect(disclosure).toHaveAttribute('aria-expanded','false');
+  await disclosure.click(); await page.keyboard.press('Escape'); await expect(disclosure).toHaveAttribute('aria-expanded','false');
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await page.locator('.channels').getByRole('button', { name: /design/ }).click();
+  await expect(disclosure).toHaveAttribute('aria-expanded','false'); await disclosure.click(); await expect(disclosure).toHaveAttribute('aria-expanded','true');
+});
+
+async function activity(page: Page, suffix = '') {
+  await ready(page,suffix); await page.getByRole('button', { name: /^Network:/ }).click();
+  return page.getByRole('region', { name: 'Activity sharing', exact: true });
+}
+test('activity sharing reports pending, saved, disabled and retained state in settings', async ({ page }) => {
+  const setting = await activity(page); await expect(setting.getByRole('heading')).toHaveText('Activity sharing: Off');
+  await page.evaluate(() => (window as any).fixture.holdPresence());
+  await setting.getByRole('button', { name: 'Enable activity sharing' }).click();
+  await expect(setting.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+  await page.evaluate(() => (window as any).fixture.releasePresence());
+  await expect(setting.getByRole('heading')).toHaveText('Activity sharing: On'); await expect(setting.getByRole('status')).toHaveText('Activity sharing enabled.');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.getByRole('button', { name: /^Network:/ }).click(); await expect(setting.getByRole('heading')).toHaveText('Activity sharing: On');
+  await setting.getByRole('button', { name: 'Turn activity sharing off' }).click();
+  await expect(setting.getByRole('heading')).toHaveText('Activity sharing: Off'); await expect(setting.getByRole('status')).toHaveText('Activity sharing disabled.');
+});
+test('failed activity sharing stays visible and uncertain results check the original operation', async ({ page }) => {
+  const setting = await activity(page,'?presence-result=rejected');
+  await setting.getByRole('button', { name: 'Enable activity sharing' }).click();
+  await expect(setting.getByRole('alert')).toContainText('Profile save failed'); await expect(setting.getByRole('heading')).toHaveText('Activity sharing: Off');
+  await page.evaluate(() => (window as any).fixture.setPresenceOutcome('unknown'));
+  await setting.getByRole('button', { name: 'Enable activity sharing' }).click();
+  await expect(setting.getByRole('status')).toContainText('Change not confirmed');
+  const count = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').length);
+  await setting.getByRole('button', { name: 'Check result' }).click();
+  await expect(setting.getByRole('status')).toHaveText('Activity sharing enabled.');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').length)).toBe(count);
+});
+test('activity settings target the selected network and keep a late response in its own scope', async ({ page }) => {
+  const setting = await activity(page,'?networks&two-networks');
+  await page.locator('#network-detail-selection').selectOption('b'.repeat(64));
+  await page.evaluate(() => (window as any).fixture.holdPresence()); await setting.getByRole('button', { name: 'Enable activity sharing' }).click();
+  await expect(setting.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+  await page.locator('#network-detail-selection').selectOption('a'.repeat(64)); await expect(setting.getByRole('heading')).toHaveText('Activity sharing: Off');
+  await page.evaluate(() => (window as any).fixture.releasePresence());
+  await expect.poll(() => page.evaluate(() => (window as any).fixture.presence('b'.repeat(64)))).toBe(true);
+  await expect(setting.getByRole('heading')).toHaveText('Activity sharing: Off');
+  await page.locator('#network-detail-selection').selectOption('b'.repeat(64)); await expect(setting.getByRole('heading')).toHaveText('Activity sharing: On');
+  expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'networks' && r.request.kind === 'call' && r.request.request.kind === 'submit').at(-1).request)).toMatchObject({ network: 'b'.repeat(64), request: { conversation: null, text: '/presence on' } });
+});
