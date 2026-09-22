@@ -90,6 +90,24 @@ mod tests {
     }
 
     #[test]
+    fn fleet_configuration_survives_desktop_startup() {
+        let config = configuration([
+            "gchat-desktop",
+            "--home",
+            "desktop-test-home",
+            "--fleet-config",
+            "fleet-config.json",
+            "--no-network-bootstrap",
+        ])
+        .unwrap();
+        assert_eq!(
+            config.fleet_config,
+            Some(PathBuf::from("fleet-config.json"))
+        );
+        assert!(!config.network_recovery);
+    }
+
+    #[test]
     fn official_feature_selects_current_carrier_by_default() {
         let config = configuration(["gchat-desktop", "--home", "desktop-test-home"]).unwrap();
         assert_eq!(config.gc2_carrier, cfg!(feature = "gc2-carrier"));
