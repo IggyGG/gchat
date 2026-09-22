@@ -9,12 +9,17 @@ export type JoinedNetwork = { id: string, name: string, fingerprint: string, pri
 export type InvitationPreview = { network: JoinedNetwork, channel: string | null, newNetwork: boolean, expires: number, };
 export type NetworkRequest = { "kind": "list" } | { "kind": "inspect", code: string, } | { "kind": "join", code: string, nickname: string, accepted_network: string, operation_id: string, } | { "kind": "call", network: string, request: Request, };
 export type NetworkResponse = { "kind": "list", networks: Array<JoinedNetwork>, } | { "kind": "preview", preview: InvitationPreview, } | { "kind": "result", network: string, response: Response, };
-export type FileInfo = { id: string, aliases?: Array<string>, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,
+export type FilePublication = { name: string, canonical_id: string, sha256: string, publisher_safety_number: string, sequence: string, committed_unix: string, };
+export type FileInfo = { id: string, aliases?: Array<string>,
+/**
+ * Authenticated local publication, retained in this identity's encrypted archive.
+ */
+publication?: FilePublication, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,
 /**
  * Peers contributing verified pieces since this process opened the cache.
  */
 verified_sources: number, completed_by: number, error: string | null, };
-export type FileRequest = { "action": "list", conversation: string | null, } | { "action": "prepare", id: string, conversation: string, name: string, size_bytes: string, } | { "action": "commit", id: string, } | { "action": "accept", id: string, } | { "action": "pause", id: string, } | { "action": "resume", id: string, } | { "action": "cancel", id: string, } | { "action": "configure", quota_bytes: string, retention_days: number, };
+export type FileRequest = { "action": "list", conversation: string | null, } | { "action": "publications", conversation: string | null, } | { "action": "prepare", id: string, conversation: string, name: string, size_bytes: string, } | { "action": "commit", id: string, } | { "action": "accept", id: string, } | { "action": "pause", id: string, } | { "action": "resume", id: string, } | { "action": "cancel", id: string, } | { "action": "configure", quota_bytes: string, retention_days: number, };
 export type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };
 export type FileState = "offered" | "importing" | "downloading" | "waiting_for_peers" | "paused" | "complete" | "failed" | "cancelled";
 export type NetworkState = "locked" | "local_only" | "invitation_required" | "connecting" | "connected" | "reconnecting" | "invitation_expired" | "unavailable";

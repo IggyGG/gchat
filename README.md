@@ -116,3 +116,7 @@ two unmaintained build-time macros (OpenMLS/libcrux and ratatui). These require
 follow-up upgrades; no runtime vulnerability is waived. The desktop dependency
 graph has its own audit and native packaging requirements. See the exact
 [dependency review and follow-up](docs/DEPENDENCIES.md).
+
+## Optional local fleet controller
+
+Desktop/headless workers accept `--fleet-config <private-file>` (`GCHAT_FLEET_CONFIG`). The file pins this existing GChat safety number and fixed component partition. The worker opens `<protocol-socket>.fleet` for registered local credentials without opening a second profile. Locking or disconnecting drains fleet connections; registry changes revoke existing connections before replacement. The private component configuration must accompany every subsequent startup of that profile. Fleet publication metadata is an opt-in file API backed by the encrypted chat archive; ordinary file replies stay compatible.

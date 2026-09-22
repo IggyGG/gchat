@@ -11,6 +11,10 @@ pub enum FileRequest {
     List {
         conversation: Option<String>,
     },
+    /// Opt-in publication metadata for fleet controllers; ordinary file replies stay compatible.
+    Publications {
+        conversation: Option<String>,
+    },
     Prepare {
         id: String,
         conversation: String,
@@ -56,6 +60,10 @@ pub struct FileInfo {
     #[serde(default)]
     #[ts(optional)]
     pub aliases: Option<Vec<String>>,
+    /// Authenticated local publication, retained in this identity's encrypted archive.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub publication: Option<FilePublication>,
     pub conversation: String,
     pub name: String,
     pub size_bytes: String,
@@ -67,6 +75,16 @@ pub struct FileInfo {
     pub verified_sources: u16,
     pub completed_by: u16,
     pub error: Option<String>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+pub struct FilePublication {
+    pub name: String,
+    pub canonical_id: String,
+    pub sha256: String,
+    pub publisher_safety_number: String,
+    pub sequence: String,
+    pub committed_unix: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]

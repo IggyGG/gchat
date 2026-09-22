@@ -1,6 +1,7 @@
 //! One archive owner and one command implementation for every UI attachment.
 mod extensions;
 mod files;
+mod fleet;
 pub mod host;
 mod networks;
 pub mod rpc;
@@ -44,6 +45,8 @@ struct UiState {
     observed_channels: BTreeMap<String, ObservedChannel>,
     activity: Vec<gchat_api::Activity>,
     shared_files: std::collections::BTreeSet<String>,
+    file_publications: BTreeMap<String, gchat_api::files::FilePublication>,
+    file_publication_sequence: u64,
     files_observed: bool,
     publications: BTreeMap<String, String>,
     presence_enabled: bool,
@@ -116,6 +119,7 @@ pub struct ChatService {
     provider_error: std::sync::RwLock<Option<gchat_api::ProviderStatus>>,
     stopped: watch::Sender<bool>,
     file_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    fleet: Mutex<Option<fleet::Transport>>,
     catalog_urls: std::sync::RwLock<Vec<String>>,
 }
 
@@ -232,6 +236,7 @@ impl ChatService {
             provider_error: std::sync::RwLock::new(None),
             stopped: watch::channel(false).0,
             file_worker: std::sync::Mutex::new(None),
+            fleet: Mutex::new(None),
             catalog_urls: std::sync::RwLock::new(Vec::new()),
         });
         if service.command_extension.is_some() {
@@ -532,6 +537,9 @@ impl ChatService {
             let snapshot = self.project(session.as_ref());
             drop(session);
             Box::pin(self.restore_networks()).await?;
+            if let Some(fleet) = self.fleet.lock().await.as_mut() {
+                fleet.resume();
+            }
             return Ok(Response::Snapshot { snapshot });
         }
         if let Request::Lock = request {
@@ -544,6 +552,9 @@ impl ChatService {
                 current.ui_locked = true;
             }
             drop(session);
+            if let Some(fleet) = self.fleet.lock().await.as_mut() {
+                fleet.pause().await;
+            }
             self.lock_networks().await?;
             return Ok(Response::Instance {
                 instance: self.info(true),
@@ -1793,6 +1804,9 @@ impl ChatService {
     pub async fn disconnect(&self) -> Result<(), String> {
         let _network_lifecycle = self.network_operations.lock().await;
         self.stopped.send_replace(true);
+        if let Some(fleet) = self.fleet.lock().await.as_mut() {
+            fleet.pause().await;
+        }
         let network_result = self.stop_networks().await;
         if let Some(current) = self.session.lock().await.as_ref() {
             if let Some(files) = &current.files {

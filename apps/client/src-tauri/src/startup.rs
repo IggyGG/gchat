@@ -9,6 +9,9 @@ struct Arguments {
     /// Use a separate saved identity and archive directory.
     #[arg(long)]
     home: Option<PathBuf>,
+    /// Attach a local fleet controller to this selected identity.
+    #[arg(long, env = "GCHAT_FLEET_CONFIG")]
+    fleet_config: Option<PathBuf>,
     /// Select the current carrier explicitly (the default in official builds).
     #[arg(long, conflicts_with = "legacy_carrier")]
     gc2_carrier: bool,
@@ -30,6 +33,7 @@ where
         return Err("this application was built without GC/2 carrier support".into());
     }
     let mut config = InstanceConfig::from_home(args.home.as_deref())?;
+    config.fleet_config = args.fleet_config;
     // Pass one choice to the host. A retained profile mismatch remains an error;
     // changing the desktop default is not permission to rewrite its identity.
     config.gc2_carrier = cfg!(feature = "gc2-carrier") && !args.legacy_carrier;

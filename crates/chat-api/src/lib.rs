@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub mod files;
+#[cfg(feature = "native")]
+pub mod fleet;
 pub mod networks;
 pub use files::{FileInfo, FileRequest, FileSnapshot, FileState};
 pub use networks::{InvitationPreview, JoinedNetwork, NetworkRequest, NetworkResponse};
@@ -449,6 +451,7 @@ pub fn typescript() -> String {
         InvitationPreview::decl(),
         NetworkRequest::decl(),
         NetworkResponse::decl(),
+        files::FilePublication::decl(),
         FileInfo::decl(),
         FileRequest::decl(),
         FileSnapshot::decl(),

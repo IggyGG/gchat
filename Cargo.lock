@@ -1169,14 +1169,10 @@ dependencies = [
  "gcoms",
  "gcoms-core",
  "gcoms-crypto",
- "gcoms-file-transfer",
  "gcoms-network",
  "gcoms-network-client",
  "gcoms-node",
  "gcoms-routing",
- "gcoms-rpc",
- "gcoms-sdk",
- "gcoms-transport",
  "hmac 0.12.1",
  "postcard",
  "rand 0.8.8",
@@ -5007,10 +5003,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 
 [[patch.unused]]
-name = "gcoms-addon-example"
-version = "0.1.0"
-
-[[patch.unused]]
 name = "gcoms-catalog"
 version = "0.1.0"
 
@@ -5023,9 +5015,13 @@ name = "gcoms-fuzz"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "gcoms-renamed-dependency-check"
+name = "gcoms-sim"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "gcoms-sim"
+name = "gcoms-addon-example"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "gcoms-renamed-dependency-check"
 version = "0.1.0"

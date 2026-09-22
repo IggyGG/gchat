@@ -1691,6 +1691,48 @@ async fn file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive(
     };
     assert_eq!(reused.files.len(), 1);
     assert_eq!(reused.files[0].id, handle);
+    assert!(reused.files[0].publication.is_none());
+    assert!(!serde_json::to_string(&reused)
+        .unwrap()
+        .contains("publication"));
+    let Response::Files {
+        snapshot: published,
+    } = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Publications {
+                conversation: Some(channel.clone()),
+            },
+        },
+    )
+    .await
+    else {
+        panic!("publication metadata");
+    };
+    assert_eq!(published.files.len(), 2);
+    assert_eq!(published.files[0].name, "fixture.bin");
+    assert_eq!(published.files[1].name, "again.bin");
+    assert_eq!(published.files[1].id, duplicate);
+    let commitments: Vec<_> = published
+        .files
+        .iter()
+        .map(|f| f.publication.clone().unwrap())
+        .collect();
+    assert_eq!(commitments[0].sequence, "1");
+    assert_eq!(commitments[1].sequence, "2");
+    assert_eq!(commitments[0].sha256, commitments[1].sha256);
+    assert_eq!(commitments[1].canonical_id, handle);
+    assert_eq!(
+        commitments[0].publisher_safety_number,
+        service.snapshot().await.unwrap().instance.safety_number
+    );
+    {
+        use sha2::Digest;
+        let mut digest = sha2::Sha256::new();
+        digest.update(&piece);
+        digest.update(b"content");
+        assert_eq!(commitments[0].sha256, format!("{:x}", digest.finalize()));
+    }
     assert_eq!(
         reused.files[0].aliases.as_deref(),
         Some(&[duplicate.to_string()][..])
@@ -1765,6 +1807,28 @@ async fn file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive(
     drop(service);
     let service = make_service(dir.path(), runtime.clone());
     unlock(&service, false).await;
+    let Response::Files {
+        snapshot: retained_publications,
+    } = request(
+        &service,
+        Request::Files {
+            request: FileRequest::Publications {
+                conversation: Some(channel.clone()),
+            },
+        },
+    )
+    .await
+    else {
+        panic!("retained publication metadata");
+    };
+    assert_eq!(
+        retained_publications
+            .files
+            .iter()
+            .map(|f| f.publication.clone().unwrap())
+            .collect::<Vec<_>>(),
+        commitments
+    );
     assert_eq!(
         service.clone().file_io(frame(1, false, &[])).await.unwrap(),
         b"content"

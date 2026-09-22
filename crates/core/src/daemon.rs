@@ -47,6 +47,9 @@ pub struct DaemonArgs {
     /// Defaults to the platform runtime path.
     #[arg(long)]
     pub socket: Option<PathBuf>,
+    /// Private component registrations for an optional local fleet controller.
+    #[arg(long, env = "GCHAT_FLEET_CONFIG")]
+    pub fleet_config: Option<PathBuf>,
     /// Owner-only request file used by Windows per-user task shutdown.
     #[cfg(windows)]
     #[arg(long)]
@@ -257,6 +260,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
             args.relay_bootstrap_config.as_deref(),
         )?,
         catalog_urls: args.chat_catalog_url.clone(),
+        fleet_config: args.fleet_config.clone(),
         network_recovery: !args.no_network_bootstrap,
         local_fixture: args.local_fixture,
         gc2_carrier: args.gc2_carrier,

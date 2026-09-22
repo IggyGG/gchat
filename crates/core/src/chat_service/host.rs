@@ -30,6 +30,7 @@ pub struct InstanceConfig {
     /// Explicit opt-in for the GC/2 carrier profile. Never inferred.
     pub gc2_carrier: bool,
     pub catalog_urls: Vec<String>,
+    pub fleet_config: Option<PathBuf>,
 }
 
 impl InstanceConfig {
@@ -48,6 +49,7 @@ impl InstanceConfig {
             local_fixture: false,
             gc2_carrier: cfg!(any(target_os = "android", target_os = "ios")),
             catalog_urls: Vec::new(),
+            fleet_config: None,
         })
     }
     pub fn chat_endpoint(&self) -> PathBuf {
@@ -193,6 +195,11 @@ impl InstanceHost {
     }
 
     pub fn new(config: InstanceConfig) -> Result<Arc<Self>, String> {
+        if config.fleet_config.is_some()
+            && !matches!(config.protocol_backend, gcoms::Backend::Embedded)
+        {
+            return Err("fleet requires the desktop in-process GChat host".into());
+        }
         #[cfg(any(target_os = "android", target_os = "ios"))]
         if config.uses_protocol_ipc() || !config.gc2_carrier {
             return Err("mobile instances require the outbound GC/2 network client".into());
@@ -282,6 +289,21 @@ impl InstanceHost {
         } else {
             builder
         };
+        let fleet = self
+            .config
+            .fleet_config
+            .as_deref()
+            .map(super::fleet::load)
+            .transpose()?;
+        let builder = if let Some((config, _)) = &fleet {
+            builder.central_components(
+                config.policy(),
+                vec![config.primary_component],
+                config.safety_number.clone(),
+            )
+        } else {
+            builder
+        };
         let runtime = ProtocolRuntime(builder.open().await?);
         let service =
             match ChatService::new(self.config.archive.clone(), runtime.clone(), capabilities()) {
@@ -292,6 +314,24 @@ impl InstanceHost {
                 }
             };
         service.configure_catalogs(self.config.catalog_urls.clone());
+        if let Some((config, _)) = fleet {
+            let transport = super::fleet::Transport::new(
+                self.config
+                    .fleet_config
+                    .clone()
+                    .expect("fleet configuration"),
+                self.config.protocol_socket.with_extension("fleet"),
+                config,
+                runtime.clone(),
+            );
+            match transport {
+                Ok(transport) => *service.fleet.lock().await = Some(transport),
+                Err(error) => {
+                    runtime.shutdown().await?;
+                    return Err(error);
+                }
+            }
+        }
         let ipc = if self.config.uses_protocol_ipc() {
             let (stop, receiver) = watch::channel(false);
             let socket = self.config.protocol_socket.clone();
@@ -558,6 +598,9 @@ pub async fn ensure_running(
     if config.gc2_carrier {
         command.arg("--gc2-carrier");
     }
+    if let Some(path) = &config.fleet_config {
+        command.arg("--fleet-config").arg(path);
+    }
     if !config.network_recovery {
         command.arg("--no-network-bootstrap");
     }
@@ -669,6 +712,7 @@ mod retained_scope_tests {
             local_fixture: true,
             gc2_carrier: false,
             catalog_urls: Vec::new(),
+            fleet_config: None,
         };
         let host = InstanceHost::new(config.clone()).unwrap();
         let refusal = match host.unlock(passphrase.into(), false).await {
