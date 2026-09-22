@@ -45,6 +45,7 @@ async fn combined_invitation_joins_another_network_and_retains_chat_and_file() {
 }
 
 async fn journey() {
+    let started = std::time::Instant::now();
     let home = tempfile::tempdir().unwrap();
     crate::private_fs::make_private(home.path(), true).unwrap();
     let sender_home = home.path().join("sender");
@@ -119,6 +120,10 @@ async fn journey() {
         .wait_for_inbox(tokio::time::Instant::now() + Duration::from_secs(120))
         .await
         .unwrap();
+    eprintln!(
+        "combined invitation: sender ready at {:?}",
+        started.elapsed()
+    );
     let sender = service(&sender_home, sender_runtime.clone());
     request(
         &sender,
@@ -189,7 +194,8 @@ async fn journey() {
     assert!(preview.new_network);
     assert_eq!(preview.channel.as_deref(), Some("welcome"));
     let network = preview.network.id;
-    receiver
+    eprintln!("combined invitation: joining at {:?}", started.elapsed());
+    let joined = receiver
         .networks_request(NetworkRequest::Join {
             code: link,
             nickname: "Bob".into(),
@@ -198,6 +204,17 @@ async fn journey() {
         })
         .await
         .unwrap();
+    if let NetworkResponse::Result { response, .. } = &joined {
+        if let Response::Error { code, message } = response.as_ref() {
+            panic!(
+                "combined invitation join failed at {:?}: {code}: {message}",
+                started.elapsed()
+            );
+        }
+        assert!(matches!(response.as_ref(), Response::Applied { .. }));
+    } else {
+        panic!("combined invitation returned no join result");
+    }
     let child = receiver.networks.lock().await[&network].clone();
     let snapshot = child.snapshot().await.unwrap();
     let child_identity = snapshot.instance.safety_number;
@@ -335,7 +352,7 @@ async fn journey() {
         },
     )
     .await;
-    let child = receiver.networks.lock().await[&network].clone();
+    let child = super::tests::restored_networks(&receiver, 1).await[&network].clone();
     assert_eq!(
         child.snapshot().await.unwrap().instance.safety_number,
         child_identity
