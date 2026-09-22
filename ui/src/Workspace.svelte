@@ -81,9 +81,12 @@
   let utility = $state<'network' | 'help' | 'font' | 'info' | 'notifications' | null>(null);
   let pushStatus = $state<MobilePushStatus>();
   let pushBusy = $state(false), pushError = $state('');
+  let pushRefreshing = false;
   async function refreshPush() {
-    if (!deviceUnlock?.notifications || pushBusy) return;
+    if (!deviceUnlock?.notifications || pushBusy || pushRefreshing) return;
+    pushRefreshing = true;
     try { pushStatus = await deviceUnlock.notifications.status(); } catch { pushError = 'Notification status is unavailable. Normal chat still works.'; }
+    finally { pushRefreshing = false; }
   }
   async function configurePush(enabled: boolean) {
     if (!deviceUnlock?.notifications || pushBusy) return;
