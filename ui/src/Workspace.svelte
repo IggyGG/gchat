@@ -697,10 +697,10 @@
   function time(timestamp: number) { return new Date(timestamp * 1000).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }); }
 </script>
 
-<svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} onresize={() => { narrow = window.innerWidth < 1000; if (window.innerWidth > 760) channelsOpen = false; }} />
+<svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} onresize={() => { narrow = window.innerWidth < 1000; }} />
 <div class="gchat" class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
   <header class="titlebar" inert={navigationModal}>
-    {#if workspaceReady}<button class="channel-toggle" aria-label="Channels" aria-expanded={channelsOpen} onclick={event => void openNavigation('channels', event.currentTarget)}>☰</button>{/if}
+    {#if workspaceReady}<button class="channel-toggle" aria-label="Channels" title="Show channels" aria-controls="channel-navigation" aria-expanded={channelsOpen} onclick={event => void openNavigation('channels', event.currentTarget)}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></svg><span>Channels</span></button>{/if}
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
     {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span>{#if active?.topic}<span class="header-topic">{active.topic}</span>{/if}</button>{:else}<span class="active-title">{locked ? 'Welcome' : 'Connect to GChat'}</span>{/if}
     <nav class="header-actions" aria-label="Chat actions">
@@ -719,7 +719,7 @@
   {/each}
   <div class="workspace">
     {#if navigationModal}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
-    {#if workspaceReady}<aside class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
+    {#if workspaceReady}<aside id="channel-navigation" class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
       {#if channelsOpen}<button aria-label="Hide channels" onclick={closeNavigation}>← Hide channels</button>{/if}
       <div class="channel-entries">
       <button class:chosen={!selected} aria-current={!selected ? 'page' : undefined} onpointerdown={rememberNavigationPointer} onclick={event => void select(null, event)}><span class="symbol">◈</span> Status</button>
@@ -961,7 +961,7 @@
   .connection-dot { color:#bd9866; font-size:10px; margin-left:6px; }
   .connection-dot.connected { color:#91b5a0; }
   .count { display:inline-flex; align-items:center; gap:5px; font-variant-numeric:tabular-nums; }.count[aria-expanded=true] { background:#343b46; }
-  .channel-toggle { display:block; }
+  .channel-toggle { display:inline-flex; align-items:center; gap:6px; flex:none; border-color:var(--line); border-radius:4px; min-height:44px; }
   .header-topic { color:var(--muted); font-weight:normal; margin-left:14px; }
   .workspace { display:flex; flex:1; min-height:0; position:relative; }
   .channels { background:#22262b; width:200px; flex-shrink:0; border-right:1px solid var(--line); display:none; flex-direction:column; padding-top:8px; }
@@ -1036,13 +1036,13 @@
   .utility-modal { width:100%; }.font-options { display:grid; gap:8px; }.font-options button { border:1px solid var(--line); padding:12px; }.font-options [aria-pressed=true] { border-color:var(--accent); }.font-options span { display:block; margin-top:8px; font-size:16px; }.font-fixed { font-family:GchatFixedsys,monospace; }.font-readable { font-family:ui-monospace,monospace; }.shortcuts { padding:12px; color:var(--muted); }.shortcuts h3 { font:inherit; color:var(--ink); }
   @media(max-width:999px) { .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,90vw); box-shadow:-4px 0 20px #0006; } }
   @media(max-width:760px) {
-    .channel-toggle { display:block; }.brand strong { display:none; }.titlebar { padding:6px 8px; gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:40px; }
+    .brand strong { display:none; }.titlebar { padding:6px 8px; gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:44px; }
     .channels { display:none; position:absolute; top:0; bottom:0; left:0; z-index:4; width:min(280px,85vw); box-shadow:4px 0 20px #0006; }.channels.open { display:flex; }.channels button { min-height:44px; }
     .transcript { padding:12px; }.message { grid-template-columns:6ch 1fr; column-gap:6px; margin:7px 0; }.body { grid-column:2; }.nick { max-width:none; }time { font-size:12px; }
     .composer { padding:8px; }.composer textarea,.send,.attach { min-height:44px; }.welcome { padding:24px; }h1 { font-size:22px; }
     .completions button { flex-wrap:wrap; gap:4px; }.completions span { width:100%; font-size:12px; }.notice { max-height:32%; }
   }
-  @media(max-width:440px) { .brand { display:none; }.connection-dot { margin:0; font-size:12px; }.active-title { padding-left:2px; }.header-actions { gap:0; } }
+  @media(max-width:440px) { .channel-toggle { padding:6px 4px; font-size:14px; }.channel-toggle svg { display:none; }.brand { display:none; }.connection-dot { margin:0; font-size:12px; }.active-title { padding-left:2px; }.header-actions { gap:0; } }
   @media(pointer:coarse) {
     button,summary { min-height:44px; min-width:44px; }
     input,textarea,select { font-size:16px; }

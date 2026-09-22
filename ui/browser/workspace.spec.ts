@@ -7,6 +7,34 @@ test('native remember choice defaults off and requires explicit consent', async 
   await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([false]);
   await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
 });
+for (const width of [320, 760, 1100, 1440]) test(`channel drawer has visible open and close controls after unlock at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 720 });
+  await page.goto('/?device-unlock');
+  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  const toggle = page.getByRole('button', { name: 'Channels', exact: true });
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveText('Channels');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#channel-navigation')).toBeHidden();
+  const bounds = (await toggle.boundingBox())!;
+  expect(bounds.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.height).toBeGreaterThanOrEqual(44);
+  expect(bounds.x).toBeGreaterThanOrEqual(0);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+  await toggle.click();
+  await expect(page.getByRole('dialog', { name: 'Channels', exact: true })).toBeVisible();
+  await page.setViewportSize({ width, height: 700 });
+  const close = page.getByRole('button', { name: 'Hide channels', exact: true });
+  await expect(close).toBeVisible();
+  await close.click();
+  await expect(page.locator('#channel-navigation')).toBeHidden();
+  await expect(toggle).toBeFocused();
+  await toggle.click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#channel-navigation')).toBeHidden();
+  await expect(toggle).toBeFocused();
+});
 test('native vault failure keeps a successful unlock and shows the storage warning', async ({ page }) => {
   await page.goto('/?device-unlock&vault-failure');
   await page.getByLabel('Remember on this device').check();
