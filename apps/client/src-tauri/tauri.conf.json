@@ -33,7 +33,7 @@
     ],
     "android": {
       "minSdkVersion": 26,
-      "versionCode": 1014
+      "versionCode": 1015
     },
     "license": "MIT OR Apache-2.0",
     "resources": {
