@@ -1,3 +1,14 @@
+## Android checkpoint diagnostics candidate, 2026-09-24
+
+Android 1016 pairs this application with GComs `b6188f7` to retain the first
+checkpoint encoding/storage/lifecycle failure in bounded local native logs.
+Physical Android 1015 entered the sticky uncertain-persistence state; restarting
+reopened the confirmed encrypted profile without clearing it. This candidate
+changes diagnostics, not persistence policy, and is not a repair qualification.
+Cluster node failure regressions/Clippy and Android build/signature checks must
+finish before device installation. The current live file/reopen workload remains
+bound to the previous 48ccdfb/15be948 binaries.
+
 # Application delivery plan
 
 ## Recovery candidate, 2026-09-23
