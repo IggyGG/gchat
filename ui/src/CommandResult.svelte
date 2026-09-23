@@ -3,9 +3,9 @@
   import type { CommandOutput, DirectoryEntry } from './api';
   let { output, choose, saveInvitation, prepareCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null> } = $props();
   let feedback = $state('');
-  async function copy(link: string) {
-    try { await navigator.clipboard.writeText(link); feedback = 'Invitation copied'; }
-    catch { feedback = 'Select and copy the complete invitation below, or save it as a file.'; }
+  async function copy(link: string, reconnect = false) {
+    try { await navigator.clipboard.writeText(link); feedback = reconnect ? 'Reconnect command copied. Paste it into this channel on the other device.' : 'Invitation copied'; }
+    catch { feedback = reconnect ? 'Select and copy the reconnect command below.' : 'Select and copy the complete invitation below, or save it as a file.'; }
   }
   let busy = $state(false);
   async function share(link: string, channel: string) {
@@ -58,6 +58,13 @@
     {#if !appLink}<p>This invitation is too large for an app link. Share the complete code or file.</p>{/if}
     <details><summary>Complete invitation</summary><button onclick={() => void copy(output.link)}>Copy raw code</button><textarea aria-label="Complete invitation" readonly value={output.link} rows="3"></textarea></details>
     {/if}
+    {#if feedback}<p role="status">{feedback}</p>{/if}
+  {:else if output.kind === 'text' && output.title === 'Reconnect this channel' && output.text.startsWith('gchat-reconnect1:')}
+    <h2>Reconnect this channel</h2>
+    <p>Use this only when existing members cannot receive each other's messages. It preserves your channel, identity and saved messages.</p>
+    <p>Copy this command to the other device using another app. Paste and send it in the same GChat channel there while both devices are connected. This is not an invitation and cannot add a member.</p>
+    <button onclick={() => void copy(`/reconnect ${output.text}`, true)}>Copy reconnect command</button>
+    <details><summary>Complete reconnect command</summary><textarea aria-label="Reconnect command" readonly value={`/reconnect ${output.text}`} rows="3"></textarea></details>
     {#if feedback}<p role="status">{feedback}</p>{/if}
   {:else if output.kind === 'text' || output.kind === 'status'}
     <h2>{output.kind === 'status' ? 'Status' : output.title}</h2><pre>{output.text}</pre>

@@ -617,7 +617,7 @@
         hidden = [...hidden, response.output.conversation];
         if (selected === response.output.conversation) await select(snapshot?.conversations.find(c => !hidden.includes(c.id))?.id ?? null);
       } else {
-        if (result && response.output.kind === 'invitation') { utility = null; closeNavigation(); resultKey = result; }
+        if (result && (response.output.kind === 'invitation' || (response.output.kind === 'text' && response.output.title === 'Reconnect this channel'))) { utility = null; closeNavigation(); resultKey = result; }
 
       }
     }
@@ -1098,7 +1098,7 @@
       {/if}
 
   {#if resultDetails && !locked}
-    <FocusScreen title={resultDetails.output?.kind === 'invitation' ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
+    <FocusScreen title={resultDetails.output?.kind === 'invitation' ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : resultDetails.output?.kind === 'text' && resultDetails.output.title === 'Reconnect this channel' ? 'Reconnect this channel' : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
 
       <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
       {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} />{/if}

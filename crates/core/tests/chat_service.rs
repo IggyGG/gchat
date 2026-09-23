@@ -2311,3 +2311,89 @@ async fn activity_sharing_preference_survives_profile_reopen() {
         runtime.shutdown().await.unwrap();
     }
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn reconnect_command_exchanges_existing_member_routes_without_rejoining() {
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    let ar = open_runtime(a.path(), true).await;
+    let br = open_runtime(b.path(), true).await;
+    let service = make_service(a.path(), ar.clone());
+    unlock(&service, true).await;
+    let Response::Applied {
+        conversation: Some(channel),
+        ..
+    } = submit(
+        &service,
+        "reconnect-create",
+        None,
+        "/create #reconnect owner",
+    )
+    .await
+    else {
+        panic!("create");
+    };
+    let owner = ar.sdk_client();
+    let peer = br.sdk_client();
+    let join = peer.prepare_channel_join("peer").await.unwrap();
+    let package = peer.channel_key_package(join).await.unwrap();
+    let welcome = owner
+        .admit_channel("reconnect", &package, "peer")
+        .await
+        .unwrap();
+    peer.join_channel(join, "reconnect", ChannelVisibility::Private, &welcome)
+        .await
+        .unwrap();
+    let receiver = make_service(b.path(), br.clone());
+    unlock(&receiver, true).await;
+    let receiver_channel = receiver.snapshot().await.unwrap().conversations[0]
+        .id
+        .clone();
+    let Response::Output {
+        output: gchat_api::CommandOutput::Text { text: code, .. },
+        ..
+    } = submit(
+        &receiver,
+        "reconnect-export",
+        Some(&receiver_channel),
+        "/reconnect",
+    )
+    .await
+    else {
+        panic!("member exports reconnect code");
+    };
+    assert!(code.starts_with("gchat-reconnect1:"));
+    let reply = submit(
+        &service,
+        "reconnect-import",
+        Some(&channel),
+        &format!("/reconnect {code}"),
+    )
+    .await;
+    assert!(matches!(reply, Response::Applied { .. }), "{reply:?}");
+    let state = service.snapshot().await.unwrap();
+    assert_eq!(state.conversations[0].id, channel);
+    assert_eq!(state.conversations[0].members.len(), 2);
+    assert!(!state
+        .command_history
+        .iter()
+        .any(|text| text.contains(&code)));
+    let mut incoming = peer.subscribe_events();
+    let reply = submit(
+        &service,
+        "reconnect-send-001",
+        Some(&channel),
+        "after reconnect",
+    )
+    .await;
+    assert!(matches!(reply, Response::Applied { .. }), "{reply:?}");
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            if matches!(incoming.recv().await, Some(gcoms::sdk::ClientEvent::ChannelMessage { body, .. }) if body == b"after reconnect") { break; }
+        }
+    }).await.expect("message reaches existing peer");
+    service.disconnect().await.unwrap();
+    receiver.disconnect().await.unwrap();
+    ar.shutdown().await.unwrap();
+    br.shutdown().await.unwrap();
+}

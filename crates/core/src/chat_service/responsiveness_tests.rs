@@ -199,3 +199,20 @@ fn message_metadata_preserves_old_archive_layout_and_survives_sidecar_reopen() {
     assert_eq!(visible.operation_id.as_deref(), Some("same-operation"));
     assert_eq!(visible.delivery, Some(gchat_api::Delivery::Delivered));
 }
+
+#[test]
+fn reconnect_command_keeps_codes_out_of_recall_and_requires_channel_context() {
+    assert_eq!(
+        recall_text("/reconnect gchat-reconnect1:private"),
+        "/reconnect"
+    );
+    assert_eq!(
+        recall_text("/RECONNECT gchat-reconnect1:private"),
+        "/reconnect"
+    );
+    assert_eq!(command_usage("/reconnect"), "/reconnect [code]");
+    assert!(command_catalogue(&[Capability::ChannelMember])
+        .iter()
+        .any(|c| c.text == "/reconnect"));
+    assert!(context_channel(&ArchiveData::default(), None).is_err());
+}

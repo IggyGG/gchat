@@ -59,3 +59,17 @@ Recently-active sharing is optional and defaults off. `/presence on` enables
 short-lived channel signals for this profile; `/presence off` stops them. Unknown
 means there is no fresh observation, not that the person is offline. Presence is
 kept in memory and never used as a condition for message delivery.
+
+## Reconnect existing members
+
+If both devices show messages as **accepted locally** but neither receives them,
+keep them online and use `/reconnect` in the affected channel. Copy the resulting
+command to the other member through another app and run it in that same channel.
+This exchanges current encrypted addresses; it does not leave, rejoin, reset
+history or resend messages with new identities. Saved messages retry normally,
+and delivery is confirmed only by recipient acknowledgments.
+
+A reconnect code is not a new-member invitation. It works only for current
+members of the same membership epoch while its addresses remain valid. If it
+expires, create a fresh code. This is an explicit fallback when all retained
+peer addresses have expired, not automatic discovery of offline members.

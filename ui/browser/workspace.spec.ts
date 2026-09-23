@@ -645,3 +645,18 @@ for (const width of [390, 1100]) test(`mentions suggest local members without su
   await input.fill('@'); await input.press('Escape'); await expect(choices).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').length)).toBe(0);
 });
+
+test('channel reconnect opens a focused explanation and copies an existing-member command', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.setViewportSize({ width: 390, height: 720 });
+  await ready(page); await command(page, '/reconnect');
+  const dialog = page.getByRole('dialog', { name: 'Reconnect this channel', exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('cannot add a member');
+  await dialog.getByRole('button', { name: 'Copy reconnect command', exact: true }).click();
+  await expect(dialog.getByRole('status').filter({ hasText: 'Reconnect command copied' })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('/reconnect gchat-reconnect1:fixture');
+  await page.screenshot({ path: '../target/channel-reconnect-mobile.png' });
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});

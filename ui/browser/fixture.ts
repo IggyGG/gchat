@@ -99,6 +99,7 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
         if (presenceOutcome === 'unknown') { savedReply = response; throw new ChatError('outcome_unknown', 'Reply interrupted after admission.'); }
         return response;
       }
+      if (req.text === '/reconnect') return { kind: 'output', conversation: req.conversation, output: { kind: 'text', title: 'Reconnect this channel', text: 'gchat-reconnect1:fixture' } };
       if (req.text === '/invite') {
         savedId = req.operation_id;
         savedReply = { kind: 'output', conversation: req.conversation, output: { kind: 'invitation', channel: 'general', link: 'GCI1-fixture-secret', expires: 2000000000, localOnly: false } };

@@ -1326,6 +1326,12 @@ impl ChatService {
             context_channel(&archive, conversation)?;
         }
         match name.as_str() {
+            "/reconnect"
+                if args.len() > 8192
+                    || (!args.is_empty() && !args.starts_with("gchat-reconnect1:")) =>
+            {
+                return Err("Paste the complete reconnect command from an existing member, or use /reconnect to create one.".into());
+            }
             "/owner" => {
                 self.require(Capability::ChannelAdmin)?;
                 let channel = context_channel(&archive, conversation)?;
@@ -1529,6 +1535,19 @@ impl ChatService {
                 let channel = context_channel(&archive, conversation)?;
                 client.change_channel(channel.id, gcoms::sdk::ChannelChange::Nickname(args.into())).await?;
                 applied(conversation.map(str::to_owned), Some("Channel nickname updated. Your identity and history are unchanged.".into()))
+            }
+            "reconnect" => {
+                self.require(Capability::ChannelMember)?;
+                let channel = context_channel(&archive, conversation)?;
+                let code = Zeroizing::new(args.trim().to_owned());
+                let output = self.runtime.sdk_client().channel_reconnect(
+                    &channel.protocol_name, (!code.is_empty()).then_some(code.as_str())
+                ).await.map_err(|e| e.to_string())?;
+                if code.is_empty() {
+                    Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: "Reconnect this channel".into(), text: output } })
+                } else {
+                    applied(conversation.map(str::to_owned), Some("Channel addresses refreshed. Saved messages are retrying; delivery still requires the other member's acknowledgment.".into()))
+                }
             }
             "topic" => {
                 let channel = context_channel(&archive, conversation)?;
@@ -1775,7 +1794,7 @@ impl ChatService {
                     "/create" | "/invite" | "/kick" | "/owner" | "/publish" => {
                         Some("ChannelAdmin".into())
                     }
-                    "/join" | "/query" | "/msg" | "/say" | "/me" | "/nick" => {
+                    "/join" | "/query" | "/msg" | "/say" | "/me" | "/nick" | "/reconnect" => {
                         Some("ChannelMember".into())
                     }
                     _ => None,
@@ -1788,6 +1807,7 @@ impl ChatService {
                             | "/msg"
                             | "/names"
                             | "/invite"
+                            | "/reconnect"
                             | "/kick"
                             | "/say"
                             | "/me"
@@ -1861,7 +1881,12 @@ impl ChatService {
                         .description
                         .push_str(" Select a conversation first.");
                 }
-                if extension && matches!(command.name.as_str(), "/invite" | "/kick" | "/publish") {
+                if extension
+                    && matches!(
+                        command.name.as_str(),
+                        "/invite" | "/kick" | "/publish" | "/reconnect"
+                    )
+                {
                     command.available = false;
                     command.description = "Unavailable in this conversation provider.".into();
                 }
@@ -2171,6 +2196,10 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
         ("/list", "List channels"),
         ("/names", "List this channel's members"),
         (
+            "/reconnect",
+            "Exchange fresh addresses with an existing member when channel delivery is stuck",
+        ),
+        (
             "/part",
             "Leave this channel through its owner; keep your history",
         ),
@@ -2222,6 +2251,7 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
 }
 fn command_usage(name: &str) -> &str {
     match name {
+        "/reconnect" => "/reconnect [code]",
         "/presence" => "/presence on|off",
         "/publish" => "/publish https://directory.example/",
         "/network" => "/network join invitation-code | dns on|off|status",
@@ -2246,6 +2276,9 @@ fn network_arguments(text: &str) -> Option<&str> {
 }
 fn recall_text(text: &str) -> String {
     let (name, args) = split_head(text);
+    if name.eq_ignore_ascii_case("/reconnect") {
+        return "/reconnect".into();
+    }
     if name.eq_ignore_ascii_case("/network") {
         return if matches!(args, "dns on" | "dns off" | "dns status") {
             format!("/network {args}")
