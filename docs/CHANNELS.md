@@ -81,3 +81,9 @@ An operation's Details view retains its recorded error alongside a later generic
 “outcome unknown” reply; neither indicates delivery or authorizes automatic replay.
 
 Connection details also reports the background inbox recovery phase, attempt count, bounded last backend failure and whether an unconfirmed owner checkpoint has paused recovery. These local diagnostics do not alter retry timing, lease authority or delivery acknowledgements.
+
+A stalled retained inbox no longer blocks every later recovery round: after two
+failed retained attempts, background recovery proceeds to authenticated inbox
+replacement. The previous inboxes retain their original cleanup deadlines; saved
+messages and membership are preserved. Connection details identifies the recovery
+stage if the round times out. This does not imply recipient delivery.
