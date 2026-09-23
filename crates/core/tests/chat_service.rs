@@ -2320,6 +2320,18 @@ async fn reconnect_command_exchanges_existing_member_routes_without_rejoining() 
     let br = open_runtime(b.path(), true).await;
     let service = make_service(a.path(), ar.clone());
     unlock(&service, true).await;
+    let Response::Output {
+        output: gchat_api::CommandOutput::Text { title, text },
+        ..
+    } = submit(&service, "connection-details-01", None, "/status --details").await
+    else {
+        panic!("connection details should be available without a channel");
+    };
+    assert_eq!(title, "Connection details");
+    assert!(text.contains("Ready entries:"));
+    assert!(text.contains("Interactive subscriptions:"));
+    assert!(text.contains("Bulk subscriptions:"));
+    assert!(!text.contains("127.0.0.1"));
     let Response::Applied {
         conversation: Some(channel),
         ..

@@ -5,7 +5,7 @@ export type OperationResult = {
   conversation: string | null; action: string; started: number;
   checked?: number; state: 'pending' | 'complete' | 'unknown' | 'rejected';
   body?: string;
-  output?: CommandOutput; message?: string;
+  output?: CommandOutput; message?: string; recordedMessage?: string;
 };
 
 /** In-memory projection of the encrypted service journal. Never browser storage. */
@@ -49,6 +49,9 @@ export class OperationResults {
       const key = this.key(detail.instance, network, detail.id);
       const old = this.records.get(key);
       if (old?.state === 'complete') continue;
+      // A generic RPC recovery answer carries no diagnostic reason. Preserve
+      // the encrypted journal's last recorded message separately from that answer.
+      if (old && detail.message) old.recordedMessage = detail.message;
       // Polling snapshots contain the original admission error, not the newer
       // check response. Keep that response visible until a terminal result arrives.
       if (old?.checked && detail.state !== 'complete' && detail.state !== 'rejected') continue;
@@ -57,7 +60,8 @@ export class OperationResults {
       this.records.set(key, { key, id: detail.id, instance: detail.instance, network,
         conversation: detail.conversation, action: detail.action, started: old?.started ?? detail.started * 1000, body: old?.body,
         state: detail.state === 'complete' ? 'complete' : detail.state === 'rejected' ? 'rejected' : detail.state === 'pending' ? 'pending' : 'unknown',
-        output: detail.output ?? undefined, message: detail.message ?? undefined });
+        output: detail.output ?? undefined, message: detail.message ?? undefined,
+        recordedMessage: detail.message ?? old?.recordedMessage });
     }
   }
   values() { return [...this.records.values()]; }

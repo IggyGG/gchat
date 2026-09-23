@@ -73,3 +73,9 @@ A reconnect code is not a new-member invitation. It works only for current
 members of the same membership epoch while its addresses remain valid. If it
 expires, create a fresh code. This is an explicit fallback when all retained
 peer addresses have expired, not automatic discovery of offline members.
+
+If the network remains disconnected, open **Network → Connection details** (or
+run `/status --details`). This shows local route and subscription counts without
+addresses, invitation tokens or identity keys. It does not retry a saved action.
+An operation's Details view retains its recorded error alongside a later generic
+“outcome unknown” reply; neither indicates delivery or authorizes automatic replay.

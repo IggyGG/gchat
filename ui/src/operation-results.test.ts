@@ -35,9 +35,21 @@ describe('operation results', () => {
     const checked = results.get(key)?.checked;
     results.restore([detail], () => 'network');
     expect(results.get(key)?.message).toBe('No new result is available.');
+    expect(results.get(key)?.recordedMessage).toBe('Interrupted after admission.');
     expect(results.get(key)?.checked).toBe(checked);
     results.restore([{ ...detail, state: 'complete', message: 'Completed.' }], () => 'network');
     expect(results.get(key)?.state).toBe('complete');
+  });
+
+  it('keeps the recorded failure visible without turning uncertainty into success', () => {
+    const results = new OperationResults();
+    const record = results.begin('instance', 'network', 'one', 'channel/a', '/reconnect PRIVATE');
+    results.error(record.key, 'outcome_unknown', 'Operation was interrupted after admission.');
+    results.restore([{ id: 'one', instance: 'instance', network: 'network', conversation: 'channel/a', action: '/reconnect', started: 1, state: 'unknown', output: null, message: 'local channel route is still reconnecting; try again when ready' }], () => 'network');
+    expect(results.get(record.key)?.state).toBe('unknown');
+    expect(results.get(record.key)?.message).toBe('Operation was interrupted after admission.');
+    expect(results.get(record.key)?.recordedMessage).toContain('local channel route is still reconnecting');
+    expect(JSON.stringify(results.values())).not.toContain('PRIVATE');
   });
 
 });

@@ -1528,6 +1528,21 @@ impl ChatService {
                 Ok(response)
             }
             "help" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Help { commands: self.context_commands(conversation) } }),
+            "status" if args == "--details" => {
+                let text = match self.runtime.embedded() {
+                    Some(client) => {
+                        // TransportStatus deliberately excludes addresses, identities and tokens.
+                        let status = client.node().transport_status();
+                        format!("Protocol: {}\nReady entries: {}\nUsable inbox routes: {}\nOwned inboxes: {}\nSubscribed inboxes: {}\nInteractive subscriptions: {}\nBulk subscriptions: {}\nRecovering inbox: {}\nRouting ready: {}",
+                            status.protocol, status.ready_entries, status.usable_terminal_routes,
+                            status.owned_aliases, status.subscribed_owned_aliases,
+                            status.interactive_subscriptions, status.bulk_subscriptions,
+                            status.recovering_inbox, status.routing_ready)
+                    }
+                    None => "Transport details are owned by the attached service.".into(),
+                };
+                Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: "Connection details".into(), text } })
+            }
             "status" => Ok(Response::Output { conversation: None, output: gchat_api::CommandOutput::Status { text: format!("{} joined channels. Closing a view keeps receiving; /lock hides the archive in every view; /quit stops this instance.", archive.channels.iter().filter(|c| c.active).count()) } }),
             "list" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Directory { channels: archive.channels.iter().filter(|c| c.active).map(|c| gchat_api::DirectoryEntry { name: format!("#{}", c.title), joined: true, conversation: Some(channel_key(c.id)) }).chain(archive.public_descriptors.iter().map(|d| gchat_api::DirectoryEntry { name: format!("#{}", d.descriptor.title), joined: false, conversation: None })).chain(self.projection.read().expect("projection lock").0.iter().map(|c| gchat_api::DirectoryEntry { name: c.name.clone(), joined: c.active, conversation: Some(c.id.clone()) })).collect() } }),
             "close" | "hide" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Close { conversation: conversation.ok_or("Select a conversation to close")?.into() } }),

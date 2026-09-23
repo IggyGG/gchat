@@ -1017,6 +1017,7 @@
         {#if networkError}<p role="alert">{networkError}</p>{/if}
         {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
+        <button onclick={() => { utility = null; void send('/status --details'); }}>Connection details</button>
         <section class="activity-settings" aria-label="Activity sharing">
           <h3>Activity sharing: {presenceEnabled ? 'On' : 'Off'}</h3>
           <p class="muted">Share recent activity on this network. Other users appear active after their signals arrive; this does not confirm message delivery.</p>
@@ -1104,6 +1105,7 @@
       {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} />{/if}
       <details><summary>Request details</summary><dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl></details>
       <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
+      {#if resultDetails.recordedMessage && resultDetails.recordedMessage !== resultDetails.message}<p>Last recorded result: {resultDetails.recordedMessage}</p>{/if}
 
       {#if resultDetails.state !== 'complete'}<button class="primary" disabled={checkingSaved[resultDetails.id]} onclick={() => void checkSaved(resultDetails.id, resultDetails.key)}>{checkingSaved[resultDetails.id] ? 'Checking…' : 'Refresh status'}</button><p class="muted">Checks the original request. It will not submit it again. Older requests may not have retained details.</p>{/if}
     </section></FocusScreen>
