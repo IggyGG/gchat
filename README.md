@@ -22,8 +22,11 @@ Development and release authority remains in the existing local Forgejo reposito
 Public delivery uses [IggyGG/gchat](https://github.com/IggyGG/gchat) and
 [IggyGG/gcoms](https://github.com/IggyGG/gcoms) as GitHub mirrors.
 Signed Linux x86_64, Apple Silicon/Intel Mac and Android APK downloads are available.
-Android profile and picker checks ran on an x86_64 emulator; physical-device
-and push delivery remain unqualified. Windows x86_64 and iOS
+Android 1015 additionally passed physical-phone two-way messaging and a small-file
+export with matching hash on a fresh control channel. Reconnect latency and the
+original personal transfer remain unresolved; full physical-device and push
+qualification remain open. See the [recovery status](PLAN.md#recovery-candidate-2026-09-23).
+Windows x86_64 and iOS
 releases are being qualified independently;
 availability and exact versions are listed on the download page. See
 [platform release delivery](docs/PLATFORM_RELEASES.md).
@@ -106,9 +109,9 @@ GComs provides transport and typed services; GChat owns chat behavior and UI.
 MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
 Published downloads currently cover Linux x86_64, macOS Apple Silicon/Intel and Android
 ARM64/x86_64. Windows and iOS releases are being qualified separately.
-Android lifecycle checks run in an emulator; physical-device, battery and live push
-qualification remain deferred. Each download retains its own source and validation
-scope. See the [release evidence procedure](docs/RELEASE_EVIDENCE.md).
+Android lifecycle checks include emulator coverage and a limited physical-phone
+follow-up; battery and attributable live push qualification remain open. Each
+download retains its own source and validation scope. See the [release evidence procedure](docs/RELEASE_EVIDENCE.md).
 
 The preview uses GComs' rustls/XML advisory fixes and disables unused postcard
 heapless defaults. `deny.toml` records reviewed transitive-version exceptions and

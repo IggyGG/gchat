@@ -22,9 +22,24 @@ Physical Android 1015 was installed with `install -r`, preserving the profile.
 A fresh control channel passed two-way authenticated delivery and a 59,392-byte
 download/Save As hash check. Channel/messages survived reopening and generic
 activity notifications appeared. The earlier retained-sender join still timed
-out, and background recovery reproduced repeated TLS EOF with no inbox
-subscriptions; the queued follow-up message remained undelivered. The original
-personal file remains unresolved. [Physical-device receipt](docs/evidence/inbox-recovery-20260923/physical-device-check.json).
+out. Background recovery initially failed with repeated TLS EOF and a replacement
+installation deadline. A [later observation](docs/evidence/inbox-recovery-20260923/delayed-recovery-followup.json)
+confirmed recovery on attempt seven after roughly ten minutes: the queued message
+became visible and authenticated delivery reached the sender, and the completed
+file remained available. This is not a responsiveness pass. The original personal
+file remains at 92,274,688 of 122,980,700 verified bytes; its brief pause/resume
+experiment preserved those bytes and does not establish a recovery root cause.
+The original [physical-device failure checkpoint](docs/evidence/inbox-recovery-20260923/physical-device-check.json)
+remains intact.
+
+A separate [cluster NetworkClient control](docs/evidence/inbox-recovery-20260923/cluster-reopen-control.json)
+used the same runtime sources with a fresh encrypted profile and no channel/file
+backlog. Initial readiness took 84.621 seconds; two flush/reopen cycles took
+61.293 and 61.526 seconds. All cycles restored both inbox subscriptions and
+flushed successfully. This Linux in-process control confirms baseline recovery
+latency but does not reproduce the Android seven-attempt delay. Its initial
+missing egress-policy selector failure is retained; the retry reused the exact
+binary after selecting the existing policy. No relay policy/runtime was changed.
 No new public/store release is claimed. The earlier cold-join deadline/late
 Welcome issue is separate and remains unresolved.
 

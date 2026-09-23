@@ -58,7 +58,7 @@
     "push_qualified": false
   },
   "remaining": [
-    "Physical foreground messaging and small file passed on a fresh control channel; retained-sender join and subsequent background inbox recovery still fail",
+    "Fresh control channel passed foreground delivery/file and eventual background message ACK; retained-sender join timed out and physical reconnect took roughly ten minutes/seven attempts",
     "Original personal conversation and 122980700-byte file remain unqualified",
     "Transient no-independent-route failure after laptop restart recovered on later retry; recovery latency remains",
     "Earlier cold-join deadline and late Welcome failure remain separate, unresolved"
@@ -81,5 +81,9 @@
   "physical_device_followup": {
     "path": "physical-device-check.json",
     "sha256": "63e01c2bd01fede53276344dfdcd95f3760dc9c52aa469caf7ee425bb4056c94"
+  },
+  "later_followups": {
+    "delayed-recovery-followup.json": "146ae30d8403fa9f810ee82f3930261364dad8f1be20b13005299c300e21d02b",
+    "cluster-reopen-control.json": "74f095405915875e28072b0816c700de3da9057def6d666c0a40427524f75555"
   }
 }

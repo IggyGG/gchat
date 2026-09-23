@@ -23,10 +23,27 @@ authenticated delivery, retained channel/messages and actual 59,392-byte file
 export with matching SHA-256 passed. Generic activity notifications were observed
 while backgrounded; this does not uniquely identify their triggering message.
 The earlier retained-sender join timed out. A later background/reopen attempt
-failed retained and replacement inbox recovery with TLS EOF and left the queued
-message undelivered. Reproduce that failure in the cluster before a new build;
-keep the original personal conversation/file and cold-join/late-Welcome failures
-open. Save As also surfaced an unwanted transient background-paused UI error.
+initially failed retained and replacement inbox recovery with TLS EOF and a
+replacement-install deadline. Preserve that failed checkpoint. The
+[later follow-up](docs/evidence/inbox-recovery-20260923/delayed-recovery-followup.json)
+records authenticated delivery after roughly ten minutes/seven recovery attempts
+and the completed file surviving reopen; do not call its latency acceptable.
+
+The [cluster control](docs/evidence/inbox-recovery-20260923/cluster-reopen-control.json)
+passed fresh provisioning and two normal InstanceHost flush/reopen cycles using
+explicit NetworkClient on a current-thread runtime. Readiness was observed at
+84.621/61.293/61.526 seconds, polling every ten seconds. It uses the frozen
+48ccdfb/15be948 sources with no additional registry packages. It is Linux, has
+no channel/file backlog, and does not qualify Android suspend/resume or explain
+the longer physical-phone failure. Preserve the initial missing-policy-selector
+run and the unchanged-binary retry separately. The worker is disposable; logs,
+probe source/lockfile and executable hash remain retained.
+
+Keep the original personal conversation/file and cold-join/late-Welcome failures
+open. The personal file remained at 92,274,688/122,980,700 verified bytes after
+normal pause/resume. Save As also surfaced an unwanted transient background-paused
+UI error. No speculative runtime repair or new Android build follows from these
+controls alone.
 
 
 Recorded checkpoint: **2026-09-21 17:36 UTC**. The completed scopes below come
