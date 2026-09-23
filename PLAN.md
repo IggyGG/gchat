@@ -18,8 +18,13 @@ is not declared fixed. The personal laptop profile was not changed.
 
 Android 1015 passed build/signing and the installed emulator lifecycle/picker
 checks, and its ARM64 APK was independently verified against the publisher pin.
-The phone is disconnected from USB: installation, actual phone delivery,
-background notifications and the original personal file transfer remain pending.
+Physical Android 1015 was installed with `install -r`, preserving the profile.
+A fresh control channel passed two-way authenticated delivery and a 59,392-byte
+download/Save As hash check. Channel/messages survived reopening and generic
+activity notifications appeared. The earlier retained-sender join still timed
+out, and background recovery reproduced repeated TLS EOF with no inbox
+subscriptions; the queued follow-up message remained undelivered. The original
+personal file remains unresolved. [Physical-device receipt](docs/evidence/inbox-recovery-20260923/physical-device-check.json).
 No new public/store release is claimed. The earlier cold-join deadline/late
 Welcome issue is separate and remains unresolved.
 

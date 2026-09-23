@@ -17,11 +17,16 @@ delivery, then transfer/export and hash-check the new 59,392-byte file. The old
 75,776-byte file must also export unchanged after receiver restart. These passed;
 transient route recovery delay is still recorded.
 
-Next: install the verified ARM64 1015 APK with `adb install -r`, preserve phone
-identity/channel state, verify both-class recovery, actual phone/laptop messages
-and file hash, then prove a new background notification and same-profile reopen.
-The emulator receipt does not qualify these physical-device steps. Keep the
-original personal conversation/file and cold-join/late-Welcome failures open.
+Physical-device checks now have a [separate receipt](docs/evidence/inbox-recovery-20260923/physical-device-check.json):
+profile-preserving 1015 installation, fresh control-channel join, two-way
+authenticated delivery, retained channel/messages and actual 59,392-byte file
+export with matching SHA-256 passed. Generic activity notifications were observed
+while backgrounded; this does not uniquely identify their triggering message.
+The earlier retained-sender join timed out. A later background/reopen attempt
+failed retained and replacement inbox recovery with TLS EOF and left the queued
+message undelivered. Reproduce that failure in the cluster before a new build;
+keep the original personal conversation/file and cold-join/late-Welcome failures
+open. Save As also surfaced an unwanted transient background-paused UI error.
 
 
 Recorded checkpoint: **2026-09-21 17:36 UTC**. The completed scopes below come
