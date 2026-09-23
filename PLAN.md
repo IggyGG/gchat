@@ -1,5 +1,32 @@
 # Application delivery plan
 
+## Recovery candidate, 2026-09-23
+
+Exact GChat `48ccdfb` / GComs `15be948` now has a source-bound Linux package
+and signed Android 1015. The correction lets durably installed replacement
+inboxes return without waiting for stalled peer notification; retained updates
+use the existing maintenance retry schedule. Node 333/0/2 and GChat core 65/0/2
+passed, with strict Clippy. The two ignored GChat cases require the disconnected
+namespace harness; this run does not replace those receipts.
+
+Both updated actual Linux applications reopened their retained test profiles,
+exchanged messages with matching IDs and authenticated delivery acknowledgements,
+and transferred a fresh 59,392-byte file with matching hash. The receiver also
+reopened/exported the prior 75,776-byte file unchanged. A transient independent-
+route failure after laptop restart recovered on a later retry; startup latency
+is not declared fixed. The personal laptop profile was not changed.
+
+Android 1015 passed build/signing and the installed emulator lifecycle/picker
+checks, and its ARM64 APK was independently verified against the publisher pin.
+The phone is disconnected from USB: installation, actual phone delivery,
+background notifications and the original personal file transfer remain pending.
+No new public/store release is claimed. The earlier cold-join deadline/late
+Welcome issue is separate and remains unresolved.
+
+[Exact sources, artifacts and evidence](docs/evidence/inbox-recovery-20260923/summary.json).
+The release matrix below retains its explicitly dated historical checkpoint.
+
+
 Recorded checkpoint: **2026-09-21 17:36 UTC**. Linux, Apple Silicon Mac,
 Intel Mac and Android downloads are published. Windows needs a native retry
 after a test-fixture correction. The iOS simulator lifecycle passed, but Apple

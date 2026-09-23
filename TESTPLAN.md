@@ -1,5 +1,29 @@
 # Application qualification status and remaining checks
 
+## Inbox recovery candidate, 2026-09-23
+
+[Bound receipt](docs/evidence/inbox-recovery-20260923/summary.json): GChat
+`48ccdfb` / GComs `15be948`; node library 333 passed/2 existing exclusions,
+GChat core 65 passed/2 disconnected-namespace exclusions, strict node and GChat
+workspace Clippy, unchanged paired sources, Linux packaging, signed Android
+1015 and emulator installation/reopen/picker checks. Preserve the original
+Linux missing-development-library failure and the successful packaging-only
+retry. Transport interruptions during evidence export are retained separately.
+
+Actual Linux application checks use two preserved test profiles and the same
+installed executable hash: reopen both, verify two inbox subscriptions, submit
+once in each direction, match recipient IDs/content and authenticated sender
+delivery, then transfer/export and hash-check the new 59,392-byte file. The old
+75,776-byte file must also export unchanged after receiver restart. These passed;
+transient route recovery delay is still recorded.
+
+Next: install the verified ARM64 1015 APK with `adb install -r`, preserve phone
+identity/channel state, verify both-class recovery, actual phone/laptop messages
+and file hash, then prove a new background notification and same-profile reopen.
+The emulator receipt does not qualify these physical-device steps. Keep the
+original personal conversation/file and cold-join/late-Welcome failures open.
+
+
 Recorded checkpoint: **2026-09-21 17:36 UTC**. The completed scopes below come
 from retained release manifests and publication receipts. Windows16 failed in
 GComs after GChat native CI passed. iOS installed simulator validation passed,
