@@ -79,3 +79,5 @@ run `/status --details`). This shows local route and subscription counts without
 addresses, invitation tokens or identity keys. It does not retry a saved action.
 An operation's Details view retains its recorded error alongside a later generic
 “outcome unknown” reply; neither indicates delivery or authorizes automatic replay.
+
+Connection details also reports the background inbox recovery phase, attempt count, bounded last backend failure and whether an unconfirmed owner checkpoint has paused recovery. These local diagnostics do not alter retry timing, lease authority or delivery acknowledgements.

@@ -1531,13 +1531,14 @@ impl ChatService {
             "status" if args == "--details" => {
                 let text = match self.runtime.embedded() {
                     Some(client) => {
-                        // TransportStatus deliberately excludes addresses, identities and tokens.
+                        // Local counts and bounded backend errors; no authority objects or payloads.
                         let status = client.node().transport_status();
-                        format!("Protocol: {}\nReady entries: {}\nUsable inbox routes: {}\nOwned inboxes: {}\nSubscribed inboxes: {}\nInteractive subscriptions: {}\nBulk subscriptions: {}\nRecovering inbox: {}\nRouting ready: {}",
+                        format!("Protocol: {}\nReady entries: {}\nUsable inbox routes: {}\nOwned inboxes: {}\nSubscribed inboxes: {}\nInteractive subscriptions: {}\nBulk subscriptions: {}\nRecovering inbox: {}\nRouting ready: {}\nOwner checkpoint paused: {}\nRecovery attempts: {}\nRecovery phase: {}\nLast recovery failure: {}",
                             status.protocol, status.ready_entries, status.usable_terminal_routes,
                             status.owned_aliases, status.subscribed_owned_aliases,
                             status.interactive_subscriptions, status.bulk_subscriptions,
-                            status.recovering_inbox, status.routing_ready)
+                            status.recovering_inbox, status.routing_ready, status.owner_transition_failed,
+                            status.recovery.attempts, status.recovery.phase, status.recovery.failure.as_deref().unwrap_or("None recorded"))
                     }
                     None => "Transport details are owned by the attached service.".into(),
                 };

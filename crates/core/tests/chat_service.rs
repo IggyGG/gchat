@@ -2331,6 +2331,8 @@ async fn reconnect_command_exchanges_existing_member_routes_without_rejoining() 
     assert!(text.contains("Ready entries:"));
     assert!(text.contains("Interactive subscriptions:"));
     assert!(text.contains("Bulk subscriptions:"));
+    assert!(text.contains("Owner checkpoint paused: false"));
+    assert!(text.contains("Last recovery failure:"));
     assert!(!text.contains("127.0.0.1"));
     let Response::Applied {
         conversation: Some(channel),
