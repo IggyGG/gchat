@@ -1,0 +1,45 @@
+{
+  "passed": true,
+  "gchat": "48ccdfb8b2a4d9dc13acebf3f2701d77504d3a5d",
+  "gcoms": "15be9487812cbd2568638054a6228cd1f6dad20a",
+  "scope": "Retained original 12.5 MiB file continued after separately failed 600-second run; actual GChat NetworkClient with normal Linux sender. Not Android OS or responsiveness qualification.",
+  "readiness": {
+    "cycle": 0,
+    "elapsed_ms": 79930,
+    "phase": "readiness",
+    "status": "Protocol: gchat\nReady entries: 2\nUsable inbox routes: 1\nOwned inboxes: 2\nSubscribed inboxes: 2\nInteractive subscriptions: 2\nBulk subscriptions: 4\nRecovering inbox: false\nRouting ready: true\nOwner checkpoint paused: false\nRecovery attempts: 2\nRecovery phase: waiting for next recovery check\nLast recovery failure: None recorded"
+  },
+  "completion": {
+    "bytes": 13107200,
+    "phase": "complete",
+    "sha256": "4424c323effb2fae3d6a19f391261a20fe2216d8486eba1ea794a5a1dd7b765f"
+  },
+  "last_file": {
+    "elapsed_ms": 450000,
+    "file": {
+      "aliases": null,
+      "completed_by": 1,
+      "conversation": "channel/bd2ffb97b48725e909e9af2dbe347d465513cccb76237eee2a418e6c3cf9cf06",
+      "error": null,
+      "id": "5ff0f3c1f771435c83cf7607ba17cb8d",
+      "name": "gchat-reopen-12MiB.bin",
+      "size_bytes": "13107200",
+      "sources": 1,
+      "state": "complete",
+      "verified_bytes": "13107200",
+      "verified_sources": 1
+    },
+    "phase": "file"
+  },
+  "shutdown": {
+    "flushed": true,
+    "passed": true,
+    "phase": "shutdown"
+  },
+  "queued_message_received": true,
+  "original_deadline_failure_preserved": true,
+  "run_log_sha256": "a94bc652a26eeb6054cd19c95be69aa76ea563944da6c476fdf3d4cf57313fbc",
+  "archive_sha256": "039f6be32982430e9d77fa0ed092c9517eed4b5aa3fb67c8883a4e0bc2e94255",
+  "source_file_sha256": "4424c323effb2fae3d6a19f391261a20fe2216d8486eba1ea794a5a1dd7b765f",
+  "probe_compile_during_continuation": "Separate read-only directory probe compiled after routing outage was observed; no such compilation during original timing run"
+}

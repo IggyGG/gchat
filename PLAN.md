@@ -9,6 +9,31 @@ Cluster node failure regressions/Clippy and Android build/signature checks must
 finish before device installation. The current live file/reopen workload remains
 bound to the previous 48ccdfb/15be948 binaries.
 
+## Actual file/reopen workload, 2026-09-24
+
+The original 12.5 MiB NetworkClient workload on 48ccdfb/15be948 missed its
+600-second deadline at 10 MiB. It had flushed/reopened the same encrypted profile
+at 1 MiB, retained the channel and resumed automatically. Preserve that
+[failed receipt](docs/evidence/inbox-recovery-20260923/cluster-workload-deadline.json).
+A separate continuation of the exact file/profile completed and exported all
+13,107,200 bytes with SHA-256 4424c323effb2fae3d6a19f391261a20fe2216d8486eba1ea794a5a1dd7b765f.
+The normal Linux sender received the recovery reply and authenticated delivery for
+the message queued during reopen. [Continuation receipt](docs/evidence/inbox-recovery-20260923/cluster-workload-continuation.json).
+A temporary lack of usable independent routes was observed across the hour
+boundary despite two ready entries; the complete five-hop route needs additional
+fresh middle credentials. A later authenticated read of all eight relays found
+eight fresh introductions each; that later read does not prove the missing state
+during the outage. No authority extension, short-path fallback or timeout
+increase was used. This closes eventual retained-workload completion, not latency
+or Android suspend/recovery qualification.
+
+Android 1015 separately entered `owner lifecycle persistence outcome is unconfirmed`.
+The retained log lacks the first cause. A process-only restart reopened its saved
+profile and recovered both subscriptions; the original personal file remains
+retained. Android 1016 adds bounded first-failure diagnostics and is still building.
+The diagnostic GComs source passed 333 node tests, two existing exclusions and
+strict Clippy; no underlying persistence repair is claimed.
+
 # Application delivery plan
 
 ## Recovery candidate, 2026-09-23

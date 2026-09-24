@@ -1,3 +1,14 @@
+## Retained 12.5 MiB application workload follow-up
+
+Use the actual NetworkClient and normal Linux sender, one admitted channel/file
+and one queued message. Flush/reopen after 1 MiB, retain exact file identity and
+bytes, export the completed file and compare SHA-256. The original 600-second
+case failed at 10 MiB; its separate continuation completed with matching hash,
+queued-message delivery and successful shutdown. See PLAN.md for both receipts.
+Do not relabel the original deadline or infer Android OS responsiveness. The
+physical-phone uncertain-persistence pause requires a captured first cause and
+its own repair validation.
+
 # Application qualification status and remaining checks
 
 ## Inbox recovery candidate, 2026-09-23
