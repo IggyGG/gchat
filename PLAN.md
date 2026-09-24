@@ -1,3 +1,14 @@
+## Owner-budget reopen repair candidate, 2026-09-24
+
+Android 1017 and the next Linux candidate pair with GComs 296d3b6. The new
+regression reproduced the laptop's exact "active owner alias expired before
+publication" error, then passed with sealed-deadline filtering of public addresses.
+The entire node library passed 334 tests (two existing exclusions) and strict
+Clippy. Membership, private expired authority and original deadlines remain intact;
+normal recovery obtains replacement authority. This pair also contains the bounded
+incomplete-referral recovery and first-checkpoint diagnostics. App builds and
+actual personal-profile reopen/file continuation remain pending.
+
 ## Android checkpoint diagnostics candidate, 2026-09-24
 
 Android 1016 pairs this application with GComs `b6188f7` to retain the first
@@ -30,7 +41,9 @@ or Android suspend/recovery qualification.
 Android 1015 separately entered `owner lifecycle persistence outcome is unconfirmed`.
 The retained log lacks the first cause. A process-only restart reopened its saved
 profile and recovered both subscriptions; the original personal file remains
-retained. Android 1016 adds bounded first-failure diagnostics and is still building.
+retained. Android 1016 adds bounded first-failure diagnostics, passed signed-artifact
+emulator retry and is installed on the preserved phone profile. Its original
+emulator ADB/cleanup failure remains retained.
 The diagnostic GComs source passed 333 node tests, two existing exclusions and
 strict Clippy; no underlying persistence repair is claimed.
 
