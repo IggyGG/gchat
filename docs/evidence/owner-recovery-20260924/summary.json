@@ -1,0 +1,72 @@
+{
+  "sources": {
+    "gchat": {
+      "commit": "20979ba8f5f64ff8de21cbab9e24983af712723a",
+      "tree": "bfdea7f7ed665154156a036386485669ec0f4465"
+    },
+    "gcoms": {
+      "commit": "296d3b64c862f8ca6662fe402de9a7af3d4ec1bc",
+      "tree": "c4441b31ba2c283c17a93d77e3009e2a117e4373"
+    }
+  },
+  "node_validation": {
+    "passed": 334,
+    "failed": 0,
+    "ignored": 2,
+    "strict_clippy": true,
+    "receipt": "GComs docs/evidence/owner-reopen-20260924/summary.json"
+  },
+  "application_validation": {
+    "core_passed": 65,
+    "core_failed": 0,
+    "core_ignored": 2,
+    "strict_workspace_clippy": true,
+    "paired_inputs_verified": true,
+    "daemon_build": true,
+    "desktop_package": true
+  },
+  "android": {
+    "version_code": 1017,
+    "github_run": 35939972027,
+    "build_signing_emulator_passed": true,
+    "apk_sha256": "684c763e617b842a31ea8546c90ecfce3bcd8da580f7bbe4a3c0a95ea86d2362",
+    "publisher_certificate_sha256": "ad7a7a315b2b76162de0a61f1acc651886c2f697e93089364cf9f6ed992a1f06",
+    "independent_v2_signature_verified": true,
+    "profile_preserving_install": true,
+    "installed_package_hash_verified": true,
+    "first_install_and_uid_unchanged": true
+  },
+  "linux": {
+    "daemon_sha256": "c4741cc57230f0977bed0c10bd1e4833b6576731b9d5a84b2d5fd92b6481e506",
+    "package_sha256": "8f890bde996c2bf439ff950d161ccb944f034cd1a4a7b9494e14b1a24d41a3dc",
+    "installed_executable_sha256": "73cfd62bb6b6ce82ce34699c8bb9bbf9b7fd4882e3ed5364402578bfccb6cb4e",
+    "original_profile_backup_verified": true,
+    "same_instance_retained": true,
+    "frontend_restarted": false
+  },
+  "pending": [
+    "User unlock of original laptop profile on repaired service",
+    "Physical Android 1017 original conversation/message/file continuation",
+    "First cause of prior Android uncertain-persistence pause if it recurs",
+    "Transfer latency improvement; original workload deadlines failed"
+  ],
+  "not_claimed": [
+    "Full native/platform/store qualification",
+    "Personal transfer completion",
+    "Fix of every Android persistence failure"
+  ],
+  "retained_failure": "Initial pair preparation used Python 3.11 without tar-filter support; retry used existing pinned 3.12.10 without product/test changes. Artifact transport interruptions retained separately.",
+  "evidence": {
+    "owner-release-01/final-evidence.tar.gz": "61d494375c9f5b5079840ee46d63cb554ccaeef5f3c643a07de328b6be51dfbc",
+    "owner-release-01/final-evidence/summary.json": "f636050c8be4732b0e8d03f40ccc52b50c147cb558cf60fc1c2d13f89ce78172",
+    "owner-release-01/service-verified.json": "e8237a8ab1dffa4d41a2498edcf71f7a0030b36a036f72c428bbff372d05fa53",
+    "owner-release-01/personal-installed.json": "f3c7ae281a95de86c5b84454412929aad1e4c520f422fbe2e34fd6ec0ba11d45",
+    "owner-release-01/desktop-installed.json": "31ed80053763dbec322adebaac9255905e2b5956b2ff1db15db00b770f3a7504",
+    "android-1017/verification.json": "b60cc0e8bf6fafc5ade2d9117f11e00f8201d8249e45de78c2c4750d83e218a2",
+    "android-1017/installed.json": "60a028b9302669506233505696ea0d548d2ab5f45f29a11ab8ef50c47fa6b449",
+    "android-1017/original/build.json": "761c8966b84df88430041e40371e8f6a969efb14adc230334387bce9457817ff",
+    "android-1017/original/signing.json": "4557857806a7ab2fb0ac661e1d379faa35f675301a40342b97fc4cc0308ab651",
+    "android-1017/original/emulator-smoke/report.json": "07317ce0af898804f7ae7fcf84e7defa43902079b0d45c1a9e25225e6c335588",
+    "android-1017/signature-verification.txt": "1b787574a7366713a9148d9fcc8e6584ac2aceda14116479ba694ec6ff53c3e2"
+  }
+}

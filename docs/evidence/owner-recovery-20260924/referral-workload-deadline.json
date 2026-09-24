@@ -1,0 +1,41 @@
+{
+  "checks": {
+    "build": 0,
+    "run": 1
+  },
+  "passed": false,
+  "sources_unchanged": true,
+  "duration_seconds": 743.7479999065399,
+  "sources": {
+    "gchat": "9392040",
+    "gcoms": "7cb83b4"
+  },
+  "scope": "Actual NetworkClient retained-profile file/reopen and message; independent normal Linux sender unchanged",
+  "deadline_seconds": 600,
+  "verified_bytes_at_deadline": 11010048,
+  "expected_bytes": 13107200,
+  "interruption_bytes": 1048576,
+  "shutdown_flushed": true,
+  "source_pair": {
+    "gchat": "9392040",
+    "gcoms": "7cb83b4"
+  },
+  "concurrent_work": "Node regression compilation ran in the same cluster worker during transfer; no isolated throughput claim.",
+  "observation": "Last native metrics: 1019 event barrier saves took 348.687 seconds cumulatively; profile atomic-write counters totaled 254.173 seconds. Routing was ready with both inbox subscriptions. These are cumulative counters, not a complete causal attribution.",
+  "evidence": {
+    "run.log": "c559a9405702950849e957c69f5f82b477f2e539392563c3e62b07198abad0b2",
+    "summary.json": "21ac6ca62648a9fa6088c5d63ae90743c0b3f9ebb4e9ee500037191d1907c955",
+    "after.json": "7cb476443dd5a31a456c5ac4bf3d40e4555d1e798a6dd1ac8d12f2e2492412f7",
+    "binary.sha256": "2e97f55192bbc8cf01d077a0b79acc484a5a4dcecc640b55731da7d49d5e5e48",
+    "interrupted.json": "2704ff8b0bd65a82278d0de91b61cc1a05f2176044c257ddab252ab92071cf0a",
+    "initial-summary.json": "7cd67036784ebd6b614566859d85fe64e06e6ba8c2d79fc7249eda4c872a07a3",
+    "build.log": "295aa015eda889f08d038eb5512452ca481b577fe2d5d9b9cd4c1c3861a4259b",
+    "initial-build.log": "27b079740301f25cbd353fed399b4212d06c75335183c79807e32475b4360c86",
+    "run.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "retry-check.py": "702fe2f7bd43591fc7b912ef4a68f9f58aea4e640e4523a014610f85b5ef8338",
+    "build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "before.json": "7cb476443dd5a31a456c5ac4bf3d40e4555d1e798a6dd1ac8d12f2e2492412f7",
+    "main.rs": "9b5cefba955357b7abd161895d23dd53a07e7773e0001d969f5638724ca5ccd4",
+    "check.py": "6afb28bd82585c82d13b9ad2ee9cbf5f9b171db70309e48d78ef188855f90f7a"
+  }
+}

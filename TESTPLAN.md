@@ -1,3 +1,13 @@
+## Owner-budget reopen candidate
+
+[Exact source/artifact receipt](docs/evidence/owner-recovery-20260924/summary.json):
+GChat 20979ba / GComs 296d3b6; node 334/0/2 and application core 65/0/2, strict
+node/workspace Clippy, paired Linux daemon/desktop builds and signed Android 1017
+emulator lifecycle checks passed. The real constructor regression first reproduced
+`active owner alias expired before publication` with the old implementation.
+Personal encrypted profiles were preserved during installation; successful user
+unlock and the original conversation/file completion remain required.
+
 ## Retained 12.5 MiB application workload follow-up
 
 Use the actual NetworkClient and normal Linux sender, one admitted channel/file
@@ -5,7 +15,10 @@ and one queued message. Flush/reopen after 1 MiB, retain exact file identity and
 bytes, export the completed file and compare SHA-256. The original 600-second
 case failed at 10 MiB; its separate continuation completed with matching hash,
 queued-message delivery and successful shutdown. See PLAN.md for both receipts.
-Do not relabel the original deadline or infer Android OS responsiveness. The
+The later bounded-referral pair likewise missed its original deadline at
+11,010,048 bytes; its separate continuation completed the same 13,107,200-byte
+file with hash equality, authenticated queued-message delivery and shutdown flush.
+Do not relabel either original deadline or infer Android OS responsiveness. The
 physical-phone uncertain-persistence pause requires a captured first cause and
 its own repair validation.
 

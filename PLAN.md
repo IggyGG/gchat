@@ -6,8 +6,30 @@ publication" error, then passed with sealed-deadline filtering of public address
 The entire node library passed 334 tests (two existing exclusions) and strict
 Clippy. Membership, private expired authority and original deadlines remain intact;
 normal recovery obtains replacement authority. This pair also contains the bounded
-incomplete-referral recovery and first-checkpoint diagnostics. App builds and
-actual personal-profile reopen/file continuation remain pending.
+incomplete-referral recovery and first-checkpoint diagnostics. The paired application core passed 65 tests (two existing exclusions) and strict
+workspace Clippy. The verified release daemon is installed on the original laptop
+profile, with an encrypted backup and no profile reset. Actual user unlock and
+personal-file continuation remain pending. The exact desktop package is installed
+without restarting the view. Android 1017 passed its full build/signing/emulator
+workflow and independent publisher-signature verification, then was installed
+with `install -r`; UID, initial installation time and saved data are preserved.
+[Source/artifact receipt](docs/evidence/owner-recovery-20260924/summary.json).
+The phone needs to reopen GChat and the original laptop profile still needs user
+unlock before the personal conversation/transfer can be qualified.
+
+## Bounded-referral application follow-up, 2026-09-24
+
+The actual NetworkClient workload on 9392040/7cb83b4 missed its original
+600-second deadline at 11,010,048 of 13,107,200 bytes, after flushing/reopening
+at 1 MiB. A separate continuation on the same profile and exact file completed,
+exported SHA-256 937cc6963af82cc978ba3651d87e52888d7b22a754381dae6d7a0d8af716cffd,
+and flushed successfully. The normal Linux sender received an authenticated ACK
+for the message queued during reopen and the receiver's completion reply.
+[Original failure](docs/evidence/owner-recovery-20260924/referral-workload-deadline.json)
+and [separate continuation](docs/evidence/owner-recovery-20260924/referral-workload-continuation.json)
+remain distinct. The first run shared its cluster worker with compilation, and
+profile-save counters include substantial storage time; neither is an isolated
+throughput result or a definitive attribution. No durability barrier was removed.
 
 ## Android checkpoint diagnostics candidate, 2026-09-24
 
@@ -16,9 +38,10 @@ checkpoint encoding/storage/lifecycle failure in bounded local native logs.
 Physical Android 1015 entered the sticky uncertain-persistence state; restarting
 reopened the confirmed encrypted profile without clearing it. This candidate
 changes diagnostics, not persistence policy, and is not a repair qualification.
-Cluster node failure regressions/Clippy and Android build/signature checks must
-finish before device installation. The current live file/reopen workload remains
-bound to the previous 48ccdfb/15be948 binaries.
+Cluster node failure regressions/Clippy passed. The signed artifact passed a
+separate emulator retry and was installed with the existing phone profile retained.
+The original emulator ADB failure is retained. This diagnostic installation does
+not establish that the uncertain-persistence defect is fixed.
 
 ## Actual file/reopen workload, 2026-09-24
 

@@ -1,0 +1,39 @@
+{
+  "checks": {
+    "build": 0,
+    "run": 0
+  },
+  "passed": true,
+  "sources_unchanged": true,
+  "duration_seconds": 431.2978880405426,
+  "sources": {
+    "gchat": "9392040",
+    "gcoms": "7cb83b4"
+  },
+  "scope": "Separate continuation of prior deadline failure; same retained profile/file, no new join or accept",
+  "original_attempt_passed": false,
+  "file": {
+    "bytes": 13107200,
+    "phase": "complete",
+    "sha256": "937cc6963af82cc978ba3651d87e52888d7b22a754381dae6d7a0d8af716cffd"
+  },
+  "message_authenticated_ack": "2d92b0893b2693fa551b3bb4442d99af",
+  "reply_received": "75f3d90d5b12828c2f8a19f849e9c0af",
+  "evidence": {
+    "results/run.log": "90b8eede9db14e3cf354c6bcc8c7dce3e3dff31baed918f34c92554c6c796dd4",
+    "results/summary.json": "3e81985b8361d2370c4bcd8dc9c02b32fe03be4bcc6ee48fd462b687661b3374",
+    "results/workload.json": "5f62e85735d5e694c4c21f9a293f49960bdf168bd2f15712faa111a82786851b",
+    "results/after.json": "7cb476443dd5a31a456c5ac4bf3d40e4555d1e798a6dd1ac8d12f2e2492412f7",
+    "results/binary.sha256": "14e6b7de26200c0fcc677d502923a73927cfa5dd339dd65d9ddc4570c04fe9f4",
+    "results/joined.json": "bed39bb795f3e616fc26d70425b2279e572e276f2915c9348480444df9d6f896",
+    "results/runner.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "results/build.log": "3ded47e37ccded84da47f52c6f3e3cb073f90ee21de82a6e134636b72ee93460",
+    "results/run.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "results/reopened-history.json": "841901cd7eaa4919449e1b45b07b922dd50d29da842295f3c72d579691695071",
+    "results/build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "results/before.json": "7cb476443dd5a31a456c5ac4bf3d40e4555d1e798a6dd1ac8d12f2e2492412f7",
+    "results/main.rs": "8f3d7546b9fb34fb62f46226bf57ffe29adee6234a9946dfee75b5406cd6681c",
+    "results/check.py": "85c908a4abf2d15c669d3116ec52ca239755d17ba893b5476d878038cf3675db",
+    "sender-history.json": "315b64717d741c6680066aa7f7a2f1071bc147d7d8506a08f4538f3d4f72ba1b"
+  }
+}

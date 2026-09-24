@@ -22,9 +22,13 @@ Development and release authority remains in the existing local Forgejo reposito
 Public delivery uses [IggyGG/gchat](https://github.com/IggyGG/gchat) and
 [IggyGG/gcoms](https://github.com/IggyGG/gcoms) as GitHub mirrors.
 Signed Linux x86_64, Apple Silicon/Intel Mac and Android APK downloads are available.
-Android 1015 additionally passed physical-phone two-way messaging and a small-file
+Android 1017 is installed on the retained test phone after signed-build and emulator
+checks; its personal conversation/recovery verification still awaits laptop unlock.
+The earlier Android 1015 passed physical-phone two-way messaging and a small-file
 export with matching hash on a fresh control channel. Reconnect latency and the
-original personal transfer remain unresolved; full physical-device and push
+original personal transfer remain unresolved. Cluster retained-profile transfers
+completed with matching hashes only after separate deadline-failure continuations;
+these are not latency passes. Full physical-device and push
 qualification remain open. See the [recovery status](PLAN.md#recovery-candidate-2026-09-23).
 Windows x86_64 and iOS
 releases are being qualified independently;
