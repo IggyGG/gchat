@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "time": "2026-09-24T02:54:01.694212+00:00",
+  "sources": {
+    "gchat": {
+      "commit": "7af8554564e7499699fc97f90d2a44eb3ecba211",
+      "tree": "0a3a398b342011d3689e1dbaf4cafd24d323985a"
+    },
+    "gcoms": {
+      "commit": "b9a87022f2581db1437ec09cb7e5f581f2e5bfa7",
+      "tree": "8b596332c2cc360fc7bc8b3f603a05fab30799e1"
+    }
+  },
+  "package_sha256": "9ff5cf3e0656929febd43e0fedd905c87b81d8a0cf54274f9c7b11ffa4053e43",
+  "installed_executable_sha256": "22fbde7dda7457bdbcc755288fc0bc372437850915cea536da18033a582d06b1",
+  "profile_reset": false,
+  "running_service_restarted": false,
+  "existing_view_restarted": false,
+  "scope": "Verified package installed; current view retained, new binary used on next normal launch"
+}

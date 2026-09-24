@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "kind": "frozen_source_pair",
+  "sources": {
+    "gchat": {
+      "commit": "7af8554564e7499699fc97f90d2a44eb3ecba211",
+      "tree": "0a3a398b342011d3689e1dbaf4cafd24d323985a"
+    },
+    "gcoms": {
+      "commit": "b9a87022f2581db1437ec09cb7e5f581f2e5bfa7",
+      "tree": "8b596332c2cc360fc7bc8b3f603a05fab30799e1"
+    }
+  },
+  "source_archive_sha256": {
+    "gchat": "03121f72215a62d0b9a61d5204006448170b79bbdd08c4c5ed557c4fc7507c49",
+    "gcoms": "fdb88ed8b173b7c5c10438da6f3ec650ec20769ccf2e8e8c1081b4eff6734e07"
+  },
+  "rust_sources_verified": true,
+  "rust_graphs": {
+    "workspace": [
+      {
+        "name": "gcoms",
+        "version": "0.1.0",
+        "manifest": "crates/application/Cargo.toml"
+      },
+      {
+        "name": "gcoms-core",
+        "version": "0.1.0",
+        "manifest": "crates/core/Cargo.toml"
+      },
+      {
+        "name": "gcoms-crypto",
+        "version": "0.1.0",
+        "manifest": "crates/crypto/Cargo.toml"
+      },
+      {
+        "name": "gcoms-file-transfer",
+        "version": "0.1.0",
+        "manifest": "crates/file-transfer/Cargo.toml"
+      },
+      {
+        "name": "gcoms-gossip",
+        "version": "0.1.0",
+        "manifest": "crates/gossip/Cargo.toml"
+      },
+      {
+        "name": "gcoms-mls",
+        "version": "0.1.0",
+        "manifest": "crates/mls/Cargo.toml"
+      },
+      {
+        "name": "gcoms-network",
+        "version": "0.1.0",
+        "manifest": "crates/network/Cargo.toml"
+      },
+      {
+        "name": "gcoms-network-client",
+        "version": "0.1.0",
+        "manifest": "crates/network-client/Cargo.toml"
+      },
+      {
+        "name": "gcoms-node",
+        "version": "0.1.0",
+        "manifest": "crates/node/Cargo.toml"
+      },
+      {
+        "name": "gcoms-private-fs",
+        "version": "0.1.0",
+        "manifest": "crates/private-fs/Cargo.toml"
+      },
+      {
+        "name": "gcoms-protocol",
+        "version": "0.1.0",
+        "manifest": "crates/protocol/Cargo.toml"
+      },
+      {
+        "name": "gcoms-routing",
+        "version": "0.1.0",
+        "manifest": "crates/routing/Cargo.toml"
+      },
+      {
+        "name": "gcoms-rpc",
+        "version": "0.1.0",
+        "manifest": "crates/rpc/Cargo.toml"
+      },
+      {
+        "name": "gcoms-rpc-contract",
+        "version": "0.1.0",
+        "manifest": "crates/rpc-contract/Cargo.toml"
+      },
+      {
+        "name": "gcoms-rpc-macros",
+        "version": "0.1.0",
+        "manifest": "crates/rpc-macros/Cargo.toml"
+      },
+      {
+        "name": "gcoms-runtime",
+        "version": "0.1.0",
+        "manifest": "crates/runtime/Cargo.toml"
+      },
+      {
+        "name": "gcoms-sdk",
+        "version": "0.1.0",
+        "manifest": "crates/sdk/Cargo.toml"
+      },
+      {
+        "name": "gcoms-transport",
+        "version": "0.1.0",
+        "manifest": "crates/transport/Cargo.toml"
+      }
+    ],
+    "desktop": [
+      {
+        "name": "gcoms",
+        "version": "0.1.0",
+        "manifest": "crates/application/Cargo.toml"
+      },
+      {
+        "name": "gcoms-core",
+        "version": "0.1.0",
+        "manifest": "crates/core/Cargo.toml"
+      },
+      {
+        "name": "gcoms-crypto",
+        "version": "0.1.0",
+        "manifest": "crates/crypto/Cargo.toml"
+      },
+      {
+        "name": "gcoms-file-transfer",
+        "version": "0.1.0",
+        "manifest": "crates/file-transfer/Cargo.toml"
+      },
+      {
+        "name": "gcoms-gossip",
+        "version": "0.1.0",
+        "manifest": "crates/gossip/Cargo.toml"
+      },
+      {
+        "name": "gcoms-mls",
+        "version": "0.1.0",
+        "manifest": "crates/mls/Cargo.toml"
+      },
+      {
+        "name": "gcoms-network",
+        "version": "0.1.0",
+        "manifest": "crates/network/Cargo.toml"
+      },
+      {
+        "name": "gcoms-network-client",
+        "version": "0.1.0",
+        "manifest": "crates/network-client/Cargo.toml"
+      },
+      {
+        "name": "gcoms-node",
+        "version": "0.1.0",
+        "manifest": "crates/node/Cargo.toml"
+      },
+      {
+        "name": "gcoms-private-fs",
+        "version": "0.1.0",
+        "manifest": "crates/private-fs/Cargo.toml"
+      },
+      {
+        "name": "gcoms-protocol",
+        "version": "0.1.0",
+        "manifest": "crates/protocol/Cargo.toml"
+      },
+      {
+        "name": "gcoms-routing",
+        "version": "0.1.0",
+        "manifest": "crates/routing/Cargo.toml"
+      },
+      {
+        "name": "gcoms-rpc",
+        "version": "0.1.0",
+        "manifest": "crates/rpc/Cargo.toml"
+      },
+      {
+        "name": "gcoms-rpc-contract",
+        "version": "0.1.0",
+        "manifest": "crates/rpc-contract/Cargo.toml"
+      },
+      {
+        "name": "gcoms-rpc-macros",
+        "version": "0.1.0",
+        "manifest": "crates/rpc-macros/Cargo.toml"
+      },
+      {
+        "name": "gcoms-runtime",
+        "version": "0.1.0",
+        "manifest": "crates/runtime/Cargo.toml"
+      },
+      {
+        "name": "gcoms-sdk",
+        "version": "0.1.0",
+        "manifest": "crates/sdk/Cargo.toml"
+      },
+      {
+        "name": "gcoms-transport",
+        "version": "0.1.0",
+        "manifest": "crates/transport/Cargo.toml"
+      }
+    ]
+  },
+  "target": "x86_64-unknown-linux-gnu",
+  "cargo_config_sha256": "e5e04fa59e40f9d36d6825f2be9e27618e734f5ce9ba4ce4c60c2fe310d5731b",
+  "derived_lock_sha256": {
+    "Cargo.lock": "1e2d1c7f3d99b7f19b0016d48bd8e59d772752bf55af9b526c31f451f255edd1",
+    "apps/client/src-tauri/Cargo.lock": "6c06b65be4e45aaafbb33f6e92ce9bd4c18fc81d34018339fae7cc302df636f0",
+    "package-lock.json": "6403d86c25c853bb7166e2273d83ee25ad53b46f91fc441e46391bdb5dede864"
+  },
+  "npm_archives": {
+    "gcoms-rpc-0.1.0.tgz": "dc875fec9fbf5e06a86610ef22f5c6c2c1fea7f187930f5e067612d31d5675c3",
+    "gcoms-rpc-codegen-0.1.0.tgz": "f1997a77b6aee2233d0fc675c67257f960d0d4c5a7e376d3514fc4c6cff07940"
+  },
+  "npm_sources_verified": true,
+  "npm_bindings": {
+    "@gcoms/rpc": {
+      "version": "0.1.0",
+      "archive_sha256": "dc875fec9fbf5e06a86610ef22f5c6c2c1fea7f187930f5e067612d31d5675c3"
+    },
+    "@gcoms/rpc-codegen": {
+      "version": "0.1.0",
+      "archive_sha256": "f1997a77b6aee2233d0fc675c67257f960d0d4c5a7e376d3514fc4c6cff07940"
+    }
+  }
+}

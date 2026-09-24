@@ -8,7 +8,12 @@ with that exact error, then passes when applying the complete record replaces th
 nonactive collections. Android 1018 carries that repair after cluster validation.
 Original identity, channel membership and 92,274,688 verified file bytes remain;
 actual two-way message acknowledgments and the full personal transfer are pending.
-No new store promotion is claimed.
+The paired Linux core passed 65 tests (two existing namespace exclusions), strict
+workspace Clippy and both service/desktop release builds. The package is installed
+without restarting the original laptop session. A separate retained test profile
+reopened and recovered both inboxes without a checkpoint pause.
+[Receipt](docs/evidence/owner-role-recovery-20260924/summary.json).
+Android 1018 remains in its build workflow; no new store promotion is claimed.
 
 ## Owner-budget reopen repair candidate, 2026-09-24
 
