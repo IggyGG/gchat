@@ -919,7 +919,16 @@
     </aside>{/if}
     <main class="conversation" inert={navigationModal}>
       <div class="conversation-heading">    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>{#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}{/if}</div>
-      {#if !locked && snapshot?.providerErrors?.length}<div class="provider-errors" role="status">{#each snapshot.providerErrors as error}<p>{error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>{/each}<button onclick={() => void send('/refresh')}>Reconnect provider</button></div>{/if}
+      {#if !locked && snapshot?.providerErrors?.length}
+        <div class="provider-errors" role="status">
+          {#each snapshot.providerErrors as error}
+            <p>{error.id === 'archive' ? 'Chat history needs attention' : error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>
+          {/each}
+          {#if snapshot.providerErrors.some(error => error.id !== 'archive')}
+            <button onclick={() => void send('/refresh')}>Reconnect provider</button>
+          {/if}
+        </div>
+      {/if}
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
       {#if pendingInvitation && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation ?? ''; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); }}>Review invitation</button><button onclick={() => consumeInvitation?.()}>Dismiss</button></div>{/if}
       {#if locked}

@@ -1,4 +1,18 @@
 import { test, expect, type Page } from '@playwright/test';
+test('archive storage failure explains automatic recovery without suggesting a network reconnect', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 720 });
+  await page.goto('/?archive-blocked');
+  const status = page.locator('.provider-errors');
+  await expect(status).toContainText('Chat history needs attention');
+  await expect(status).toContainText('GChat will retry automatically');
+  await expect(page.getByRole('button', { name: 'Reconnect provider' })).toHaveCount(0);
+  await page.evaluate(() => (window as any).fixture.setArchiveBlocked(false));
+  await expect(status).toHaveCount(0);
+  await page.evaluate(() => (window as any).fixture.setArchiveBlocked(true));
+  await expect(status).toBeVisible();
+  await page.evaluate(() => (window as any).fixture.setLocked(true));
+  await expect(status).toHaveCount(0);
+});
 for (const width of [320, 390]) test(`mobile unlock action follows the complete device-storage explanation at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 720 });
   await page.goto('/?device-unlock');

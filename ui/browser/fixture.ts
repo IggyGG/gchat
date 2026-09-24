@@ -21,6 +21,7 @@ const conversations: Conversation[] = ['general', 'design', 'archive'].map((name
 const commands: CommandSpec[] = ['help', 'lock', 'disconnect', 'quit', 'join', 'create', 'query'].map(name => ({ name: `/${name}`, usage: `/${name}`, description: `Fixture ${name}`, scope: 'instance', capability: null, available: true }));
 let state: NetworkState = parameters.has('fresh') ? 'invitation_required' : 'connected';
 let revision = 1;
+let archiveBlocked = parameters.has('archive-blocked');
 const sentMessages: import('../src/api').Message[] = [];
 let holdSends = false;
 const heldSends: (() => void)[] = [];
@@ -33,11 +34,12 @@ let savedId: string | undefined;
 let savedReply: Response | undefined;
 let checks = 0;
 const recovered: import('../src/api').OperationDetail[] = parameters.has('saved-operation') ? [{ id: 'saved-operation-001', instance: instance.id, conversation: 'channel/general', action: '/create', started: 1789910000, state: 'unknown', output: null, message: 'Interrupted after admission.' }] : [];
-const snapshot = (network = primaryNetwork): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: [], presenceEnabled: presence.get(network) ?? false, operations: instance.locked ? [] : recovered });
+const snapshot = (network = primaryNetwork): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: !instance.locked && archiveBlocked ? [{ id: 'archive', code: 'local_storage_unavailable', message: "Couldn't finish saving received messages. Check free disk space and write access; GChat will retry automatically.", retryable: true }] : [], presenceEnabled: presence.get(network) ?? false, operations: instance.locked ? [] : recovered });
 const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', used_bytes: '4096', retention_days: 7 });
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
+  setArchiveBlocked(value: boolean) { archiveBlocked = value; revision++; },
   requests, unlockChoices, recoverInvitation() {
     const request = requests.filter((r): r is Extract<Request, {kind: 'submit'}> => r.kind === 'submit' && r.text === '/invite').at(-1);
     if (request && savedReply?.kind === 'output') recovered.push({ id: request.operation_id, instance: instance.id, conversation: request.conversation, action: '/invite', started: Math.floor(Date.now()/1000), state: 'complete', output: savedReply.output, message: null });

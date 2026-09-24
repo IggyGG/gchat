@@ -55,6 +55,7 @@ impl ProtocolRuntime {
                 .unlock_secret(secret)
                 .carrier_profile(gcoms::sdk::CarrierProfile::Gc2)
                 .create(create)
+                .durable_channel_inbox(true)
                 .receive_messages(false)
                 .open()
                 .await?,
@@ -176,6 +177,7 @@ impl ProtocolRuntime {
                 .relay(relay)
                 .carrier_profile(gcoms::sdk::CarrierProfile::Gc2)
                 .create(create)
+                .durable_channel_inbox(true)
                 .receive_messages(false)
                 .open()
                 .await?,
@@ -200,6 +202,7 @@ impl ProtocolRuntime {
             .advertise(advertise)
             .relay(relay)
             .create(true)
+            .durable_channel_inbox(true)
             .receive_messages(false);
 
         Ok(Self(builder.open().await?))
@@ -224,6 +227,7 @@ impl ProtocolRuntime {
             .advertise(advertise)
             .relay(relay)
             .create(false)
+            .durable_channel_inbox(true)
             .receive_messages(false);
 
         Ok(Self(builder.open().await?))
@@ -248,6 +252,7 @@ impl ProtocolRuntime {
             .advertise(advertise)
             .relay(relay)
             .create(true)
+            .durable_channel_inbox(true)
             .receive_messages(false);
         let builder = builder.local_fixture().listen(listen);
         Ok(Self(builder.open().await?))
@@ -272,6 +277,7 @@ impl ProtocolRuntime {
             .advertise(advertise)
             .relay(relay)
             .create(false)
+            .durable_channel_inbox(true)
             .receive_messages(false);
         let builder = builder.local_fixture().listen(listen);
         Ok(Self(builder.open().await?))

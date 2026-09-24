@@ -13,6 +13,13 @@ default. To use a bundled shared service, run `gchat daemon --gcomsd
 instance options. Each GChat profile remains independent inside that service.
 Locking/disconnecting stops that profile without stopping other applications.
 
+In-process hosts retain incoming channel and private messages in a bounded,
+encrypted protocol inbox until the chat archive is saved. Failed archive writes
+leave those messages available for retry and show an actionable storage notice;
+uncommitted history is not published. The external shared-service archive path
+keeps its existing contract and is outside this new transaction boundary. See
+the [archive transaction and rollback requirements](docs/RELIABILITY_TEST_PLAN.md#incoming-archive-transaction-candidate).
+
 For paired-source development, validate against the matching GComs checkout with
 its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public
 registry manifests and canonical release lockfiles intact; each published download

@@ -274,6 +274,12 @@ impl InstanceHost {
             .listen(self.config.listen)
             .advertise(self.config.advertise)
             .relay(relay)
+            // The sealed inbox is consumed by the in-process archive owner.
+            // Existing external IPC hosts retain their own archive contract.
+            .durable_channel_inbox(matches!(
+                self.config.protocol_backend,
+                gcoms::Backend::Embedded | gcoms::Backend::NetworkClient
+            ))
             .receive_messages(false)
             .network_providers(self.config.relay_urls.clone())
             .network_recovery(self.config.relay_file.is_none() && self.config.network_recovery);

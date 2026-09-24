@@ -35,6 +35,36 @@ The installed lifecycle smoke blocks that fixture app's external traffic and
 therefore does not qualify network delivery or push. Those require separate
 multi-participant fixtures and provider/device evidence.
 
+Disposable Android setup completes the SDK image's setup wizard, keeps the
+emulator awake and dismisses its unprotected swipe keyguard before launch. It
+does not change GChat permissions or apply these actions to physical devices.
+Its swipe lock is disabled only after verifying `ro.kernel.qemu=1`.
+Keyboard observations use `dumpsys -t 1 input_method --dump-priority CRITICAL`:
+[Android's service priority argument](https://android.googlesource.com/platform/frameworks/base/+/master/services/core/java/com/android/server/utils/PriorityDump.java)
+selects the manager's own state. An interrupted dump is not a visibility sample;
+the observer retries within the original ten-second deadline and requires two
+successful, settled samples. Persistent observer failure remains a failed test.
+Late observations remain failures; setup errors, system ANRs and app errors are
+retained separately. Each AVD has a distinct name as well as a distinct port.
+
+For disconnected application journeys, `crates/core/examples/turnover_daemon.rs`
+hosts the real application facade and ChatService with a fixture-owned signed
+network describing the six actual relays. The controller passes its exact binary
+through `../gcoms/scripts/gchat-turnover.py --fixture-host PATH`. This keeps
+installed trust unchanged and avoids pretending private relay seeds belong to the
+installed network. Its `network` and `serve` subcommands require the controller's
+declared network namespace. Profile reopen supplies neither a new identity nor
+replacement bootstrap material. The helper's source, Cargo inputs and binary
+hash are bound separately from the production daemon. This is core/service
+qualification, not an installed desktop or provider onboarding result.
+
+The turnover controller uses typed invitation inspection/join, preserving the
+inspected network ID. Combined invitations must not be submitted as ordinary
+chat text. `--mode file-recovery --file-bytes 1073741824` adds a 1 GiB transfer,
+abrupt receiver termination after verified partial progress, retained piece
+checks, authenticated chat after recovery and independent export hashing before
+and after reopening. This mode does not substitute for credential/carrier expiry.
+
 ## Current execution boundary
 
 - Starting source: GComs `293680e`, GChat `d6b2947`, clean task worktrees.
@@ -49,3 +79,33 @@ multi-participant fixtures and provider/device evidence.
 Maintain current run results in source-bound evidence and keep only small decisive
 summaries in Git. Complete live APNs on a provider/device preserving the required
 signing; ordinary BrowserStack iOS functional checks do not establish that result.
+
+Browserless access is already configured, but browser emulation does not install
+the native iOS application. Use the available Mac iOS simulator for native build,
+UI and lifecycle checks. Keep physical-device and live APNs qualification open
+until exercised on a compatible device; do not substitute browser results.
+
+The user confirmed that no physical iPhone is available: finish simulator
+qualification first and defer physical-device/live-APNs checks. The simulator
+builder verifies Xcode 26.2 and requires its selected iPhoneSimulator platform;
+the installation directory may be named `Xcode.app`. It does not use a device
+signer or provisioning account. Retain native XCTest screenshots and distinguish
+profile/Keychain lifecycle checks from actual network messaging and live push.
+
+## Incoming archive transaction candidate
+
+The disconnected archive-failure case reproduced publication and authenticated
+delivery of a message which disappeared after abrupt receiver restart. The
+candidate opts GChat's embedded runtime into a bounded sealed channel inbox
+before receiving starts. The inbox commits plaintext with receive/ACK state;
+GChat saves its archive before consuming that inbox record and publishing the
+message. Channel and channel-private messages use the same ownership rule;
+file pieces retain their separate journal. Failed archive writes leave the
+record available across reopening, rather than exposing an unsaved RAM update.
+
+The protocol checkpoint wrapper is `GCNSTM`. Older binaries cannot read that
+wrapper: a release must include a state-compatible rollback binary. Restoring an
+old profile backup after newer messages were acknowledged is not safe rollback.
+External legacy IPC archive consumers are not covered by this opt-in embedded
+transaction. Component checks, actual abrupt-restart checks and installed
+upgrade checks remain separately bound; a source implementation is not a pass.

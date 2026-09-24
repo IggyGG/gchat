@@ -100,6 +100,9 @@ export class NetworkWorkspace implements Transport {
         this.instances.set(network.id, response.snapshot.instance.id);
         if (presenceRevision === this.presenceRevision) this.presence.set(network.id, response.snapshot.presenceEnabled ?? false);
         next.conversations.push(...response.snapshot.conversations);
+        next.providerErrors.push(...(response.snapshot.providerErrors ?? []).map(error => ({
+          ...error, message: `${network.name}: ${error.message}`,
+        })));
         next.activity.push(...(response.snapshot.activity ?? []).map(a => ({ ...a, conversation: this.qualify(network.id, a.conversation) })));
         next.operations.push(...(response.snapshot.operations ?? []).map(r => ({ ...r, network: network.id,
           conversation: r.conversation ? this.qualify(network.id, r.conversation) : null })));

@@ -2045,6 +2045,7 @@ async fn typed_network_import_is_private_bounded_and_requires_unlock() {
             .unlock_secret(PASS)
             .listen("127.0.0.1:0".parse().unwrap())
             .create(true)
+            .durable_channel_inbox(true)
             .receive_messages(false)
             .network_recovery(false)
             .open()

@@ -1194,7 +1194,7 @@ impl ChatService {
             input_history = session.state.input_history.clone();
             conversations.extend(self.projection.read().expect("projection lock").0.clone());
         }
-        let provider_errors: Vec<_> = if instance.locked {
+        let mut provider_errors: Vec<_> = if instance.locked {
             Vec::new()
         } else {
             self.provider_error
@@ -1204,6 +1204,14 @@ impl ChatService {
                 .into_iter()
                 .collect()
         };
+        if session.is_some_and(|s| !s.ui_locked && s.client.archive_waiting_for_storage()) {
+            provider_errors.push(gchat_api::ProviderStatus {
+                id: "archive".into(),
+                code: "local_storage_unavailable".into(),
+                message: "Couldn't finish saving received messages. Check free disk space and write access; GChat will retry automatically.".into(),
+                retryable: true,
+            });
+        }
         let activity = session
             .filter(|s| !s.ui_locked)
             .map(|s| s.state.activity.clone())
