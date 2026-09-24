@@ -69,7 +69,7 @@ or native desktop/mobile release acceptance.
 
 Native installers include the carrier implementation. Starting a new desktop
 instance with `gchat-desktop --home /path/to/instance --gc2-carrier` explicitly
-selects the file-transfer profile (fixed interactive cover, observable bulk).
+selects responsive profile 46 (immediate real traffic, random interactive cover, observable bulk).
 The automatically started service receives that selection too. The option
 controls service startup; stop an already running service before changing its
 startup configuration. Existing GC/1 sessions require the protocol's explicit

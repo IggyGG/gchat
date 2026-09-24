@@ -10,7 +10,7 @@ Production status does not mean traffic-analysis resistance is qualified. The fo
 
 ## Data and protocol selection
 
-GC/2 uses profile 22 explicitly. Start the desktop with `gchat-desktop --gc2-carrier`; use a separate `--home` for an existing legacy installation. Existing legacy profiles are not silently converted, reset or overwritten. Authentication, exact retained outboxes, signed capabilities and expiry checks remain enforced. The production relays retain their identity/TLS keys; current bootstrap credentials are generated from those identities, never converted from legacy authority.
+The current source selects GC/2 profile 46: real traffic is immediately eligible and padded interactive cover uses independent random 10–10,000 ms intervals. This is not equivalent to constant-rate traffic-analysis protection. Existing profile-22 artifacts and receipts retain their original scope. Relays must support 46 before selecting it in clients; older binaries may reject the saved policy, so rollback needs a compatible build or tested state-preserving migration. Start the desktop with `gchat-desktop --gc2-carrier`; use a separate `--home` for an existing legacy installation. Existing legacy profiles are not silently converted, reset or overwritten. Authentication, exact retained outboxes, signed capabilities and expiry checks remain enforced. The production relays retain their identity/TLS keys; current bootstrap credentials are generated from those identities, never converted from legacy authority.
 
 ## Receipt scope
 

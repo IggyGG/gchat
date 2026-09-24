@@ -1,3 +1,8 @@
+Current paired GComs source selects responsive profile 46: messages are eligible
+immediately, with independent randomized interactive cover. Timing/activity privacy
+is unqualified. See [production policy](docs/PRODUCTION_RELEASE.md); this source
+change is not a claim that installed/store artifacts have been updated.
+
 # GChat
 
 Current work follows the [reliability test plan](docs/RELIABILITY_TEST_PLAN.md):
