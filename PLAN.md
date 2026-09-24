@@ -1,3 +1,14 @@
+## Retained data rollback compatibility, 2026-09-24
+
+A disposable copy of the successful 1 GiB receiver profile reopened under
+candidate14, the earlier candidate12, then candidate14 again. Each real GChat
+core/service retained the same identity/channel and exported the exact file hash.
+The source profile remained byte-identical; all three processes exited cleanly
+and the disconnected namespace was empty. This selects a compatible runtime
+predecessor, not a historical production binary. Signed installer upgrade/rollback
+and pending-message compatibility still need their own qualification.
+[Receipt](docs/evidence/retained-rollback-20260924/summary.json).
+
 ## Emulator and simulator lifecycle batch, 2026-09-24
 
 Four concurrent disposable Android emulators passed profile creation, background/

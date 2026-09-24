@@ -1,0 +1,80 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "worker": {
+    "passed": true,
+    "fixture_netns": "net:[4026538661]",
+    "scope": "offline retained application state compatibility; no installed/signing/network qualification",
+    "codematch": "unreachable",
+    "process_exits": [
+      0,
+      0,
+      0
+    ],
+    "phases": [
+      {
+        "phase": "current-before",
+        "binary_sha256": "aae454c612b9996829e2a060050c9656ecacd4778818e71e14655bab43f0e942",
+        "identity": "1d74e0a6c5bf04e2e0c453adc4d4495f66d3d2fff4b63cecfe67bb150e8d65aa",
+        "conversations": [
+          "channel/85287c53b642e1d1597045809d5c243c4c163f82948ec7b568699f940dc2c2b3"
+        ],
+        "file_id": "dbc67379ef294043b567a6bfc83b3a24",
+        "export": {
+          "sha256": "099f687efe8f7283736134d850b0a2a9d660de0dac7041ecb8061da37bea23d2",
+          "size": 1073741824,
+          "verified": true
+        }
+      },
+      {
+        "phase": "previous",
+        "binary_sha256": "3e8c0a67222f0a054dca439e7be4ca909cfd57bef7740e1ab7177001dcfbd294",
+        "identity": "1d74e0a6c5bf04e2e0c453adc4d4495f66d3d2fff4b63cecfe67bb150e8d65aa",
+        "conversations": [
+          "channel/85287c53b642e1d1597045809d5c243c4c163f82948ec7b568699f940dc2c2b3"
+        ],
+        "file_id": "dbc67379ef294043b567a6bfc83b3a24",
+        "export": {
+          "sha256": "099f687efe8f7283736134d850b0a2a9d660de0dac7041ecb8061da37bea23d2",
+          "size": 1073741824,
+          "verified": true
+        }
+      },
+      {
+        "phase": "current-after",
+        "binary_sha256": "aae454c612b9996829e2a060050c9656ecacd4778818e71e14655bab43f0e942",
+        "identity": "1d74e0a6c5bf04e2e0c453adc4d4495f66d3d2fff4b63cecfe67bb150e8d65aa",
+        "conversations": [
+          "channel/85287c53b642e1d1597045809d5c243c4c163f82948ec7b568699f940dc2c2b3"
+        ],
+        "file_id": "dbc67379ef294043b567a6bfc83b3a24",
+        "export": {
+          "sha256": "099f687efe8f7283736134d850b0a2a9d660de0dac7041ecb8061da37bea23d2",
+          "size": 1073741824,
+          "verified": true
+        }
+      }
+    ],
+    "no_default_route": true
+  },
+  "retired_namespace_pids": [],
+  "original_profile_unchanged": true,
+  "controller_sha256": "cb2a2da665310e0ad455023d128571a121466a5f2dfc224b4dd84f4d8bb7ba74",
+  "retained_state_copy": "state/",
+  "physical_devices_accessed": false,
+  "archive_sha256": "48bafc8414f634e824c374f641ce92e8d2addab7d6901cc178708aa72050cf43",
+  "evidence_files": {
+    "rollback-profile-01.py": "cb2a2da665310e0ad455023d128571a121466a5f2dfc224b4dd84f4d8bb7ba74",
+    "fixture-host-05/binding.json": "431275b04c5c15ca0df55c9c2a779dad71c3469e27351dd5f4250720c619b57b",
+    "rollback-profile-01/previous.log": "0883890964792cfdd6762d75acb3b1617037b68df8886a3cc9a21e38567d8df9",
+    "rollback-profile-01/summary.json": "49b2f9719e2ea3d3e4858953e5987e46805d716e4ef81b65a19663f8c3303a4f",
+    "rollback-profile-01/worker.json": "1ac9ff5a911866f4ecc0e3eb624cfecf32bc50f805186c3e0939091f4491f025",
+    "rollback-profile-01/current-after.log": "0883890964792cfdd6762d75acb3b1617037b68df8886a3cc9a21e38567d8df9",
+    "rollback-profile-01/current-before.log": "0883890964792cfdd6762d75acb3b1617037b68df8886a3cc9a21e38567d8df9",
+    "rollback-profile-01/before.json": "4aabce7c5239449eadbadb3d8fbc6f124bf489b73d50e89731f63829afaa088f",
+    "rollback-profile-01/controller.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fixture-host-07/binding.json": "3e037d2262fa9d071df2c690bc045cc6d03f65907a4c0d56387d87846900b8ed"
+  },
+  "original_profile_summary": "file-recovery-07-summary.json",
+  "candidate_binding": "candidate14 -> candidate12 -> candidate14 qualification hosts; not any historical installed binary"
+}

@@ -1,3 +1,12 @@
+## Runtime rollback data compatibility
+
+On a copy of a completed encrypted application profile, run current → compatible
+predecessor → current in an empty disconnected namespace. Require identical
+identity and nonempty channel set, exact complete-file export on every phase,
+clean shutdown and unchanged source fixture bytes. Keep signed installers,
+network reconnection and pending-message delivery outside this limited proof.
+[Candidate14/candidate12 receipt](docs/evidence/retained-rollback-20260924/summary.json).
+
 ## Disposable mobile lifecycle gates
 
 Run four independent Android AVDs with explicit serials and private profiles,
