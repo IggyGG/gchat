@@ -1,3 +1,10 @@
+## Android 1019 diagnostic candidate
+
+Identify which protected-route stage fails during the reproduced Android resume
+problem. Preserve the original completed file, profile, and pending phone message;
+no resubmission or relay deployment. Pair the exact GComs diagnostic commit after
+cluster routing/transport validation. This is not a claimed recovery repair.
+
 ## Android retained-role recovery, 2026-09-24
 
 The original laptop unlocked successfully on Android 1017's paired protocol
