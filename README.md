@@ -1,5 +1,9 @@
 # GChat
 
+Current work follows the [reliability test plan](docs/RELIABILITY_TEST_PLAN.md):
+cluster recovery/concurrency checks, then exact-artifact platform validation.
+Historical release/device observations below are not current qualification.
+
 GChat uses the public `gcoms` Rust application API for its protocol runtime. It
 owns the chat archive and UI; GComs owns identity, encrypted protocol state,
 network enrollment, recovery, invitations and the file-transfer worker. GChat

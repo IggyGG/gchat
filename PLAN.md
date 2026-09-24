@@ -1,3 +1,10 @@
+## Current completion plan, 2026-09-24
+
+Follow the [requirements-linked test matrix](docs/RELIABILITY_TEST_PLAN.md).
+Cluster batched runtime/device validation precedes another phone build. Android
+1019's completed workflow failed its installed-app smoke/cleanup step; compilation
+and signing passed, but it is not a qualified release. Preserve its failed result.
+
 ## Android 1019 diagnostic candidate
 
 Identify which protected-route stage fails during the reproduced Android resume
