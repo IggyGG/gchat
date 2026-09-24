@@ -770,7 +770,7 @@ def build_simulator(chat, generated, project, config, destination, environment, 
         '-scheme', project.stem + '_iOS', '-configuration', 'release', '-sdk', 'iphonesimulator'],
         env=simulator_env, timeout=120))
     write_json(retained / 'build-settings.json', settings)
-    helper.verify_settings(settings, entitlement_file)
+    helper.verify_settings(settings, entitlement_file, simulator_env['DEVELOPER_DIR'])
     report['simulator_build_settings'] = reference(retained / 'build-settings.json')
     run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64-sim',
          '--archive-only', '--config', simulator_config], cwd=chat / 'apps/client', env=simulator_env, timeout=5400)

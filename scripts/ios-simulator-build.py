@@ -36,7 +36,7 @@ def configure_simulator(destination):
     return config, entitlements
 
 
-def verify_settings(settings, entitlements):
+def verify_settings(settings, entitlements, developer_dir):
     targets = [item['buildSettings'] for item in settings
                if item.get('buildSettings', {}).get('PRODUCT_BUNDLE_IDENTIFIER') == ios.BUNDLE]
     ios.require(len(targets) == 1, 'expected one GChat simulator target')
@@ -48,7 +48,11 @@ def verify_settings(settings, entitlements):
     ios.require(all(not value.get(key) for key in
                 ('DEVELOPMENT_TEAM', 'PROVISIONING_PROFILE_SPECIFIER', 'PROVISIONING_PROFILE')),
                 'simulator cannot require a distribution team or provisioning profile')
-    ios.require('/Xcode_26.2.app/' in value.get('SDKROOT', '') and 'iPhoneSimulator' in value['SDKROOT'],
+    # The caller checks the Xcode version. Its installation folder is not a
+    # version identifier: local workers normally use Xcode.app.
+    sdk = Path(value.get('SDKROOT', '')).resolve()
+    platform_root = Path(developer_dir).resolve() / 'Platforms/iPhoneSimulator.platform'
+    ios.require(bool(value.get('SDKROOT')) and sdk.is_relative_to(platform_root),
                 'simulator did not select the pinned Xcode simulator SDK')
     return value
 
@@ -162,7 +166,7 @@ def build(args):
             '-scheme', project.stem + '_iOS', '-configuration', 'release', '-sdk', 'iphonesimulator'],
             env=environment, timeout=120))
         ios.write_json(destination / 'simulator-build-settings.json', settings)
-        verify_settings(settings, entitlement_file)
+        verify_settings(settings, entitlement_file, environment['DEVELOPER_DIR'])
         report['effective_settings'] = ios.reference(destination / 'simulator-build-settings.json')
         metadata = json.loads(ios.output(['cargo', 'metadata', '--locked', '--manifest-path', native / 'Cargo.toml',
             '--filter-platform', TARGET, '--format-version=1'], cwd=chat, env=environment))

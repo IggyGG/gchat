@@ -82,12 +82,22 @@ class SimulatorBoundaryTests(unittest.TestCase):
         value = {'PRODUCT_BUNDLE_IDENTIFIER': sim.ios.BUNDLE, 'CODE_SIGNING_ALLOWED': 'YES',
                  'CODE_SIGN_IDENTITY': '-', 'CODE_SIGN_STYLE': 'Manual', 'CODE_SIGN_ENTITLEMENTS': str(entitlements),
                  'SDKROOT': '/Applications/Xcode_26.2.app/Contents/Developer/Platforms/iPhoneSimulator.platform/SDK'}
-        sim.verify_settings([{'buildSettings': value}], entitlements)
+        developer = '/Applications/Xcode_26.2.app/Contents/Developer'
+        sim.verify_settings([{'buildSettings': value}], entitlements, developer)
+        local = '/Applications/Xcode.app/Contents/Developer'
+        sim.verify_settings([{'buildSettings': value | {
+            'SDKROOT': local + '/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk'}}],
+            entitlements, local)
+        for sdk in ('', '/Applications/Other.app/Contents/Developer/Platforms/iPhoneSimulator.platform/SDK',
+                    local + '/Platforms/iPhoneOS.platform/SDK',
+                    local + '/Platforms/iPhoneSimulator.platform/../iPhoneOS.platform/SDK'):
+            with self.subTest(sdk=sdk), self.assertRaises(ValueError):
+                sim.verify_settings([{'buildSettings': value | {'SDKROOT': sdk}}], entitlements, local)
         for key, replacement in (('CODE_SIGNING_ALLOWED', 'NO'), ('CODE_SIGN_IDENTITY', 'Apple Distribution'),
                 ('DEVELOPMENT_TEAM', sim.ios.TEAM), ('PROVISIONING_PROFILE_SPECIFIER', 'profile'),
                 ('CODE_SIGN_ENTITLEMENTS', '/other.plist'), ('SDKROOT', '/iPhoneOS.sdk')):
             with self.subTest(key=key), self.assertRaises(ValueError):
-                sim.verify_settings([{'buildSettings': value | {key: replacement}}], entitlements)
+                sim.verify_settings([{'buildSettings': value | {key: replacement}}], entitlements, developer)
 
     def test_wrapper_removes_account_access_and_preserves_build_arguments(self):
         config, _ = sim.configure_simulator(self.root / 'settings')
