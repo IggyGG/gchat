@@ -1,0 +1,73 @@
+{
+  "recorded_at": "2026-09-24T03:54:30.219351+00:00",
+  "scope": "Physical original Android/laptop profile recovery. File complete and verified; post-resume inbox recovery/return ACK remains failed. No full lifecycle or fleet qualification.",
+  "android": {
+    "version_code": 1018,
+    "gchat": "7af8554564e7499699fc97f90d2a44eb3ecba211",
+    "gcoms": "b9a87022f2581db1437ec09cb7e5f581f2e5bfa7",
+    "apk_sha256": "92890c6216a1e22ce38d65c76d79d47ea24ad384f0a4e3f9cd8efa1b7dd91393",
+    "profile_preserved": true
+  },
+  "laptop_running": {
+    "gchat": "20979ba",
+    "gcoms": "296d3b6",
+    "daemon_sha256": "c4741cc57230f0977bed0c10bd1e4833b6576731b9d5a84b2d5fd92b6481e506",
+    "original_profile_unlocked": true
+  },
+  "file": {
+    "observed_at": "2026-09-24T03:40:33.051247+00:00",
+    "passed": true,
+    "bytes": 122980700,
+    "sha256": "5d5149057674388c73f3b8a6d3e776cba6fa75b26536482dbf03ff6e53d4fc26",
+    "source_sha256": "5d5149057674388c73f3b8a6d3e776cba6fa75b26536482dbf03ff6e53d4fc26",
+    "export_path": "/sdcard/Download/gchat-verified-123MB-20260924.deb",
+    "file_id": "ae5978024b131043ad47cd15ede47f9a",
+    "method": "GChat verified cache -> native Android Save file dialog -> unique Downloads file -> device SHA-256",
+    "profile_reset": false,
+    "resubmitted_file": false
+  },
+  "messages": {
+    "original_laptop_to_phone": {
+      "id": "4f2ea8878af1f6bef9a746ffc2f2bf08",
+      "sender_delivery": "delivered"
+    },
+    "fresh_phone_to_laptop": {
+      "id": "ce32dfd0d91ef5000ba652ac47e3cc32",
+      "received_on_laptop": true,
+      "phone_sender_delivery": "accepted locally",
+      "return_ack_confirmed": false
+    }
+  },
+  "repair_actions": [
+    "Mutual authenticated existing-member reconnect codes imported through normal APIs/UI; no rejoin or new identity.",
+    "Retained partial transfer resumed without resubmitting file.",
+    "Export used native Android Save file; saved uniquely in Downloads."
+  ],
+  "lifecycle": {
+    "native_save_picker_caused_background_runtime_shutdown_and_reopen": true,
+    "verified_complete_cache_retained_after_reopen": true,
+    "after_reopen_phone_message_received": true,
+    "subsequent_inbox_recovery_stalled": true,
+    "latest_failure": "peer closed connection without sending TLS close_notify",
+    "owner_checkpoint_paused": false,
+    "hypothesis_only": "Transient retained channel restore failure may replace route; no live causal proof or speculative fix."
+  },
+  "relay_changes_this_check": false,
+  "limitations": [
+    "Pending phone return acknowledgment after resume is not delivery-confirmed.",
+    "Previous Android Back exit panic remains separate and unresolved.",
+    "No Play/App Store or general release promotion."
+  ],
+  "evidence_root": "/run/media/user/SSD-2/git/ghost/coms/.worktrees/gcoms-public/gcoms/.worktrees/fleet-files/gchat/target/channel-reconnect-20260923",
+  "evidence": {
+    "android-1018/installed.json": "1f1f40245455421d8afd603865e7fa22e33b972b85b7c3a0e20e41f06b275e91",
+    "android-1018/verification.json": "460c01cb097b1a9038262fde9644530fda37b211bfcaca10ebeb13fa13455e86",
+    "android-1018/original-file-complete.json": "1ac9494179e5f9b613c8fdc3ed2dd557dbfd0ffc4c28cc89c05d1595dcd19563",
+    "android-1018/personal-delivery-confirmed.json": "953a7e55d26f086445490adf793dd58a95a52297406c721cdc7118de29f799db",
+    "android-1018/phone-final-message-received.json": "4ff6da0b6560706f97666299910b96b6a2838ae9a8b8b1666a763cb44a151094",
+    "android-1015/android-1018-files-complete-01.txt": "7e942afdfb7e0d7d0013c2bfe01ef025b49595b91ccd0358f08a6bf86bb77278",
+    "android-1015/android-1018-files-reopened-01.txt": "be7f3aa1c87c0dc6f5084a71d53b22a8fd6d33812750717c59e1d21c498e0c59",
+    "android-1015/android-1018-final-message-05.txt": "f1187c3d2649522f6d06ff19de757b54441459723ddaee2f26cf5c40523c7938",
+    "android-1015/android-1018-status-after-export-02.txt": "3ef45cd688a5def2bb6a7ec350a4c601a5568e9b06fd05c94d763d389720aedf"
+  }
+}

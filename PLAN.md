@@ -6,14 +6,18 @@ revision. The phone subsequently captured a separate checkpoint failure:
 saved draining queues to an already populated owner record. Its regression fails
 with that exact error, then passes when applying the complete record replaces the
 nonactive collections. Android 1018 carries that repair after cluster validation.
-Original identity, channel membership and 92,274,688 verified file bytes remain;
-actual two-way message acknowledgments and the full personal transfer are pending.
+Original identity and membership remain. Android 1018 resumed the original partial
+to all 122,980,700 bytes; native Save export exactly matches the laptop source SHA-256.
+The old laptop message is acknowledged; a fresh phone message reached the laptop.
+After the Save picker background/reopen, cached completion persists but phone inbox
+recovery stalls and its return ACK is still pending. This is not a full recovery pass.
+[Physical-device receipt](docs/evidence/original-device-transfer-20260924/summary.json).
 The paired Linux core passed 65 tests (two existing namespace exclusions), strict
 workspace Clippy and both service/desktop release builds. The package is installed
 without restarting the original laptop session. A separate retained test profile
 reopened and recovered both inboxes without a checkpoint pause.
 [Receipt](docs/evidence/owner-role-recovery-20260924/summary.json).
-Android 1018 remains in its build workflow; no new store promotion is claimed.
+Android 1018 is installed with existing data preserved; no new store promotion is claimed.
 
 ## Owner-budget reopen repair candidate, 2026-09-24
 
