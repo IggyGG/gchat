@@ -1,3 +1,14 @@
+## Disposable mobile lifecycle gates
+
+Run four independent Android AVDs with explicit serials and private profiles,
+retaining every failure and cleanup result. Use a verified node-local SDK copy
+when shared image storage cannot meet the unchanged 180s boot deadline. Check
+profile creation, background/relaunch and picker select/cancel, then visually
+inspect retained screenshots. Use native XCTest for the Mac iOS simulator.
+Keep exact APK/simulator-source bindings; lifecycle success cannot qualify
+network messages, files, live push or a later protocol build. Physical devices
+are deferred. [Completed baseline](docs/evidence/emulator-lifecycle-20260924/summary.json).
+
 ## Owner-budget reopen candidate
 
 [Exact source/artifact receipt](docs/evidence/owner-recovery-20260924/summary.json):

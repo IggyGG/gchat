@@ -1,7 +1,22 @@
+## Emulator and simulator lifecycle batch, 2026-09-24
+
+Four concurrent disposable Android emulators passed profile creation, background/
+foreground, relaunch and invitation file-picker selection/cancellation with the
+retained signed Android1019 APK. Each owned emulator stopped and its AVD was
+removed. The prior boot timeout was resolved by moving byte-verified SDK images
+to node-local storage, without increasing the boot deadline. All 102 retained
+evidence files rehashed; onboarding screenshots were visually checked.
+
+The Mac iOS simulator separately passed the real application profile lifecycle
+and three native Keychain/push-hint-validation tests on candidate11. These are
+lifecycle baselines, not mobile network/file, latest-runtime or live-push passes.
+Physical Android/iPhone checks are deferred by the user.
+[Exact scope and source bindings](docs/evidence/emulator-lifecycle-20260924/summary.json).
+
 ## Current completion plan, 2026-09-24
 
 Follow the [requirements-linked test matrix](docs/RELIABILITY_TEST_PLAN.md).
-Cluster batched runtime/device validation precedes another phone build. Android
+Cluster batched runtime/device validation precedes another release build; physical devices are deferred. Android
 1019's completed workflow failed its installed-app smoke/cleanup step; compilation
 and signing passed, but it is not a qualified release. Preserve its failed result.
 
