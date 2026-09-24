@@ -12,7 +12,7 @@ release; it is not an additional release blocker.
 | Persistence | Exact outbox ID/wire across failed writes and restart, archive failure before publication, no early ACK | R05,R06,R11 |
 | UI | Immediate progress, rapid sends, autoscroll, mentions/self styling, actionable Details, invitation guidance, mobile overlays | R01,R02,R04,R07 |
 | Files | Small cross-platform export, ~123 MB interrupted/resumed, 1 GiB cluster transfer with concurrent chat, independent SHA-256 | R06,R07,R08 |
-| Mobile | Four cluster Android emulators; Android arm64 physical upgrade; iOS cloud foreground/lifecycle; live provider push separately | R01,R03,R04,R07,R10,R12 |
+| Mobile | Four cluster Android emulators; native Mac-hosted iOS simulator foreground/lifecycle; physical Android/iPhone and live provider push deferred | R01,R03,R04,R07,R10,R12 |
 | Release | Native Linux/macOS/Windows checks, Android/iOS artifacts, profile-preserving upgrade, pinned signatures, safe rollback | R12 |
 
 Run cluster fixtures with distinct profiles and no personal secrets. Keep actual
@@ -85,8 +85,11 @@ the native iOS application. Use the available Mac iOS simulator for native build
 UI and lifecycle checks. Keep physical-device and live APNs qualification open
 until exercised on a compatible device; do not substitute browser results.
 
-The user confirmed that no physical iPhone is available: finish simulator
-qualification first and defer physical-device/live-APNs checks. The simulator
+The user deferred physical-device testing on both Android and iPhone for now.
+Continue emulator, simulator and automated qualification without waiting for a
+physical device. Physical-device upgrades, battery behavior and live APNs/FCM
+delivery remain unverified; this deferral does not qualify them. Actual network
+message/file delivery remains a separate required automated journey. The simulator
 builder verifies Xcode 26.2 and requires its selected iPhoneSimulator platform;
 the installation directory may be named `Xcode.app`. It does not use a device
 signer or provisioning account. Retain native XCTest screenshots and distinguish
