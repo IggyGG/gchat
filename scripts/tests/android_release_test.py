@@ -413,6 +413,13 @@ class ArtifactReuse(unittest.TestCase):
 
 
 class EmulatorDriver(unittest.TestCase):
+    def test_invalid_emulator_port_is_rejected_before_sdk_or_avd_changes(self):
+        for port in (True, 5553, 5555, 5684, '5554'):
+            with self.subTest(port=port), patch.object(android, 'sdk') as sdk:
+                with self.assertRaisesRegex(ValueError, 'even number'):
+                    android.emulator(argparse.Namespace(output=Path('/unused'), port=port))
+                sdk.assert_not_called()
+
     def test_avd_tools_share_explicit_private_directory(self):
         with tempfile.TemporaryDirectory() as scratch:
             root = Path(scratch)
@@ -462,9 +469,12 @@ class EmulatorDriver(unittest.TestCase):
             with patch.object(android, 'sdk', return_value=root / 'sdk'), \
                     patch.object(android.subprocess, 'run', side_effect=execute), \
                     patch.object(android.subprocess, 'Popen', return_value=process) as popen, \
-                    patch.object(android, 'smoke', side_effect=ValueError('injected app failure')):
+                    patch.object(android, 'smoke', side_effect=ValueError('injected app failure')) as smoke:
                 with self.assertRaisesRegex(ValueError, 'injected app failure'):
-                    android.emulator(argparse.Namespace(output=root))
+                    android.emulator(argparse.Namespace(output=root, port=5560))
+            self.assertEqual(smoke.call_args.args[0].serial, 'emulator-5560')
+            command = popen.call_args.args[0]
+            self.assertEqual(command[command.index('-port') + 1], '5560')
             self.assertEqual(popen.call_args.kwargs['env'], create_env[0])
             process.kill.assert_called_once()
             report = json.loads((root / 'emulator-driver.json').read_text())

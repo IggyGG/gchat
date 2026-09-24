@@ -13,6 +13,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import socket
 import struct
 import subprocess
 import sys
@@ -951,14 +952,19 @@ def emulator_environment(root, inherited):
 
 def emulator(args):
     root = args.output.resolve()
+    port = getattr(args, 'port', 5554)
+    require(type(port) is int and 5554 <= port <= 5682 and port % 2 == 0,
+            'emulator port must be an even number from 5554 through 5682')
+    serial = f'emulator-{port}'
     android = sdk(require_ndk=False)
     environment, avds = emulator_environment(root, os.environ)
     name = 'gchat-release-fixture'
     avd_path = avds / (name + '.avd')
     report = {'schema': 1, 'scope': 'android_disposable_emulator_driver', 'passed': False,
-              'controller': reference(Path(__file__)), 'avd_home': str(avds), 'started': False}
+              'controller': reference(Path(__file__)), 'avd_home': str(avds), 'started': False,
+              'serial': serial, 'port': port}
     process = None
-    adb = [android / 'platform-tools/adb', '-s', 'emulator-5554']
+    adb = [android / 'platform-tools/adb', '-s', serial]
     try:
         with (root / 'avd-create.log').open('w') as log:
             subprocess.run([str(android / 'cmdline-tools/latest/bin/avdmanager'), 'create', 'avd', '--force',
@@ -968,9 +974,15 @@ def emulator(args):
                            check=True, timeout=120)
         require((avd_path / 'config.ini').is_file(), 'avdmanager did not create the requested AVD directory')
         require((avds / (name + '.ini')).is_file(), 'avdmanager did not register AVD in the explicit shared AVD home')
+        # Refuse a port already owned by another emulator. Every instance keeps
+        # its own AVD and all ADB operations remain explicitly serial-scoped.
+        with socket.socket() as console, socket.socket() as transport:
+            console.bind(('127.0.0.1', port))
+            transport.bind(('127.0.0.1', port + 1))
         with (root / 'emulator.log').open('w') as log:
             process = subprocess.Popen([str(android / 'emulator/emulator'), '-avd', name,
-                                        '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim',
+                                        '-port', str(port), '-cores', '2', '-memory', '2048',
+                                        '-no-window', '-no-audio', '-no-boot-anim',
                                         '-no-snapshot', '-wipe-data', '-gpu', 'swiftshader_indirect'],
                                        env=environment, stdout=log, stderr=log)
             report['started'] = True
@@ -988,7 +1000,7 @@ def emulator(args):
             else:
                 raise ValueError('emulator failed its bounded boot deadline')
             run([*adb, 'shell', 'input', 'keyevent', '82'], timeout=30)
-            smoke(argparse.Namespace(output=root, serial='emulator-5554', probe_picker=getattr(args, 'probe_picker', False),
+            smoke(argparse.Namespace(output=root, serial=serial, probe_picker=getattr(args, 'probe_picker', False),
                                      from_bundle=getattr(args, 'from_bundle', False),
                                      store_screenshots=getattr(args, 'store_screenshots', False)))
             report['passed'] = True
@@ -1149,6 +1161,8 @@ def main():
         sub = commands.add_parser(name)
         sub.add_argument('--output', type=Path, required=True)
         if name == 'smoke': sub.add_argument('--serial', required=True)
+        if name == 'emulator': sub.add_argument('--port', type=int, default=5554,
+                                              help='unique even port for concurrent disposable emulators')
         if name in ('smoke', 'emulator'): sub.add_argument('--probe-picker', action='store_true')
         if name in ('smoke', 'emulator'): sub.add_argument('--from-bundle', action='store_true')
         if name in ('smoke', 'emulator'): sub.add_argument('--store-screenshots', action='store_true')

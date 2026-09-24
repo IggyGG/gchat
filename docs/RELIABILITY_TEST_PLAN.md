@@ -26,6 +26,15 @@ package pair must include the tested GComs runtime, not a similarly named older
 revision. Failed and late-continuation receipts remain separate. Cluster workloads
 must not compete with compilation for their reserved CPU/disk during timing checks.
 
+The Android emulator driver accepts `--port 5554`, `5556`, `5558` or `5560`
+with separate `--output` directories for concurrent devices. Each device owns
+its AVD, uses explicit serial-scoped ADB calls and refuses occupied console/ADB
+ports. It uses two virtual CPUs and 2 GiB guest RAM. Reuse verified signed APKs
+for harness changes; do not rebuild the app to change emulator orchestration.
+The installed lifecycle smoke blocks that fixture app's external traffic and
+therefore does not qualify network delivery or push. Those require separate
+multi-participant fixtures and provider/device evidence.
+
 ## Current execution boundary
 
 - Starting source: GComs `293680e`, GChat `d6b2947`, clean task worktrees.
