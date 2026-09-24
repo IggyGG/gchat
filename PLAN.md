@@ -1,3 +1,15 @@
+## Android retained-role recovery, 2026-09-24
+
+The original laptop unlocked successfully on Android 1017's paired protocol
+revision. The phone subsequently captured a separate checkpoint failure:
+`invalid owner alias binding or duplicate queue`. GComs live recovery appended
+saved draining queues to an already populated owner record. Its regression fails
+with that exact error, then passes when applying the complete record replaces the
+nonactive collections. Android 1018 carries that repair after cluster validation.
+Original identity, channel membership and 92,274,688 verified file bytes remain;
+actual two-way message acknowledgments and the full personal transfer are pending.
+No new store promotion is claimed.
+
 ## Owner-budget reopen repair candidate, 2026-09-24
 
 Android 1017 and the next Linux candidate pair with GComs 296d3b6. The new
@@ -8,14 +20,14 @@ Clippy. Membership, private expired authority and original deadlines remain inta
 normal recovery obtains replacement authority. This pair also contains the bounded
 incomplete-referral recovery and first-checkpoint diagnostics. The paired application core passed 65 tests (two existing exclusions) and strict
 workspace Clippy. The verified release daemon is installed on the original laptop
-profile, with an encrypted backup and no profile reset. Actual user unlock and
-personal-file continuation remain pending. The exact desktop package is installed
+profile, with an encrypted backup and no profile reset. Actual user unlock passed;
+personal-file continuation remains pending. The exact desktop package is installed
 without restarting the view. Android 1017 passed its full build/signing/emulator
 workflow and independent publisher-signature verification, then was installed
 with `install -r`; UID, initial installation time and saved data are preserved.
 [Source/artifact receipt](docs/evidence/owner-recovery-20260924/summary.json).
-The phone needs to reopen GChat and the original laptop profile still needs user
-unlock before the personal conversation/transfer can be qualified.
+The phone reopened its original profile. Its later retained-role checkpoint failure
+is recorded above; the personal conversation/transfer is not yet qualified.
 
 ## Bounded-referral application follow-up, 2026-09-24
 
