@@ -155,3 +155,6 @@ See [UX behavior and qualification](docs/UX-CARDS.md). No new dependencies.
 Locked passphrase errors appear once, beside the field, and can be retried.
 Linux native first-run and retained-profile upgrade checks accompany the local
 UX build; public installer qualification remains separate.
+
+The desktop dependency policy records exact native API version duplicates required
+by the updater's existing dependencies; see [the graph review](docs/DEPENDENCIES.md).
