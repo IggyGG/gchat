@@ -30,8 +30,8 @@ CMD consumes the same entry component and theme. Its access-token authentication
 is unchanged; progressive enhancement adds immediate pending feedback. Observe,
 Signals and Fleet retain their workflows with shared colors and legible labels.
 
-Validation in progress: npm unit suite 50 passing; Svelte checks clean. Final
-receipts are recorded below when qualification completes. Five-person usability
+Automated qualification completed 2026-09-25. The final receipt is
+[test-evidence/ux-cards/summary.json](../test-evidence/ux-cards/summary.json). Five-person usability
 sessions and native Windows/macOS visual/save-dialog qualification require real
 participants/platform runs and are not represented by browser fixtures.
 Code-match tooling is unavailable in this session (codematch=unreachable).
@@ -63,3 +63,33 @@ five relays together. This repairs qualification inputs, without changing the
 application protocol or runtime behavior. The first four-relay journey failed
 while waiting for the sender inbox, before invitation creation. That failed
 receipt is retained separately from the corrected run.
+
+## Completed automated qualification
+
+Implementation source: GChat 2713dfc with GComs 9157143; CMD d57914b.
+GChat has 158 passing Rust workspace tests (two isolated-network cases excluded
+from the ordinary suite), strict Clippy, both formatting checks, 23 passing Linux
+native tests, a clean native compile check, 50 UI unit tests, 52 browser tests and
+a successful production frontend build. Svelte reports no errors or warnings.
+The Python harness has 406 passes and one platform skip. Node 22.22.1 and npm
+11.19.1 pass the final frontend gates; Rust is 1.98.0.
+
+The corrected five-relay combined-invitation journey passes separately in 311
+seconds, including network acceptance, chat, file transfer and restart retention.
+The helper confirms unchanged host interfaces and namespace. This is an isolated
+protocol fixture, not a public-fleet privacy or throughput qualification.
+
+CMD has 486 passing unit tests (343 infrastructure-gated skips), clean type/lint
+checks, 22 ordinary browser passes (two infrastructure skips), and two additional
+configured-login passes for pending/error behavior and submission without JS.
+Production-built login visuals were reviewed at 390 and 1100 pixels; GChat
+welcome visuals at 320 and 1100 pixels and the exported card were also reviewed.
+
+The initial harness run exceeded Unix socket path limits under the managed
+temporary directory; the rerun uses a short private SSD path. The combined
+workspace/native build exceeded its 16 GiB quota after workspace tests and native
+compilation passed. Native tests and the isolated journey were then built in
+separate jobs with debug symbols omitted, preserving normal test assertions.
+Earlier failed/interrupted logs are retained separately. Frozen source identities
+and derived dependency inputs were verified unchanged. No application runtime
+behavior was altered to accommodate qualification.

@@ -1,0 +1,60 @@
+{
+  "task": "UX-1",
+  "date": "2026-09-25",
+  "sources": {
+    "gchat": "2713dfc",
+    "gcoms": "9157143",
+    "cmd": "d57914b"
+  },
+  "checks": {
+    "rust_workspace_passed": 158,
+    "rust_workspace_ignored": 2,
+    "clippy": "passed",
+    "rust_fmt": "passed",
+    "native_check": "passed",
+    "native_tests_passed": 23,
+    "ui_unit_passed": 50,
+    "ui_browser_passed": 52,
+    "svelte_errors": 0,
+    "svelte_warnings": 0,
+    "frontend_build": "passed",
+    "python_passed": 406,
+    "python_skipped": 1,
+    "source_audit": "passed",
+    "derived_inputs_unchanged": true
+  },
+  "toolchain": {
+    "rust": "1.98.0",
+    "node": "22.22.1",
+    "npm_frontend_final": "11.19.1"
+  },
+  "native_test_build": "debug symbols omitted to fit workstation build quota; test assertions unchanged",
+  "combined_journey": {
+    "scope": "disconnected protected-runtime fixture; no fleet or privacy qualification",
+    "test": "chat_service::networks::journey::combined_invitation_joins_another_network_and_retains_chat_and_file",
+    "binary_sha256": "52caefde80d11607b1b955716b96977b9cddda3361b48508f11eb0ee2fe61e0b",
+    "script_sha256": "a9aae3abae9ce7e10646545cb25e8cc50f18f4b2393b0912fd426356748fc20d",
+    "exit_code": 0,
+    "seconds": 311.33963894995395,
+    "test_passed": true,
+    "binary_unchanged": true,
+    "host_namespace_unchanged": true,
+    "host_interfaces_unchanged": true,
+    "passed": true
+  },
+  "logs_sha256": {
+    "current-qualified.log": "25dab7da563ca964a04b87857afd8b9f863299dcba9c8b946c390ce9488b5d06",
+    "current-completion.log": "9526706a68b02c6fa601287ba7e110e0382a8890ed6c45a4d069edd7909b00b8",
+    "native-tests-final.log": "b4def5c9834b4458bf856e056ff17599f539ae9fcaa11c2ab1f48d1bac146519",
+    "npm11-final.log": "20bd0bbdc18f37e9538a885a7172247798fa64fa65f671c077ae5a844911f5bf",
+    "python-final.log": "d85bdcb712b083110031b8b50c9134a227bc4650cfad9c21eabe3ee05a605546",
+    "source-check.log": "eae8efd71f7bca3a99ca0d2687ecc589744d569241868911db21f35bcb3dbd5e",
+    "input-verification.log": "1c724ee34a6bf80a70cb22630fdaf598f6a178b331aac45d9c2bd33ace3b2c12",
+    "combined-current.log": "4f8294fd824c2608474c73da69ae9bbd54ab389fe879f36ee1de47f5a0b67299"
+  },
+  "scope": "Local automated source qualification, no installer deployment or public-fleet privacy qualification.",
+  "remaining_release_gates": [
+    "Real native save-dialog/drop/visual checks on supported desktop platforms",
+    "Five-person usability sessions and screen-reader review"
+  ]
+}
