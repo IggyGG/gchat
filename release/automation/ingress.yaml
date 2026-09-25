@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gchat-release
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [gchat.boo, www.gchat.boo]
+      secretName: gchat-site-tls
+  rules:
+    - host: gchat.boo
+      http:
+        paths:
+          - path: /updates
+            pathType: Prefix
+            backend:
+              service: {name: gchat-release, port: {name: http}}
+          - path: /status.json
+            pathType: Exact
+            backend:
+              service: {name: gchat-release, port: {name: http}}
+    - host: www.gchat.boo
+      http:
+        paths:
+          - path: /updates
+            pathType: Prefix
+            backend:
+              service: {name: gchat-release, port: {name: http}}
+          - path: /status.json
+            pathType: Exact
+            backend:
+              service: {name: gchat-release, port: {name: http}}

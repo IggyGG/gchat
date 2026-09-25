@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: gchat-release-state
+  name: gchat-release-state-hel
 spec:
   accessModes: [ReadWriteOnce]
-  storageClassName: ghost-replicated-fsn
+  storageClassName: triform-replicated-hel
   resources:
     requests:
       storage: 128Gi
@@ -24,6 +24,14 @@ spec:
       labels: {app: gchat-release}
     spec:
       automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [triform-1]
       securityContext:
         fsGroup: 10001
       initContainers:
@@ -41,6 +49,8 @@ spec:
             allowPrivilegeEscalation: false
             capabilities: {drop: [ALL]}
           envFrom: [{secretRef: {name: gchat-release-env}}]
+          env:
+            - {name: TAURI_SIGNING_PRIVATE_KEY_PASSWORD, value: ""}
           resources:
             requests: {cpu: 100m, memory: 256Mi}
             limits: {cpu: '2', memory: 2Gi}
@@ -61,7 +71,7 @@ spec:
             httpGet: {path: /healthz, port: 8080}
       volumes:
         - name: state
-          persistentVolumeClaim: {claimName: gchat-release-state}
+          persistentVolumeClaim: {claimName: gchat-release-state-hel}
         - name: config
           configMap: {name: gchat-release-config}
         - name: nginx
@@ -75,3 +85,26 @@ metadata: {name: gchat-release}
 spec:
   selector: {app: gchat-release}
   ports: [{name: http, port: 80, targetPort: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: gchat-release}
+spec:
+  podSelector:
+    matchLabels: {app: gchat-release}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: ingress-nginx}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+      ports: [{protocol: TCP, port: 443}]

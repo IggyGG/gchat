@@ -8,7 +8,9 @@ Linux, Windows, macOS, Android or the SDK lane.
 ## Production sequence
 
 1. Land reviewed source in Forgejo `main` and retain the public GitHub mirror.
-   The controller reads only these two repositories. It waits for source changes
+   The cluster controller watches their GitHub mirrors after the existing Forgejo
+   source-mirroring workflow publishes them. The authoritative Forgejo is local
+   to the workstation; it is not exposed to the cluster. It waits for source changes
    to settle, reserves monotonically increasing versions in SQLite, and creates
    immutable `release/gchat-*` refs. It never resets a working checkout.
 2. Exact-source native workers run existing qualification, signing and installed
@@ -65,8 +67,8 @@ Mobile stores own mobile installation and their automatic-update preferences.
 `scripts/release_config.py` describe the controller and public download service.
 The controller has one replica, a persistent SQLite WAL and immutable job inputs.
 Only `/state/public` is served. Provider responses and credentials remain private.
-Mount the existing publisher keys at `/keys`; never commit them. GitHub and
-Forgejo credentials are supplied through the protected environment. Updater keys
+Mount the existing publisher keys at `/keys`; never commit them. GitHub credentials are supplied through the protected environment. The
+controller does not need workstation access or a Forgejo credential. Updater keys
 are shared only with signing workers and the metadata signer. Signing workers
 must use the configured release environment and protected candidate refs.
 
@@ -75,8 +77,10 @@ and the pinned Tauri CLI. The cluster has a minimum-free-space admission check;
 export retained artifacts before removing old data. Do not remove active job
 state, provider journals or the release database. Back up SQLite using its backup
 API (or a consistent stopped-volume snapshot), including source manifests and
-provider journals. Refresh the signed APT index before its 14-day expiration even
-if no new app version is released.
+provider journals. The daily maintenance task verifies and refreshes the signed APT index when
+fewer than seven of its fourteen valid days remain, even without a new release.
+It retains seven consistent daily SQLite backups; cluster volume backups must
+also retain the immutable job evidence and provider journals.
 
 After an interrupted external action, the request ID is reconciled with the
 provider. Unknown uploads/commits are never blindly repeated. A blocked target

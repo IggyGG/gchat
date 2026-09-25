@@ -13,7 +13,7 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
     workers={}
     for target in PLATFORMS:
         if target=='sdk':
-            sdk=recipe('release_sdk.py','--state',state,'--public-root',state/'public/updates',timeout=1200)
+            sdk=recipe('release_sdk.py','--state',state,'--public-root',state/'public/updates','--public-url','https://gchat.boo/updates',timeout=1800)
             workers[target]={stage:sdk for stage in ('build','verify','compatibility','publish')};continue
         build=recipe('release_jobs.py',timeout=900)
         build['reconcile']=[*build['run'],'--reconcile']
@@ -23,12 +23,12 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
         if target in ('android','ios'):
             workers[target].update({stage:recipe('release_store_worker.py','--state',state,'--config',config/'stores.json',timeout=600) for stage in ('submit','observe')})
         else:workers[target]['publish']=recipe('release_publish.py','--state',state,'--config',config/'publisher.json',timeout=900)
-    return {'schema':1,'minimum_free_bytes':16*1024**3,'workers':workers,
-        'discovery':{'gchat':{'mirror':str(state/'mirrors/gchat.git'),'url':'http://forgejo-http.forgejo.svc.cluster.local:3000/ghost-local/gchat.git'},
-            'gcoms':{'mirror':str(state/'mirrors/gcoms.git'),'url':'http://forgejo-http.forgejo.svc.cluster.local:3000/ghost-local/gcoms.git'},
+    return {'schema':1,'maintenance':{'apt':{'root':str(state/'public/updates/apt'),'key':'F4F6F8550D2AA952A189640D58430838AA3230BB'}},'minimum_free_bytes':16*1024**3,'workers':workers,
+        'discovery':{'gchat':{'mirror':str(state/'mirrors/gchat.git'),'url':'https://github.com/IggyGG/gchat.git'},
+            'gcoms':{'mirror':str(state/'mirrors/gcoms.git'),'url':'https://github.com/IggyGG/gcoms.git'},
             'version_floor':{'desktop':'0.1.4','android':'1019','ios':'1.0.23'},'settle_seconds':60,
-            'candidate_remotes':['http://forgejo-http.forgejo.svc.cluster.local:3000/ghost-local/gchat.git','https://github.com/IggyGG/gchat.git'],
-            'companion_remotes':['http://forgejo-http.forgejo.svc.cluster.local:3000/ghost-local/gcoms.git','https://github.com/IggyGG/gcoms.git']}}
+            'candidate_remotes':['https://github.com/IggyGG/gchat.git'],
+            'companion_remotes':['https://github.com/IggyGG/gcoms.git']}}
 
 
 def main():

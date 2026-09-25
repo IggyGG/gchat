@@ -170,6 +170,12 @@ class Coordinator:
                 discover(self.config['discovery'], self.state, self.ledger)
             except (ValueError, OSError, subprocess.SubprocessError) as error:
                 atomic_json(self.state / 'discovery-blocked.json', {'reason': type(error).__name__, 'at': int(time.time())})
+        if self.config.get('maintenance'):
+            from release_maintenance import maintain
+            try:
+                maintain(self.state, self.ledger, self.config['maintenance'])
+            except (ValueError, OSError, subprocess.SubprocessError) as error:
+                atomic_json(self.state / 'maintenance-blocked.json', {'reason': type(error).__name__, 'at': int(time.time())})
         incoming = self.state / 'incoming'
         incoming.mkdir(exist_ok=True)
         for source in sorted(incoming.glob('*.json')):

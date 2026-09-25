@@ -12,6 +12,8 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
+import tempfile
+import urllib.request
 from release_pair import canonical, validate
 from release_coordinator import atomic_json, read_receipt
 from release_feed import digest, version
@@ -77,8 +79,63 @@ def build(manifest,cache):
         archives.append(work/'run.json')
     return archives if complete else None
 
+def publish_archives(manifest, paths, public):
+    """Copy immutable archives before atomically advertising the complete set."""
+    public.mkdir(parents=True, exist_ok=True)
+    pointer = public / 'latest.json'
+    number = manifest['versions']['sdk']
+    if pointer.exists():
+        previous = json.loads(pointer.read_text())
+        if version(previous['version']) > version(number):
+            raise ValueError('cannot regress SDK publication')
+        if previous['version'] == number and previous['release_id'] != manifest['release_id']:
+            raise ValueError('SDK version already belongs to another source pair')
+    records = []
+    for path, expected in paths:
+        target = public / manifest['release_id'] / path.name
+        target.parent.mkdir(exist_ok=True)
+        if not target.exists():
+            with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as stream:
+                temporary = Path(stream.name)
+                try:
+                    with path.open('rb') as source: shutil.copyfileobj(source, stream)
+                    stream.flush(); os.fsync(stream.fileno())
+                    if digest(temporary) != expected: raise ValueError('SDK source archive changed')
+                    temporary.chmod(0o644); os.replace(temporary, target)
+                finally:
+                    temporary.unlink(missing_ok=True)
+        if digest(target) != expected: raise ValueError('published SDK archive changed')
+        records.append({'path': target.relative_to(public).as_posix(), 'sha256': expected,
+                        'size': target.stat().st_size})
+    if not records: raise ValueError('SDK publication has no archives')
+    report = {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+              'version': number, 'qualification': 'native desktop and emulator/simulator; physical devices and live push deferred',
+              'archives': records}
+    atomic_json(pointer, report); pointer.chmod(0o644)
+    return report
+
+
+def verify_public(report, base):
+    """Availability includes the publicly served immutable bytes."""
+    url = base.rstrip('/') + '/sdk/latest.json'
+    with urllib.request.urlopen(url, timeout=30) as response:
+        if response.url != url or json.loads(response.read(65537)) != report:
+            raise ValueError('public SDK index differs from the candidate')
+    for item in report['archives']:
+        url = base.rstrip('/') + '/sdk/' + item['path']
+        sha = hashlib.sha256(); size = 0
+        with urllib.request.urlopen(url, timeout=60) as response:
+            if response.url != url: raise ValueError('public SDK archive redirected')
+            while chunk := response.read(1024 * 1024):
+                size += len(chunk)
+                if size > item['size']: raise ValueError('public SDK archive exceeds qualified size')
+                sha.update(chunk)
+        if size != item['size'] or sha.hexdigest() != item['sha256']:
+            raise ValueError('public SDK archive differs from qualification')
+
+
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--public-root',type=Path,required=True);a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--public-root',type=Path,required=True);p.add_argument('--public-url',required=True);a=p.parse_args()
     manifest=validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()));stage=os.environ['GCHAT_RELEASE_STAGE'];output=Path(os.environ['GCHAT_RELEASE_RECEIPT'])
     evidence=[]
     if stage=='build':
@@ -101,20 +158,11 @@ def main():
             if not target.exists():os.link(path,target)
             evidence.append({'path':target.relative_to(output.parent).as_posix(),'sha256':digest(target)})
         if stage=='publish':
-            public=a.public_root/'sdk';public.mkdir(parents=True,exist_ok=True)
-            pointer=public/'latest.json';number=manifest['versions']['sdk']
-            if pointer.exists() and version(json.loads(pointer.read_text())['version'])>version(number):raise ValueError('cannot regress SDK publication')
-            records=[]
-            for item in evidence:
-                path=output.parent/item['path']
-                if path.suffix!='.zip':continue
-                target=public/manifest['release_id']/path.name;target.parent.mkdir(exist_ok=True)
-                if not target.exists():shutil.copyfile(path,target)
-                if digest(target)!=item['sha256']:raise ValueError('published SDK archive changed')
-                target.chmod(0o644);records.append({'path':target.relative_to(public).as_posix(),'sha256':item['sha256']})
-            atomic_json(pointer,{'schema':1,'release_id':manifest['release_id'],'sources':manifest['sources'],'version':number,
-                'qualification':'native desktop and emulator/simulator; physical devices and live push deferred','archives':records})
-            pointer.chmod(0o644)
+            paths=[(output.parent/item['path'],item['sha256']) for item in evidence if item['path'].endswith('.zip')]
+            report=publish_archives(manifest, paths, a.public_root/'sdk')
+            verify_public(report, a.public_url)
+            result=output.parent/'public-sdk.json';atomic_json(result,report)
+            evidence.append({'path':result.name,'sha256':digest(result)})
     else:raise ValueError('unknown SDK stage')
     atomic_json(output,{'schema':1,'release_id':manifest['release_id'],'sources':manifest['sources'],'platform':'sdk','stage':stage,
         'passed':True,'source_unchanged':True,'consumers_compatible':True,'evidence':evidence})
