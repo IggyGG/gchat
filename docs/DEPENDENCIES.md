@@ -31,6 +31,17 @@ require separate APIs. Do not turn them into wildcard or whole-tree exceptions.
 A newly resolved version needs review. The desktop graph and terminal graph are
 checked separately because their native dependency trees differ.
 
+The 2026-09-25 updater graph review adds three exact duplicate-version entries:
+`core-foundation 0.9.4` is retained by macOS system-configuration 0.7 through
+hyper-util, alongside 0.10.1 used by the newer native verifier/security-framework;
+`jni 0.21.1` remains in Tauri/tao/wry and the Android plugin alongside 0.22.4 in
+rustls-platform-verifier 0.7.1 through reqwest 0.13; and `jni-sys 0.3.1` exposes
+the older JNI API while also depending on 0.4.1. These versions cannot be unified
+by a lockfile update across incompatible upstream API requirements. Revisit them
+when Tauri, system-configuration and the verifier converge. The locked graph's
+advisory, license and source checks passed before these duplicate allowances;
+no advisory, version range or dependency subtree is exempted by this change.
+
 Third-party license expressions pass policy checks. Before distributing native
 installers, run `python3 scripts/collect-notices.py` after `npm ci`. It preserves
 upstream notice files and writes a hashed inventory under `third-party/generated`,

@@ -49,6 +49,9 @@ deny = [
     { crate = "ring", wrappers = ["rustls-webpki", "rustls"], reason = "Ring is confined to the reviewed rustls/reqwest TLS dependency path" },
 ]
 skip = [
+    { crate = "core-foundation@0.9.4", reason = "macOS system-configuration 0.7 via hyper-util retains 0.9 while the Tauri updater's rustls-platform-verifier 0.7 and security-framework use 0.10; exact locked graph reviewed 2026-09-25, remove when these native APIs converge. No advisory exception." },
+    { crate = "jni@0.21.1", reason = "Tauri/tao/wry and the Android platform plugin retain JNI 0.21 while updater reqwest 0.13/rustls-platform-verifier 0.7 uses JNI 0.22; exact locked graph reviewed 2026-09-25, revisit with compatible Tauri/verifier upgrades. No advisory exception." },
+    { crate = "jni-sys@0.3.1", reason = "Tauri/NDK JNI 0.21 retains the 0.3 compatibility API alongside JNI 0.22's 0.4 API; jni-sys 0.3.1 itself depends on 0.4.1. Exact locked graph reviewed 2026-09-25; remove after upstream API convergence. No advisory exception." },
     { crate = "hashbrown@0.14.5", reason = "tauri-plugin-deep-link 2.4.10 uses rust-ini/ordered-multimap for desktop URI registration, pinning hashbrown 0.14 while indexmap uses 0.17; reviewed 2026-09-22, remove when the plugin dependency converges. No advisory exception." },
     # Native Save As: rfd 0.16 requires windows-sys 0.60 and its 0.53 import libraries.
     { crate = "windows-sys@0.60.2", reason = "rfd 0.16 requires windows-sys 0.60; Tauri/runtime dependencies use 0.61; revisit when the dialog plugin converges" },
