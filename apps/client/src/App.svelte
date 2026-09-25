@@ -49,11 +49,12 @@
   });
   const exchange: Exchange = isTauri() ? envelope => invoke('chat_request', { envelope }) : httpExchange('/_gchat');
   const rpcTransport: RpcTransport = isTauri() ? { destination: 'tauri:chat-rpc', limit: 16 * 1024 * 1024, exchange: request => invoke('chat_rpc', { request }) } : httpTransport('/_gchat_rpc');
-  const fileAccess: FileAccess | undefined = isTauri() ? {
+  const fileAccess: FileAccess | undefined = $derived(isTauri() ? {
     exchange: async frame => new Uint8Array(await invoke<ArrayBuffer>('chat_file_io', frame)),
     save: id => invoke<string>('chat_file_save', { id }),
     saveInvitation: invitation => invoke<string | null>('chat_invitation_save', { invitation }),
-  } : undefined;
+    ...(nativeShell ? { saveInvitationCard: (bytes: Uint8Array) => invoke<string | null>('chat_invitation_card_save', { bytes: Array.from(bytes) }) } : {}),
+  } : undefined);
 </script>
 {#if lifecycleError}<aside role="alert">{lifecycleError}<button onclick={() => lifecycleError = ''}>Dismiss</button></aside>{/if}
 <Attachment {exchange} {rpcTransport} {fileAccess} {deviceUnlock} {nativeShell} {pendingInvitation} {consumeInvitation} {discardInvitations} />

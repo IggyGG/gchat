@@ -132,14 +132,33 @@ async fn chat_invitation_save(
     app: tauri::AppHandle,
     invitation: String,
 ) -> Result<Option<String>, String> {
-    use std::io::Write;
     if invitation.is_empty() || invitation.len() > gchat_api::MAX_NETWORK_INVITATION_BYTES {
         return Err("Invalid invitation length".into());
     }
+    save_invitation_bytes(app, "gchat-invitation.txt", invitation.into_bytes()).await
+}
+
+#[tauri::command]
+async fn chat_invitation_card_save(
+    app: tauri::AppHandle,
+    bytes: Vec<u8>,
+) -> Result<Option<String>, String> {
+    if bytes.len() > 8 * 1024 * 1024 || !bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        return Err("Invalid invitation picture".into());
+    }
+    save_invitation_bytes(app, "gchat-invitation.png", bytes).await
+}
+
+async fn save_invitation_bytes(
+    app: tauri::AppHandle,
+    filename: &str,
+    bytes: Vec<u8>,
+) -> Result<Option<String>, String> {
+    use std::io::Write;
     let (send, receive) = tokio::sync::oneshot::channel();
     app.dialog()
         .file()
-        .set_file_name("gchat-invitation.txt")
+        .set_file_name(filename)
         .save_file(move |path| {
             let _ = send.send(path);
         });
@@ -150,8 +169,7 @@ async fn chat_invitation_save(
     tokio::task::spawn_blocking(move || {
         let mut file = tempfile::NamedTempFile::new_in(path.parent().ok_or("Invalid destination")?)
             .map_err(|e| e.to_string())?;
-        file.write_all(invitation.as_bytes())
-            .map_err(|e| e.to_string())?;
+        file.write_all(&bytes).map_err(|e| e.to_string())?;
         file.as_file().sync_all().map_err(|e| e.to_string())?;
         file.persist_noclobber(&path).map_err(|e| e.to_string())?;
         Ok(Some(path.display().to_string()))
@@ -235,7 +253,8 @@ pub fn run() {
             chat_rpc,
             chat_file_io,
             chat_file_save,
-            chat_invitation_save
+            chat_invitation_save,
+            chat_invitation_card_save
         ])
         .run(context)
         .expect("gchat native application");

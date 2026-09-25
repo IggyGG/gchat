@@ -18,7 +18,7 @@ import time
 TEST = "bootstrap::gc2_tests::production_bootstrap_fresh_reopen_and_recovery"
 NETWORK_TEST = "chat_service::networks::tests::joined_network_registry_is_private_isolated_and_reopens"
 INVITE_TEST = "chat_service::networks::journey::combined_invitation_joins_another_network_and_retains_chat_and_file"
-ADDRESSES = [f"93.184.216.{n}/32" for n in range(71, 75)]
+ADDRESSES = [f"93.184.216.{n}/32" for n in range(71, 76)]
 
 
 def digest(path):

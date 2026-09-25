@@ -1,7 +1,8 @@
 <script lang="ts">
+  import InvitationCard from './InvitationCard.svelte';
   import { invitationLink } from './invitation-link';
   import type { CommandOutput, DirectoryEntry } from './api';
-  let { output, choose, saveInvitation, prepareCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null> } = $props();
+  let { output, choose, saveInvitation, saveInvitationCard, prepareCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
   let feedback = $state('');
   async function copy(link: string, reconnect = false) {
     try { await navigator.clipboard.writeText(link); feedback = reconnect ? 'Reconnect command copied. Paste it into this channel on the other device.' : 'Invitation copied'; }
@@ -52,6 +53,7 @@
     <p>Single use · Expires {new Date(output.expires * 1000).toLocaleString()}</p>
     {#if output.localOnly}<p>This invitation is reachable only on this computer. Configure a relay before sharing with another computer.</p>{/if}
     {#if output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}
+    <InvitationCard link={output.link} channel={output.channel} expires={output.expires} saveCard={saveInvitationCard} />
     <button disabled={busy} onclick={() => void copy(appLink ?? output.link)}>Copy invitation</button>
     {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(output.link, output.channel)}>Share invitation file…</button>{/if}
     <button disabled={busy} onclick={() => void save(output.link)}>{saveInvitation ? 'Save as…' : 'Download file'}</button>

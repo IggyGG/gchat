@@ -3,6 +3,8 @@
   import { followTail } from './follow-tail';
   import { mentionSuggestions, insertMention } from './mentions';
   import MessageText from './MessageText.svelte';
+  import Welcome from './Welcome.svelte';
+  import './theme.css';
   import ResizeHandles from './ResizeHandles.svelte';
   import UpdatePanel from './UpdatePanel.svelte';
   import type { NativeShell } from './native-shell';
@@ -455,6 +457,7 @@
   }
   function connectionFailed(error: unknown) { offline = true; connectionError = chatError(error); }
   function clearPrivateView() {
+    stagedInvitation = '';
       invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
       generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
   }
@@ -464,9 +467,10 @@
     if (revision !== snapshotGeneration || !running || response.kind !== 'snapshot') return;
     const next = response.snapshot;
     picker.profile(next.instance.id);
-    if (snapshot && snapshot.instance.id !== next.instance.id) { discardInvitations?.(); selectedNetwork = undefined; }
+    if (snapshot && snapshot.instance.id !== next.instance.id) { discardInvitations?.(); stagedInvitation = ''; selectedNetwork = undefined; }
     const changed = snapshot?.revision !== next.revision;
     if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && (snapshot.instance.bootId !== next.instance.bootId || snapshot.instance.id !== next.instance.id))) {
+      stagedInvitation = '';
       clearPrivateView();
     }
     snapshot = next;
@@ -796,6 +800,7 @@
   }
   let promptDraft = $state('');
   let incomingInvitation = $state('');
+  let stagedInvitation = $state('');
   function cancelPrompt() {
     if (dialog) draft = promptDraft;
     dialog = null; joiningPublic = false; promptDraft = ''; incomingInvitation = ''; joinError = '';
@@ -889,7 +894,7 @@
   </header>
   {#each [pickerInputGeneration] as inputGeneration (inputGeneration)}
     <input class="file-picker" type="file" aria-label="Choose a file to share" bind:this={fileInput} onchange={event => pickedFile(event, inputGeneration)} oncancel={() => cancelFilePicker('outgoing', inputGeneration)} />
-    {#if deviceUnlock}<input class="file-picker" type="file" accept=".txt,text/plain" aria-label="Choose an invitation file" bind:this={invitationInput} onchange={event => pickedInvitation(event, inputGeneration)} oncancel={() => cancelFilePicker('invitation', inputGeneration)} />{/if}
+    {#if deviceUnlock}<input class="file-picker" type="file" accept=".png,image/png,.txt,text/plain" aria-label="Choose an invitation file" bind:this={invitationInput} onchange={event => pickedInvitation(event, inputGeneration)} oncancel={() => cancelFilePicker('invitation', inputGeneration)} />{/if}
   {/each}
   <div class="workspace">
     {#if workspaceReady}
@@ -933,18 +938,9 @@
         </div>
       {/if}
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
-      {#if pendingInvitation && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation ?? ''; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); }}>Review invitation</button><button onclick={() => consumeInvitation?.()}>Dismiss</button></div>{/if}
+      {#if (pendingInvitation || stagedInvitation) && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation || stagedInvitation; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); stagedInvitation = ''; }}>Review invitation</button><button onclick={() => { consumeInvitation?.(); stagedInvitation = ''; }}>Dismiss</button></div>{/if}
       {#if locked}
-        <div class="welcome">
-          <h1>{creating ? 'Create your GChat identity' : snapshot?.instance.protocolLocked ? 'Reconnect this instance' : 'Unlock chat'}</h1>
-          <p>{creating ? 'Choose a passphrase to protect your identity and message history. Keep it safe: there is no passphrase reset.' : snapshot?.instance.protocolLocked ? 'Receiving has stopped. Enter this instance’s passphrase to reconnect.' : 'Receiving continues. Unlocking makes the archive available to attached views.'}</p>
-          <form onsubmit={unlock}>
-            <label for="gchat-password">{creating ? 'Choose a passphrase' : snapshot?.instance.protocolLocked ? 'Instance passphrase' : 'Archive passphrase'}</label>
-            <input id="gchat-password" type="password" autocomplete={creating ? 'new-password' : 'current-password'} bind:value={password} minlength={creating ? 8 : undefined} maxlength="4096" required disabled={busy} />
-            {#if deviceUnlock}<label class="remember-device"><input type="checkbox" aria-describedby="device-unlock-hint" bind:checked={rememberDevice} disabled={busy} />Remember on this device</label><small id="device-unlock-hint">Uses secure device storage to reconnect after suspension. /lock removes the saved credential.</small>{/if}
-            <button class="primary" type="submit" disabled={busy || !snapshot}>{busy ? 'Unlocking…' : creating ? 'Create identity' : snapshot?.instance.protocolLocked ? 'Reconnect' : 'Unlock'}</button>
-          </form>
-        </div>
+        <Welcome profileKey={`${snapshot?.instance.id ?? ''}:${snapshot?.instance.bootId ?? ''}`} known={!!snapshot} {creating} protocolLocked={snapshot?.instance.protocolLocked ?? false} {busy} bind:password bind:rememberDevice mobile={!!deviceUnlock} companion={!!tools} submit={unlock} error={notice || connectionError?.message || ''} receiveInvitation={code => stagedInvitation = code} />
       {:else if !networkAccepted}
         <div class="welcome network-gate">
           <h1>Connect to GChat</h1>
@@ -1116,7 +1112,7 @@
     <FocusScreen title={resultDetails.output?.kind === 'invitation' ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : resultDetails.output?.kind === 'text' && resultDetails.output.title === 'Reconnect this channel' ? 'Reconnect this channel' : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
 
       <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
-      {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} />{/if}
+      {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}
       <details><summary>Request details</summary><dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl></details>
       <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
       {#if resultDetails.recordedMessage && resultDetails.recordedMessage !== resultDetails.message}<p>Last recorded result: {resultDetails.recordedMessage}</p>{/if}
@@ -1147,7 +1143,7 @@
   .danger { color:var(--danger, #ed9b9b); }
   .network-group { font-size:12px; color:var(--muted); margin-top:12px; }
   @font-face { font-family:GchatFixedsys; src:url('/fonts/fixedsys-excelsior.ttf') format('truetype'); font-display:swap; }
-  .gchat { --content-inset:clamp(44px,4vw,48px); --native-inset:0px; --bg:#1c1e22; --panel:#25282e; --line:#363c44; --ink:#e4e7eb; --muted:#a8b0bb; --accent:#b7cbe4; --self:#89e3ad; color-scheme:dark; position:var(--gchat-viewport-position,relative); top:var(--gchat-viewport-top,auto); width:100%; height:var(--gchat-viewport-height,100dvh); min-height:min(260px,var(--gchat-viewport-height,100dvh)); display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
+  .gchat { --content-inset:clamp(44px,4vw,48px); --native-inset:0px; --bg:var(--ghost-bg); --panel:var(--ghost-panel); --line:var(--ghost-line); --ink:var(--ghost-ink); --muted:var(--ghost-muted); --accent:var(--ghost-accent); --self:#89e3ad; color-scheme:dark; position:var(--gchat-viewport-position,relative); top:var(--gchat-viewport-top,auto); width:100%; height:var(--gchat-viewport-height,100dvh); min-height:min(260px,var(--gchat-viewport-height,100dvh)); display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
   .gchat :global(*) { box-sizing:border-box; }
   button,input,textarea { font:inherit; color:inherit; }
   button { background:transparent; border:1px solid transparent; padding:6px 10px; cursor:pointer; text-align:left; min-height:36px; }
@@ -1189,14 +1185,10 @@
   .welcome { flex:1; min-height:0; overflow:auto; padding:clamp(20px,4vw,48px) calc(var(--content-inset) + var(--native-inset)); }
   h1 { font-size:24px; font-weight:normal; color:var(--accent); margin:16px 0; }
   p { margin:12px 0; }
-  .welcome form,.network-gate { width:100%; max-width:640px; }
-  .welcome form { max-width:400px; margin-top:24px; }
-  .welcome form small,.welcome form .primary { display:block; }
+  .network-gate { width:100%; max-width:640px; }
   .network-gate { align-self:center; }
   label { display:block; margin:12px 0 6px; }
   input { display:block; width:100%; border:1px solid #626969; background:#16181c; padding:10px; min-height:40px; }
-  .remember-device { display:flex; align-items:center; gap:10px; min-height:44px; }
-  .remember-device input { width:20px; height:20px; min-height:20px; margin:0; }
   .primary { margin-top:12px; border:1px solid #566476; background:#343b46; padding:9px 14px; }
   dl { display:grid; grid-template-columns:max-content 1fr; gap:8px 18px; margin:24px 0; }
   dt { color:var(--accent); } dd { margin:0; color:var(--muted); }
@@ -1207,7 +1199,7 @@
   .transcript { flex:1; overflow:auto; min-height:0; padding:16px 54px; scrollbar-color:#5a6561 #242728; }
   .activity { color:var(--muted); margin:10px 0; overflow-wrap:anywhere; }
   .message { display:block; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
-  time { color:#858f8e; font-size:14px; }
+  time { color:var(--muted); font-size:14px; }
   .nick { color:#a9c7e8; max-width:24ch; overflow-wrap:anywhere; }
   .mine .nick { color:var(--self); }
   .body { white-space:pre-wrap; overflow-wrap:anywhere; min-width:0; }
@@ -1270,6 +1262,8 @@
   .private-detail { margin:12px 0; }.operation-details { grid-template-columns:auto minmax(0,1fr); }
   @media(pointer:coarse) { .circle,.channels .circle { width:44px; height:44px; min-height:44px; }.edge.left { left:1px; }.edge.right { right:1px; } }
   .titlebar { position:relative; }.gchat.mac { --native-inset:72px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region):not(.network-button) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
+  button { transition:background 120ms,color 120ms; }
+  @media(prefers-reduced-motion:reduce) { button { transition:none; } }
   .concealed { visibility:hidden; pointer-events:none; }
   .message { display:block; padding:3px 0; overflow-wrap:anywhere; }
   .message time { display:inline; margin-right:10px; }

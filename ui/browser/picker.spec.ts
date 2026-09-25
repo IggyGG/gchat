@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 async function unlock(page: Page) {
-  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
 }
 
@@ -13,7 +13,7 @@ test('outgoing selection waits for same-profile unlock and keeps its original ch
   await page.getByRole('button', { name: 'Share a file', exact: true }).click();
   const pending = await chooser;
   await page.evaluate(() => (window as any).fixture.suspend());
-  await expect(page.getByRole('heading', { name: 'Reconnect this instance' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await pending.setFiles({ name: 'private-selection.txt', mimeType: 'text/plain', buffer: Buffer.from('fixture bytes') });
   await expect(page.getByText('private-selection.txt', { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).fixture.getFiles())).toEqual([]);
@@ -33,7 +33,7 @@ test('invitation selection survives locked rendering without importing before co
   await page.getByRole('button', { name: 'Or choose an invitation file', exact: true }).click();
   const pending = await chooser;
   await page.evaluate(() => (window as any).fixture.suspend());
-  await expect(page.getByRole('heading', { name: 'Reconnect this instance' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await pending.setFiles({ name: 'invitation.txt', mimeType: 'text/plain', buffer: Buffer.from('GCNI1-valid-fixture') });
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'import_network_invitation'))).toBe(false);
   await expect(page.getByRole('textbox', { name: 'Network invitation', exact: true })).toHaveCount(0);
@@ -51,7 +51,7 @@ for (const kind of ['invitation', 'outgoing']) test(`${kind} picker cancellation
   await page.getByRole('button', { name: kind === 'invitation' ? 'Or choose an invitation file' : 'Share a file', exact: true }).click();
   const pending = await chooser;
   await page.evaluate(() => (window as any).fixture.suspend());
-  await expect(page.getByRole('heading', { name: 'Reconnect this instance' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await pending.setFiles([]);
   await expect(page.getByText('File selection cancelled. Reconnect if this profile is locked.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reconnect', exact: true })).toBeVisible();
@@ -66,7 +66,7 @@ test('a pending selection cannot migrate into a replaced profile', async ({ page
   await page.getByRole('button', { name: 'Share a file', exact: true }).click();
   const pending = await chooser;
   await page.evaluate(() => (window as any).fixture.suspend());
-  await expect(page.getByRole('heading', { name: 'Reconnect this instance' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await pending.setFiles({ name: 'original.txt', mimeType: 'text/plain', buffer: Buffer.from('fixture') });
   await page.evaluate(() => (window as any).fixture.replaceProfile('different-profile'));
   await expect(page.getByText('File selection discarded because the profile changed.', { exact: true })).toBeVisible();
@@ -81,7 +81,7 @@ test('a channel removed while the picker is open cannot receive the pending file
   await page.getByRole('button', { name: 'Share a file', exact: true }).click();
   const pending = await chooser;
   await page.evaluate(() => (window as any).fixture.suspend());
-  await expect(page.getByRole('heading', { name: 'Reconnect this instance' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await pending.setFiles({ name: 'original.txt', mimeType: 'text/plain', buffer: Buffer.from('fixture') });
   await page.evaluate(() => (window as any).fixture.removeConversation('channel/general'));
   await unlock(page);
@@ -129,7 +129,7 @@ test('a superseded unlock refresh never reads the invitation through stale UI st
     [...document.querySelectorAll('button')].some(button => button.textContent === 'Continue selected file' && !button.disabled))).toBe(true);
   expect(await page.evaluate(() => (window as any).pickerReads)).toBe(0);
   await page.evaluate(() => (window as any).fixture.releaseSnapshots());
-  await expect(page.getByRole('heading', { name: 'Reconnect this instance' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await unlock(page);
   await page.getByRole('button', { name: 'Continue selected file', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Network invitation', exact: true })).toHaveValue('GCNI1-valid-fixture');

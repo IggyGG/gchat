@@ -29,7 +29,7 @@ for (const width of [320, 390]) test(`mobile unlock action follows the complete 
 test('native remember choice defaults off and requires explicit consent', async ({ page }) => {
   await page.goto('/?device-unlock');
   await expect(page.getByLabel('Remember on this device')).not.toBeChecked();
-  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([false]);
   await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
@@ -37,7 +37,7 @@ test('native remember choice defaults off and requires explicit consent', async 
 for (const width of [320, 760, 1100, 1440]) test(`channel drawer has visible open and close controls after unlock at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 720 });
   await page.goto('/?device-unlock');
-  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   const toggle = page.getByRole('button', { name: 'Channels', exact: true });
   await expect(toggle).toBeVisible();
@@ -65,7 +65,7 @@ for (const width of [320, 760, 1100, 1440]) test(`channel drawer has visible ope
 test('native vault failure keeps a successful unlock and shows the storage warning', async ({ page }) => {
   await page.goto('/?device-unlock&vault-failure');
   await page.getByLabel('Remember on this device').check();
-  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([true]);
   await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
@@ -177,7 +177,7 @@ test('view commands, help, find, font persistence and existing lifecycle command
   await page.reload(); await expect(page.locator('.gchat')).toHaveClass(/readable/);
   await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
   await command(page, '/say /font');
-  await command(page, '/lock'); await expect(page.getByRole('heading', { name: 'Unlock chat' })).toBeVisible();
+  await command(page, '/lock'); await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await expect(page.locator('.inspector, .transcript, .composer')).toHaveCount(0);
 });
 test('paperclip works with zero files; closing and changing panels cannot cancel or retarget import', async ({ page }) => {
@@ -401,11 +401,9 @@ test('old Status selection falls back to a conversation and last conversation su
 test('an app link waits through unlock and requires review and signed-network acceptance', async ({ page }) => {
   await page.goto('/?device-unlock&networks&app-link');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && ['inspect', 'join'].includes(r.request.kind)))).toBe(false);
-  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await page.getByRole('button', { name: 'Review invitation', exact: true }).click();
-  await expect(page.getByLabel('Invitation', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
   await expect(page.getByRole('dialog', { name: 'Join a channel', exact: true })).toContainText('Join #general on other.example');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
   await page.getByRole('button', { name: 'Close dialog' }).click();
@@ -414,7 +412,7 @@ test('an app link waits through unlock and requires review and signed-network ac
 test('pasted /join app link opens review without submitting it as a chat command', async ({ page }) => {
   await ready(page, '?networks');
   await command(page, '/join gcoms://join#GCI1-valid-fixture');
-  await expect(page.getByLabel('Invitation', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Join a channel', exact: true })).toContainText('Join #general on other.example');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
 });
 
@@ -437,11 +435,13 @@ test('native header exposes window actions without extra chrome on browsers or m
 });
 
 
-test('bare header controls align the brand with the reconnect form', async ({ page }) => {
+test('bare header controls retain their alignment beside the centered welcome', async ({ page }) => {
   await page.goto('/?device-unlock&native-shell');
-  const brand = page.locator('.brand strong'), heading = page.getByRole('heading', { name: 'Reconnect this instance' });
+  const brand = page.locator('.brand strong'), heading = page.getByRole('heading', { name: 'Welcome back.' });
   await expect(heading).toBeVisible();
-  expect(Math.abs((await brand.boundingBox())!.x - (await heading.boundingBox())!.x)).toBeLessThanOrEqual(1);
+  await expect(brand).toBeVisible();
+  const entry = (await page.locator('.ghost-entry').boundingBox())!;
+  expect(Math.abs(entry.x + entry.width / 2 - 550)).toBeLessThanOrEqual(1);
   for (const selector of ['.network-button', '.help-button']) {
     const style = await page.locator(selector).evaluate(el => { const s = getComputedStyle(el); return [s.borderTopWidth,s.backgroundColor,s.borderRadius]; });
     expect(style).toEqual(['0px','rgba(0, 0, 0, 0)','0px']);

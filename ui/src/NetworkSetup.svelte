@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { readInvitationFile } from './invitation-card';
   import { MAX_NETWORK_INVITATION_BYTES, type NetworkStatus, type InvitationPreview, type Response, type Request } from './api';
   import { chatError, type Transport } from './transport';
   let { transport, status, imported, combined = false, joined, performJoin, chooseFile, selectedFile, fileConsumed, initialInvitation = '' }: { transport: Transport; initialInvitation?: string; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void; performJoin?: (request: Extract<Request, { kind: 'networks' }>) => Promise<Response>; chooseFile?: () => void; selectedFile?: { id: number; file: File }; fileConsumed?: (id: number) => void } = $props();
@@ -13,7 +14,7 @@
     return () => clearInterval(timer);
   });
   let seenInitial = '';
-  $effect(() => { if (initialInvitation && initialInvitation !== seenInitial && !busy && !preview) { seenInitial = initialInvitation; invitation = initialInvitation; } });
+  $effect(() => { if (initialInvitation && initialInvitation !== seenInitial && !busy && !preview) { seenInitial = initialInvitation; invitation = initialInvitation; if (combined) void connect(); } });
   let running = true, fileRevision = 0;
   let consumedSelection: number | undefined;
   onDestroy(() => { running = false; fileRevision++; invitation = ''; pendingCode = ''; nickname = ''; });
@@ -33,11 +34,10 @@
   async function loadFile(file: File, selectionId?: number) {
     const current = ++fileRevision;
     try {
-      if (file.size > MAX_NETWORK_INVITATION_BYTES) { error = 'This invitation file is too large.'; return; }
-      const text = await file.text();
-      if (running && !busy && current === fileRevision) { invitation = text.trim(); error = ''; }
+      const text = await readInvitationFile(file);
+      if (running && !busy && current === fileRevision) { invitation = text.trim(); error = ''; if (combined && (file.type === 'image/png' || /\.png$/i.test(file.name))) await connect(); }
     }
-    catch { if (running && current === fileRevision) error = 'Could not read the invitation file.'; }
+    catch (failure) { if (running && current === fileRevision) error = failure instanceof Error ? failure.message : 'Could not read the invitation file.'; }
     finally { if (running && current === fileRevision && selectionId !== undefined) fileConsumed?.(selectionId); }
   }
   async function connect(event?: SubmitEvent) {
@@ -80,7 +80,7 @@
     finally { busy = false; }
   }
 </script>
-<section class="network" aria-label="Network invitation">
+<section class="network" aria-label="Network invitation" ondragover={event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); }} ondrop={event => { event.preventDefault(); const file = event.dataTransfer?.files[0]; if (file && !busy && !preview) void loadFile(file); }}>
   {#if preview}
   <form onsubmit={accept}>
     <p>{preview.channel ? `Join #${preview.channel.replace(/^#/, '')} on ${preview.network.name}` : `Connect to ${preview.network.name}`}</p>
@@ -96,7 +96,7 @@
     <textarea id="network-invitation" bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} placeholder={combined ? 'Paste an invitation' : 'GCNI1-…'}></textarea>
     {#if chooseFile}<button type="button" disabled={busy} onclick={chooseFile}>Or choose an invitation file</button>
     {:else}<label for="network-invitation-file">Or choose an invitation file</label>
-    <input id="network-invitation-file" type="file" accept=".txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />{/if}
+    <input id="network-invitation-file" type="file" accept=".png,image/png,.txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />{/if}
     <button class="primary" type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
   </form>
   {/if}
@@ -105,7 +105,7 @@
 </section>
 <style>
   p { color:var(--muted); margin:0 0 16px; line-height:1.5; }
-  form { display:grid; gap:8px; } label { margin-top:8px; }
+  form { display:grid; gap:8px; } label { margin-top:8px; } input { min-height:44px; padding:10px; background:var(--bg); border:1px solid var(--line); }
   textarea,input { max-width:100%; font:inherit; color:inherit; }
   textarea { resize:vertical; width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--line); padding:10px; }
   button { width:fit-content; margin-top:12px; padding:9px 18px; cursor:pointer; background:#343b46; color:var(--ink); border:1px solid #566476; font:inherit; }
