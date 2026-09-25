@@ -795,7 +795,7 @@
       {/if}
       {#if pickerNotice}<div class="notice" role="status"><span>{pickerNotice}</span><button aria-label="Dismiss file selection notice" onclick={() => pickerNotice = ''}>×</button></div>{/if}
       {#if workspaceReady && (Object.keys(pending).length || joinBusy)}<div class="progress" role="status">{Object.values(pending).map(name => `${name}: waiting for instance`).join(' · ')}{joinBusy ? joinRequest?.text.startsWith('/create ') ? ' Creating channel…' : ' Joining channel…' : ''}</div>{/if}
-      {#if notice}<div class="notice" role="status"><pre>{notice}</pre><button aria-label="Dismiss notice" onclick={() => notice = ''}>×</button></div>{/if}
+      {#if notice && !locked}<div class="notice" role="status"><pre>{notice}</pre><button aria-label="Dismiss notice" onclick={() => notice = ''}>×</button></div>{/if}
       {#each failures as failure (failure.request.operation_id)}
         <div class="retry" role="status"><span>{failureTarget(failure.request.conversation)}: {failure.message} {failure.code === 'rejected' ? 'Command was not accepted.' : 'Outcome not confirmed. Checking uses the original operation.'}</span><button onclick={() => showResult(failure.request.operation_id, failure.request.conversation, failure.request.text)}>Details</button><button onclick={() => void editFailed(failure.request)}>{failure.code === 'rejected' ? 'Edit command' : 'Edit as new'}</button><button aria-label="Dismiss failed operation" onclick={() => dismissFailure(failure.request.operation_id)}>×</button></div>
       {/each}

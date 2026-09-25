@@ -4,6 +4,20 @@ import { readInvitationCard, embedInvitationCard } from '../src/invitation-card'
 
 const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
 
+test('a rejected passphrase is announced once beside the field and can be retried', async ({ page }) => {
+  await page.goto('/?device-unlock&reject-passphrase');
+  const field = page.getByLabel('Identity passphrase', { exact: true });
+  await field.fill('wrong-fixture-passphrase');
+  await field.press('Enter');
+  await expect(page.getByRole('alert')).toHaveText('wrong passphrase or corrupted protocol profile');
+  await expect(page.getByText('wrong passphrase or corrupted protocol profile', { exact: true })).toHaveCount(1);
+  await expect(field).toBeEnabled();
+  await field.fill('fixture-passphrase');
+  await field.press('Enter');
+  await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
+  await expect(page.getByText('wrong passphrase or corrupted protocol profile', { exact: true })).toHaveCount(0);
+});
+
 test('first arrival waits for identity state and requires matching passphrases', async ({ page }) => {
   await page.goto('/?device-unlock&first-run&slow-start');
   await expect(page.getByRole('heading', { name: 'Opening your space…' })).toBeVisible();

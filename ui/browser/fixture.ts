@@ -94,7 +94,9 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
       }
       if (req.text === '/lock' || req.text === '/disconnect') { instance.locked = true; instance.protocolLocked = req.text === '/disconnect'; revision++; }
       return { kind: 'applied', conversation: req.conversation, notice: null };
-    case 'unlock': instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };
+    case 'unlock':
+      if (parameters.has('reject-passphrase') && req.passphrase !== 'fixture-passphrase') throw new ChatError('rejected', 'wrong passphrase or corrupted protocol profile');
+      instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };
     case 'files': {
       const r = req.request;
       if (r.action === 'prepare') files.push({ id: r.id, conversation: r.conversation, name: r.name, size_bytes: r.size_bytes, verified_bytes: '0', state: 'importing', sources: 0, verified_sources: 0, completed_by: 0, error: null });
