@@ -130,3 +130,7 @@ original PNG as a file: screenshots and edited images lose invitation data.
 Opening a card stages or previews it; joining still requires explicit acceptance
 of the service-validated network and channel. Text invitations remain supported.
 See [UX behavior and qualification](docs/UX-CARDS.md). No new dependencies.
+
+Locked passphrase errors appear once, beside the field, and can be retried.
+Linux native first-run and retained-profile upgrade checks accompany the local
+UX build; public installer qualification remains separate.

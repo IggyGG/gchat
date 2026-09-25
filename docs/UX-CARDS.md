@@ -50,8 +50,8 @@ before release. This protocol is prepared, not a claim that sessions occurred.
 On Linux, Windows and macOS, verify a real native save dialog, cancellation,
 refusal to overwrite an existing destination, original-file pick/drop, keyboard
 focus and restart with retained identity. Browser fixture success does not stand
-in for these OS interactions or for screen-reader review. No installer release or
-running-installation update is included in this source change.
+in for these OS interactions or for screen-reader review. The initial source change did not publish installers or update installations.
+The subsequent local Linux installation is recorded below.
 
 ## Qualification prerequisite repair
 
@@ -104,3 +104,23 @@ and the production frontend build pass (`native-polish-frontend.log`). Native
 candidate and retained-profile upgrade evidence is recorded separately from
 public installer qualification; user sessions and other operating systems remain
 unqualified until their actual runs.
+
+
+The final local Linux executable is built from GChat ffb9517 and GComs 9157143,
+with frozen source archives and verified derived dependency inputs. Its two user
+launchers now select the versioned executable; previous launcher files and a
+hash-guarded rollback script are retained locally. The system package, production
+profiles and running services were not replaced or restarted. CMD deployment is
+pending target selection. This is a local installation, not a public release.
+
+The final executable passed native first-run confirmation/creation, rejected
+unlock without encrypted-file changes, retained-identity GUI unlock, and one
+inline rejection notification. Linux WebKitGTK/X11 picker open/cancel, original
+PNG staging, screenshot rejection, keyboard focus and 320/1100px rendering were
+also checked on the preceding candidate; the final frontend differs only in
+locked-notice visibility. These runs use disposable profiles and an isolated
+Xvfb/session bus. See [local installation receipt](../test-evidence/ux-cards/local-summary.json).
+Native save/export dialogs, overwrite handling and drag-and-drop still need
+qualification, alongside Windows/macOS, screen-reader and five-person usability
+sessions. Browser export tests and Rust save tests do not substitute for those
+OS interactions. No public download or signing claim is made by this receipt.

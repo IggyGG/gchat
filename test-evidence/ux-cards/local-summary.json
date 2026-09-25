@@ -1,0 +1,64 @@
+{
+  "task": "UX-1 local Linux installation",
+  "date": "2026-09-25",
+  "sources": {
+    "gchat": {
+      "commit": "ffb9517a43be41b7480cef0b4e3d9480257ca040",
+      "tree": "195cc97a6692688836c92304146035362d2cc604"
+    },
+    "gcoms": {
+      "commit": "9157143b57c50fa8cbe1d17928b7a98bf532eb74",
+      "tree": "18993481b216109967aff55689e61ebb4932d2ad"
+    }
+  },
+  "installed_binary_sha256": "102e1f0bef368fc0b96244683146a1dfa8afba2ce98ff655e27c9b32ccaba01c",
+  "public_release": false,
+  "checks": {
+    "frontend_type_checks": "passed",
+    "browser_tests_passed": 53,
+    "production_frontend_build": "passed",
+    "optimized_native_build": "passed",
+    "final_binary_first_run_confirmation_and_creation": true,
+    "final_binary_retained_identity_unlock": true,
+    "final_binary_rejected_unlock_keeps_encrypted_files": true,
+    "final_binary_single_passphrase_error": true,
+    "linux_native_picker_open_cancel_and_original_png_staging": true,
+    "linux_native_screenshot_without_payload_rejected": true,
+    "linux_native_keyboard_focus_and_widths": [
+      320,
+      1100
+    ],
+    "launcher_validation_and_binary_hash": "passed",
+    "guarded_rollback_inputs": "verified"
+  },
+  "native_environment": "Linux WebKitGTK, isolated Xvfb/X11 and private session bus; disposable profiles only",
+  "picker_layout_binary_sha256": "b40637a5c46be6f41c7116b69d409dbf9060b774469d40ce03faf4de2f96f594",
+  "picker_layout_reuse": "Final candidate changes only locked notice visibility plus tests/docs; final executable independently checked for first-run, upgrade, rejected-unlock persistence and single notification.",
+  "installation": {
+    "user_launchers_updated": 2,
+    "running_services_restarted": false,
+    "production_profiles_modified": false,
+    "previous_launchers_retained": true,
+    "system_package_replaced": false,
+    "cmd_services_changed": false
+  },
+  "remaining": [
+    "Native invitation export save dialog, cancellation and overwrite refusal",
+    "Native drag-and-drop",
+    "Windows and macOS native qualification",
+    "Five-participant usability sessions and screen-reader review",
+    "CMD deployment target selection"
+  ],
+  "evidence": [
+    "native-final/build.json",
+    "native-upgrade.json",
+    "native-polish-frontend.log",
+    "native-final-build.log",
+    "native-final-first-run.png",
+    "native-final-rejected-passphrase.png",
+    "native-open-dialog.png",
+    "native-card-staged.png",
+    "native-keyboard-focus-320.png",
+    "local-installation.json"
+  ]
+}
