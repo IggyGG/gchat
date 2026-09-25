@@ -36,11 +36,11 @@ test('exported PNG retains the invitation and stages before unlock without joini
   await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await page.getByRole('button', { name: 'Review invitation', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Only you: add a channel' })).toContainText('Join #general on other.example');
+  await expect(page.getByRole('dialog', { name: 'Join a channel', exact: true })).toContainText('Join #general on other.example');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
-  await page.getByLabel('Private answer', { exact: true }).fill('Card guest');
-  await page.getByLabel('Private answer', { exact: true }).press('Enter');
+  await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Card guest');
   await page.getByRole('button', { name: 'Join', exact: true }).click();
+  await page.getByRole('button', { name: 'Channels', exact: true }).click();
   await expect(page.locator('.network-group')).toHaveCount(2);
 });
 
