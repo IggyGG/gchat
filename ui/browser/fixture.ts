@@ -11,6 +11,7 @@ const presence = new Map<string, boolean>();
 let holdPresence = false, releasePresence: (() => void) | undefined;
 let presenceOutcome = parameters.get('presence-result') ?? 'ok';
 const instance = { id: 'ui-test-instance', label: 'gchat-production', bootId: 'fixture-boot', locked: false, protocolLocked: false, profileExists: true, archiveExists: true, safetyNumber: 'fixture', capabilities: ['ChannelAdmin', 'files.v1'] };
+if (parameters.has('first-run')) { instance.profileExists = false; instance.archiveExists = false; }
 if (parameters.has('device-unlock')) { instance.locked = true; instance.protocolLocked = true; }
 const unlockChoices: boolean[] = [];
 if (parameters.has('networks')) instance.capabilities.push('networks.v1');
@@ -22,7 +23,7 @@ let revision = 1;
 let files: FileInfo[] = parameters.has('empty') ? [] : [{ id: 'existing-file', conversation: 'channel/general', name: 'notes.txt', size_bytes: '4096', verified_bytes: '4096', state: 'complete', sources: 1, verified_sources: 1, completed_by: 1, error: null }];
 const requests: Request[] = [];
 let hold = false, release: (() => void) | undefined;
-let holdSnapshots = false;
+let holdSnapshots = parameters.has('slow-start');
 const heldSnapshots: (() => void)[] = [];
 let savedId: string | undefined;
 let savedReply: Response | undefined;
@@ -87,7 +88,7 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
       }
       if (req.text === '/invite') {
         savedId = req.operation_id;
-        savedReply = { kind: 'output', conversation: req.conversation, output: { kind: 'invitation', channel: 'general', link: 'GCI1-fixture-secret', expires: 2000000000, localOnly: false } };
+        savedReply = { kind: 'output', conversation: req.conversation, output: { kind: 'invitation', channel: 'general', link: parameters.has('card-roundtrip') ? 'GCI1-valid-fixture' : 'GCI1-fixture-secret', expires: 2000000000, localOnly: false } };
         const result = savedReply;
         await delay(350); savedId = undefined; return result;
       }

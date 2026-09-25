@@ -148,3 +148,14 @@ PTY/API harnesses contribute no coverage; MSVC and installers remain unqualified
 
 The same record separates successful public bootstrap and relay-pin probes from
 authenticated live application testing, which still needs a provisioned invitation.
+
+## UX-1 arrival and original invitation cards
+
+Run `npm test`, `npm run check`, `npm run build`, and
+`npm run test:browser -w @gchat/ui`. `invitation-card.test.ts` covers bounded PNG
+parsing, corruption and duplicate payloads; `browser/arrival.spec.ts` covers actual
+PNG export/import, service refusal, consent after unlock, first-run confirmation,
+reduced motion and narrow layouts. Existing picker, draft, lifecycle, membership
+and uncertain-operation tests remain required. Native qualification additionally
+checks Save as cancellation, no overwrite, original-file import/drop, focus and
+retained identity on each supported desktop platform.

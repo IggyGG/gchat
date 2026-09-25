@@ -120,3 +120,13 @@ graph has its own audit and native packaging requirements. See the exact
 ## Optional local fleet controller
 
 Desktop/headless workers accept `--fleet-config <private-file>` (`GCHAT_FLEET_CONFIG`). The file pins this existing GChat safety number and fixed component partition. The worker opens `<protocol-socket>.fleet` for registered local credentials without opening a second profile. Locking or disconnecting drains fleet connections; registry changes revoke existing connections before replacement. The private component configuration must accompany every subsequent startup of that profile. Fleet publication metadata is an opt-in file API backed by the encrypted chat archive; ordinary file replies stay compatible.
+
+## Welcome and invitation cards
+
+The shared welcome screen detects an existing identity before offering setup,
+confirms new passphrases, and offers the existing recovery guidance. Invitations
+can be saved as evergreen PNG cards and opened or dropped into GChat. Send the
+original PNG as a file: screenshots and edited images lose invitation data.
+Opening a card stages or previews it; joining still requires explicit acceptance
+of the service-validated network and channel. Text invitations remain supported.
+See [UX behavior and qualification](docs/UX-CARDS.md). No new dependencies.

@@ -2,6 +2,7 @@
   "extends": "../../ui/tsconfig.json",
   "include": [
     "src/**/*",
+    "../../ui/src/styles.d.ts",
     "vite.config.ts"
   ]
 }

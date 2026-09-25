@@ -6,3 +6,5 @@ export type * from './api';
 
 export type { NativeShell } from './native-shell';
 export { InvitationInbox } from './invitation-link';
+
+export { default as EntryFrame } from './EntryFrame.svelte';
