@@ -1,0 +1,11 @@
+[Unit]
+Description=Detect authoritative GChat and GComs source changes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=1min
+RandomizedDelaySec=15s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

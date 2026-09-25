@@ -9,7 +9,9 @@ Linux, Windows, macOS, Android or the SDK lane.
 
 1. Land reviewed source in Forgejo `main` and retain the public GitHub mirror.
    The cluster controller watches their GitHub mirrors after the existing Forgejo
-   source-mirroring workflow publishes them. The authoritative Forgejo is local
+   source-mirroring bridge publishes them. `release_mirror.py` and its user timer
+   run the existing source inventory and full-history secret audit before each
+   non-force push. They perform no builds. The authoritative Forgejo is local
    to the workstation; it is not exposed to the cluster. It waits for source changes
    to settle, reserves monotonically increasing versions in SQLite, and creates
    immutable `release/gchat-*` refs. It never resets a working checkout.
