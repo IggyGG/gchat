@@ -8,11 +8,19 @@ cancelled listener, incoming delivery/ACK, membership/topic, archive failure and
 reopen behavior. Unchanged file observations must yield no sidecar candidate,
 while a failed save leaves the same update retryable.
 
-Run `idle_cpu_large_history_measurement --ignored --nocapture` separately on a
-quiet Linux worker for three 60-second samples of process CPU with four views.
-Use the identical fixture on the unmodified baseline and candidate, retaining
-both results. Run the bounded application file/restart/hash gate; keep the 1 GiB
-campaign independent. Never use the user's personal profile for destructive tests.
+Run the ignored `idle_cpu_large_history_measurement` separately on a quiet Linux
+worker for three 60-second samples of process CPU with four views:
+
+```sh
+cargo test --release -p gchat-core --features gc2-carrier --lib \
+  idle_cpu_large_history_measurement -- --ignored --nocapture --test-threads=1
+```
+ Use the identical fixture and optimization profile on the unmodified
+baseline and candidate. Export and hash each executable, verify its source
+package and candidate-only test list, and retain both results. Debug-build
+measurements remain separate; they are not installed-release CPU estimates.
+Run the bounded application file/restart/hash gate; keep the 1 GiB campaign
+independent. Never use the user's personal profile for destructive tests.
 
 ## Responsive carrier release binding (2026-09-25)
 

@@ -1,0 +1,274 @@
+{
+  "schema": 1,
+  "scope": "GChat idle presentation CPU optimization; paired isolated application validation",
+  "passed": true,
+  "runtime_sources": {
+    "gchat": "f56d8b1a322623e42bb253ec6af2255464bd49d1",
+    "gcoms": "f35969a43390088b402ddde93b6853ea831f81ab"
+  },
+  "application_sources": {
+    "gcoms": {
+      "revision": "f35969a43390088b402ddde93b6853ea831f81ab",
+      "snapshot_sha256": "eaf4c638f0d26b8c404f28788ba76a6ea61b1ca5f02360128c49cbcd21f2f99c",
+      "unchanged": true
+    },
+    "gchat": {
+      "revision": "7d79e5bd84b38e924fcbb179d8285f2c704e83e5",
+      "snapshot_sha256": "de872e3fd0e399189918ef88425d72e11070c149e60f74a79fc05558754f6346",
+      "unchanged": true
+    }
+  },
+  "source_verification": {
+    "gchat": {
+      "input_paths": 571,
+      "unchanged_except_derived_lock": true,
+      "derived_inputs": {
+        "Cargo.lock": "1e2d1c7f3d99b7f19b0016d48bd8e59d772752bf55af9b526c31f451f255edd1"
+      },
+      "manifest_sha256": "2b484648f15985b1a6331fca43b7321e9f2318f565c4d6bf3c860032771dac7e"
+    },
+    "gcoms": {
+      "input_paths": 741,
+      "unchanged_except_derived_lock": true,
+      "derived_inputs": {},
+      "manifest_sha256": "eaf4c638f0d26b8c404f28788ba76a6ea61b1ca5f02360128c49cbcd21f2f99c"
+    }
+  },
+  "codematch": "unreachable",
+  "tests": {
+    "core": {
+      "passed": 83,
+      "failed": 0,
+      "ignored": 3,
+      "scope": "gchat-core with gc2-carrier; two namespace cases plus separately run CPU fixture excluded from ordinary suite"
+    },
+    "strict_core_all_target_all_feature_clippy": true,
+    "source_inventory_paths": 571,
+    "linux_worker_dependency_tests_passed": 13
+  },
+  "cpu": {
+    "profile": "release (opt-level 3, LTO)",
+    "workload": "one service, four attached event views, 4096 retained operations with 1 KiB outputs; unchanged normal background tasks",
+    "samples": {
+      "baseline": [
+        {
+          "cpu_seconds": 5.68,
+          "operations": 4096,
+          "percent_one_core": 9.466435212325726,
+          "sample": 0,
+          "views": 4,
+          "wall_seconds": 60.001467
+        },
+        {
+          "cpu_seconds": 6.2,
+          "operations": 4096,
+          "percent_one_core": 10.333018871153282,
+          "sample": 1,
+          "views": 4,
+          "wall_seconds": 60.001825965
+        },
+        {
+          "cpu_seconds": 6.0,
+          "operations": 4096,
+          "percent_one_core": 9.99982276180806,
+          "sample": 2,
+          "views": 4,
+          "wall_seconds": 60.001063448
+        }
+      ],
+      "candidate": [
+        {
+          "cpu_seconds": 0.44,
+          "operations": 4096,
+          "percent_one_core": 0.7333255335362935,
+          "sample": 0,
+          "views": 4,
+          "wall_seconds": 60.000638172
+        },
+        {
+          "cpu_seconds": 0.46,
+          "operations": 4096,
+          "percent_one_core": 0.7666519445982645,
+          "sample": 1,
+          "views": 4,
+          "wall_seconds": 60.001152184
+        },
+        {
+          "cpu_seconds": 0.45,
+          "operations": 4096,
+          "percent_one_core": 0.7499910795810998,
+          "sample": 2,
+          "views": 4,
+          "wall_seconds": 60.000713642
+        }
+      ]
+    },
+    "mean_percent_one_core": {
+      "baseline": 9.933092281762356,
+      "candidate": 0.7499895192385526
+    },
+    "reduction_percent": 92.44958671515042,
+    "all_candidate_samples_below_one_percent": true,
+    "executable_bindings": {
+      "baseline": {
+        "sha256": "d3881c8b8a9ee1310c8c8800824f0246162b7a00c117e74369ec2a001f1a51da",
+        "package_id": "path+file:///work/idle-cpu-20260925/baseline/crates/core#gchat-core@0.1.0",
+        "profile": {
+          "opt_level": "3",
+          "debuginfo": 0,
+          "debug_assertions": false,
+          "overflow_checks": false,
+          "test": true
+        }
+      },
+      "candidate": {
+        "sha256": "7a8af94c908758cd50b3ce5cfe1c57dc7308604e82444f46ccd984f65ac3ff44",
+        "package_id": "path+file:///work/idle-cpu-20260925/source-03/gchat/crates/core#gchat-core@0.1.0",
+        "profile": {
+          "opt_level": "3",
+          "debuginfo": 0,
+          "debug_assertions": false,
+          "overflow_checks": false,
+          "test": true
+        }
+      }
+    },
+    "debug_measurements": {
+      "baseline": [
+        {
+          "cpu_seconds": 14.04,
+          "operations": 4096,
+          "percent_one_core": 23.399451829231804,
+          "sample": 0,
+          "views": 4,
+          "wall_seconds": 60.001405599
+        },
+        {
+          "cpu_seconds": 13.71,
+          "operations": 4096,
+          "percent_one_core": 22.849554051727612,
+          "sample": 1,
+          "views": 4,
+          "wall_seconds": 60.001171003
+        },
+        {
+          "cpu_seconds": 14.22,
+          "operations": 4096,
+          "percent_one_core": 23.699388986698033,
+          "sample": 2,
+          "views": 4,
+          "wall_seconds": 60.001546909
+        }
+      ],
+      "candidate": [
+        {
+          "cpu_seconds": 2.48,
+          "operations": 4096,
+          "percent_one_core": 4.133235804743525,
+          "sample": 0,
+          "views": 4,
+          "wall_seconds": 60.001415771
+        },
+        {
+          "cpu_seconds": 2.32,
+          "operations": 4096,
+          "percent_one_core": 3.8666454283433223,
+          "sample": 1,
+          "views": 4,
+          "wall_seconds": 60.000329562
+        },
+        {
+          "cpu_seconds": 2.24,
+          "operations": 4096,
+          "percent_one_core": 3.7332697002490622,
+          "sample": 2,
+          "views": 4,
+          "wall_seconds": 60.001022692
+        }
+      ]
+    },
+    "installed_laptop_before_percent": 5.79,
+    "installed_laptop_scope": "active authority retries; not equivalent to the quiescent fixture",
+    "installed_laptop_after_percent": null
+  },
+  "application": {
+    "passed": true,
+    "scope": "actual_gchat_disconnected_fivehop_turnover_v2",
+    "scope_limits": [
+      "explicit private bootstrap, not installed signed-network onboarding",
+      "same-ID recipient history and sender delivery ACK; native exact-wire regression remains separate",
+      "smoke mode omits credential and carrier expiry and does not qualify latency ceilings",
+      "real carrier lifetime requires connection-lifecycle evidence; elapsed time alone does not qualify its cause",
+      "real GChat core/service in a qualification host; not an installed desktop executable"
+    ],
+    "file_recovery": {
+      "file": {
+        "id": "c655dab150e14f57bc74712850b552de",
+        "name": "interrupted.bin",
+        "sha256": "5fd49d9815da08c94fc81c7bceab2f16797d78f7c940039b7d6920808381fd2c",
+        "size": 16777216
+      },
+      "before_verified_bytes": "1835008",
+      "after_verified_bytes": "1835008",
+      "abrupt_stop": true,
+      "hash_verified_after_reopen": true
+    },
+    "children_stopped": true,
+    "retired_namespace_pids": [],
+    "host_links_unchanged": true,
+    "build_unchanged": true,
+    "tooling_unchanged": true,
+    "fixture_host": {
+      "path": "/work/idle-cpu-20260925/application-build/bin/turnover_daemon",
+      "sha256": "2256f9a454ff64700c0b251596792f0deedf4a0721ae6dd7a1c906dd77da01ce",
+      "size": 31485504
+    },
+    "artifacts": {
+      "gcnode": {
+        "sha256": "e2e01c1c30d1b9fe65e32c3d3bdb328ef5c61079c842264a3abb4762c5ed4c5e",
+        "size": 18951696
+      },
+      "gchat": {
+        "sha256": "a2dae6be38422e0e986b89c1a38529cfa078d33a52c4a656dd712ba4d839970e",
+        "size": 35531848
+      },
+      "fleet_probe": {
+        "sha256": "9040987aaf781a22d921b8905f112928f3d15298e4927ad6a0f8c261d7eee011",
+        "size": 3142856
+      }
+    },
+    "authenticated_chat_ack_count": 3,
+    "elapsed_seconds_including_capture_cleanup": 108.90672588348389
+  },
+  "retained_failures": [
+    "initial test-counter visibility compile failure",
+    "initial Clippy flag placement failure",
+    "initial measurement reused baseline Cargo artifact: invalid comparison, excluded",
+    "debug candidate remains above 1%; its prebuild gate assertion retained",
+    "original Linux release worker missing NumPy"
+  ],
+  "limits": [
+    "no routing, cover, protocol, authentication or persistence policy change",
+    "this is not full native/platform/signing/installed/live-network acceptance",
+    "personal app and profile not restarted; automatic release still requires its normal gates",
+    "no relay CPU measurement or traffic-analysis privacy qualification"
+  ],
+  "evidence": {
+    "core.log": "fc1a3727bb056fc5886e59f3a7d81354e92e2b56e981b53c175be11b0f4f64b2",
+    "clippy.log": "032d90793abc1113a47d24f35b8bd2afa01f01ac3c6df3853da2cf0042b98cd9",
+    "focused.log": "8f11ca356d196fecf1a70fafe4724fdf9a2e17b98a2f3dcd8c03d78cd74a1665",
+    "verified-source-04.json": "eff966f1ded7a6bb5761ac515953e4744757d461bf0a4e7e9585a9e1026730a0",
+    "cpu-comparison.json": "d0b6ea97475febd0970724a099f05f2626c7b9204bf98feb70a58ffaef503ba2",
+    "benchmark-binaries.json": "1fce409ae48e42c6a0847ad58064200ed02a4444f7fb9d5e76dc64f26a54ac25",
+    "release-cpu/comparison.json": "83c6e6c2a7be3ddf14e492d3b18b47191c8a267c8068e05a124e828bd4dc3d7d",
+    "release-cpu/baseline.log": "ad8c2748cccbfc1b48ab7ed2f86e966f56be975d238cf5563ee6cdbca500d625",
+    "release-cpu/candidate.log": "bee85b6b1de753984ad51efa58c8ce21236a40bed9d0788cdeceddcd14aed64f",
+    "application-build/build.json": "4f13e0af1659fa913b549f138bc478b7ae805f72dc93e3a05685fd5337097523",
+    "application-extra.json": "52c11bfd8104c1c535c00067ea5dab609db2a162b65984637408c06a2f332dd8",
+    "journey/file-recovery/report.json": "d9c92080230a5ce28a21cbae05e83cb57cc233434fb75209fb6991c4255845dc",
+    "journey/file-recovery/worker.json": "80dae053a4c34e2b1af9034046d3a797869d586453d623933a94a07a151b098c",
+    "publication-audit.log": "90aef15c82ae9ce53baf5eb6aff48cf136088edfda86cdeecace4817c6478af9",
+    "python-validation/check.log": "4dc02c9c5dd46a6c445abfd9fe4f6f31ace41fd20c3c679611b8ba59d6aa655c"
+  },
+  "evidence_archive_sha256": "08e70bb8ad2b458bf19f6680134bf8388d00b0744a169c14a29f94aca92b48e6"
+}

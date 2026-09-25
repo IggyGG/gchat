@@ -28,6 +28,9 @@ the [archive transaction and rollback requirements](docs/RELIABILITY_TEST_PLAN.m
 Attached views share a cached projection and wait for actual archive/UI changes.
 Idle file observation does not copy the retained operation journal. Receiving,
 persistence, delivery acknowledgments and the cover schedule are unchanged.
+The [controlled idle benchmark](docs/evidence/idle-cpu-20260925/summary.json)
+measured 92.45% less CPU with four views and a large retained operation history;
+this is not an installed-client or relay-load measurement.
 
 For paired-source development, validate against the matching GComs checkout with
 its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public

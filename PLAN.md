@@ -1,4 +1,4 @@
-## Idle presentation CPU (2026-09-25, candidate)
+## Idle presentation CPU (2026-09-25)
 
 The service caches its UI projection across attachments and waits for archive or
 local-state changes instead of rebuilding every 200 ms. Presence and operation
@@ -7,9 +7,20 @@ notifications never imply delivery. File observation copies the encrypted UI
 sidecar only when its retained file set actually changes. No routing, retry,
 cover schedule or public API change.
 
-Validation and measurements: `target/idle-cpu-20260925/` (in progress). The
-observed laptop service used 5.79% of one core but also had authority retries;
-that observation is not a quiescent benchmark or a relay CPU measurement.
+The optimized, identical four-view/4,096-operation fixture measured 9.933%
+of one core before and 0.750% after (three 60-second samples each, 92.45% lower;
+all candidate samples below 1%). Full core validation passed 83 tests with three
+explicit exclusions, plus strict all-target/all-feature core Clippy. The CPU
+fixture is run separately from those ordinary exclusions. Debug measurements and
+an invalid shared-cache comparison are retained separately. The original laptop
+observation was 5.79% with authority retries and is not this quiescent benchmark
+or a relay CPU measurement. The actual GChat 16 MiB abrupt-stop/resume/reopen
+journey passed in 108.91 seconds including capture cleanup, retaining 1,835,008
+verified bytes through restart, three authenticated chat ACKs, and the final
+file hash after reopen. No residual fixture processes or host link changes.
+The running personal app remains unchanged; signed publication/installed-network
+acceptance stays with the normal release pipeline.
+[Source-bound evidence](docs/evidence/idle-cpu-20260925/summary.json).
 
 ## Responsive carrier release binding (2026-09-25)
 
