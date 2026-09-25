@@ -19,7 +19,7 @@ fn observed_files_candidate(
             file.status,
             api::Status::Importing | api::Status::Failed | api::Status::Cancelled
         ) {
-            if let Some(context) = conversation(&archive, &file.scope) {
+            if let Some(context) = conversation(archive, &file.scope) {
                 if shared.insert(hex(&file.id)) && state.files_observed {
                     activity.push((
                         context,

@@ -5,7 +5,7 @@ pub(super) struct Presentation {
     changed: watch::Sender<u64>,
     cache: std::sync::Mutex<Option<Cached>>,
     #[cfg(test)]
-    builds: std::sync::atomic::AtomicUsize,
+    pub(super) builds: std::sync::atomic::AtomicUsize,
 }
 struct Cached {
     service_version: u64,
