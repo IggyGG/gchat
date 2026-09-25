@@ -5,6 +5,7 @@ mod fleet;
 pub mod host;
 mod host_updates;
 mod networks;
+mod presentation;
 #[cfg(test)]
 mod responsiveness_tests;
 pub mod rpc;
@@ -140,6 +141,7 @@ struct Unlocked {
 struct InFlight<'a> {
     id: &'a str,
     operations: &'a std::sync::Mutex<std::collections::BTreeSet<String>>,
+    service: &'a ChatService,
 }
 impl Drop for InFlight<'_> {
     fn drop(&mut self) {
@@ -147,6 +149,7 @@ impl Drop for InFlight<'_> {
             .lock()
             .expect("active operations")
             .remove(self.id);
+        self.service.invalidate();
     }
 }
 fn latency(stage: &str, started: Instant) {
@@ -174,6 +177,7 @@ pub struct ChatService {
     operations: RwLock<()>,
     active_operations: std::sync::Mutex<std::collections::BTreeSet<String>>,
     update_gate: update_gate::UpdateGate,
+    presentation: presentation::Presentation,
     startup: Arc<Notify>,
     startup_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     projection: std::sync::RwLock<(Vec<Conversation>, String)>,
@@ -295,6 +299,7 @@ impl ChatService {
             operations: RwLock::new(()),
             active_operations: std::sync::Mutex::new(std::collections::BTreeSet::new()),
             update_gate: update_gate::UpdateGate::default(),
+            presentation: presentation::Presentation::default(),
             startup: Arc::new(Notify::new()),
             startup_worker: std::sync::Mutex::new(None),
             projection: std::sync::RwLock::new((Vec::new(), String::new())),
@@ -373,6 +378,7 @@ impl ChatService {
             _ = stopped.changed() => return,
             result = self.extension_request("projection-refresh", "list", "", "", None, 200) => result,
         };
+        let before = self.provider_fingerprint();
         match result {
             Ok(Response::Projection {
                 conversations,
@@ -399,6 +405,9 @@ impl ChatService {
                         retryable,
                     });
             }
+        }
+        if before != self.provider_fingerprint() {
+            self.invalidate();
         }
     }
 
@@ -479,6 +488,17 @@ impl ChatService {
 
     async fn handle_mode(&self, request: Request, admitted: bool) -> Result<Response, String> {
         let request = lifecycle_request(request);
+        // Covers local command completion and cancellation, including protocol
+        // changes which happen before an eventual wrapper-save error.
+        let _presentation = matches!(
+            &request,
+            Request::Unlock { .. }
+                | Request::Lock
+                | Request::Submit { .. }
+                | Request::MarkRead { .. }
+                | Request::ImportNetworkInvitation { .. }
+        )
+        .then(|| presentation::InvalidateOnDrop(self));
         let _update_request = if matches!(
             request,
             Request::Identify
@@ -529,15 +549,9 @@ impl ChatService {
             request => (request, None),
         };
         if let Request::Events { after, wait_ms } = request {
-            let deadline = Instant::now() + Duration::from_millis(u64::from(wait_ms.min(20_000)));
-            loop {
-                let revision = self.snapshot().await?.revision;
-                if revision != after || Instant::now() >= deadline {
-                    return Ok(Response::Changed { revision });
-                }
-                tokio::time::sleep(Duration::from_millis(200)).await;
-            }
+            return self.wait_for_changes(after, wait_ms).await;
         }
+
         // Acquire mutation ordering before the short-lived archive-state lock.
         let _network_lifecycle = if matches!(request, Request::Lock) {
             Some(self.network_operations.lock().await)
@@ -636,6 +650,7 @@ impl ChatService {
                     files.enabled(false).await?;
                 }
                 current.ui_locked = true;
+                self.invalidate();
             }
             drop(session);
             if let Some(fleet) = self.fleet.lock().await.as_mut() {
@@ -647,11 +662,9 @@ impl ChatService {
             });
         }
         if let Request::Snapshot = request {
-            if let Some(current) = session.as_mut().filter(|s| !s.ui_locked) {
-                Self::refresh_channel_topics(current).await?;
-            }
+            drop(session);
             return Ok(Response::Snapshot {
-                snapshot: self.project(session.as_ref()),
+                snapshot: self.snapshot().await?,
             });
         }
         if let Request::NetworkStatus = request {
@@ -726,6 +739,7 @@ impl ChatService {
                 if candidate.message_metadata != unlocked.state.message_metadata {
                     unlocked.store.save(&candidate)?;
                     unlocked.state = candidate;
+                    self.invalidate();
                 }
                 let all_messages = conversation_messages(&archive, &conversation)?;
                 let messages: Vec<_> = all_messages
@@ -921,7 +935,9 @@ impl ChatService {
                 let _active = InFlight {
                     id: &operation_id,
                     operations: &self.active_operations,
+                    service: self,
                 };
+                self.invalidate();
                 let started = Instant::now();
                 drop(session);
                 let response =
@@ -971,18 +987,11 @@ impl ChatService {
                 // Readers must never observe a terminal outcome whose save failed.
                 unlocked.store.save(&candidate)?;
                 unlocked.state = candidate;
+                self.invalidate();
                 Ok(response)
             }
             _ => Err("invalid request".into()),
         }
-    }
-
-    pub async fn snapshot(&self) -> Result<Snapshot, String> {
-        let mut session = self.session.lock().await;
-        if let Some(current) = session.as_mut().filter(|s| !s.ui_locked) {
-            Self::refresh_channel_topics(current).await?;
-        }
-        Ok(self.project(session.as_ref()))
     }
 
     fn save_message_metadata(current: &mut Unlocked) -> Result<(), String> {
@@ -994,7 +1003,12 @@ impl ChatService {
     }
 
     async fn refresh_channel_topics(current: &mut Unlocked) -> Result<(), String> {
-        let mut candidate = current.state.clone();
+        let mut candidate = UiState {
+            topics: current.state.topics.clone(),
+            observed_channels: current.state.observed_channels.clone(),
+            message_metadata: current.state.message_metadata.clone(),
+            ..UiState::default()
+        };
         let archive = current.client.archive_snapshot();
         observe_messages(&mut candidate, &archive);
         for channel in &archive.channels {
@@ -1087,8 +1101,16 @@ impl ChatService {
             || candidate.topics != current.state.topics
             || candidate.observed_channels != current.state.observed_channels
         {
-            current.store.save(&candidate)?;
-            current.state = candidate;
+            let mut committed = current.state.clone();
+            committed.topics = candidate.topics;
+            committed.observed_channels = candidate.observed_channels;
+            committed.message_metadata = candidate.message_metadata;
+            committed.activity.extend(candidate.activity);
+            if committed.activity.len() > 2000 {
+                committed.activity.drain(..committed.activity.len() - 2000);
+            }
+            current.store.save(&committed)?;
+            current.state = committed;
         }
         Ok(())
     }
@@ -1249,9 +1271,15 @@ impl ChatService {
             .filter(|s| !s.ui_locked)
             .map(|s| s.state.activity.clone())
             .unwrap_or_default();
-        let mut operations: Vec<_> = session.filter(|s| !s.ui_locked).into_iter()
+        let mut retained: Vec<_> = session
+            .filter(|s| !s.ui_locked)
+            .into_iter()
             .flat_map(|s| s.state.operations.iter())
             .filter(|(_, r)| !r.action.is_empty() && r.at.saturating_add(7 * 24 * 3600) > now())
+            .collect();
+        retained.sort_by_key(|(_, r)| r.at);
+        let skip = retained.len().saturating_sub(30);
+        let operations: Vec<_> = retained.into_iter().skip(skip)
             .map(|(id, r)| {
                 let (state, output, message) = match &r.response {
                     Some(Response::Output { output, .. }) => ("complete", Some(output.clone()), None),
@@ -1263,10 +1291,6 @@ impl ChatService {
                 };
                 gchat_api::OperationDetail { network: None, id: id.clone(), instance: self.id.clone(), conversation: r.conversation.clone(), action: r.action.clone(), started: r.at, state: state.into(), output, message }
             }).collect();
-        operations.sort_by_key(|r| r.started);
-        if operations.len() > 30 {
-            operations.drain(..operations.len() - 30);
-        }
         let delivery_revision = session
             .filter(|s| !s.ui_locked)
             .map(|s| &s.state.message_metadata);
@@ -1280,6 +1304,7 @@ impl ChatService {
                 &operations,
                 &activity,
                 &delivery_revision,
+                &session.is_some_and(|s| !s.ui_locked && s.state.presence_enabled),
                 &self.projection.read().expect("projection lock").1,
             ))
             .expect("serializable projection"),
@@ -1650,7 +1675,7 @@ impl ChatService {
                 let mut session = self.session.lock().await;
                 let unlocked = session.as_mut().ok_or("Unlock the profile first")?;
                 let mut candidate = unlocked.state.clone(); candidate.presence_enabled = enabled;
-                unlocked.store.save(&candidate)?; unlocked.state = candidate;
+                unlocked.store.save(&candidate)?; unlocked.state = candidate; self.invalidate();
                 applied(None, Some(if enabled { "Recently-active sharing enabled. Signals expire; they do not confirm delivery." } else { "Recently-active sharing disabled." }.into()))
             }
             "publish" => {
@@ -1660,7 +1685,7 @@ impl ChatService {
                 let mut session = self.session.lock().await;
                 let unlocked = session.as_mut().ok_or("Unlock the profile first")?;
                 let mut candidate = unlocked.state.clone(); candidate.publications.insert(channel_key(channel.id), args.into());
-                unlocked.store.save(&candidate)?; unlocked.state = candidate;
+                unlocked.store.save(&candidate)?; unlocked.state = candidate; self.invalidate();
                 applied(conversation.map(str::to_string), Some("Channel published. You can retry publication without creating another channel.".into()))
             }
             "create" => {
@@ -2080,6 +2105,7 @@ impl ChatService {
             Ok(())
         };
         *session = None;
+        self.invalidate();
         result.and(network_result)
     }
 

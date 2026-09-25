@@ -82,6 +82,7 @@ pub struct InstanceHost {
     label: String,
     pub(super) boot: String,
     pub(super) running: Mutex<Option<Running>>,
+    lifecycle: watch::Sender<u64>,
     pub(super) updates: Mutex<super::host_updates::State>,
     pub(super) update_exit: watch::Sender<bool>,
 }
@@ -223,6 +224,7 @@ impl InstanceHost {
             label: metadata.label,
             boot: random_id(),
             running: Mutex::new(None),
+            lifecycle: watch::channel(0).0,
             updates: Mutex::new(super::host_updates::State::default()),
             update_exit: watch::channel(false).0,
         }))
@@ -472,9 +474,11 @@ impl ChatEndpoint for InstanceHost {
                 return service.dispatch(envelope).await;
             }
         }
+        let mut lifecycle = self.lifecycle.subscribe();
         let mut running = self.running.lock().await;
         if matches!(envelope.request, Request::Disconnect) {
             if let Some(previous) = running.take() {
+                self.lifecycle.send_modify(|v| *v = v.wrapping_add(1));
                 if let Err(message) = self.stop(previous).await {
                     return error("rejected", message);
                 }
@@ -488,6 +492,11 @@ impl ChatEndpoint for InstanceHost {
             };
         }
         if let Some(current) = running.as_ref() {
+            if matches!(envelope.request, Request::Events { .. }) {
+                let service = current.service.clone();
+                drop(running);
+                return service.dispatch(envelope).await;
+            }
             return current.service.dispatch(envelope).await;
         }
         let response = match envelope.request {
@@ -505,6 +514,7 @@ impl ChatEndpoint for InstanceHost {
                 let deadline = tokio::time::Instant::now()
                     + std::time::Duration::from_millis(u64::from(wait_ms.min(20_000)));
                 loop {
+                    lifecycle.borrow_and_update();
                     let service = self
                         .running
                         .lock()
@@ -523,7 +533,10 @@ impl ChatEndpoint for InstanceHost {
                             response: Response::Changed { revision },
                         };
                     }
-                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                    tokio::select! {
+                        _ = lifecycle.changed() => {},
+                        _ = tokio::time::sleep_until(deadline) => {},
+                    }
                 }
             }
             Request::Unlock { passphrase, create } => match self.unlock(passphrase, create).await {
@@ -534,6 +547,7 @@ impl ChatEndpoint for InstanceHost {
                         .await
                         .expect("snapshot is infallible");
                     *running = Some(current);
+                    self.lifecycle.send_modify(|v| *v = v.wrapping_add(1));
                     Response::Snapshot { snapshot }
                 }
                 Err(message) => return error("rejected", message),

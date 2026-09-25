@@ -3,6 +3,48 @@ use gchat_api::{FileInfo, FileRequest, FileSnapshot, FileState};
 use gcoms::sdk::sharing as api;
 use gcoms::sdk::sharing::CacheConfig;
 
+fn observed_files_candidate(
+    state: &UiState,
+    snapshot: &api::Snapshot,
+    archive: &ArchiveData,
+) -> Option<UiState> {
+    let mut shared = state.shared_files.clone();
+    let mut activity = Vec::new();
+    // Track only retained cache entries, not every file ever encountered.
+    let retained: std::collections::BTreeSet<_> =
+        snapshot.files.iter().map(|f| hex(&f.id)).collect();
+    shared.retain(|id| retained.contains(id));
+    for file in &snapshot.files {
+        if !matches!(
+            file.status,
+            api::Status::Importing | api::Status::Failed | api::Status::Cancelled
+        ) {
+            if let Some(context) = conversation(&archive, &file.scope) {
+                if shared.insert(hex(&file.id)) && state.files_observed {
+                    activity.push((
+                        context,
+                        format!("File shared: {} ({} bytes)", file.name, file.size_bytes),
+                    ));
+                }
+            }
+        }
+    }
+    if shared == state.shared_files && state.files_observed {
+        return None;
+    }
+    {
+        // Most ticks are unchanged. Do not copy the operation journal or
+        // message metadata until there is an actual durable UI update.
+        let mut candidate = state.clone();
+        candidate.shared_files = shared;
+        candidate.files_observed = true;
+        for (context, text) in activity {
+            record_activity(&mut candidate, context, "file", text);
+        }
+        Some(candidate)
+    }
+}
+
 pub(super) struct FileRuntime {
     sdk: Arc<dyn gcoms::sdk::GcClient>,
 }
@@ -229,6 +271,7 @@ impl ChatService {
                 };
                 unlocked.store.save(&candidate)?;
                 unlocked.state = candidate;
+                self.invalidate();
                 api::Request::Configure(config)
             }
         };
@@ -291,6 +334,7 @@ impl ChatService {
                             .retain(|_, p| retained.contains(&p.canonical_id));
                         unlocked.store.save(&candidate)?;
                         unlocked.state = candidate;
+                        self.invalidate();
                     }
                 }
                 Ok(value)
@@ -399,39 +443,13 @@ impl ChatService {
                 };
                 let archive = unlocked.client.file_context();
                 let mut changed = false;
-                let mut candidate = unlocked.state.clone();
-                // Track only retained cache entries, not every file ever encountered.
-                let retained: std::collections::BTreeSet<_> =
-                    snapshot.files.iter().map(|f| hex(&f.id)).collect();
-                candidate.shared_files.retain(|id| retained.contains(id));
-                for file in &snapshot.files {
-                    if !matches!(
-                        file.status,
-                        api::Status::Importing | api::Status::Failed | api::Status::Cancelled
-                    ) {
-                        if let Some(context) = conversation(&archive, &file.scope) {
-                            if candidate.shared_files.insert(hex(&file.id))
-                                && unlocked.state.files_observed
-                            {
-                                record_activity(
-                                    &mut candidate,
-                                    context,
-                                    "file",
-                                    format!(
-                                        "File shared: {} ({} bytes)",
-                                        file.name, file.size_bytes
-                                    ),
-                                );
-                            }
-                        }
-                    }
-                }
-                candidate.files_observed = true;
-                if (candidate.shared_files != unlocked.state.shared_files
-                    || !unlocked.state.files_observed)
-                    && unlocked.store.save(&candidate).is_ok()
+                if let Some(candidate) =
+                    observed_files_candidate(&unlocked.state, &snapshot, &archive)
                 {
-                    unlocked.state = candidate;
+                    if unlocked.store.save(&candidate).is_ok() {
+                        unlocked.state = candidate;
+                        service.invalidate();
+                    }
                 }
                 for file in snapshot.files {
                     if file.scope.participants.len() != 2
@@ -474,8 +492,35 @@ impl ChatService {
                 }
                 if changed {
                     let _ = unlocked.client.save().await;
+                    service.invalidate();
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod observation_tests {
+    use super::*;
+    #[test]
+    fn unchanged_files_need_no_candidate_and_failed_save_can_retry() {
+        let snapshot = api::Snapshot {
+            files: Vec::new(),
+            config: api::CacheConfig::default(),
+            used_bytes: 0,
+        };
+        let archive = ArchiveData::default();
+        let state = UiState::default();
+        let baseline = observed_files_candidate(&state, &snapshot, &archive).unwrap();
+        assert!(baseline.files_observed);
+        assert!(baseline.activity.is_empty());
+        // Discarding a candidate (e.g. a failed save) must leave the delta retryable.
+        assert!(observed_files_candidate(&state, &snapshot, &archive).is_some());
+        assert!(observed_files_candidate(&baseline, &snapshot, &archive).is_none());
+        let mut stale = baseline;
+        stale.shared_files.insert("retired-file".into());
+        let removed = observed_files_candidate(&stale, &snapshot, &archive).unwrap();
+        assert!(removed.shared_files.is_empty());
+        assert!(observed_files_candidate(&removed, &snapshot, &archive).is_none());
     }
 }

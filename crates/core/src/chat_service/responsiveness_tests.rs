@@ -284,3 +284,280 @@ async fn updater_waits_for_real_mutation_and_refuses_failed_archive_checkpoint()
     service.disconnect().await.unwrap();
     runtime.shutdown().await.unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn idle_windows_share_projection_and_lock_wakes_every_waiter() {
+    let (_home, runtime, service) = fixture().await;
+    // Keep background file restoration out of this snapshot-cache assertion.
+    let gate = service.network_operations.lock().await;
+    service
+        .handle(Request::Unlock {
+            passphrase: "responsiveness-fixture".into(),
+            create: true,
+        })
+        .await
+        .unwrap();
+    {
+        let mut session = service.session.lock().await;
+        let state = &mut session.as_mut().unwrap().state;
+        for index in 0..OPERATION_LIMIT {
+            state.operations.insert(
+                format!("retained-{index:04}"),
+                OperationRecord {
+                    action: "fixture".into(),
+                    conversation: None,
+                    digest: String::new(),
+                    at: now(),
+                    rpc: None,
+                    response: Some(Response::Output {
+                        conversation: None,
+                        output: gchat_api::CommandOutput::Text {
+                            title: "retained result".into(),
+                            text: "x".repeat(1024),
+                        },
+                    }),
+                },
+            );
+        }
+    }
+    service.invalidate();
+    let first = service.snapshot().await.unwrap();
+    assert_eq!(first.operations.as_ref().unwrap().len(), 30);
+    let builds = service
+        .presentation
+        .builds
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let mut waiters = Vec::new();
+    for _ in 0..4 {
+        let service = service.clone();
+        let after = first.revision.clone();
+        waiters.push(tokio::spawn(async move {
+            service
+                .handle(Request::Events {
+                    after,
+                    wait_ms: 2000,
+                })
+                .await
+                .unwrap()
+        }));
+    }
+    tokio::time::sleep(Duration::from_millis(450)).await;
+    assert!(waiters.iter().all(|w| !w.is_finished()));
+    assert_eq!(
+        builds,
+        service
+            .presentation
+            .builds
+            .load(std::sync::atomic::Ordering::Relaxed),
+        "idle windows must not repeatedly project/copy retained history"
+    );
+    drop(gate);
+    service.handle(Request::Lock).await.unwrap();
+    for waiter in waiters {
+        let result = tokio::time::timeout(Duration::from_secs(1), waiter)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(result, Response::Changed { revision } if revision != first.revision));
+    }
+    let locked = service.snapshot().await.unwrap();
+    assert!(locked.instance.locked);
+    assert!(locked.conversations.is_empty());
+    assert!(locked.operations.unwrap().is_empty());
+    assert!(locked.activity.unwrap().is_empty());
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cached_snapshot_observes_local_send_and_cancelled_wait_does_not_consume_changes() {
+    let (_home, runtime, service) = fixture().await;
+    service
+        .handle(Request::Unlock {
+            passphrase: "responsiveness-fixture".into(),
+            create: true,
+        })
+        .await
+        .unwrap();
+    let first = service.snapshot().await.unwrap();
+    let cancelled = tokio::spawn({
+        let service = service.clone();
+        let after = first.revision.clone();
+        async move {
+            service
+                .handle(Request::Events {
+                    after,
+                    wait_ms: 20000,
+                })
+                .await
+        }
+    });
+    tokio::task::yield_now().await;
+    cancelled.abort();
+    let _ = cancelled.await;
+    let Response::Applied {
+        conversation: Some(channel),
+        ..
+    } = service
+        .handle(Request::Submit {
+            operation_id: "cache-create-channel".into(),
+            conversation: None,
+            text: "/create #cached me".into(),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("channel");
+    };
+    let created = service.snapshot().await.unwrap();
+    assert_ne!(created.revision, first.revision);
+    assert!(created.conversations.iter().any(|c| c.id == channel));
+    service
+        .handle(Request::Submit {
+            operation_id: "cache-send-message".into(),
+            conversation: Some(channel.clone()),
+            text: "retained".into(),
+        })
+        .await
+        .unwrap();
+    let Response::Changed { revision } = service
+        .handle(Request::Events {
+            after: created.revision,
+            wait_ms: 20000,
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("changed");
+    };
+    let sent = service.snapshot().await.unwrap();
+    assert_eq!(sent.revision, revision);
+    assert!(sent
+        .conversations
+        .iter()
+        .find(|c| c.id == channel)
+        .unwrap()
+        .last_message_id
+        .is_some());
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}
+
+/// Run explicitly on an otherwise quiet Linux worker. Measure process CPU,
+/// including normal background tasks, with one shared profile and four views.
+#[cfg(target_os = "linux")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "three 60-second CPU samples; run separately from functional tests"]
+async fn idle_cpu_large_history_measurement() {
+    fn cpu_ticks() -> u64 {
+        let stat = std::fs::read_to_string("/proc/self/stat").unwrap();
+        let values: Vec<_> = stat
+            .rsplit_once(')')
+            .unwrap()
+            .1
+            .split_whitespace()
+            .collect();
+        values[11].parse::<u64>().unwrap() + values[12].parse::<u64>().unwrap()
+    }
+    let ticks_per_second: f64 = String::from_utf8(
+        std::process::Command::new("getconf")
+            .arg("CLK_TCK")
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .parse()
+    .unwrap();
+    let (_home, runtime, service) = fixture().await;
+    service
+        .handle(Request::Unlock {
+            passphrase: "responsiveness-fixture".into(),
+            create: true,
+        })
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if service
+                .session
+                .lock()
+                .await
+                .as_ref()
+                .unwrap()
+                .files
+                .is_some()
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .unwrap();
+    {
+        let mut session = service.session.lock().await;
+        let state = &mut session.as_mut().unwrap().state;
+        for index in 0..OPERATION_LIMIT {
+            state.operations.insert(
+                format!("retained-{index:04}"),
+                OperationRecord {
+                    action: "fixture".into(),
+                    conversation: None,
+                    digest: String::new(),
+                    at: now(),
+                    rpc: None,
+                    response: Some(Response::Output {
+                        conversation: None,
+                        output: gchat_api::CommandOutput::Text {
+                            title: "retained result".into(),
+                            text: "x".repeat(1024),
+                        },
+                    }),
+                },
+            );
+        }
+    }
+    let mut views = Vec::new();
+    for _ in 0..4 {
+        let service = service.clone();
+        views.push(tokio::spawn(async move {
+            let mut after = String::new();
+            loop {
+                if let Response::Changed { revision } = service
+                    .handle(Request::Events {
+                        after: after.clone(),
+                        wait_ms: 20000,
+                    })
+                    .await
+                    .unwrap()
+                {
+                    after = revision;
+                }
+            }
+        }));
+    }
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    for sample in 0..3 {
+        let ticks = cpu_ticks();
+        let start = Instant::now();
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        let elapsed = start.elapsed().as_secs_f64();
+        let cpu = (cpu_ticks() - ticks) as f64 / ticks_per_second;
+        eprintln!(
+            "IDLE_CPU {}",
+            serde_json::json!({
+                "sample": sample, "wall_seconds": elapsed, "cpu_seconds": cpu,
+                "percent_one_core": cpu * 100.0 / elapsed, "operations": OPERATION_LIMIT,
+                "views": 4,
+            })
+        );
+    }
+    for view in views {
+        view.abort();
+        let _ = view.await;
+    }
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}

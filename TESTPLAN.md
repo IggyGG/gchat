@@ -1,3 +1,19 @@
+## Idle presentation CPU regression
+
+Run the core library chat-service tests, full core integration tests and strict
+all-target/all-feature core Clippy against the paired GComs source. Require four
+waiting views with 4,096 retained operations to share one idle projection;
+lock must wake every view and remove private cached results. Verify local send,
+cancelled listener, incoming delivery/ACK, membership/topic, archive failure and
+reopen behavior. Unchanged file observations must yield no sidecar candidate,
+while a failed save leaves the same update retryable.
+
+Run `idle_cpu_large_history_measurement --ignored --nocapture` separately on a
+quiet Linux worker for three 60-second samples of process CPU with four views.
+Use the identical fixture on the unmodified baseline and candidate, retaining
+both results. Run the bounded application file/restart/hash gate; keep the 1 GiB
+campaign independent. Never use the user's personal profile for destructive tests.
+
 ## Responsive carrier release binding (2026-09-25)
 
 Release tooling accepts distinct profile-22 and profile-46 contracts and rejects

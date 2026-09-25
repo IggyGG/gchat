@@ -60,6 +60,7 @@ struct Inner {
     http: Mutex<reqwest::Client>,
     catalog_https_only: AtomicBool,
     events: broadcast::Sender<ClientEvent>,
+    changes: tokio::sync::watch::Sender<u64>,
     dirty: AtomicBool,
     archive_blocked: AtomicBool,
     presence_enabled: AtomicBool,
@@ -443,6 +444,7 @@ impl ClientHandle {
             ),
             catalog_https_only: AtomicBool::new(true),
             events,
+            changes: tokio::sync::watch::channel(0).0,
             dirty: AtomicBool::new(false),
             archive_blocked: AtomicBool::new(false),
             presence_enabled: AtomicBool::new(false),
@@ -465,6 +467,23 @@ impl ClientHandle {
         spawn_periodic_save(&handle.0);
         spawn_presence(&handle.0);
         Ok(handle)
+    }
+
+    /// Internal presentation invalidation, separate from protocol delivery ACKs.
+    pub(crate) fn presentation_changes(&self) -> tokio::sync::watch::Receiver<u64> {
+        self.0.changes.subscribe()
+    }
+
+    pub(crate) fn next_presence_expiry(&self) -> Option<std::time::Instant> {
+        let now = std::time::Instant::now();
+        self.0
+            .recent_members
+            .lock()
+            .unwrap()
+            .values()
+            .map(|at| *at + Duration::from_secs(90))
+            .filter(|at| *at > now)
+            .min()
     }
 
     pub fn archive_waiting_for_storage(&self) -> bool {
@@ -499,6 +518,7 @@ impl ClientHandle {
                 }
             }
         }
+        self.0.changes.send_modify(|v| *v = v.wrapping_add(1));
         failure.map_or(Ok(()), Err)
     }
     pub fn recently_active(&self, channel: &str, member: [u8; 32]) -> bool {
@@ -740,6 +760,7 @@ impl ClientHandle {
             }
         }
         self.0.dirty.store(true, Ordering::Relaxed);
+        self.0.changes.send_modify(|v| *v = v.wrapping_add(1));
         Ok(())
     }
 
@@ -832,6 +853,7 @@ impl ClientHandle {
             .is_ok()
         });
         self.0.dirty.store(true, Ordering::Relaxed);
+        self.0.changes.send_modify(|v| *v = v.wrapping_add(1));
         if successful {
             Ok(())
         } else {
@@ -975,6 +997,7 @@ impl ClientHandle {
                 active: true,
             });
             self.0.dirty.store(true, Ordering::Relaxed);
+            self.0.changes.send_modify(|v| *v = v.wrapping_add(1));
         }
         Ok(id)
     }
@@ -1251,6 +1274,7 @@ impl ClientHandle {
             });
         }
         self.0.dirty.store(true, Ordering::Relaxed);
+        self.0.changes.send_modify(|v| *v = v.wrapping_add(1));
         Ok(())
     }
     pub async fn send_scoped_pm(&self, id: ScopedPmId, text: &str) -> Result<(), String> {
@@ -1303,6 +1327,7 @@ impl ClientHandle {
             text: text.into(),
         });
         self.0.dirty.store(true, Ordering::Relaxed);
+        self.0.changes.send_modify(|v| *v = v.wrapping_add(1));
         Ok(())
     }
     pub async fn remove_member(&self, id: ChannelId, member: MemberId) -> Result<(), String> {
@@ -1506,6 +1531,9 @@ fn spawn_channel_archive(inner: &Arc<Inner>) {
                     sdk.commit_channel_delivery(sequence, digest)
                         .await
                         .map_err(|e| e.to_string())?;
+                    inner
+                        .changes
+                        .send_modify(|version| *version = version.wrapping_add(1));
                     let _ = inner.events.send(event);
                 }
                 Ok(())
@@ -1513,11 +1541,19 @@ fn spawn_channel_archive(inner: &Arc<Inner>) {
             .await;
             match result {
                 Ok(()) => {
-                    inner.archive_blocked.store(false, Ordering::Relaxed);
+                    if inner.archive_blocked.swap(false, Ordering::Relaxed) {
+                        inner
+                            .changes
+                            .send_modify(|version| *version = version.wrapping_add(1));
+                    }
                     last_error = None;
                 }
                 Err(error) => {
-                    inner.archive_blocked.store(true, Ordering::Relaxed);
+                    if !inner.archive_blocked.swap(true, Ordering::Relaxed) {
+                        inner
+                            .changes
+                            .send_modify(|version| *version = version.wrapping_add(1));
+                    }
                     if last_error.as_ref() != Some(&error) {
                         eprintln!("chat archive delivery retained: {error}");
                     }
@@ -1630,6 +1666,9 @@ fn spawn_archiver(inner: &Arc<Inner>) {
                 }
                 // Presence is deliberately RAM-only. Never persist or count it as a chat message.
                 drop(recent);
+                inner
+                    .changes
+                    .send_modify(|version| *version = version.wrapping_add(1));
                 let _ = inner.events.send(event);
                 continue;
             }
@@ -1656,6 +1695,9 @@ fn spawn_archiver(inner: &Arc<Inner>) {
             if let Err(error) = save_inner(&inner).await {
                 eprintln!("chat archive save failed: {error}");
             }
+            inner
+                .changes
+                .send_modify(|version| *version = version.wrapping_add(1));
             let _ = inner.events.send(event);
         }
     });

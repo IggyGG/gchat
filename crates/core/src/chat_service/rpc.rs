@@ -184,6 +184,7 @@ impl ChatService {
         );
         unlocked.store.save(&candidate).map_err(storage)?;
         unlocked.state = candidate;
+        self.invalidate();
         self.update_gate.admitted(record_id(key));
         Ok(Admission::New)
     }
@@ -217,6 +218,7 @@ impl ChatService {
         binding.result = Some(result);
         unlocked.store.save(&candidate).map_err(storage)?;
         unlocked.state = candidate;
+        self.invalidate();
         self.update_gate.completed(&record_id(key));
         Ok(())
     }

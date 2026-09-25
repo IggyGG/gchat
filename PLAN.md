@@ -1,3 +1,16 @@
+## Idle presentation CPU (2026-09-25, candidate)
+
+The service caches its UI projection across attachments and waits for archive or
+local-state changes instead of rebuilding every 200 ms. Presence and operation
+expiry still wake views at their deadlines. Locks discard cached private state;
+notifications never imply delivery. File observation copies the encrypted UI
+sidecar only when its retained file set actually changes. No routing, retry,
+cover schedule or public API change.
+
+Validation and measurements: `target/idle-cpu-20260925/` (in progress). The
+observed laptop service used 5.79% of one core but also had authority retries;
+that observation is not a quiescent benchmark or a relay CPU measurement.
+
 ## Responsive carrier release binding (2026-09-25)
 
 Release tooling accepts distinct profile-22 and profile-46 contracts and rejects

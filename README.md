@@ -25,6 +25,10 @@ uncommitted history is not published. The external shared-service archive path
 keeps its existing contract and is outside this new transaction boundary. See
 the [archive transaction and rollback requirements](docs/RELIABILITY_TEST_PLAN.md#incoming-archive-transaction-candidate).
 
+Attached views share a cached projection and wait for actual archive/UI changes.
+Idle file observation does not copy the retained operation journal. Receiving,
+persistence, delivery acknowledgments and the cover schedule are unchanged.
+
 For paired-source development, validate against the matching GComs checkout with
 its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public
 registry manifests and canonical release lockfiles intact; each published download
