@@ -153,8 +153,10 @@ of the service-validated network and channel. Text invitations remain supported.
 See [UX behavior and qualification](docs/UX-CARDS.md). No new dependencies.
 
 Locked passphrase errors appear once, beside the field, and can be retried.
-Linux native first-run and retained-profile upgrade checks accompany the local
-UX build; public installer qualification remains separate.
+The signed local Linux package passed native first-run, retained-profile upgrade,
+invitation picker and narrow-layout checks. See the
+[installation receipt](docs/evidence/ux-cards/signed-local-summary.json); public
+installer qualification remains separate.
 
 The desktop dependency policy records exact native API version duplicates required
 by the updater's existing dependencies; see [the graph review](docs/DEPENDENCIES.md).

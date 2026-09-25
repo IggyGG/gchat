@@ -114,7 +114,7 @@ retained, but does not replace the installed application. Production profiles an
 running services were not changed or restarted. CMD deployment awaits target
 selection. No public release was performed.
 
-The final executable passed native first-run confirmation/creation, rejected
+That earlier executable passed native first-run confirmation/creation, rejected
 unlock without encrypted-file changes, retained-identity GUI unlock, and one
 inline rejection notification. Linux WebKitGTK/X11 picker open/cancel, original
 PNG staging, screenshot rejection, keyboard focus and 320/1100px rendering were
@@ -125,3 +125,32 @@ Native save/export dialogs, overwrite handling and drag-and-drop still need
 qualification, alongside Windows/macOS, screen-reader and five-person usability
 sessions. Browser export tests and Rust save tests do not substitute for those
 OS interactions. No public download or signing claim is made by this receipt.
+
+
+## Installed signed Linux package — 2026-09-25
+
+The local Debian installation now uses GChat `bf021883` with GComs `e8546096`,
+including the newer backend and automatic updater. The package was built from
+frozen, clean source inputs, signed with the configured Gh0st OpenPGP key, and
+verified before installation. The installed executable matches the packaged
+executable exactly. Both passed the isolated offline service lifecycle. Existing
+user launchers, the running fleet service and the automatic-update timer were
+preserved; a verified rollback package is retained. No public release was made.
+
+The packaged executable passed real Linux WebKitGTK first-run confirmation and
+creation, original-identity upgrade login, rejected unlock without encrypted-file
+changes, and one inline error. Native invitation picker cancellation, original
+PNG staging while locked, screenshot rejection, keyboard focus and 320/1100px
+rendering also passed, using isolated profiles and updater storage.
+
+The coherent runtime has 168 passing Rust workspace tests, 25 native tests,
+59 frontend unit tests and 74 browser tests. Formatting, strict Clippy, types,
+frontend/native builds and both dependency audits pass. Python has 449 passes
+and five platform skips. The separate five-relay invitation/chat/file/restart
+journey passes in 182 seconds. The final policy/tooling-only delta reuses the
+unchanged runtime checks with verified dependency identities; Python and both
+dependency gates were rerun. Failed/interrupted receipts remain retained.
+
+See the [signed local installation receipt](evidence/ux-cards/signed-local-summary.json).
+The remaining people/platform checks above still apply, including native
+save/export and drag-and-drop. CMD deployment still awaits target selection.

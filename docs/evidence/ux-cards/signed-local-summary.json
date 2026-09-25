@@ -1,0 +1,106 @@
+{
+  "task": "UX-1 signed local Linux package installation",
+  "date": "2026-09-25",
+  "installation": {
+    "installed": true,
+    "sources": {
+      "gchat": "bf021883f76dfb4beb5f14db84a66c84d1350d31",
+      "gcoms": "e8546096f8dd4b252fac3c4971b3b752859e3406"
+    },
+    "package": {
+      "name": "GChat_0.1.4_amd64.deb",
+      "format": "deb",
+      "sha256": "3c23114daba89a683c541fd11369fd55e2d0e6162e99929ad134cd65832017d5",
+      "signing_verified": true
+    },
+    "binary_sha256": "fcecb81d2a88586f63f8c278d8444d3913714c1481da13dc63e3acf2d6395f27",
+    "launchers_unchanged": true,
+    "fleet_service_unchanged": true,
+    "automatic_update_timer_active": true,
+    "rollback_package_verified": true,
+    "public_release": false,
+    "installed_lifecycle_passed": true
+  },
+  "native_gui": {
+    "binary_sha256": "fcecb81d2a88586f63f8c278d8444d3913714c1481da13dc63e3acf2d6395f27",
+    "sources": {
+      "gchat": "bf021883f76dfb4beb5f14db84a66c84d1350d31",
+      "gcoms": "e8546096f8dd4b252fac3c4971b3b752859e3406"
+    },
+    "environment": "isolated Linux WebKitGTK/X11, private session bus, profile and updater cache",
+    "checks": {
+      "fresh_confirmation_and_gui_creation": true,
+      "native_picker_cancel": true,
+      "native_original_png_staged_while_locked": true,
+      "native_plain_screenshot_rejected": true,
+      "native_keyboard_focus_and_320px_layout": true,
+      "wrong_passphrase_single_inline_error_and_unchanged_encrypted_files": true,
+      "gui_upgrade_retains_original_identity": true
+    },
+    "passed": true
+  },
+  "qualification": {
+    "rust_workspace_passed": 168,
+    "rust_workspace_ignored": 2,
+    "native_tests_passed": 25,
+    "frontend_unit_passed": 59,
+    "browser_passed": 74,
+    "python_passed": 449,
+    "python_skipped": 5,
+    "strict_clippy_fmt_types_build": "passed",
+    "source_audit": "passed",
+    "workspace_and_desktop_dependency_audits": "passed",
+    "runtime_check_reuse": "Runtime/dependency inputs identical to 3299d02; current delta limited to dependency-policy review, docs and SDK build-reuse tooling. Python tests and both dependency gates rerun at bf02188. Interrupted receipts retained unchanged.",
+    "five_relay_invitation_message_file_restart": {
+      "scope": "disconnected protected-runtime fixture; no fleet or privacy qualification",
+      "test": "chat_service::networks::journey::combined_invitation_joins_another_network_and_retains_chat_and_file",
+      "binary_sha256": "8017097f8a2121defeab9254e063603ec3c6c19126c923f2c23f47a82c6f90bf",
+      "script_sha256": "c998d5697bf440b9bf921a09fb5814caa25879271f1f1007e723e34d27cd15d2",
+      "exit_code": 0,
+      "seconds": 182.35222428990528,
+      "test_passed": true,
+      "binary_unchanged": true,
+      "host_namespace_unchanged": true,
+      "host_interfaces_unchanged": true,
+      "passed": true
+    }
+  },
+  "signing": "Existing Gh0st self-signed OpenPGP release key; detached signature verified. Local Debian installation only.",
+  "public_release": false,
+  "cmd_deployment": "Pending target selection; no CMD service changed.",
+  "remaining": [
+    "Native save/export dialog, cancellation and overwrite handling",
+    "Native drag-and-drop",
+    "Windows/macOS native qualification",
+    "Screen-reader review and five-person usability sessions"
+  ],
+  "evidence": {
+    "signed-local/build.json": {
+      "sha256": "6d0b23ec794cbdd4e561dd20b7180682201bcc5df5faeda81278dd8bac5ff967"
+    },
+    "signed-local/provenance/native-ci.json": {
+      "sha256": "30c1efc7667e6e52b9d57c5d3cd065fe2b829db8c21dde8b246530fea8b8929c"
+    },
+    "signed-local/lifecycle/report.json": {
+      "sha256": "8d375ab9acd1565a4a8987ae9d711298b61fc03d59bb51f2bad20fa8d302f318"
+    },
+    "signed-local/installed-lifecycle/report.json": {
+      "sha256": "778af349e466dcb13d0a019dd3616071b7a41b931e6ce541118bbcd3a2084b13"
+    },
+    "packaged-ui.json": {
+      "sha256": "8acb1703a6d2636ab0575f19006dedac08c07b58258e2016a393dc0ba7f0bbd0"
+    },
+    "coherent-journey/report.json": {
+      "sha256": "d01208975f441b428464987d46fcfc2afdb499746f8c3af44d02018256bef554"
+    },
+    "native-packaged-welcome.png": {
+      "sha256": "5d04c793430313a66f47f0457900741a9838a57f9acaa9d7524175fb03f0c6bb"
+    },
+    "native-packaged-keyboard-320.png": {
+      "sha256": "38628be1be7ec1736c29f846b21bd27b49aa94ae7494862fc87126c024ebbc86"
+    },
+    "package-install.log": {
+      "sha256": "ef2a02279fd3a5ce08862498430e51cd985a8232bedc133794491d9b5240584f"
+    }
+  }
+}

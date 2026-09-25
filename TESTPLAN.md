@@ -195,3 +195,17 @@ processing result exist.
   and 24-hour campaigns are no longer release gates. Privacy improvements and
   the other unqualified scopes stay explicitly disclosed; no privacy pass is
   inferred from these releases.
+
+
+UX-1 local Linux installation completed 2026-09-25: signed Debian package from
+GChat bf021883/GComs e8546096 installed and exact executable hash verified.
+Packaged and installed lifecycle tests pass; native WebKit first-run, retained
+identity, single-error retry, picker/cancel/original PNG, screenshot rejection,
+keyboard and 320/1100px checks pass. Full coherent runtime gates pass (168 Rust,
+25 native, 59 UI unit, 74 browser; Python 449 pass/5 skips), with strict unchanged
+runtime/dependency binding for the final policy/tooling delta. Both dependency
+audits pass; five-relay invitation/chat/file/restart journey passes in 182s.
+Launchers, fleet process and updater preserved; verified rollback retained.
+Evidence: docs/evidence/ux-cards/signed-local-summary.json and docs/UX-CARDS.md.
+No public release. Native save/export/drop, other OS, screen-reader/usability
+sessions and CMD target selection remain unfinished scopes.
