@@ -35,19 +35,22 @@
   "picker_layout_binary_sha256": "b40637a5c46be6f41c7116b69d409dbf9060b774469d40ce03faf4de2f96f594",
   "picker_layout_reuse": "Final candidate changes only locked notice visibility plus tests/docs; final executable independently checked for first-run, upgrade, rejected-unlock persistence and single notification.",
   "installation": {
-    "user_launchers_updated": 2,
+    "user_launchers_updated": 0,
     "running_services_restarted": false,
     "production_profiles_modified": false,
     "previous_launchers_retained": true,
     "system_package_replaced": false,
-    "cmd_services_changed": false
+    "cmd_services_changed": false,
+    "state": "rolled back after discovering newer runtime and updater work on trunk",
+    "rollback_executed_and_hashes_verified": true
   },
   "remaining": [
     "Native invitation export save dialog, cancellation and overwrite refusal",
     "Native drag-and-drop",
     "Windows and macOS native qualification",
     "Five-participant usability sessions and screen-reader review",
-    "CMD deployment target selection"
+    "CMD deployment target selection",
+    "Rebuild the coherent current trunk before any installation promotion"
   ],
   "evidence": [
     "native-final/build.json",

@@ -31,7 +31,7 @@ is unchanged; progressive enhancement adds immediate pending feedback. Observe,
 Signals and Fleet retain their workflows with shared colors and legible labels.
 
 Automated qualification completed 2026-09-25. The final receipt is
-[test-evidence/ux-cards/summary.json](../test-evidence/ux-cards/summary.json). Five-person usability
+the retained `test-evidence/ux-cards/summary.json` in the original task evidence. Five-person usability
 sessions and native Windows/macOS visual/save-dialog qualification require real
 participants/platform runs and are not represented by browser fixtures.
 Code-match tooling is unavailable in this session (codematch=unreachable).
@@ -106,12 +106,13 @@ public installer qualification; user sessions and other operating systems remain
 unqualified until their actual runs.
 
 
-The final local Linux executable is built from GChat ffb9517 and GComs 9157143,
+The initial local Linux executable used GChat ffb9517 and GComs 9157143,
 with frozen source archives and verified derived dependency inputs. Its two user
-launchers now select the versioned executable; previous launcher files and a
-hash-guarded rollback script are retained locally. The system package, production
-profiles and running services were not replaced or restarted. CMD deployment is
-pending target selection. This is a local installation, not a public release.
+launchers were briefly selected, then restored after newer backend and automatic
+update work arrived on trunk. The guarded rollback succeeded. The candidate is
+retained, but does not replace the installed application. Production profiles and
+running services were not changed or restarted. CMD deployment awaits target
+selection. No public release was performed.
 
 The final executable passed native first-run confirmation/creation, rejected
 unlock without encrypted-file changes, retained-identity GUI unlock, and one
@@ -119,7 +120,7 @@ inline rejection notification. Linux WebKitGTK/X11 picker open/cancel, original
 PNG staging, screenshot rejection, keyboard focus and 320/1100px rendering were
 also checked on the preceding candidate; the final frontend differs only in
 locked-notice visibility. These runs use disposable profiles and an isolated
-Xvfb/session bus. See [local installation receipt](../test-evidence/ux-cards/local-summary.json).
+Xvfb/session bus. See [local installation receipt](evidence/ux-cards/local-summary.json).
 Native save/export dialogs, overwrite handling and drag-and-drop still need
 qualification, alongside Windows/macOS, screen-reader and five-person usability
 sessions. Browser export tests and Rust save tests do not substitute for those
