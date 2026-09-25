@@ -77,8 +77,7 @@ internal object PushNotifications {
     fun hint(context: Context, data: Map<String, String>) {
         // Only the gateway's opaque message hint is accepted; names/text in an
         // unexpected payload are never copied into a notification.
-        if (!enabled(context) || !granted(context) || data["activity"] != "message" ||
-            !validReference(data["reference"])) return
+        if (!enabled(context) || !granted(context) || !isHint(data)) return
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
         launch.putExtra(TAP, true).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pending = PendingIntent.getActivity(context, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -88,6 +87,8 @@ internal object PushNotifications {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true).build()
         try { NotificationManagerCompat.from(context).notify(1, notice) } catch (_: SecurityException) { /* Permission was revoked. */ }
     }
+    fun isHint(data: Map<String, String>): Boolean =
+        data["gcoms_activity"] == "message" && validReference(data["gcoms_reference"])
     fun validReference(value: String?): Boolean = value?.length == 64 && value.all { it in '0'..'9' || it in 'a'..'f' }
 }
 

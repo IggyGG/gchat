@@ -21,13 +21,16 @@ export type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_b
 export type FileState = "offered" | "importing" | "downloading" | "waiting_for_peers" | "paused" | "complete" | "failed" | "cancelled";
 export type NetworkState = "locked" | "local_only" | "invitation_required" | "connecting" | "connected" | "reconnecting" | "invitation_expired" | "unavailable";
 export type NetworkStatus = { state: NetworkState, message: string, };
-export type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };
+export type BuildInfo = { releaseId: string, gchatCommit: string, gcomsCommit: string, version: string, };
+export type UpdateRequest = { "action": "heartbeat", view: string, } | { "action": "detach", view: string, } | { "action": "prepare", view: string, release: string, } | { "action": "abort", view: string, release: string, } | { "action": "exit", view: string, release: string, };
+export type PrepareUpdateResult = { "state": "attached" } | { "state": "ready", process_id: number, boot_id: string, } | { "state": "busy", reason: string, };
+export type InstanceInfo = { build?: BuildInfo, id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };
 export type Member = { id: string, nickname: string, isSelf: boolean, recentlyActive?: boolean, capabilities: Array<string>, };
 export type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };
 export type ConversationKind = "channel" | "query" | "archive";
-export type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean,
+export type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean, operationId?: string,
 /**
- * Local archive acceptance is the only fact currently available for outgoing text.
+ * Delivered is an authenticated recipient acknowledgement, never a read receipt.
  */
 delivery: Delivery | null, result: ActionResult | null, };
 export type ActionResult = { id: string, messageId: string | null, state: string,
@@ -36,7 +39,7 @@ export type ActionResult = { id: string, messageId: string | null, state: string
  */
 outputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };
 export type Artifact = { name: string, url: string, };
-export type Delivery = "local_accepted";
+export type Delivery = "local_accepted" | "delivered";
 export type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };
 export type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };
 export type CommandOutput = { "kind": "help", commands: Array<CommandSpec>, } | { "kind": "directory", channels: Array<DirectoryEntry>, } | { "kind": "invitation", channel: string, link: string, expires: number, localOnly: boolean, } | { "kind": "text", title: string, text: string, } | { "kind": "status", text: string, } | { "kind": "close", conversation: string, };
@@ -47,8 +50,8 @@ export type OperationDetail = { network?: string, id: string, instance: string, 
 export type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, };
 export type HistoryPage = { messages: Array<Message>, before: string | null, };
 export type Completion = { text: string, description: string, };
-export type Request = { "kind": "networks", request: NetworkRequest, } | { "kind": "files", request: FileRequest, } | { "kind": "identify" } | { "kind": "unlock", passphrase: string, create: boolean, } | { "kind": "lock" } | { "kind": "disconnect" } | { "kind": "snapshot" } | { "kind": "network_status" } | { "kind": "import_network_invitation", code: string, } | { "kind": "catalogue", conversation: string | null, } | { "kind": "history", conversation: string, before: string | null, limit: number, } | { "kind": "search", conversation: string, text: string, before: string | null, limit: number, } | { "kind": "submit", operation_id: string, conversation: string | null, text: string, } | { "kind": "complete", conversation: string | null, text: string, } | { "kind": "mark_read", conversation: string, message_id: string, } | { "kind": "events", after: string, wait_ms: number, };
-export type Response = { "kind": "networks", response: NetworkResponse, } | { "kind": "files", snapshot: FileSnapshot, } | { "kind": "network_status", status: NetworkStatus, } | { "kind": "instance", instance: InstanceInfo, } | { "kind": "snapshot", snapshot: Snapshot, } | { "kind": "history", page: HistoryPage, } | { "kind": "completed", items: Array<Completion>, } | { "kind": "catalogue", commands: Array<CommandSpec>, } | { "kind": "projection", conversations: Array<Conversation>, revision: string, } | { "kind": "output", conversation: string | null, output: CommandOutput, } | { "kind": "applied", conversation: string | null, notice: string | null, } | { "kind": "changed", revision: string, } | { "kind": "error", code: string, message: string, };
+export type Request = { "kind": "update", request: UpdateRequest, } | { "kind": "networks", request: NetworkRequest, } | { "kind": "files", request: FileRequest, } | { "kind": "identify" } | { "kind": "unlock", passphrase: string, create: boolean, } | { "kind": "lock" } | { "kind": "disconnect" } | { "kind": "snapshot" } | { "kind": "network_status" } | { "kind": "import_network_invitation", code: string, } | { "kind": "catalogue", conversation: string | null, } | { "kind": "history", conversation: string, before: string | null, limit: number, } | { "kind": "search", conversation: string, text: string, before: string | null, limit: number, } | { "kind": "submit", operation_id: string, conversation: string | null, text: string, } | { "kind": "complete", conversation: string | null, text: string, } | { "kind": "mark_read", conversation: string, message_id: string, } | { "kind": "events", after: string, wait_ms: number, };
+export type Response = { "kind": "update", result: PrepareUpdateResult, } | { "kind": "networks", response: NetworkResponse, } | { "kind": "files", snapshot: FileSnapshot, } | { "kind": "network_status", status: NetworkStatus, } | { "kind": "instance", instance: InstanceInfo, } | { "kind": "snapshot", snapshot: Snapshot, } | { "kind": "history", page: HistoryPage, } | { "kind": "completed", items: Array<Completion>, } | { "kind": "catalogue", commands: Array<CommandSpec>, } | { "kind": "projection", conversations: Array<Conversation>, revision: string, } | { "kind": "output", conversation: string | null, output: CommandOutput, } | { "kind": "applied", conversation: string | null, notice: string | null, } | { "kind": "changed", revision: string, } | { "kind": "error", code: string, message: string, };
 export type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };
 export type ResponseEnvelope = { version: number, instance_id: string, response: Response, };
 

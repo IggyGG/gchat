@@ -1,0 +1,9 @@
+
+> @gchat/client@0.1.0 tauri
+> tauri bundle --bundles deb --ci
+
+        Info Patching /gchat-work/target/release/gchat-desktop with bundle type information: deb
+    Bundling GChat_0.1.4_amd64.deb (/gchat-work/target/release/bundle/deb/GChat_0.1.4_amd64.deb)
+    Finished 1 bundle at:
+        /gchat-work/target/release/bundle/deb/GChat_0.1.4_amd64.deb
+

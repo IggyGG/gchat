@@ -46,6 +46,9 @@ pub struct StoreData {
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct ArchiveData {
+    /// Bounded ACK race buffer: an ACK may arrive before the send call returns.
+    #[serde(skip)]
+    pub delivery_receipts: Vec<([u8; 32], [u8; 16])>,
     pub daemon_safety_number: String,
     pub channels: Vec<ChannelRecord>,
     pub scoped_pms: Vec<ScopedPmRecord>,

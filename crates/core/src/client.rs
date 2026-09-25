@@ -61,6 +61,7 @@ struct Inner {
     catalog_https_only: AtomicBool,
     events: broadcast::Sender<ClientEvent>,
     dirty: AtomicBool,
+    archive_blocked: AtomicBool,
     presence_enabled: AtomicBool,
     presence_control: tokio::sync::Mutex<()>,
     recent_members: Mutex<BTreeMap<(String, [u8; 32]), std::time::Instant>>,
@@ -70,7 +71,10 @@ struct Inner {
 enum Persistence {
     /// Legacy combined store: the node lives in this process and the
     /// archive is saved inside the same encrypted file.
-    Embedded { runtime: ProtocolRuntime },
+    Embedded {
+        runtime: ProtocolRuntime,
+        pending_archive: Arc<Mutex<Option<ClientEvent>>>,
+    },
     /// Attached to an external daemon; only the chat archive is ours.
     Archive(ArchiveStore),
     /// Protocol runtime hosted in this process plus a separate archive:
@@ -272,7 +276,9 @@ impl ClientHandle {
     ) -> Result<Self, String> {
         let path = store.path().to_owned();
         let archive = Arc::new(Mutex::new(data.archive));
+        let pending_archive = Arc::new(Mutex::new(None));
         let storage = Arc::new(LegacyProtocolStorage {
+            pending_archive: pending_archive.clone(),
             store,
             archive: archive.clone(),
         });
@@ -284,6 +290,7 @@ impl ClientHandle {
             .listen(listen)
             .advertise(advertise)
             .relay(inbox_relay)
+            .durable_channel_inbox(true)
             .receive_messages(false)
             .legacy_storage(
                 storage,
@@ -307,7 +314,10 @@ impl ClientHandle {
             embedded,
             identity,
             label,
-            Persistence::Embedded { runtime },
+            Persistence::Embedded {
+                runtime,
+                pending_archive,
+            },
             archive,
             true,
         )
@@ -434,19 +444,31 @@ impl ClientHandle {
             catalog_https_only: AtomicBool::new(true),
             events,
             dirty: AtomicBool::new(false),
+            archive_blocked: AtomicBool::new(false),
             presence_enabled: AtomicBool::new(false),
             presence_control: tokio::sync::Mutex::new(()),
             recent_members: Mutex::new(BTreeMap::new()),
             background: Mutex::new(Vec::new()),
         });
         let handle = Self(inner);
+        if let Some(embedded) = &handle.0.embedded_sdk {
+            embedded
+                .channel_inbox()
+                .await
+                .map_err(|e| format!("durable channel archive is not available: {e}"))?;
+        }
         if reconcile {
             handle.reconcile_channels().await?;
         }
         spawn_archiver(&handle.0);
+        spawn_channel_archive(&handle.0);
         spawn_periodic_save(&handle.0);
         spawn_presence(&handle.0);
         Ok(handle)
+    }
+
+    pub fn archive_waiting_for_storage(&self) -> bool {
+        self.0.archive_blocked.load(Ordering::Relaxed)
     }
 
     pub async fn configure_presence(&self, enabled: bool) -> Result<(), String> {
@@ -1173,21 +1195,50 @@ impl ClientHandle {
         Ok(channel)
     }
     pub async fn send_channel(&self, id: ChannelId, text: &str) -> Result<(), String> {
+        self.send_channel_operation(id, text, None).await
+    }
+    pub(crate) async fn send_channel_operation(
+        &self,
+        id: ChannelId,
+        text: &str,
+        operation: Option<&str>,
+    ) -> Result<(), String> {
+        let started = now_unix();
         let channel = self.channel(id).ok_or("channel is not active")?;
-        self.0
-            .sdk
-            .send_channel(&channel.protocol_name, text.as_bytes())
-            .await
-            .map_err(|e| e.to_string())?;
+        // The tracked API requires a remote recipient. Preserve solo-channel
+        // notes through the ordinary API, deciding before any send (never retry
+        // an uncertain tracked send through another method).
+        let message_id = if channel.members.iter().any(|member| !member.is_self) {
+            self.0
+                .sdk
+                .send_channel_tracked(&channel.protocol_name, text.as_bytes())
+                .await
+                .map_err(|e| e.to_string())?
+                .0
+        } else {
+            self.0
+                .sdk
+                .send_channel(&channel.protocol_name, text.as_bytes())
+                .await
+                .map_err(|e| e.to_string())?;
+            rand::random::<[u8; 16]>() // Local archive identity; no recipient ACK claimed.
+        };
         let mut data = self.0.data.lock().unwrap();
+        let delivered = data.delivery_receipts.contains(&(id.0, message_id));
         if let Some(channel) = data
             .channels
             .iter_mut()
             .find(|candidate| candidate.active && candidate.id == id)
         {
             channel.messages.push(Message {
-                id: fresh_id(),
-                ts_unix: now_unix(),
+                id: message_id,
+                operation_id: operation.map(str::to_owned),
+                delivery: Some(if delivered {
+                    gchat_api::Delivery::Delivered
+                } else {
+                    gchat_api::Delivery::LocalAccepted
+                }),
+                ts_unix: started,
                 sender_member_id: channel.self_member_id,
                 sender_name: channel
                     .members
@@ -1203,6 +1254,15 @@ impl ClientHandle {
         Ok(())
     }
     pub async fn send_scoped_pm(&self, id: ScopedPmId, text: &str) -> Result<(), String> {
+        self.send_scoped_pm_operation(id, text, None).await
+    }
+    pub(crate) async fn send_scoped_pm_operation(
+        &self,
+        id: ScopedPmId,
+        text: &str,
+        operation: Option<&str>,
+    ) -> Result<(), String> {
+        let started = now_unix();
         let channel = self.channel(id.channel_id).ok_or("channel is not active")?;
         let message_id = self
             .0
@@ -1215,6 +1275,9 @@ impl ClientHandle {
             .await
             .map_err(|e| e.to_string())?;
         let mut data = self.0.data.lock().unwrap();
+        let delivered = data
+            .delivery_receipts
+            .contains(&(id.channel_id.0, message_id.0));
         let pm = data
             .scoped_pms
             .iter_mut()
@@ -1222,7 +1285,13 @@ impl ClientHandle {
             .ok_or("scoped PM is not active")?;
         pm.messages.push(Message {
             id: message_id.0,
-            ts_unix: now_unix(),
+            operation_id: operation.map(str::to_owned),
+            delivery: Some(if delivered {
+                gchat_api::Delivery::Delivered
+            } else {
+                gchat_api::Delivery::LocalAccepted
+            }),
+            ts_unix: started,
             sender_member_id: Some(id.self_member_id),
             sender_name: channel
                 .members
@@ -1305,7 +1374,7 @@ impl ClientHandle {
         self.stop_background().await;
         let save = self.save().await;
         match &self.0.persistence {
-            Persistence::Embedded { runtime } => runtime.clone().shutdown().await?,
+            Persistence::Embedded { runtime, .. } => runtime.clone().shutdown().await?,
             Persistence::Hosted { runtime, .. } => {
                 // Persists node state, then stops the node.
                 runtime.clone().shutdown().await?;
@@ -1404,6 +1473,139 @@ fn spawn_presence(inner: &Arc<Inner>) {
     inner.background.lock().unwrap().push(task);
 }
 
+fn spawn_channel_archive(inner: &Arc<Inner>) {
+    let Some(sdk) = inner.embedded_sdk.clone() else {
+        return;
+    };
+    let weak = Arc::downgrade(inner);
+    let task = tokio::spawn(async move {
+        let mut last_error = None;
+        loop {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            let Some(inner) = weak.upgrade() else { break };
+            let result: Result<(), String> = async {
+                let pending = sdk.channel_inbox().await.map_err(|e| e.to_string())?;
+                for (sequence, digest, event) in pending {
+                    // Reconcile first: startup or a new membership may precede its roster event.
+                    let channel = match &event {
+                        ClientEvent::ChannelMessage { channel, .. }
+                        | ClientEvent::ChannelDirectMessage { channel, .. } => channel,
+                        _ => unreachable!(),
+                    };
+                    let known = inner
+                        .data
+                        .lock()
+                        .unwrap()
+                        .channels
+                        .iter()
+                        .any(|c| c.protocol_name == *channel);
+                    if !known {
+                        ClientHandle(inner.clone()).reconcile_channels().await?;
+                    }
+                    archive_channel_delivery(&inner, &event).await?;
+                    sdk.commit_channel_delivery(sequence, digest)
+                        .await
+                        .map_err(|e| e.to_string())?;
+                    let _ = inner.events.send(event);
+                }
+                Ok(())
+            }
+            .await;
+            match result {
+                Ok(()) => {
+                    inner.archive_blocked.store(false, Ordering::Relaxed);
+                    last_error = None;
+                }
+                Err(error) => {
+                    inner.archive_blocked.store(true, Ordering::Relaxed);
+                    if last_error.as_ref() != Some(&error) {
+                        eprintln!("chat archive delivery retained: {error}");
+                    }
+                    last_error = Some(error);
+                    drop(inner);
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                }
+            }
+        }
+    });
+    inner.background.lock().unwrap().push(task);
+}
+
+fn archive_contains_delivery(data: &ArchiveData, event: &ClientEvent) -> bool {
+    match event {
+        ClientEvent::ChannelMessage {
+            channel,
+            message_id,
+            ..
+        } => data.channels.iter().any(|c| {
+            c.protocol_name == *channel && c.messages.iter().any(|m| m.id == message_id.0)
+        }),
+        ClientEvent::ChannelDirectMessage {
+            channel,
+            message_id,
+            sender_member_id,
+            recipient_member_id,
+            ..
+        } => {
+            let id = data
+                .channels
+                .iter()
+                .find(|c| c.protocol_name == *channel)
+                .map(|c| c.id);
+            data.scoped_pms.iter().any(|p| {
+                Some(p.id.channel_id) == id
+                    && p.id.remote_member_id == MemberId(*sender_member_id)
+                    && p.id.self_member_id == MemberId(*recipient_member_id)
+                    && p.messages.iter().any(|m| m.id == message_id.0)
+            })
+        }
+        _ => false,
+    }
+}
+
+async fn archive_channel_delivery(inner: &Arc<Inner>, event: &ClientEvent) -> Result<(), String> {
+    let channel = match event {
+        ClientEvent::ChannelMessage { channel, .. }
+        | ClientEvent::ChannelDirectMessage { channel, .. } => channel,
+        _ => return Err("not a channel delivery".into()),
+    };
+    if !inner
+        .data
+        .lock()
+        .unwrap()
+        .channels
+        .iter()
+        .any(|c| c.protocol_name == *channel)
+    {
+        return Err("channel archive metadata not ready".into());
+    }
+    match &inner.persistence {
+        Persistence::Archive(store) | Persistence::Hosted { store, .. } => {
+            // Hold the projection lock through its durable commit. No failed candidate
+            // becomes visible, and concurrent local writes cannot be rolled back.
+            let mut data = inner.data.lock().unwrap();
+            let mut candidate = data.clone();
+            apply_archive_event(&mut candidate, event);
+            if !archive_contains_delivery(&candidate, event) {
+                return Err("channel delivery metadata incomplete".into());
+            }
+            store.save(&candidate)?;
+            *data = candidate;
+        }
+        Persistence::Embedded {
+            runtime,
+            pending_archive,
+        } => {
+            *pending_archive.lock().unwrap() = Some(event.clone());
+            // The legacy storage sink commits this candidate while holding its data
+            // lock, then updates RAM. Never hold the data lock across a node call.
+            runtime.save().await?;
+        }
+        Persistence::Memory => apply_archive_event(&mut inner.data.lock().unwrap(), event),
+    }
+    Ok(())
+}
+
 fn spawn_archiver(inner: &Arc<Inner>) {
     let mut source = inner.sdk.subscribe_events();
     let weak = Arc::downgrade(inner);
@@ -1437,6 +1639,15 @@ fn spawn_archiver(inner: &Arc<Inner>) {
             if matches!(&event, ClientEvent::ChannelMessage { body, .. } | ClientEvent::ChannelDirectMessage { body, .. }
                 if gcoms_core::is_piece_application_payload(body))
             {
+                continue;
+            }
+            if inner.embedded_sdk.is_some()
+                && matches!(
+                    event,
+                    ClientEvent::ChannelMessage { .. } | ClientEvent::ChannelDirectMessage { .. }
+                )
+            {
+                // The durable inbox owns text publication; this subscription is only a hint.
                 continue;
             }
             archive_event(&inner, &event).await;
@@ -1491,8 +1702,54 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
         }
         return;
     }
-    let mut data = inner.data.lock().unwrap();
+    apply_archive_event(&mut inner.data.lock().unwrap(), event);
+    inner.dirty.store(true, Ordering::Relaxed);
+}
+
+fn apply_archive_event(data: &mut ArchiveData, event: &ClientEvent) {
     match event {
+        ClientEvent::ChannelDelivered {
+            channel,
+            message_id,
+        }
+        | ClientEvent::ChannelDirectDelivered {
+            channel,
+            message_id,
+            ..
+        } => {
+            if let Some(id) = data
+                .channels
+                .iter()
+                .find(|c| c.protocol_name == *channel && c.active)
+                .map(|c| c.id)
+            {
+                let receipt = (id.0, message_id.0);
+                if !data.delivery_receipts.contains(&receipt) {
+                    data.delivery_receipts.push(receipt);
+                }
+                if data.delivery_receipts.len() > 1024 {
+                    data.delivery_receipts.remove(0);
+                }
+                for record in data.channels.iter_mut().filter(|c| c.id == id) {
+                    for message in record
+                        .messages
+                        .iter_mut()
+                        .filter(|m| m.mine && m.id == message_id.0)
+                    {
+                        message.delivery = Some(gchat_api::Delivery::Delivered);
+                    }
+                }
+                for pm in data.scoped_pms.iter_mut().filter(|p| p.id.channel_id == id) {
+                    for message in pm
+                        .messages
+                        .iter_mut()
+                        .filter(|m| m.mine && m.id == message_id.0)
+                    {
+                        message.delivery = Some(gchat_api::Delivery::Delivered);
+                    }
+                }
+            }
+        }
         ClientEvent::ChannelMessage {
             channel,
             message_id,
@@ -1505,7 +1762,7 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
             if let Some(record) = data
                 .channels
                 .iter_mut()
-                .find(|candidate| candidate.active && candidate.protocol_name == *channel)
+                .find(|candidate| candidate.protocol_name == *channel)
             {
                 if record
                     .messages
@@ -1521,6 +1778,8 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
                     .map(|member| member.id);
                 record.messages.push(Message {
                     id: message_id.0,
+                    operation_id: None,
+                    delivery: None,
                     ts_unix: *timestamp_unix,
                     sender_member_id: member,
                     sender_name: sender.clone(),
@@ -1540,7 +1799,7 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
             let Some(record) = data
                 .channels
                 .iter()
-                .find(|candidate| candidate.active && candidate.protocol_name == *channel)
+                .find(|candidate| candidate.protocol_name == *channel)
                 .cloned()
             else {
                 return;
@@ -1580,6 +1839,8 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
             if !pm.messages.iter().any(|message| message.id == message_id.0) {
                 pm.messages.push(Message {
                     id: message_id.0,
+                    operation_id: None,
+                    delivery: None,
                     ts_unix: *timestamp_unix,
                     sender_member_id: Some(remote),
                     sender_name: pm.remote_display_name.clone(),
@@ -1605,9 +1866,8 @@ async fn archive_event(inner: &Arc<Inner>, event: &ClientEvent) {
                 }
             }
         }
-        _ => return,
+        _ => (),
     }
-    inner.dirty.store(true, Ordering::Relaxed);
 }
 
 fn spawn_periodic_save(inner: &Arc<Inner>) {
@@ -1626,7 +1886,7 @@ fn spawn_periodic_save(inner: &Arc<Inner>) {
 
 async fn save_inner(inner: &Arc<Inner>) -> Result<(), String> {
     match &inner.persistence {
-        Persistence::Embedded { runtime } => runtime.save().await?,
+        Persistence::Embedded { runtime, .. } => runtime.save().await?,
         // The hosted runtime saves its own node state on every event and
         // every 30 s; only the archive is ours here.
         Persistence::Archive(store) | Persistence::Hosted { store, .. } => {
@@ -1644,12 +1904,6 @@ fn short_member(member: &MemberId) -> String {
         .map(|byte| format!("{byte:02x}"))
         .collect()
 }
-fn fresh_id() -> [u8; 16] {
-    use rand::RngCore;
-    let mut id = [0; 16];
-    rand::thread_rng().fill_bytes(&mut id);
-    id
-}
 fn now_unix() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -1658,21 +1912,34 @@ fn now_unix() -> u64 {
 
 // Keeps the legacy combined encrypted file format while GComs owns protocol lifecycle.
 struct LegacyProtocolStorage {
+    pending_archive: Arc<Mutex<Option<ClientEvent>>>,
     store: Store,
     archive: Arc<Mutex<ArchiveData>>,
 }
 impl gcoms::runtime::store::ProfileStorage for LegacyProtocolStorage {
     fn save(&self, data: &gcoms::runtime::store::ProtocolData) -> Result<(), String> {
+        let mut archive = self.archive.lock().map_err(|_| "archive lock poisoned")?;
+        let mut pending = self
+            .pending_archive
+            .lock()
+            .map_err(|_| "pending archive lock poisoned")?;
+        let mut candidate = archive.clone();
+        if let Some(event) = pending.as_ref() {
+            apply_archive_event(&mut candidate, event);
+            if !archive_contains_delivery(&candidate, event) {
+                return Err("channel delivery metadata incomplete".into());
+            }
+        }
         self.store.save(&StoreData {
             identity_seed: data.identity_seed,
             node_state: data.node_state.clone(),
-            archive: self
-                .archive
-                .lock()
-                .map_err(|_| "archive lock poisoned")?
-                .clone(),
-        })
+            archive: candidate.clone(),
+        })?;
+        *archive = candidate;
+        *pending = None;
+        Ok(())
     }
+
     fn network_directory(&self) -> std::path::PathBuf {
         self.store.network_directory()
     }

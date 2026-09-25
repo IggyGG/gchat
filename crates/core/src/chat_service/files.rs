@@ -151,8 +151,31 @@ fn snapshot(snapshot: api::Snapshot, archive: &ArchiveData, filter: Option<&str>
     }
 }
 impl ChatService {
+    // Both control calls and binary reads/writes can race a successful unlock.
+    // Wait without the session lock so startup, history and lock can all progress.
+    async fn wait_for_file_cache(&self) -> Result<(), String> {
+        tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                let session = self.session.lock().await;
+                let preparing = session.as_ref().is_some_and(|s| {
+                    !s.ui_locked
+                        && s.files.is_none()
+                        && s.file_error.as_deref() == Some("Preparing encrypted file cache…")
+                });
+                drop(session);
+                if !preparing || *self.stopped.borrow() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+        })
+        .await
+        .map_err(|_| "File cache is still preparing. Try again shortly.".to_string())
+    }
+
     pub(super) async fn files_request(&self, request: FileRequest) -> Result<FileSnapshot, String> {
         self.require(Capability::ChannelMember)?;
+        self.wait_for_file_cache().await?;
         let publications = matches!(request, FileRequest::Publications { .. });
         let mut session = self.session.lock().await;
         let unlocked = session
@@ -296,6 +319,7 @@ impl ChatService {
         Ok(result)
     }
     pub(super) async fn file_piece_io(&self, frame: Vec<u8>) -> Result<Vec<u8>, String> {
+        let _update_request = self.update_gate.enter()?;
         self.require(Capability::ChannelMember)?;
         let (mut header, bytes) = gchat_api::files::decode_io(&frame)?;
         if header.instance != self.id {
@@ -322,6 +346,7 @@ impl ChatService {
         if !header.upload && !bytes.is_empty() {
             return Err("Download request contains unexpected bytes".into());
         }
+        self.wait_for_file_cache().await?;
         let session = self.session.lock().await;
         let unlocked = session
             .as_ref()

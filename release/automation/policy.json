@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "channel": "production",
+  "carrier_profile": 46,
+  "physical_devices_required": false,
+  "soak_24h_required": false,
+  "statistical_privacy_gate_required": false,
+  "privacy_qualified": false,
+  "required_checks": [
+    "authentication",
+    "durable_delivery",
+    "files",
+    "reopen_recovery",
+    "upgrade_rollback",
+    "relay_compatibility"
+  ],
+  "activation": "next_launch",
+  "android_package": "boo.gchat.app",
+  "android_certificate_sha256": "ad7a7a315b2b76162de0a61f1acc651886c2f697e93089364cf9f6ed992a1f06",
+  "ios_certificate_sha256": "575c69108062e8a523117b57785563dba10a2265ee72df4771701813e5cbfbb7",
+  "france_included": true,
+  "audience": "18+",
+  "updater_public_key": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRFNTY5ODJBMkJGQzBBNDcKUldSSEN2d3JLcGhXVG5MVGs2ay8yT1pvcGtRUTY2Z2toVmlMWnJza0oyTXBNZk9RRFVmMTBIY0kK"
+}

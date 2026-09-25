@@ -2,3 +2,10 @@
 # Exact historical fingerprints only; new findings still fail publication.
 b5614f023f56305a07c64b140facea800b7de764:Cargo.lock:generic-api-key:2357
 b5614f023f56305a07c64b140facea800b7de764:apps/client/src-tauri/Cargo.lock:generic-api-key:3375
+# Reviewed public verification material for automatic updates (not private keys):
+# OpenPGP fingerprint F4F6...30BB and the base64 minisign PUBLIC key 4E56982A2BFC0A47.
+824b747d42a96038858d560bc5bf7c2aab257797:scripts/release_config.py:generic-api-key:26
+96d969697b03c211db2e7bfa1516d9f46409c2b9:release/automation/policy.json:generic-api-key:23
+96d969697b03c211db2e7bfa1516d9f46409c2b9:apps/client/src-tauri/tauri.conf.json:generic-api-key:85
+96d969697b03c211db2e7bfa1516d9f46409c2b9:.github/workflows/linux-release.yml:generic-api-key:77
+96d969697b03c211db2e7bfa1516d9f46409c2b9:scripts/release_config.py:generic-api-key:40

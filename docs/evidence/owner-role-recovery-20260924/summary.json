@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "sources": {
+    "gchat": {
+      "commit": "7af8554564e7499699fc97f90d2a44eb3ecba211",
+      "tree": "0a3a398b342011d3689e1dbaf4cafd24d323985a"
+    },
+    "gcoms": {
+      "commit": "b9a87022f2581db1437ec09cb7e5f581f2e5bfa7",
+      "tree": "8b596332c2cc360fc7bc8b3f603a05fab30799e1"
+    }
+  },
+  "checks": {
+    "core": 0,
+    "clippy": 0,
+    "service": 0,
+    "apt-update": 0,
+    "native-dependencies": 0,
+    "notices": 0,
+    "build": 0,
+    "bundle": 0
+  },
+  "artifacts": {
+    "gchat": "502b49e9d045366def6d0b9e874f1b82d437ccdc9a1d2eb4087ae6f7ee848a4b",
+    "GChat_0.1.4_amd64.deb": "9ff5cf3e0656929febd43e0fedd905c87b81d8a0cf54274f9c7b11ffa4053e43"
+  },
+  "evidence_archive_sha256": "e84bbfccb9159ec452f44e6d6b2cf97e9e3380fa37307bafc8b01010a8b5b699",
+  "rust_tests": {
+    "passed": 65,
+    "failed": 0,
+    "ignored": 2
+  },
+  "native_inputs_verified": true,
+  "preparation_retry": "Original system Python 3.11 failed before compilation. Retained failure; pinned Python 3.12.10 retry passed on unchanged source.",
+  "source_timestamp_handling": "Refreshed extracted-input mtimes before compilation, preserving bytes, to prevent stale Cargo reuse across snapshot roots.",
+  "scope": "Local Linux application package/core/Clippy; Android 1018 build and actual personal phone transfer still pending.",
+  "evidence": {
+    "native-summary.json": "748a55cf6186e2b5586ea5c7a13706de066368daa718176140271e4dba037969",
+    "native-inputs.json": "9ce0afa94bec438684525935a309f251f89f6ad471ee60eadca17aba4ab0bcb3",
+    "core.log": "b70af978424808f789f58127e2297214b3f81910c050a450470b3be908dd7900",
+    "clippy.log": "37f1011ac1213d16f16cacee94c6427aca55becda045b61b4b98a4330c9cc413",
+    "service.log": "9468c2b69107f1eba8e59b7022f37962935b7090aa0b8a4373e34b95432a3240",
+    "desktop.log": "c3db9d9eb0ea659d6d23b2792e7fb2a8ea6654f4d081076beb276d0c5c3775b5",
+    "bundle.log": "1a7e6e0b610fe5c957abbad53f2c75c7338d756a60345da4089744233d541b61",
+    "package-installed.json": "aa9321e619c4dbd58fbc2a57bdddc694baf5046bafa4d1854391bf7b757d132c"
+  }
+}

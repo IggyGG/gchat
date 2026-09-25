@@ -8,7 +8,7 @@ const primary = 'a'.repeat(64), secondary = 'b'.repeat(64);
 const networks: JoinedNetwork[] = [primary, secondary].map((id, i) => ({ id, name: `network-${i}`, fingerprint: id, primary: !i, status: { state: 'connected', message: 'Connected' } }));
 const conversation: Conversation = { id: 'channel/same', channelId: 'same', provider: null, kind: 'channel', name: '#same', topic: '', active: true, owner: false, members: [], unread: 0, lastMessageId: null, inputLimitBytes: 12000, commands: [] };
 const snapshot: Snapshot = { instance: { id: 'instance', label: 'test', bootId: 'boot', locked: false, protocolLocked: false, profileExists: true, archiveExists: true, safetyNumber: 'test', capabilities: ['networks.v1'] }, revision: '1', conversations: [conversation], commandHistory: [], inputHistory: [], providerErrors: [] };
-function setup() {
+function setup(remoteSnapshot: Snapshot = snapshot) {
   const calls: Request[] = [];
   const base: Transport = { async request(request): Promise<Response> {
     calls.push(request);
@@ -18,7 +18,7 @@ function setup() {
       if (request.request.kind === 'list') return { kind: 'networks', response: { kind: 'list', networks } };
       if (request.request.kind === 'call') {
         const inner = request.request.request;
-        const response: Response = inner.kind === 'snapshot' ? { kind: 'snapshot', snapshot }
+        const response: Response = inner.kind === 'snapshot' ? { kind: 'snapshot', snapshot: remoteSnapshot }
           : { kind: 'applied', conversation: 'conversation' in inner ? inner.conversation : null, notice: null };
         return { kind: 'networks', response: { kind: 'result', network: request.request.network, response } };
       }
@@ -28,6 +28,18 @@ function setup() {
   const workspace = new NetworkWorkspace(() => base, () => {});
   return { workspace, calls, base };
 }
+
+it('keeps a secondary network archive warning visible until its storage recovers', async () => {
+  const remote: Snapshot = { ...snapshot, providerErrors: [{ id: 'archive', code: 'local_storage_unavailable', message: 'Check free disk space; retrying automatically.', retryable: true }] };
+  const { workspace } = setup(remote);
+  const failed = await workspace.request({ kind: 'snapshot' });
+  expect(failed.kind === 'snapshot' && failed.snapshot.providerErrors).toEqual([{
+    id: 'archive', code: 'local_storage_unavailable', message: 'network-1: Check free disk space; retrying automatically.', retryable: true,
+  }]);
+  remote.providerErrors = [];
+  const recovered = await workspace.request({ kind: 'snapshot' });
+  expect(recovered.kind === 'snapshot' && recovered.snapshot.providerErrors).toEqual([]);
+});
 
 it('keeps identical channel IDs and captured sends distinct while switching networks', async () => {
   const { workspace, calls } = setup();

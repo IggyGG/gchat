@@ -154,6 +154,9 @@ impl ChatService {
                     .clone();
                 let children = self.networks.lock().await;
                 for (id, record) in records {
+                    if *self.stopped.borrow() {
+                        break;
+                    }
                     let status = match children.get(&id) {
                         Some(child) => child.runtime.network_status().await?,
                         None => NetworkStatus::new(NetworkState::Unavailable),
@@ -376,11 +379,15 @@ impl ChatService {
             .lock()
             .await
             .as_ref()
+            .filter(|s| !s.ui_locked)
             .ok_or("Profile locked")?
             .state
             .networks
             .clone();
         for (id, record) in records {
+            if *self.stopped.borrow() {
+                break;
+            }
             // One failed network cannot prevent access to other networks/history.
             let _ = Box::pin(self.open_retained_network(&id, &record)).await;
         }
@@ -424,6 +431,29 @@ impl ChatService {
 mod tests {
     use super::*;
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+
+    pub(super) async fn restored_networks(
+        service: &Arc<ChatService>,
+        expected: usize,
+    ) -> BTreeMap<String, Arc<ChatService>> {
+        // Primary unlock now returns before retained child profiles reopen.
+        assert!(!service.snapshot().await.unwrap().instance.locked);
+        tokio::time::timeout(std::time::Duration::from_secs(60), async {
+            loop {
+                let children = service.networks.lock().await.clone();
+                let mut unlocked = children.len() == expected;
+                for child in children.values() {
+                    unlocked &= !child.snapshot().await.unwrap().instance.locked;
+                }
+                if unlocked {
+                    return children;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .expect("retained child profiles must finish background restoration")
+    }
 
     fn invitation(name: &str, seed: u8) -> JoinInvitation {
         let signer = gcoms_crypto::IdentityKeypair::from_seed([seed; 32]);
@@ -590,7 +620,7 @@ mod tests {
                 panic!("network list")
             };
             assert_eq!(networks.len(), 3);
-            let children = service.networks.lock().await.clone();
+            let children = restored_networks(&service, 2).await;
             assert_eq!(children.len(), 2);
             for (id, child) in &children {
                 assert_eq!(
@@ -648,7 +678,8 @@ mod tests {
                 })
                 .await
                 .unwrap();
-            eprintln!("network registry: all profiles unlocked");
+            restored_networks(&service, 2).await;
+            eprintln!("network registry: all profiles unlocked after background restoration");
             for child in children.values() {
                 assert!(!child.snapshot().await.unwrap().instance.locked);
             }

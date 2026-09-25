@@ -1,0 +1,10 @@
+[Unit]
+Description=Audit and mirror GChat and GComs sources for cluster releases
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/lib/gchat-release-mirror/run
+TimeoutStartSec=12min
+Nice=15
+CPUWeight=10
+IOSchedulingClass=idle

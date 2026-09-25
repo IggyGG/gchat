@@ -56,7 +56,7 @@ impl InstanceConfig {
         super::endpoint_for(&self.protocol_socket)
     }
 
-    fn uses_protocol_ipc(&self) -> bool {
+    pub(super) fn uses_protocol_ipc(&self) -> bool {
         !matches!(self.protocol_backend, gcoms::Backend::NetworkClient)
     }
 }
@@ -71,17 +71,19 @@ impl ProtocolIpc {
         let _ = self.server.await;
     }
 }
-struct Running {
-    service: Arc<ChatService>,
+pub(super) struct Running {
+    pub(super) service: Arc<ChatService>,
     runtime: ProtocolRuntime,
     ipc: Option<ProtocolIpc>,
 }
 pub struct InstanceHost {
-    config: InstanceConfig,
+    pub(super) config: InstanceConfig,
     id: String,
     label: String,
-    boot: String,
-    running: Mutex<Option<Running>>,
+    pub(super) boot: String,
+    pub(super) running: Mutex<Option<Running>>,
+    pub(super) updates: Mutex<super::host_updates::State>,
+    pub(super) update_exit: watch::Sender<bool>,
 }
 pub fn capabilities() -> Vec<Capability> {
     vec![
@@ -221,10 +223,13 @@ impl InstanceHost {
             label: metadata.label,
             boot: random_id(),
             running: Mutex::new(None),
+            updates: Mutex::new(super::host_updates::State::default()),
+            update_exit: watch::channel(false).0,
         }))
     }
     fn info(&self) -> InstanceInfo {
         InstanceInfo {
+            build: crate::build_info::current(),
             id: self.id.clone(),
             label: self.label.clone(),
             boot_id: self.boot.clone(),
@@ -281,6 +286,12 @@ impl InstanceHost {
             .listen(self.config.listen)
             .advertise(self.config.advertise)
             .relay(relay)
+            // The sealed inbox is consumed by the in-process archive owner.
+            // Existing external IPC hosts retain their own archive contract.
+            .durable_channel_inbox(matches!(
+                self.config.protocol_backend,
+                gcoms::Backend::Embedded | gcoms::Backend::NetworkClient
+            ))
             .receive_messages(false)
             .network_providers(self.config.relay_urls.clone())
             .network_recovery(self.config.relay_file.is_none() && self.config.network_recovery);
@@ -426,6 +437,24 @@ impl ChatEndpoint for InstanceHost {
                 "instance",
                 "This attachment is bound to a different instance".into(),
             );
+        }
+        if let Request::Update { request } = envelope.request {
+            return ResponseEnvelope {
+                version: VERSION,
+                instance_id: self.id.clone(),
+                response: match self.update(request).await {
+                    Ok(result) => Response::Update { result },
+                    Err(message) => Response::Error {
+                        code: "update".into(),
+                        message,
+                    },
+                },
+            };
+        }
+        if matches!(envelope.request, Request::Unlock { .. })
+            && self.updates.lock().await.preparing()
+        {
+            return error("busy", "This instance is preparing an update".into());
         }
         envelope.request = super::lifecycle_request(envelope.request);
         // Do not hold the lifecycle lock during event long-polls.

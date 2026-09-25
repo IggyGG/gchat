@@ -100,6 +100,9 @@ export class NetworkWorkspace implements Transport {
         this.instances.set(network.id, response.snapshot.instance.id);
         if (presenceRevision === this.presenceRevision) this.presence.set(network.id, response.snapshot.presenceEnabled ?? false);
         next.conversations.push(...response.snapshot.conversations);
+        next.providerErrors.push(...(response.snapshot.providerErrors ?? []).map(error => ({
+          ...error, message: `${network.name}: ${error.message}`,
+        })));
         next.activity.push(...(response.snapshot.activity ?? []).map(a => ({ ...a, conversation: this.qualify(network.id, a.conversation) })));
         next.operations.push(...(response.snapshot.operations ?? []).map(r => ({ ...r, network: network.id,
           conversation: r.conversation ? this.qualify(network.id, r.conversation) : null })));
@@ -121,6 +124,8 @@ export class NetworkWorkspace implements Transport {
       const lifecycle = this.lifecycle, presenceRevision = this.presenceRevision;
       const response = await this.base().request(request);
       if (lifecycle !== this.lifecycle) throw new ChatError('locked', 'Workspace changed during refresh');
+      // Authenticate locally first; the next independent snapshot aggregates networks.
+      if (request.kind === 'unlock') return response;
       return response.kind === 'snapshot' ? { ...response, snapshot: await this.aggregate(response.snapshot, presenceRevision) } : response;
     }
     if (request.kind === 'events' && this.networks.length > 1) {

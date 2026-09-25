@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-09-23T17:12:45.862804+00:00",
+  "sources": {
+    "gchat": "48ccdfb8b2a4d9dc13acebf3f2701d77504d3a5d",
+    "gcoms": "15be9487812cbd2568638054a6228cd1f6dad20a"
+  },
+  "scope": "inbox-install correction: package and Linux validation, plus separately scoped physical Android follow-up",
+  "checks": {
+    "node_library": {
+      "passed": 333,
+      "failed": 0,
+      "ignored": 2
+    },
+    "gchat_core": {
+      "passed": 65,
+      "failed": 0,
+      "ignored": 2
+    },
+    "strict_node_clippy": true,
+    "strict_gchat_workspace_clippy": true,
+    "linux_package_source_unchanged": true,
+    "android_build_signing_emulator": true,
+    "android_pinned_v2_signature_verified": true,
+    "both_updated_linux_apps_reopened_retained_profiles": true,
+    "bidirectional_authenticated_delivery": true,
+    "new_file_transfer": {
+      "passed": true,
+      "time": 1790183250.798077,
+      "bytes": 59392,
+      "sha256": "4d19e7efbe6a4f4e348ebff16ee7cf14576126e662afe178bcae021022617420",
+      "id": "2f35ad5cc9ae4c71b6c5ab73674002c9",
+      "scope": "new transfer between both updated actual Linux apps"
+    },
+    "retained_file_reopen": {
+      "time": 1790182954.9437857,
+      "reopened_file_bytes": 75776,
+      "sha256": "0bd26cf8edbda854612bf079be997da8bb4bf76328d4639a9b1278d64e02cb49",
+      "passed": true
+    }
+  },
+  "linux": {
+    "deb_sha256": "64bc66c9542f4eb9aded0cf0d759ace982d89f8ef7888fb93cf08da7cef5389b",
+    "executable_sha256": "6b0c92545f70dbaaf3226870c2ef4d34946d2bbbbaaef3a52b0d06ec40afb448",
+    "matching_message_ids": [
+      "ccc7721b3315630be7b856e78264c598",
+      "8ff73618fc42f536316ed5ff3e7a40c4"
+    ],
+    "original_personal_profile_modified": false
+  },
+  "android": {
+    "version_code": 1015,
+    "apk_sha256": "c11f1b441ea881155127e513b7aee7bf0d8b89dac71adfc0cd9b84267d0ef8b5",
+    "publisher_certificate_sha256": "ad7a7a315b2b76162de0a61f1acc651886c2f697e93089364cf9f6ed992a1f06",
+    "github_run": 35888754544,
+    "installed_on_phone": true,
+    "physical_device_qualified": false,
+    "push_qualified": false
+  },
+  "remaining": [
+    "Fresh control channel passed foreground delivery/file and eventual background message ACK; retained-sender join timed out and physical reconnect took roughly ten minutes/seven attempts",
+    "Original personal conversation and 122980700-byte file remain unqualified",
+    "Transient no-independent-route failure after laptop restart recovered on later retry; recovery latency remains",
+    "Earlier cold-join deadline and late Welcome failure remain separate, unresolved"
+  ],
+  "retained_failures": [
+    "Original stalled-peer inbox-install regression failed before fix",
+    "Initial Linux link failed due missing GTK/WebKit development libraries; packaging-only retry passed on unchanged sources",
+    "Artifact stream resets resumed with exact final hashes; interrupted streams retained"
+  ],
+  "evidence": {
+    "inbox-linux-01/retained/summary.json": "bfad42cff4581942885d2227207d9538debc539a453b5bc74c0c30c864b2511a",
+    "inbox-linux-01/installation.json": "da9cd086dd9faa63c1dae281d412a96d6f489bf1b9311e4a2ef9c4a8d34a9ee0",
+    "inbox-linux-01/peer-upgrade.json": "8f45cbf783f56159d915eeb586b5f6aa9580ec07a5c868c726e48e432e5a847c",
+    "inbox-linux-01/live/summary.json": "7737a652d2985b33ddcd3d646bda510c5e95a928489e874be67d0cdfe2274267",
+    "inbox-linux-01/new-file-verification.json": "a95cdfd12a9ed63d2ca29fcbb9d07b2b47dc5c50443d603b7c2e04c8abd5f958",
+    "inbox-linux-01/reopened-file.json": "dbe8c33e87c13f6dc2c73ee229da8c0a0312becf2ee4992242e238c2ce178d98",
+    "android-1015/verification.json": "d10620a15a30a544e66e1b6b195815ea5b92bac25c518529a050f1b30cd89ef4",
+    "android-1015/run.json": "8a9c3c5f8f4f98bccf32ef6efff24e8cb1b1228f4fbd231121b667b0b02acdc4"
+  },
+  "physical_device_followup": {
+    "path": "physical-device-check.json",
+    "sha256": "63e01c2bd01fede53276344dfdcd95f3760dc9c52aa469caf7ee425bb4056c94"
+  },
+  "later_followups": {
+    "delayed-recovery-followup.json": "146ae30d8403fa9f810ee82f3930261364dad8f1be20b13005299c300e21d02b",
+    "cluster-reopen-control.json": "74f095405915875e28072b0816c700de3da9057def6d666c0a40427524f75555"
+  }
+}

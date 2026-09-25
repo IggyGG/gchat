@@ -13,6 +13,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import socket
 import struct
 import subprocess
 import sys
@@ -651,6 +652,49 @@ def resumed_packages(text):
     return sorted(packages)
 
 
+def wait_activity(shell, dest, report, phase, expected_foreground, timeout=10):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        state = shell('dumpsys', 'activity', 'activities')
+        (dest / (phase + '-activities.txt')).write_text(state)
+        packages = resumed_packages(state)
+        observed = time.monotonic()
+        report.setdefault('activity_observations', []).append({
+            'phase': phase, 'resumed_packages': packages, 'monotonic': observed,
+        })
+        if observed < deadline and (PACKAGE in packages) == expected_foreground:
+            return
+        time.sleep(min(.2, max(0, deadline - observed)))
+    raise ValueError('app activity did not reach requested foreground/background state')
+
+
+def prepare_emulator_user(shell):
+    """Complete disposable SDK-image setup before measuring app lifecycle."""
+    require(shell('getprop', 'ro.kernel.qemu') == '1', 'fixture setup requires an emulator')
+    shell('settings', 'put', 'global', 'device_provisioned', '1')
+    shell('settings', '--user', '0', 'put', 'secure', 'user_setup_complete', '1')
+    require(shell('settings', 'get', 'global', 'device_provisioned') == '1' and
+            shell('settings', '--user', '0', 'get', 'secure', 'user_setup_complete') == '1',
+            'disposable emulator setup did not complete')
+    package = 'com.google.android.googlesdksetup'
+    present = shell('pm', 'path', package, absent_ok=True)
+    if present:
+        state = shell('pm', 'disable-user', '--user', '0', package)
+        require('disabled-user' in state, 'SDK setup activity was not disabled in fresh fixture')
+        shell('am', 'force-stop', package)
+    # A fresh AVD can enter its swipe keyguard while other emulator processes
+    # boot. Keep only this disposable device awake during the scripted journey.
+    shell('locksettings', 'set-disabled', 'true')
+    require(shell('locksettings', 'get-disabled') == 'true',
+            'fresh emulator swipe lock was not disabled')
+    shell('svc', 'power', 'stayon', 'true')
+    shell('input', 'keyevent', 'KEYCODE_WAKEUP')
+    shell('wm', 'dismiss-keyguard')
+    return {'user': 0, 'device_provisioned': True, 'user_setup_complete': True,
+            'sdk_setup_disabled': bool(present), 'stay_awake': True, 'lockscreen_disabled': True,
+            'scope': 'disposable_emulator_only'}
+
+
 def keyboard_shown(text):
     values = re.findall(r'\bmInputShown=(true|false)\b', text)
     require(values, 'input method did not expose fixture keyboard visibility')
@@ -659,12 +703,25 @@ def keyboard_shown(text):
 
 def wait_keyboard(shell, expected, timeout=10):
     deadline = time.monotonic() + timeout
+    def observe():
+        try:
+            # Bound each diagnostic inside the existing UI deadline. A busy
+            # Android service can time out its dump; partial output is never a
+            # visibility sample, even if it contains mInputShown.
+            return keyboard_shown(shell('dumpsys', '-t', '1', 'input_method',
+                                        '--dump-priority', 'CRITICAL'))
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 255:
+                raise
+            return None
     while time.monotonic() < deadline:
-        if keyboard_shown(shell('dumpsys', 'input_method')) == expected:
+        if observe() == expected:
             # Let Android's IME animation and the app visualViewport settle before
             # obtaining new accessibility bounds. Escape does not dismiss Gboard.
             time.sleep(0.4)
-            if keyboard_shown(shell('dumpsys', 'input_method')) == expected:
+            if (time.monotonic() < deadline and
+                    observe() == expected and
+                    time.monotonic() < deadline):
                 return
         time.sleep(0.2)
     raise ValueError('fixture keyboard did not reach expected visibility')
@@ -755,6 +812,11 @@ def smoke(args):
                                 capture_output=True, timeout=30)
         if absent_ok and result.returncode == 1 and not result.stdout.strip() and not result.stderr.strip():
             return ''
+        if result.returncode:
+            with (root / 'shell-errors.jsonl').open('a') as log:
+                log.write(json.dumps({'command': list(cmd[:2]), 'returncode': result.returncode,
+                                      'stdout': result.stdout[-262144:],
+                                      'stderr': result.stderr[-8192:]}) + '\n')
         result.check_returncode()
         return result.stdout.strip()
     require(shell('getprop', 'ro.kernel.qemu') == '1', 'physical devices are outside this automated destructive fixture')
@@ -774,6 +836,7 @@ def smoke(args):
     firewall = []
     try:
         root_emulator(adb, dest / 'adb-root.json')
+        report['fixture_setup'] = prepare_emulator_user(shell)
         report['api'] = int(shell('getprop', 'ro.build.version.sdk'))
         report['abi'] = shell('getprop', 'ro.product.cpu.abi')
         require(report['api'] >= 26 and report['abi'] == 'x86_64', 'unexpected emulator API/ABI')
@@ -788,6 +851,9 @@ def smoke(args):
             shell(command, '-I', 'OUTPUT', '-m', 'owner', '--uid-owner', str(uid), '!', '-o', 'lo', '-j', 'REJECT')
             firewall.append(command)
         def launch():
+            # This function only runs after the disposable-emulator check above.
+            shell('input', 'keyevent', 'KEYCODE_WAKEUP')
+            shell('wm', 'dismiss-keyguard')
             result = shell('am', 'start', '-W', '-n', PACKAGE + '/' + artifact['activity'])
             require('Status: ok' in result, 'Android did not start GChat successfully')
         def nodes():
@@ -821,13 +887,7 @@ def smoke(args):
             password = wait_node(lambda n: n.attrib.get('password') == 'true')
             require(password.attrib.get('text') == expected, 'fixture passphrase changed during keyboard dismissal')
         def activity_state(phase, expected_foreground):
-            state = shell('dumpsys', 'activity', 'activities')
-            (dest / (phase + '-activities.txt')).write_text(state)
-            packages = resumed_packages(state)
-            report.setdefault('activity_observations', []).append({
-                'phase': phase, 'resumed_packages': packages, 'monotonic': time.monotonic(),
-            })
-            require((PACKAGE in packages) == expected_foreground, 'app activity did not reach requested foreground/background state')
+            wait_activity(shell, dest, report, phase, expected_foreground)
         def no_listener(phase):
             tcp = shell('cat', '/proc/net/tcp', '/proc/net/tcp6')
             listeners = listener_rows(tcp, uid)
@@ -921,6 +981,10 @@ def smoke(args):
     finally:
         if installed and uid is not None:
             try:
+                # This contains only the disposable fixture, never a personal device.
+                logs = subprocess.run([str(x) for x in [*adb, 'logcat', '-d', '-v', 'threadtime']],
+                                      capture_output=True, text=True, timeout=30)
+                (dest / 'system-logcat.txt').write_text(logs.stdout + logs.stderr)
                 (dest / 'app-logcat.txt').write_text(shell('logcat', '-d', '-v', 'threadtime', '--uid=' + str(uid)))
                 (dest / 'final-ui.xml').write_text(shell('cat', '/sdcard/gchat-fixture-ui.xml'))
             except Exception as error:
@@ -951,14 +1015,19 @@ def emulator_environment(root, inherited):
 
 def emulator(args):
     root = args.output.resolve()
+    port = getattr(args, 'port', 5554)
+    require(type(port) is int and 5554 <= port <= 5682 and port % 2 == 0,
+            'emulator port must be an even number from 5554 through 5682')
+    serial = f'emulator-{port}'
     android = sdk(require_ndk=False)
     environment, avds = emulator_environment(root, os.environ)
-    name = 'gchat-release-fixture'
+    name = f'gchat-release-fixture-{port}'
     avd_path = avds / (name + '.avd')
     report = {'schema': 1, 'scope': 'android_disposable_emulator_driver', 'passed': False,
-              'controller': reference(Path(__file__)), 'avd_home': str(avds), 'started': False}
+              'controller': reference(Path(__file__)), 'avd_home': str(avds), 'started': False,
+              'serial': serial, 'port': port, 'avd_name': name}
     process = None
-    adb = [android / 'platform-tools/adb', '-s', 'emulator-5554']
+    adb = [android / 'platform-tools/adb', '-s', serial]
     try:
         with (root / 'avd-create.log').open('w') as log:
             subprocess.run([str(android / 'cmdline-tools/latest/bin/avdmanager'), 'create', 'avd', '--force',
@@ -968,9 +1037,15 @@ def emulator(args):
                            check=True, timeout=120)
         require((avd_path / 'config.ini').is_file(), 'avdmanager did not create the requested AVD directory')
         require((avds / (name + '.ini')).is_file(), 'avdmanager did not register AVD in the explicit shared AVD home')
+        # Refuse a port already owned by another emulator. Every instance keeps
+        # its own AVD and all ADB operations remain explicitly serial-scoped.
+        with socket.socket() as console, socket.socket() as transport:
+            console.bind(('127.0.0.1', port))
+            transport.bind(('127.0.0.1', port + 1))
         with (root / 'emulator.log').open('w') as log:
             process = subprocess.Popen([str(android / 'emulator/emulator'), '-avd', name,
-                                        '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim',
+                                        '-port', str(port), '-cores', '2', '-memory', '2048',
+                                        '-no-window', '-no-audio', '-no-boot-anim',
                                         '-no-snapshot', '-wipe-data', '-gpu', 'swiftshader_indirect'],
                                        env=environment, stdout=log, stderr=log)
             report['started'] = True
@@ -988,7 +1063,7 @@ def emulator(args):
             else:
                 raise ValueError('emulator failed its bounded boot deadline')
             run([*adb, 'shell', 'input', 'keyevent', '82'], timeout=30)
-            smoke(argparse.Namespace(output=root, serial='emulator-5554', probe_picker=getattr(args, 'probe_picker', False),
+            smoke(argparse.Namespace(output=root, serial=serial, probe_picker=getattr(args, 'probe_picker', False),
                                      from_bundle=getattr(args, 'from_bundle', False),
                                      store_screenshots=getattr(args, 'store_screenshots', False)))
             report['passed'] = True
@@ -1149,6 +1224,8 @@ def main():
         sub = commands.add_parser(name)
         sub.add_argument('--output', type=Path, required=True)
         if name == 'smoke': sub.add_argument('--serial', required=True)
+        if name == 'emulator': sub.add_argument('--port', type=int, default=5554,
+                                              help='unique even port for concurrent disposable emulators')
         if name in ('smoke', 'emulator'): sub.add_argument('--probe-picker', action='store_true')
         if name in ('smoke', 'emulator'): sub.add_argument('--from-bundle', action='store_true')
         if name in ('smoke', 'emulator'): sub.add_argument('--store-screenshots', action='store_true')

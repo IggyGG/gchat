@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Sign a binding with the configured Tauri key; never print private key data."""
+import os, subprocess, sys
+from pathlib import Path
+if len(sys.argv)!=2:raise SystemExit('usage: sign-update FILE')
+path=Path(sys.argv[1]).resolve()
+if not path.is_file():raise SystemExit('binding file missing')
+# Tauri CLI reads the key from its protected environment, with no key in argv.
+subprocess.run([os.environ.get('GCHAT_TAURI_CLI','tauri'),'signer','sign',str(path)],check=True,stdout=subprocess.DEVNULL)

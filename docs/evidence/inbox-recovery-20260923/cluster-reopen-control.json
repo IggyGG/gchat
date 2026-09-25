@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-09-23T22:54:46.407503+00:00",
+  "sources": {
+    "gchat": "48ccdfb8b2a4d9dc13acebf3f2701d77504d3a5d",
+    "gcoms": "15be9487812cbd2568638054a6228cd1f6dad20a"
+  },
+  "binding": {
+    "additional_registry_packages": [],
+    "probe_sha256": "a04e6262e0cfd16cca031cddb5987b0bef6856e2df4a6ca220b329e37e5ed4a9",
+    "binary_sha256": "4e81c1f9c60e981a04391fa973eafa5a80ba0919b6f869dc7c5ec3399b2a6e5e",
+    "runtime": "NetworkClient; GChat InstanceHost flush/reopen, current-thread Tokio; Linux build, not Android OS",
+    "codematch": "unreachable"
+  },
+  "scope": "In-process GChat InstanceHost using explicit NetworkClient backend on Linux/current-thread Tokio; fresh encrypted profile then two flush/reopen cycles on operated relays",
+  "ready_observations": [
+    {
+      "cycle": 0,
+      "ready_ms": 84621
+    },
+    {
+      "cycle": 1,
+      "ready_ms": 61293
+    },
+    {
+      "cycle": 2,
+      "ready_ms": 61526
+    }
+  ],
+  "all_cycles_flushed": true,
+  "exit_code": 0,
+  "performance_qualified": false,
+  "limits": [
+    "No Android OS or actual mobile binary execution in this control",
+    "No channel membership, queued messages or file backlog in this fresh profile",
+    "Observed readiness includes up to one 10-second polling interval",
+    "Does not reproduce or explain the physical phone seven-attempt roughly ten-minute delay"
+  ],
+  "retained_setup_failure": "Initial run had no selected relay-egress NetworkPolicy; failed before readiness, preserved separately. Added the existing diagnostic selector label without changing the policy, then reused the exact binary with a fresh test profile.",
+  "evidence": {
+    "run.log": "9a68a22de8daf204d1a4ab072a41e1a079336d587e02c2a97cefdefd38e371f6",
+    "worker-02-egress.json": "903347db368fc7e849b695fa685302340097ce208dd21009a9ed5a410fa2d879",
+    "run-egress-failed.log": "639d2a2d5d9f1d412432ac2621aebd7859703d8e5a60b571a1f8ed4f1cb69ccb",
+    "build.log": "5e123e8462d5da38b52ba7f93432fb9006320fb672f8a6ef2dd2208f4ddb111e",
+    "run.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "toolchain.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "toolchain.log": "0ec61d19de03f4318e9196bfdca3437eec502b424463cac26ac873da48b9bab9",
+    "build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "worker-02-before-label-egress.json": "4a5f2b3c4f764834619a55b828075ee72cb12a24aa5935482de93ea13b854780",
+    "run-egress-failed.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "build-binding.json": "2619faf73a1867573190f20413287a35a1af89571bc0ef8b43785a114aca35e7",
+    "probe/Cargo.lock": "b53b87a6ced0bd70397318745fa20339d17f43e6b4efef000af0aca43dabde75",
+    "probe/Cargo.toml": "8093b1eaa7dee400f7a7cf25c343a68fed6f52b7e4ea85289b7e887cb3288961",
+    "probe/src/main.rs": "a04e6262e0cfd16cca031cddb5987b0bef6856e2df4a6ca220b329e37e5ed4a9",
+    "probe/.cargo/config.toml": "d87965b3d4db64259e7c1cc47aa092860b15b7104121fcd2c3fe1a4c3eb4cf01"
+  }
+}

@@ -1,0 +1,6 @@
+Types: deb
+URIs: https://gchat.boo/updates/apt
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/gchat.asc

@@ -3,6 +3,10 @@ run-name: Forgejo iOS ${{ inputs.request_id }}
 on:
   workflow_dispatch:
     inputs:
+      release_manifest:
+        description: Base64 immutable coordinator manifest (optional for manual jobs)
+        required: false
+        type: string
       gchat_ref:
         description: Protected main/release branch or approved tag at gchat_commit
         required: true
@@ -76,6 +80,10 @@ jobs:
           --gchat gchat --gcoms gcoms
           --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT"
           --gchat-ref "$GCHAT_REF" --gcoms-ref "$GCOMS_REF"
+      - name: Bind coordinated release identity
+        env:
+          GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+        run: python3 gchat/scripts/release_input.py
       - name: Prepare pinned native tools
         timeout-minutes: 15
         run: |
@@ -108,6 +116,8 @@ jobs:
           set -o pipefail
           python3 gchat/scripts/ios-build.py build --gchat gchat --gcoms gcoms --output ios-output \
             --build-number "$BUILD_NUMBER" 2>&1 | tee ios-worker.log
+      - name: Bind native artifact to coordinated release
+        run: python3 gchat/scripts/release_attest.py --output ios-output --platform ios
       - name: Upload verified IPA to TestFlight processing
         if: ${{ success() && inputs.upload_testflight }}
         timeout-minutes: 25
@@ -128,6 +138,7 @@ jobs:
           path: |
             ios-worker.log
             ios-output/build.json
+            ios-output/release-binding.json
             ios-output/ios-config.json
             ios-output/*.ipa
             ios-output/distribution-certificate.der
@@ -142,7 +153,9 @@ jobs:
             ios-output/native-tests/
             ios-output/device-xcode/
             ios-output/simulator-smoke/
+            ios-output/lifecycle/
             ios-output/simulator-signing/
+            ios-output/paired/inputs/gchat/release/publication.json
             ios-output/paired/provenance/
             ios-output/paired/inputs/gchat/apps/client/src-tauri/gen/apple/build/*.xcarchive/
             ios-output/upload.json

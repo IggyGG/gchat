@@ -2,17 +2,19 @@
   import InvitationCard from './InvitationCard.svelte';
   import { invitationLink } from './invitation-link';
   import type { CommandOutput, DirectoryEntry } from './api';
-  let { output, choose, saveInvitation, saveInvitationCard, prepareCommand, helpHeading = true }: { helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
+  let { output, choose, saveInvitation, saveInvitationCard, prepareCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
   let feedback = $state('');
-  async function copy(link: string) {
-    try { await navigator.clipboard.writeText(link); feedback = 'Invitation copied'; }
-    catch { feedback = 'Select and copy the complete invitation below, or save it as a file.'; }
+  async function copy(link: string, reconnect = false) {
+    try { await navigator.clipboard.writeText(link); feedback = reconnect ? 'Reconnect command copied. Paste it into this channel on the other device.' : 'Invitation copied'; }
+    catch { feedback = reconnect ? 'Select and copy the reconnect command below.' : 'Select and copy the complete invitation below, or save it as a file.'; }
   }
   let busy = $state(false);
   async function share(link: string, channel: string) {
     busy = true; feedback = '';
     try {
-      await navigator.share({ title: `Join #${channel}`, text: link });
+      const file = new File([link], 'gchat-invitation.txt', { type: 'text/plain' });
+      if (!navigator.canShare?.({ files: [file] })) { await save(link); return; }
+      await navigator.share({ title: `Join #${channel}`, files: [file] });
       feedback = 'Invitation handed to the share destination.';
     } catch (error) {
       feedback = error instanceof DOMException && error.name === 'AbortError' ? 'Sharing cancelled.' : 'Sharing failed. You can copy the invitation instead.';
@@ -46,17 +48,25 @@
     {#each output.channels as channel}<button onclick={() => choose(channel)}>{channel.name} · {channel.joined ? 'Open' : 'Join public channel'}</button>{/each}
   {:else if output.kind === 'invitation'}
     {@const appLink = invitationLink(output.link)}
-    <h2>Invite to #{output.channel.replace(/^#/, '')}</h2>
+    {#if invitationHeading}<h2>Invite to #{output.channel.replace(/^#/, '')}</h2>{/if}
+    <p>Send this single-use invitation to the person you want to join. It includes the network and channel.</p>
     <p>Single use · Expires {new Date(output.expires * 1000).toLocaleString()}</p>
     {#if output.localOnly}<p>This invitation is reachable only on this computer. Configure a relay before sharing with another computer.</p>{/if}
     {#if output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}
     <InvitationCard link={output.link} channel={output.channel} expires={output.expires} saveCard={saveInvitationCard} />
     <button disabled={busy} onclick={() => void copy(appLink ?? output.link)}>Copy invitation</button>
-    {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(appLink ?? output.link, output.channel)}>Share…</button>{/if}
+    {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(output.link, output.channel)}>Share invitation file…</button>{/if}
     <button disabled={busy} onclick={() => void save(output.link)}>{saveInvitation ? 'Save as…' : 'Download file'}</button>
     {#if !appLink}<p>This invitation is too large for an app link. Share the complete code or file.</p>{/if}
     <details><summary>Complete invitation</summary><button onclick={() => void copy(output.link)}>Copy raw code</button><textarea aria-label="Complete invitation" readonly value={output.link} rows="3"></textarea></details>
     {/if}
+    {#if feedback}<p role="status">{feedback}</p>{/if}
+  {:else if output.kind === 'text' && output.title === 'Reconnect this channel' && output.text.startsWith('gchat-reconnect1:')}
+    <h2>Reconnect this channel</h2>
+    <p>Use this only when existing members cannot receive each other's messages. It preserves your channel, identity and saved messages.</p>
+    <p>Copy this command to the other device using another app. Paste and send it in the same GChat channel there while both devices are connected. This is not an invitation and cannot add a member.</p>
+    <button onclick={() => void copy(`/reconnect ${output.text}`, true)}>Copy reconnect command</button>
+    <details><summary>Complete reconnect command</summary><textarea aria-label="Reconnect command" readonly value={`/reconnect ${output.text}`} rows="3"></textarea></details>
     {#if feedback}<p role="status">{feedback}</p>{/if}
   {:else if output.kind === 'text' || output.kind === 'status'}
     <h2>{output.kind === 'status' ? 'Status' : output.title}</h2><pre>{output.text}</pre>

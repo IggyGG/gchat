@@ -1,7 +1,12 @@
 <script lang="ts">
+  import FocusScreen from './FocusScreen.svelte';
+  import { followTail } from './follow-tail';
+  import { mentionSuggestions, insertMention } from './mentions';
+  import MessageText from './MessageText.svelte';
   import Welcome from './Welcome.svelte';
   import './theme.css';
   import ResizeHandles from './ResizeHandles.svelte';
+  import UpdatePanel from './UpdatePanel.svelte';
   import type { NativeShell } from './native-shell';
   import { onMount, tick, type Snippet } from 'svelte';
   import type { OperationHandle } from '@gcoms/rpc';
@@ -31,9 +36,6 @@
   let selected = $state<string | null>(null);
   let messages = $state<Message[]>([]);
   let before = $state<string | null>(null);
-  const timeline = $derived([...messages.map(message => ({ timestamp: message.timestamp, id: message.id, message, activity: undefined })),
-    ...(snapshot?.activity ?? []).filter(a => a.conversation === selected).map(activity => ({ timestamp: activity.timestamp, id: activity.id, message: undefined, activity }))]
-    .sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id)));
   let unreadMarkers = $state<Record<string, string>>({});
   let searchOpen = $state(false);
   let searchText = $state('');
@@ -47,7 +49,8 @@
   let rememberDevice = $state(false);
   let lifecycleBusy = $state(false);
   let pending = $state<Record<string, string>>({});
-  const busy = $derived(lifecycleBusy || !!pending[selected ?? '']);
+  const busy = $derived(lifecycleBusy);
+  const sendingFull = $derived(Object.keys(pending).length >= 32);
   type FailedOperation = { request: Extract<Request, { kind: 'submit' }>; code: string; message: string };
   let failures = $state<FailedOperation[]>([]);
   let savedOperations = $state<OperationHandle[]>([]);
@@ -67,8 +70,7 @@
     syncResults(); return value.key;
   }
   function showResult(id: string, conversation = selected, text?: string) {
-    utility = null; cancelPrompt(); closeNavigation();
-    void scrollPrivate();
+    utility = null; searchOpen = false; cancelPrompt(); closeNavigation();
     resultKey = beginResult(id, conversation, text);
   }
   let hidden = $state<string[]>([]);
@@ -80,12 +82,15 @@
   let panel = $state<'users' | 'files' | null>(null);
 
   const navigationModal = $derived(channelsOpen || !!panel);
-  let utility = $state<'network' | 'help' | 'font' | 'info' | null>(null);
+  let utility = $state<'network' | 'help' | 'font' | 'info' | 'notifications' | 'update' | null>(null);
   let pushStatus = $state<MobilePushStatus>();
   let pushBusy = $state(false), pushError = $state('');
+  let pushRefreshing = false;
   async function refreshPush() {
-    if (utility !== 'network' || !deviceUnlock?.notifications || pushBusy) return;
-    try { pushStatus = await deviceUnlock.notifications.status(); } catch { /* Push never blocks chat. */ }
+    if (!deviceUnlock?.notifications || pushBusy || pushRefreshing) return;
+    pushRefreshing = true;
+    try { pushStatus = await deviceUnlock.notifications.status(); } catch { pushError = 'Notification status is unavailable. Normal chat still works.'; }
+    finally { pushRefreshing = false; }
   }
   async function configurePush(enabled: boolean) {
     if (!deviceUnlock?.notifications || pushBusy) return;
@@ -94,7 +99,32 @@
     catch (error) { pushError = error instanceof Error ? error.message : String(error); }
     finally { pushBusy = false; }
   }
-  $effect(() => { if (utility === 'network') void refreshPush(); });
+  let pushOffered = $state(false);
+  const notificationLabel = $derived(pushBusy ? 'Updating…' : pushStatus?.permission === 'denied' ? 'Permission needed' : !pushStatus?.enabled ? 'Off' : pushStatus.registered ? 'On' : pushError || pushStatus.message.toLowerCase().includes('unavailable') ? 'Unavailable' : 'Registering');
+  function rememberPushOffer() {
+    pushOffered = true;
+    try { localStorage.setItem('gchat-notifications-offered', '1'); } catch { /* Memory-only in private webviews. */ }
+  }
+  async function openNotificationSettings() {
+    try { await deviceUnlock?.notifications?.openSettings?.(); }
+    catch { pushError = 'Could not open system settings. Open GChat notifications in your device Settings.'; }
+  }
+  $effect(() => {
+    if (utility !== 'network' && utility !== 'notifications') return;
+    void refreshPush();
+    const timer = setInterval(() => { if (!document.hidden) void refreshPush(); }, 2000);
+    return () => clearInterval(timer);
+  });
+  $effect(() => {
+    if (!workspaceReady || !selected || !deviceUnlock?.notifications || pushOffered || utility || dialog || panel || channelsOpen) return;
+    try { if (localStorage.getItem('gchat-notifications-offered')) { pushOffered = true; return; } } catch { /* Private storage. */ }
+    rememberPushOffer();
+    void deviceUnlock.notifications.status().then(status => {
+      if (!running || locked) return;
+      pushStatus = status;
+      if (!status.enabled && !utility && !dialog && !panel && !channelsOpen) utility = 'notifications';
+    }).catch(() => {});
+  });
 
   let channelTopic = $state('');
   let directoryUrl = $state('');
@@ -106,21 +136,9 @@
   let networkStatus = $state<NetworkStatus>();
   let networkAccepted = $state(false), networkError = $state('');
   let networkPolling = false, networkGeneration = 0;
-  let helpVisible = $state(false), helpExpanded = $state(false);
-  let helpRegion = $state<HTMLElement>();
+  let helpVisible = $state(false);
   let helpGeneration = 0;
-  function collapseHelp() { helpExpanded = false; helpGeneration++; }
-  let pointerInsideHelp = false;
-  function outsideHelp(event: Event) {
-    const target = event.target;
-    if (event.type === 'pointerdown') {
-      pointerInsideHelp = target instanceof Node && !!helpRegion?.contains(target);
-      setTimeout(() => { pointerInsideHelp = false; }, 0);
-    }
-    // Clicking non-focusable help text can focus the surrounding transcript.
-    if (event.type === 'focusin' && pointerInsideHelp && target instanceof Node && helpRegion && target.contains(helpRegion)) return;
-    if (helpExpanded && target instanceof Node && !helpRegion?.contains(target) && !(target instanceof Element && target.closest('.help-button'))) collapseHelp();
-  }
+  function collapseHelp() { helpGeneration++; }
   type PresenceAction = { key: string; id: string; enabled: boolean; network?: string };
   let presenceActions = $state<Record<string, PresenceAction>>({});
   const presenceAction = $derived(presenceActions[selectedNetwork ?? '']);
@@ -145,15 +163,29 @@
       const failure = chatError(error); resultStore.error(record.key, failure.code, failure.message); syncResults();
     }
   }
-  async function scrollPrivate() { await tick(); if (transcript) transcript.scrollTop = transcript.scrollHeight; }
   function prepareCommand(usage: string) {
-    collapseHelp(); cancelPrompt(); draft = usage.split(/\s/)[0] + ' '; completions = []; void tick().then(() => composer?.focus());
+    utility = null; cancelPrompt();
+    const command = usage.split(/\s/)[0];
+    if (command === '/join' || command === '/create') { openDialog(command.slice(1) as 'join' | 'create'); return; }
+    if (command === '/update') { openUtility('update'); return; }
+    if (command === '/find') { void find(); return; }
+    if (command === '/font') { openUtility('font'); return; }
+    if (command === '/network' || command === '/status') { openUtility('network'); return; }
+    draft = command + ' '; completions = []; void tick().then(() => composer?.focus());
   }
   let helpCommands = $state<CommandSpec[]>([]), helpError = $state('');
   let fileState = $state<FileViewState>(emptyFiles());
   let fileController = $state<FileController>();
   const fileControllers = new Map<string, FileController>();
   let fileStates = $state<Record<string, FileViewState>>({});
+  const visibleResults = $derived(results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '')
+    && !messages.some(m => m.operationId === r.id) && (r.output || r.body || r.state !== 'complete')));
+  const timeline = $derived([
+    ...messages.map(message => ({ timestamp: results.find(r => r.id === message.operationId)?.started ? results.find(r => r.id === message.operationId)!.started / 1000 : message.timestamp, id: message.id, message, activity: undefined, result: undefined, help: false, transfer: undefined })),
+    ...(snapshot?.activity ?? []).filter(a => a.conversation === selected).map(activity => ({ timestamp: activity.timestamp, id: activity.id, message: undefined, activity, result: undefined, help: false, transfer: undefined })),
+    ...visibleResults.map(result => ({ timestamp: result.started / 1000, id: result.key, message: undefined, activity: undefined, result, help: false, transfer: undefined })),
+    ...Object.values(fileState.transfers).filter(t => t.conversation === selected).map(transfer => ({ timestamp: transfer.started / 1000, id: 'file/' + transfer.id, message: undefined, activity: undefined, result: undefined, help: false, transfer }))
+  ].sort((a, b) => a.timestamp - b.timestamp));
   let fileInput = $state<HTMLInputElement>();
   let fileTarget: { conversation: string; resumeId?: string; controller: FileController } | undefined;
   let invitationInput = $state<HTMLInputElement>();
@@ -183,8 +215,23 @@
   let joinRequest = $state<Extract<Request, { kind: 'submit' }>>();
   const views = new ConversationViews();
   let completions = $state<Completion[]>([]);
+  let mentionContext = $state<{ text: string; conversation: string | null; start: number; end: number; items: string[] } | null>(null);
+  let mentionIndex = $state(0);
+  function updateMentions() {
+    completions = []; historyPosition = undefined; mentionIndex = 0;
+    if (!composer || locked || composer.selectionStart !== composer.selectionEnd) { mentionContext = null; return; }
+    const text = composer.value;
+    const result = mentionSuggestions(text, composer.selectionStart, active?.members.map(member => member.nickname) ?? []);
+    mentionContext = result ? { ...result, text, conversation: selected } : null;
+  }
+  async function chooseMention(name: string) {
+    if (!mentionContext || !mentions.includes(name)) return;
+    const inserted = insertMention(draft, mentionContext.start, mentionContext.end, name);
+    draft = inserted.text; mentionContext = null;
+    await tick(); composer?.focus(); composer?.setSelectionRange(inserted.caret, inserted.caret);
+  }
   let historyPosition: number | undefined;
-  let savedDraft = '';
+  let savedDraft = $state('');
   let transcript = $state<HTMLDivElement>();
   let composer = $state<HTMLTextAreaElement>();
   let running = true;
@@ -203,6 +250,7 @@
   const active = $derived(snapshot?.conversations.find(c => c.id === selected));
   const details = $derived(snapshot?.conversations.find(c => c.id === detailsConversation));
   const locked = $derived(snapshot?.instance.locked ?? true);
+  const mentions = $derived(!locked && mentionContext?.text === draft && mentionContext.conversation === selected ? mentionContext.items : []);
   const creating = $derived(snapshot?.instance.protocolLocked ? !snapshot.instance.profileExists : !snapshot?.instance.archiveExists);
   const title = $derived(active?.name ?? 'GChat');
   const workspaceReady = $derived(!locked && networkAccepted);
@@ -243,6 +291,25 @@
     if (hasNetworkSetup(status)) networkAccepted = true;
     replacingInvitation = false; utility = null; void refreshInBackground();
   }
+  async function performJoin(request: Extract<Request, { kind: 'networks' }>): Promise<Response> {
+    const id = request.request.kind === 'join' ? request.request.operation_id : crypto.randomUUID();
+    const origin = selected, instance = snapshot?.instance.id;
+    const key = beginResult(id, origin, '/join');
+    pending = { ...pending, [id]: origin ?? '' };
+    try {
+      const response = await transport.request(request);
+      if (running && !locked && snapshot?.instance.id === instance) {
+        if (response.kind === 'error') throw new ChatError(response.code, response.message);
+        resultStore.complete(key, response); syncResults();
+        if (selected === origin) await invitationJoined(response);
+        else { await refreshInBackground(); notice = 'Invitation completed. The channel is available in Channels.'; }
+      }
+      return response;
+    } catch (error) {
+      if (running && !locked && snapshot?.instance.id === instance) { const failure = chatError(error); resultStore.error(key, failure.code, failure.message); syncResults(); }
+      throw error;
+    } finally { const remaining = { ...pending }; delete remaining[id]; pending = remaining; }
+  }
   async function invitationJoined(response: Response) {
     selectedNetwork = transport.active;
     networkAccepted = true; replacingInvitation = false; utility = null; cancelPrompt();
@@ -251,7 +318,7 @@
     void refreshNetwork();
   }
   function openUtility(value: typeof utility) {
-    closeNavigation(); resultKey = null; cancelPrompt(); utility = value; replacingInvitation = false;
+    closeNavigation(); resultKey = null; searchOpen = false; cancelPrompt(); utility = value; replacingInvitation = false;
     if (value === 'info') {
       detailsConversation = selected; channelTopic = active?.topic ?? ''; channelNickname = active?.members.find(m => m.isSelf)?.nickname ?? '';
       leavingChannel = false; nextOwner = active?.members.find(m => !m.isSelf)?.id ?? '';
@@ -264,9 +331,8 @@
     void operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation, text });
   }
   async function showHelp() {
-    closeNavigation(); helpVisible = true; helpExpanded = true; helpError = '';
+    openUtility('help'); helpVisible = true; helpError = '';
     const revision = ++helpGeneration, conversation = selected;
-    await scrollPrivate();
     helpCommands = viewCommands(!!selected);
     try {
       const response = await transport.request({ kind: 'catalogue', conversation: workspaceReady ? selected : null });
@@ -276,7 +342,7 @@
   function chooseFont(value: ChatFont) { font = value; writeFont(value); }
   async function find(text = '') {
     if (!selected || !workspaceReady) { notice = 'Choose a conversation before using /find.'; return; }
-    searchOpen = true; searchText = text; searchResults = []; searchBefore = null; searchError = '';
+    closeNavigation(); utility = null; resultKey = null; cancelPrompt(); searchOpen = true; searchText = text; searchResults = []; searchBefore = null; searchError = '';
     await tick(); document.getElementById('gchat-search')?.focus();
     if (text) await search();
   }
@@ -390,6 +456,11 @@
     catch (error) { if (running) connectionFailed(error); }
   }
   function connectionFailed(error: unknown) { offline = true; connectionError = chatError(error); }
+  function clearPrivateView() {
+    stagedInvitation = '';
+      invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
+      generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
+  }
   async function refresh() {
     const revision = ++snapshotGeneration;
     const response = await transport.request({ kind: 'snapshot' });
@@ -400,10 +471,10 @@
     const changed = snapshot?.revision !== next.revision;
     if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && (snapshot.instance.bootId !== next.instance.bootId || snapshot.instance.id !== next.instance.id))) {
       stagedInvitation = '';
-      invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
-      generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptStep = null; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
+      clearPrivateView();
     }
     snapshot = next;
+
     if (!next.instance.locked) {
       resultStore.restore(next.operations ?? [], (conversation, instance) => conversation ? transport.networkFor(conversation) ?? '' : networks.some(n => n.id === instance) ? instance : transport.primary() ?? '');
       syncResults();
@@ -412,7 +483,7 @@
     if (!next.instance.locked && !networkStatus) void refreshNetwork();
     if (workspaceReady && transport.pendingOperations) {
       try {
-        savedOperations = transport.pendingOperations();
+        savedOperations = transport.pendingOperations().filter(h => !pending[h.operation.id]);
         for (const handle of savedOperations) {
           const id = handle.operation.id;
           const activity = Object.values(presenceActions).find(a => a.id === id);
@@ -449,6 +520,7 @@
     }
   }
   async function select(id: string | null, activation?: MouseEvent) {
+    const changingConversation = id !== selected;
     if (id !== selected) { if (dialog) cancelPrompt(); collapseHelp(); resultKey = null; }
     // Capture before the first await: currentTarget is cleared after dispatch.
     const initiatingPointer = activation?.currentTarget ? navigationPointers.get(activation.currentTarget) : undefined;
@@ -480,7 +552,7 @@
       else composer?.focus();
     }
     if (id && workspaceReady) await loadHistory(false);
-    if (id && snapshot && !views.has(id)) {
+    if (changingConversation && id && snapshot && !views.has(id)) {
       const position = rememberedPosition;
       if (position && !position.atBottom) {
         // Rehydrate previously loaded pages before restoring a scrolled-back viewport.
@@ -551,7 +623,7 @@
         hidden = [...hidden, response.output.conversation];
         if (selected === response.output.conversation) await select(snapshot?.conversations.find(c => !hidden.includes(c.id))?.id ?? null);
       } else {
-        if (result) { utility = null; closeNavigation(); await scrollPrivate(); }
+        if (result && (response.output.kind === 'invitation' || (response.output.kind === 'text' && response.output.title === 'Reconnect this channel'))) { utility = null; closeNavigation(); resultKey = result; }
 
       }
     }
@@ -559,17 +631,28 @@
       if (response.notice) notice = response.notice;
       if (response.conversation && selected === origin) await select(response.conversation);
     } else if (response.kind === 'completed' && !locked) completions = response.items;
-    // Submission has already completed. Refresh failure must not turn it into a failed send.
-    await refreshInBackground();
+    if (response.kind === 'instance' && response.instance.locked) {
+      snapshotGeneration++; clearPrivateView();
+      if (snapshot) snapshot = { ...snapshot, instance: response.instance, conversations: [], operations: [], activity: [] };
+    }
+    if (response.kind === 'snapshot') {
+      snapshotGeneration++;
+      if (response.snapshot.instance.locked) clearPrivateView();
+      snapshot = response.snapshot;
+
+    }
+    // Confirmed replies are immediately visible; a projection refresh is independent.
+    void refreshInBackground();
   }
   async function operation(request: Request) {
     const scope = request.kind === 'submit' ? request.conversation ?? '' : null;
-    if (lifecycleBusy || (scope !== null && pending[scope])) return false;
+    if (lifecycleBusy || (request.kind === 'submit' && (pending[request.operation_id] || sendingFull))) return false;
     if (request.kind === 'lock' || request.kind === 'disconnect' || (request.kind === 'submit' && ['/lock', '/disconnect', '/quit'].includes(request.text.trim()))) discardPicker();
     const origin = selected;
     const result = request.kind === 'submit' ? beginResult(request.operation_id, request.conversation, request.text) : undefined;
+    if (result && request.kind === 'submit' && request.text.trim() === '/invite') { closeNavigation(); utility = null; searchOpen = false; resultKey = result; }
     if (scope === null) lifecycleBusy = true;
-    else pending = { ...pending, [scope]: snapshot?.conversations.find(c => c.id === scope)?.name ?? 'Status' };
+    else if (request.kind === 'submit') pending = { ...pending, [request.operation_id]: scope };
     if (request.kind === 'submit') dismissFailure(request.operation_id);
     notice = '';
     try {
@@ -580,12 +663,12 @@
       return true;
     }
     catch (error) { if (!running || (locked && request.kind === 'submit')) return false; const failure = chatError(error); if (result) { resultStore.error(result, failure.code, failure.message); syncResults(); } if (request.kind === 'submit' && !locked) failures = [...failures, { request, code: failure.code, message: failure.message }]; else notice = failure.message; return false; }
-    finally { if (scope === null) lifecycleBusy = false; else { const remaining = { ...pending }; delete remaining[scope]; pending = remaining; } }
+    finally { if (scope === null) lifecycleBusy = false; else { const remaining = { ...pending }; if (request.kind === 'submit') delete remaining[request.operation_id]; pending = remaining; } }
   }
   async function send(text = draft) {
     if (!text || !workspaceReady) return;
     if (text.trim() === '/cancel') { cancelPrompt(); return; }
-    if (dialog) { await answerPrompt(text); return; }
+    if (dialog) return;
     if (['/join', '/create'].includes(text.trim())) { if (text === draft) draft = ''; openDialog(text.trim() === '/join' ? 'join' : 'create'); return; }
     if (/^\/join\s+gcoms:/.test(text.trim())) { incomingInvitation = text.trim().slice(6).trim(); if (text === draft) draft = ''; openDialog('join'); return; }
     if (text.trim().startsWith('gcoms:')) { incomingInvitation = text.trim(); if (text === draft) draft = ''; openDialog('join'); return; }
@@ -593,20 +676,23 @@
     if (local) {
       if (text === draft) draft = '';
       completions = []; historyPosition = undefined;
-      if (local.name === 'help') await showHelp();
+      if (local.name === 'update') openUtility('update');
+      else if (local.name === 'help') await showHelp();
       else if (local.name === 'find') await find(local.args);
       else if (!local.args) openUtility('font');
       else if (local.args === 'fixedsys' || local.args === 'readable') chooseFont(local.args);
       else notice = 'Use /font, /font fixedsys or /font readable.';
       return;
     }
-    if (busy) return;
+    if (busy || sendingFull) { notice = 'The outgoing queue is full. Your draft is kept; send it when capacity becomes available.'; return; }
     const error = inputError(text, text.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES);
     if (error) { notice = error; return; }
+    if (!text.startsWith('/')) atBottom = true;
     const request: Request = { kind: 'submit', operation_id: crypto.randomUUID(), conversation: selected, text };
     if (text === draft) draft = '';
     completions = []; historyPosition = undefined;
-    await operation(request);
+    const completed = await operation(request);
+    if (!completed && !draft && selected === request.conversation && failures.some(f => f.request.operation_id === request.operation_id && ['busy', 'rejected', 'invalid_argument'].includes(f.code))) draft = text;
   }
   async function checkSaved(id: string, capturedKey?: string) {
     if (!transport.checkOperation || checkingSaved[id]) return;
@@ -659,6 +745,13 @@
   function keydown(event: KeyboardEvent) {
     if (event.isComposing) return;
     if (dialog && !['Enter', 'Escape'].includes(event.key)) return;
+    if (mentions.length && ['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key) && !event.shiftKey) {
+      event.preventDefault();
+      if (event.key === 'Escape') mentionContext = null;
+      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') mentionIndex = (mentionIndex + (event.key === 'ArrowDown' ? 1 : mentions.length - 1)) % mentions.length;
+      else void chooseMention(mentions[mentionIndex]);
+      return;
+    }
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); }
     else if (shouldComplete(event, draft, completions.length > 0)) { event.preventDefault(); void complete(); }
     else if (event.key === 'Escape') { event.preventDefault(); cancelPrompt(); completions = []; channelsOpen = false; panel = null; }
@@ -673,10 +766,9 @@
   }
   function cycle(event: KeyboardEvent) {
     if (event.isComposing || utility) return;
-    if (event.key === 'Escape' && helpExpanded) { event.preventDefault(); collapseHelp(); composer?.focus(); return; }
     if (event.key === 'Escape' && resultKey) { resultKey = null; composer?.focus(); return; }
     if (dialog && event.key === 'Escape') { event.preventDefault(); cancelPrompt(); return; }
-    if (navigationModal) {
+    if (navigationModal && panel !== 'files') {
       if (event.key === 'Escape') { event.preventDefault(); closeNavigation(); return; }
       if (event.key === 'Tab') {
         const nodes = [...document.querySelectorAll<HTMLElement>('.gchat aside.open button:not(:disabled), .gchat aside.open input:not(:disabled), .gchat aside.open summary')];
@@ -706,40 +798,20 @@
     channelsOpen = mode === 'channels'; panel = mode === 'channels' ? null : mode;
     await tick(); document.querySelector<HTMLButtonElement>(`.gchat .${mode === 'channels' ? 'channels' : 'inspector'}.open button:not(:disabled)`)?.focus();
   }
-  function showModal(node: HTMLDialogElement) {
-    const opener = document.activeElement as HTMLElement | null;
-    node.showModal(); (node.querySelector<HTMLElement>('input, textarea') ?? node.querySelector<HTMLElement>('button:not(:disabled)'))?.focus();
-    return { destroy() { opener?.focus(); } };
-  }
-  let joinSetup = $state<NetworkSetup>();
-  let promptStep = $state<'name' | 'visibility' | 'nickname' | 'confirm' | null>(null);
-  let promptDraft = '';
+  let promptDraft = $state('');
   let incomingInvitation = $state('');
   let stagedInvitation = $state('');
   function cancelPrompt() {
     if (dialog) draft = promptDraft;
-    dialog = null; joiningPublic = false; promptStep = null; promptDraft = ''; incomingInvitation = ''; joinError = '';
+    dialog = null; joiningPublic = false; promptDraft = ''; incomingInvitation = ''; joinError = '';
     void tick().then(() => composer?.focus());
-  }
-  async function answerPrompt(text: string) {
-    const answer = text.trim();
-    if (dialog === 'join' && !joiningPublic && joinSetup) { await joinSetup.answer(text); draft = ''; await scrollPrivate(); return; }
-    if (dialog === 'choose') { if (answer === 'join' || answer === 'create') openDialog(answer); else joinError = 'Choose join or create.'; return; }
-    if (!answer || /[\r\n\t]/.test(answer)) { joinError = 'Enter one line.'; return; }
-    joinError = '';
-    if (promptStep === 'name') { if (/\s/.test(answer)) { joinError = 'Channel names cannot contain spaces.'; return; } destination = answer; promptStep = dialog === 'create' ? 'visibility' : 'nickname'; }
-    else if (promptStep === 'visibility') { if (!['private', 'public'].includes(answer)) { joinError = 'Choose private or public.'; return; } visibility = answer as typeof visibility; promptStep = 'nickname'; }
-    else if (promptStep === 'nickname') { nickname = answer; promptStep = 'confirm'; }
-    else if (promptStep === 'confirm') { if (['create', 'join'].includes(answer.toLowerCase())) await join(); else joinError = 'Confirm the action above, or /cancel.'; return; }
-    draft = ''; await scrollPrivate(); composer?.focus();
   }
   function openDialog(mode: 'choose' | 'join' | 'create') {
     if (!workspaceReady || joinBusy) return;
-    if (!dialog) { promptDraft = draft; draft = ''; }
+    if (!dialog) promptDraft = draft;
     closeNavigation(); utility = null; resultKey = null; joinError = ''; dialog = mode; joiningPublic = mode === 'join' && !snapshot?.instance.capabilities.includes('networks.v1'); browse = false;
-    if (joiningPublic) promptStep = 'name';
-    if (mode === 'create') { visibility = 'private'; destination = ''; promptStep = 'name'; }
-    void scrollPrivate().then(() => composer?.focus());
+    if (mode === 'create') { visibility = 'private'; destination = ''; nickname = ''; }
+    searchOpen = false; resultKey = null;
   }
   async function search(older = false) {
     const conversation = selected, text = searchText.trim(), revision = ++searchGeneration;
@@ -776,7 +848,7 @@
   }
   function chooseChannel(entry: DirectoryEntry) {
     if (entry.conversation && entry.joined) { dialog = null; void select(entry.conversation); }
-    else { openDialog('join'); destination = entry.conversation ?? entry.name; joiningPublic = true; promptStep = 'nickname'; browse = false; }
+    else { openDialog('join'); destination = entry.conversation ?? entry.name; joiningPublic = true; browse = false; }
   }
   async function loadDirectory(refreshDirectory = false) {
     joinError = ''; browse = true;
@@ -806,14 +878,14 @@
       {/if}
 {/snippet}
 
-<svelte:window onpointerdown={outsideHelp} onfocusin={outsideHelp} onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} />
+<svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} />
 <div class="gchat" class:mac={nativeShell?.mac} class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
   <ResizeHandles shell={nativeShell} />
   <header class="titlebar" class:mac={nativeShell?.mac} inert={navigationModal}>
     {#if nativeShell}<div class="drag-region" role="presentation" onpointerdown={event => { if (event.button === 0) void nativeShell?.drag(); }} ondblclick={() => void nativeShell?.maximize()}></div>{/if}
       <button class="network-button" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
-    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span>{#if active?.topic}<span class="header-topic">{active.topic}</span>{/if}</button>{:else}<span class="active-title">{locked ? 'Welcome' : 'Connect to GChat'}</span>{/if}
+
     <nav class="header-actions" aria-label="Chat actions">
       <button class="help-button" disabled={locked || !networkAccepted} aria-label="Help and commands" title="Help and commands" onclick={() => void showHelp()}>?</button>
       {#if nativeShell && !nativeShell.mac}<div class="window-controls"><button aria-label="Minimize window" title="Minimize" onclick={() => void nativeShell?.minimize()}>−</button><button aria-label="Maximize or restore window" title="Maximize or restore" onclick={() => void nativeShell?.maximize()}>□</button><button aria-label="Close window" title="Close window (receiving continues)" onclick={() => void nativeShell?.close()}>×</button></div>{/if}
@@ -854,7 +926,17 @@
       <div class="channel-actions"><button class="circle" aria-label="Join or create a channel" title="Join or create a channel" disabled={busy} onclick={() => openDialog('choose')}>+</button></div>
     </aside>{/if}
     <main class="conversation" inert={navigationModal}>
-      {#if !locked && snapshot?.providerErrors?.length}<div class="provider-errors" role="status">{#each snapshot.providerErrors as error}<p>{error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>{/each}<button onclick={() => void send('/refresh')}>Reconnect provider</button></div>{/if}
+      <div class="conversation-heading">    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>{#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}{/if}</div>
+      {#if !locked && snapshot?.providerErrors?.length}
+        <div class="provider-errors" role="status">
+          {#each snapshot.providerErrors as error}
+            <p>{error.id === 'archive' ? 'Chat history needs attention' : error.retryable ? 'Conversation provider reconnecting' : 'Conversation provider blocked'}: {error.message}</p>
+          {/each}
+          {#if snapshot.providerErrors.some(error => error.id !== 'archive')}
+            <button onclick={() => void send('/refresh')}>Reconnect provider</button>
+          {/if}
+        </div>
+      {/if}
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
       {#if (pendingInvitation || stagedInvitation) && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation || stagedInvitation; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); stagedInvitation = ''; }}>Review invitation</button><button onclick={() => { consumeInvitation?.(); stagedInvitation = ''; }}>Dismiss</button></div>{/if}
       {#if locked}
@@ -863,12 +945,12 @@
         <div class="welcome network-gate">
           <h1>Connect to GChat</h1>
           <p>Use an invitation to connect and start talking. A channel invitation can include everything you need.</p>
-          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('setup') : undefined} selectedFile={invitationSelection?.context === 'setup' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />
+          {#if networkStatus?.state === 'invitation_required'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} chooseFile={deviceUnlock ? () => chooseInvitation('setup') : undefined} selectedFile={invitationSelection?.context === 'setup' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />
           {:else}<p role="status">{networkError || networkStatus?.message || 'Checking network setup…'}</p><button class="primary" onclick={() => void refreshNetwork()}>Retry</button>{/if}
         </div>
       {:else}
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard scrollback is intentional.) -->
-        <div class="transcript" bind:this={transcript} role="log" aria-label={`${title} messages`} aria-live="polite" tabindex="0" onscroll={() => { atBottom = !!transcript && transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 35; rememberPosition(); if (atBottom) void markRead(); }}>
+        <div class="transcript" bind:this={transcript} role="log" aria-label={`${title} messages`} aria-live="polite" tabindex="0" use:followTail={{ following: atBottom, scope: selected, changed: value => { atBottom = value; rememberPosition(); if (value) void markRead(); } }}><div class="transcript-content">
           {#if !selected}<div class="welcome"><h1>Your channels. Your conversations.</h1><p>Join with an invitation, or create a channel and invite someone.</p><button onclick={() => openDialog('join')}>Join</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button onclick={() => openDialog('create')}>Create</button>{/if}</div>{/if}
           {#if before}<button class="older" disabled={loadingHistory} onclick={() => void loadHistory(true)}>Load earlier messages</button>{/if}
           {#if selected && !messages.length}<p class="empty">{loadingHistory ? 'Loading…' : '*** Beginning of this conversation'}</p>{/if}
@@ -879,62 +961,45 @@
             {@const action = message.body.startsWith('\u0001ACTION ') && message.body.endsWith('\u0001')}
             {#if !index || new Date(timeline[index - 1].timestamp * 1000).toLocaleDateString() !== date}<div class="date">{date}</div>{/if}
             {#if selected && unreadMarkers[selected] === message.id}<div class="unread-divider">New messages</div>{/if}
-            <div class="message" class:mine={message.mine}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : `<${message.nickname}>`}</span><span class="body">{action ? message.body.slice(8, -1) : message.body}{#if message.delivery === 'local_accepted'}<small class="acceptance" title="Accepted by this instance; recipient delivery is not confirmed"> · accepted locally</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
-            {:else if item.activity}<div class="activity"><time>[{time(item.timestamp)}]</time> {item.activity.text}</div>{/if}
-          {/each}
-      {#if searchOpen && selected && !locked}
-        <section class="search private-line" aria-label="Find in conversation">
-          <small>Only you · Find</small>
-          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><input id="gchat-search" bind:value={searchText} required /><button disabled={searchBusy}>Find</button><button type="button" onclick={closeSearch}>Close search</button></form>
-          {#if searchError}<p role="status">{searchError}</p>{/if}
-          {#if searchBefore}<button disabled={searchBusy} onclick={() => void search(true)}>Search earlier messages</button>{/if}
-          <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} matches`}</p>
-          {#each searchResults as message (message.id)}<p><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> &lt;{message.nickname}&gt; {message.body}</p>{/each}
-        </section>
-      {/if}
-          {#if helpVisible}<section class="private-line help-output" aria-label="Only you: help" bind:this={helpRegion}><button class="help-disclosure" aria-expanded={helpExpanded} aria-controls="command-help" onclick={() => helpExpanded ? collapseHelp() : void showHelp()}><span aria-hidden="true">{helpExpanded ? '⌄' : '›'}</span> Commands</button>{#if helpExpanded}<div id="command-help"><CommandResult output={{ kind: 'help', commands: helpCommands }} helpHeading={false} choose={chooseChannel} {prepareCommand} />{#if helpError}<p role="status">{helpError}</p>{/if}<p class="help-keys">Enter sends · Shift+Enter adds a line · Tab completes · Alt+←/→ changes conversation · Escape cancels.</p></div>{/if}</section>{/if}
-      {#if workspaceReady && results.some(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? ''))}
-        <div class="local-results" aria-label="Only you: command results">
-          {#each results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '') && (r.output || r.state !== 'complete')).slice(-30) as result (result.key)}
-            <div class="private-line"><small>Only you</small> · {result.action} · {result.state === 'unknown' ? 'Outcome not confirmed' : result.state}<button onclick={() => { utility = null; cancelPrompt(); resultKey = result.key; void scrollPrivate(); }}>Details</button>{#if result.output}<CommandResult output={result.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}</div>
-          {/each}
-        </div>
-      {/if}
-  {#if resultDetails && !locked}
-    <section class="private-detail" aria-label="Operation details">
-      <header><h2 id="operation-title">{resultDetails.action} · Details</h2><button aria-label="Close details" onclick={() => { resultKey = null; composer?.focus(); }}>Close</button></header>
-      <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
-      <dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl>
-      <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
-
-      {#if resultDetails.state !== 'complete'}<button class="primary" disabled={checkingSaved[resultDetails.id]} onclick={() => void checkSaved(resultDetails.id, resultDetails.key)}>{checkingSaved[resultDetails.id] ? 'Checking…' : 'Refresh status'}</button><p class="muted">Checks the original request. It will not submit it again. Older requests may not have retained details.</p>{/if}
-    </section>
-  {/if}
-          {#if dialog}<section class="private-line" aria-label="Only you: add a channel"><small>Only you · {dialog === 'choose' ? 'Add a channel' : dialog === 'create' ? 'Create a channel' : 'Join a channel'}</small><button aria-label="Cancel private prompt" onclick={cancelPrompt}>×</button>
-            {#if dialog === 'choose'}<p><button onclick={() => openDialog('join')}>Join with an invitation</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button onclick={() => openDialog('create')}>Create a channel</button>{/if}</p>
-            {:else if dialog === 'join' && !joiningPublic}<NetworkSetup bind:this={joinSetup} privateComposer {transport} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} initialInvitation={incomingInvitation} chooseFile={deviceUnlock ? () => chooseInvitation('join') : undefined} selectedFile={invitationSelection?.context === 'join' ? invitationSelection : undefined} fileConsumed={invitationConsumed} /><button onclick={() => void loadDirectory()}>Browse public channels</button>{#if browse && directory}<CommandResult output={directory} choose={chooseChannel} {prepareCommand} />{/if}
-            {:else}<p>{promptStep === 'name' ? 'Channel name? Type it below.' : promptStep === 'visibility' ? 'Private or public? Both are encrypted; public discovery requires a separate directory publication.' : promptStep === 'nickname' ? 'Your nickname in this channel?' : dialog === 'create' ? 'Ready to create this channel?' : 'Ready to join this channel?'}</p>
-              {#if promptStep === 'visibility'}<button onclick={() => void answerPrompt('private')}>Private</button><button onclick={() => void answerPrompt('public')}>Public</button>{/if}
-              {#if promptStep === 'confirm'}<p>{destination} · {visibility} · {nickname}</p><button disabled={joinBusy} onclick={() => void join()}>{dialog === 'create' ? 'Create channel' : 'Join channel'}</button>{/if}
+            <div class="message" data-timeline-key={message.operationId ?? message.id} class:mine={message.mine}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : `<${message.nickname}>`}</span><span class="body"><MessageText text={action ? message.body.slice(8, -1) : message.body} members={active?.members ?? []} />{#if message.delivery}<small class="acceptance" title={message.delivery === 'delivered' ? 'Acknowledged by the recipients of this message; not a read receipt' : 'Accepted by this instance; recipient delivery is not confirmed'}> · {message.delivery === 'delivered' ? 'delivered' : 'accepted locally'}</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
+            {:else if item.activity}<div class="activity"><time>[{time(item.timestamp)}]</time> {item.activity.text}</div>
+            {:else if item.result}
+              {@const result = item.result}
+              <div class="private-line" data-timeline-key={result.id} class:mine={!!result.body} data-operation={result.id}>
+                {#if result.body}<time>[{time(item.timestamp)}]</time> <strong>You</strong> <span>{result.body}</span>{:else}<small>Only you</small> · {result.action}{/if}
+                <small role="status"> · {result.state === 'pending' ? (result.action === '/join' ? 'Connecting and waiting for channel confirmation…' : result.body ? 'Sending…' : 'Working…') : result.state === 'complete' ? 'Accepted locally' : result.state === 'unknown' ? 'Checking outcome…' : 'Not sent'}</small>
+                <button onclick={() => { utility = null; cancelPrompt(); resultKey = result.key; }}>Details</button>
+                {#if result.output?.kind === 'invitation'}<span>Invitation created · only you</span>{/if}
+              </div>
+            {:else if item.transfer}
+              {@const transfer = item.transfer}
+              {@const file = fileState.snapshot?.files.find(f => f.id === transfer.id)}
+              <div class="private-line transfer" aria-label={`Transfer: ${transfer.name}`}><strong>{transfer.name}</strong>
+                <p role="status">{transfer.pending ? 'Starting…' : transfer.error || (file?.state === 'complete' ? 'Downloaded · shared while unlocked' : file?.state.replaceAll('_', ' ') || 'Checking transfer…')}</p>
+                <progress aria-label={`Verified progress for ${transfer.name}`} value={Number(file?.verified_bytes ?? 0)} max={Math.max(1, Number(file?.size_bytes ?? 1))}></progress>
+                <small>{Number(file?.verified_bytes ?? 0).toLocaleString()} / {Number(file?.size_bytes ?? 0).toLocaleString()} bytes verified</small>
+                {#if file?.state === 'complete' && fileController && fileAccess}<button disabled={fileState.busy} onclick={() => fileController?.save(file)}>Save file…</button>{#if fileState.notice}<p role="status">{fileState.notice}</p>{/if}{#if fileState.error}<p role="alert">{fileState.error}</p>{/if}{/if}
+                {#if transfer.error && fileController}<button onclick={() => fileController?.act({ action: 'accept', id: transfer.id })}>Check and retry</button>{/if}
+              </div>
             {/if}
-            {#if joinError}<p role="alert">{joinError}</p>{/if}<p class="muted">Private prompt · Nothing here is sent to the channel. Escape or /cancel returns to your draft.</p>
-          </section>{/if}
+          {/each}
           {@render outcomes()}
-        </div>
+        </div></div>
         {#if !atBottom}<button class="jump" onclick={() => { atBottom = true; if (transcript) transcript.scrollTop = transcript.scrollHeight; void markRead(); }}>Jump to latest</button>{/if}
       {/if}
       {#if !workspaceReady}{@render outcomes()}{/if}
       {#if draftError}<p class="input-error" id="gchat-input-error">{draftError}</p>{/if}
       {#if workspaceReady}
         <form class="composer" onsubmit={event => { event.preventDefault(); void send(); }}>
+          {#if mentions.length}<div class="completions" role="listbox" id="mention-suggestions" aria-label="Mention a member">{#each mentions as name, index}<button type="button" role="option" id={'mention-option-' + index} aria-selected={mentionIndex === index} tabindex="-1" onclick={() => void chooseMention(name)}>@{name}</button>{/each}</div>{/if}
           {#if completions.length}<div class="completions" aria-label="Command completions">{#each completions as item}<button type="button" onclick={() => { draft = item.text + ' '; completions = []; composer?.focus(); }}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
           {#if !dialog && selected && fileAccess && fileController && active?.kind !== 'archive'}<button class="attach" type="button" aria-label="Share a file" title="Share a file" disabled={fileState.busy} onclick={() => chooseFile()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a7 7 0 0 1 10 10l-9 9" /></svg></button>{/if}
-          <textarea bind:this={composer} bind:value={draft} aria-label={dialog ? "Private answer" : "Message or command"} aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={dialog ? 'Private answer · /cancel to return to your draft' : active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} oninput={() => { completions = []; historyPosition = undefined; }}></textarea>
-          <button class="send" type="submit" disabled={!draft || !!draftError || (!dialog && busy && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : dialog ? 'Continue' : 'Send'}</button>
+          <textarea bind:this={composer} bind:value={draft} aria-label="Message or command" aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} aria-controls={mentions.length ? 'mention-suggestions' : undefined} aria-activedescendant={mentions.length ? 'mention-option-' + mentionIndex : undefined} oninput={updateMentions} onclick={updateMentions} onkeyup={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) updateMentions(); }}></textarea>
+          <button class="send" type="submit" disabled={!draft || !!draftError || (!dialog && (busy || sendingFull) && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : 'Send'}</button>
         </form>
       {/if}
     </main>
-    {#if workspaceReady && active && panel}
+    {#if workspaceReady && active && panel === 'users'}
       <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role (Modal drawer traps focus and restores its opener.) -->
       <aside class="inspector open" aria-label="Conversation details" role="dialog" aria-modal="true">
         <button class="fold-right" aria-label="Close details" onclick={closeNavigation}>›</button>
@@ -942,22 +1007,27 @@
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !fileController) return;
           event.preventDefault(); panel = event.key === 'Home' ? 'users' : event.key === 'End' ? 'files' : panel === 'users' ? 'files' : 'users';
           void tick().then(() => document.getElementById(`${panel}-tab`)?.focus());
-        }}><button role="tab" id="users-tab" tabindex={panel === 'users' ? 0 : -1} aria-selected={panel === 'users'} aria-controls="users-panel" onclick={() => panel = 'users'}>Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex={panel === 'files' ? 0 : -1} aria-selected={panel === 'files'} aria-controls="files-panel" onclick={() => panel = 'files'}>Files <small>{fileCount}</small></button>{/if}</div></div>
+        }}><button role="tab" id="users-tab" tabindex={panel === 'users' ? 0 : -1} aria-selected={panel === 'users'} aria-controls="users-panel" onclick={() => panel = 'users'}>Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex="-1" aria-selected="false" aria-controls="files-panel" onclick={() => panel = 'files'}>Files <small>{fileCount}</small></button>{/if}</div></div>
         {#if panel === 'users'}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`/query ${member.id}`)} title={member.isSelf ? 'Your channel identity' : 'Open private chat'}>{member.nickname}{#if !member.isSelf && member.recentlyActive}<small>Recently active</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}</div>
         {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
       </aside>
     {/if}
   </div>
+  {#if workspaceReady && panel === 'files' && fileController && selected && active}
+    <FocusScreen title="Files" close={closeNavigation}><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></FocusScreen>
+  {/if}
   {#if utility}
-    <dialog class="modal utility-modal" use:showModal aria-labelledby="utility-title" onclose={() => { utility = null; replacingInvitation = false; }}>
-      <header><h2 id="utility-title">{utility === 'network' ? 'Network' : utility === 'font' ? 'Chat font' : title}</h2><button aria-label="Close dialog" onclick={() => utility = null}>×</button></header>
-      {#if utility === 'network'}
+    <FocusScreen title={utility === 'update' ? 'Application updates' : utility === 'network' ? 'Network' : utility === 'font' ? 'Chat font' : utility === 'help' ? 'Commands' : utility === 'notifications' ? 'Notifications' : title} close={() => { utility = null; replacingInvitation = false; }}>
+      {#if utility === 'update'}
+        <UpdatePanel updates={nativeShell?.updates} busy={!!draft || !!promptDraft || !!savedDraft || views.hasDraftsExcept(selected) || !!Object.keys(pending).length || joinBusy || fileState.busy || !!pickerView} />
+      {:else if utility === 'network'}
         <details><summary>Your identity</summary><p>This is this instance’s identity, not a password or invitation. Compare its safety number when verifying who you are talking to.</p><p class="identity">{snapshot?.instance.id}</p><p class="identity">{snapshot?.instance.safetyNumber}</p></details>
         {#if networks.length > 1}<label for="network-detail-selection">Network</label><select id="network-detail-selection" bind:value={selectedNetwork} onchange={() => { transport.select(selectedNetwork); networkGeneration++; networkStatus = networks.find(n => n.id === selectedNetwork)?.status; }}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
         <p role="status">{networkStatus?.message || networkError || connectionLabel}</p>
         {#if networkError}<p role="alert">{networkError}</p>{/if}
-        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
+        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
+        <button onclick={() => { utility = null; void send('/status --details'); }}>Connection details</button>
         <section class="activity-settings" aria-label="Activity sharing">
           <h3>Activity sharing: {presenceEnabled ? 'On' : 'Off'}</h3>
           <p class="muted">Share recent activity on this network. Other users appear active after their signals arrive; this does not confirm message delivery.</p>
@@ -966,15 +1036,21 @@
           {:else if presenceResult?.state === 'rejected'}<p role="alert">Could not save activity sharing. {presenceResult.message}</p>
           {:else if presenceResult?.state === 'unknown'}<p role="status">Change not confirmed. {presenceResult.message}</p><button disabled={presencePending} onclick={() => presenceAction && void checkSaved(presenceAction.id, presenceAction.key)}>Check result</button>{/if}
         </section>
-        {#if deviceUnlock?.notifications}
-          <section class="notification-settings">
-            <h3>Notifications</h3>
-            <p class="muted">Optional generic activity alerts. Your messages, names and filenames stay out of Apple and Google notifications. Tapping an alert does not unlock GChat.</p>
-            <button disabled={pushBusy || (!pushStatus?.enabled && locked)} onclick={() => void configurePush(!pushStatus?.enabled)}>{pushBusy ? 'Updating…' : pushStatus?.enabled ? 'Turn notifications off' : 'Enable notifications'}</button>
-            {#if pushStatus?.message}<p role="status">{pushStatus.message}</p>{/if}
-            {#if pushError}<p role="alert">{pushError}</p>{/if}
-          </section>
-        {/if}
+        {#if deviceUnlock?.notifications}<button onclick={() => utility = 'notifications'}>Notifications · {notificationLabel}</button>{/if}
+      {:else if utility === 'notifications'}
+        <section class="notification-settings" aria-label="Notifications">
+          <h3>Get notified when GChat is in the background</h3>
+          <p>Optional alerts say “New activity in GChat.” Message text, names and filenames are never sent to Apple or Google. These services can see notification timing and device information.</p>
+          <p role="status">Notifications: {notificationLabel}</p>
+          {#if pushStatus?.message}<p role="status">{pushStatus.message}</p>{/if}
+          <button disabled={pushBusy || locked} onclick={() => { rememberPushOffer(); void configurePush(!pushStatus?.enabled); }}>{pushBusy ? 'Updating…' : pushStatus?.enabled ? 'Turn notifications off' : 'Enable notifications'}</button>
+          {#if pushStatus?.permission === 'denied' && deviceUnlock?.notifications?.openSettings}<button onclick={() => void openNotificationSettings()}>Open device notification settings</button>{/if}
+          {#if !pushStatus?.enabled}<button onclick={() => { rememberPushOffer(); utility = null; }}>Not now</button>{/if}
+          {#if pushError}<p role="alert">{pushError}</p>{/if}
+          <p>Notifications do not confirm delivery. Tap an alert to open GChat and reconnect normally.</p>
+        </section>
+      {:else if utility === 'help'}
+        <CommandResult output={{ kind: 'help', commands: helpCommands }} helpHeading={false} choose={chooseChannel} {prepareCommand} />{#if helpError}<p role="alert">{helpError}</p>{/if}
       {:else if utility === 'font'}
         <p>Choose the font for messages and the composer. Saved on this device.</p>
         <div class="font-options"><button aria-pressed={font === 'fixedsys'} onclick={() => chooseFont('fixedsys')}>Fixedsys <span class="font-fixed">The quick brown fox</span></button><button aria-pressed={font === 'readable'} onclick={() => chooseFont('readable')}>Readable <span class="font-readable">The quick brown fox</span></button></div>
@@ -1019,9 +1095,45 @@
           </section>
         {/if}
       {/if}
-    </dialog>
+    </FocusScreen>
   {/if}
+      {#if searchOpen && selected && !locked}
+        <FocusScreen title={`Find in ${title}`} close={closeSearch}><section class="search">
 
+          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><input id="gchat-search" bind:value={searchText} required /><button disabled={searchBusy}>Find</button><button type="button" onclick={closeSearch}>Close search</button></form>
+          {#if searchError}<p role="status">{searchError}</p>{/if}
+          {#if searchBefore}<button disabled={searchBusy} onclick={() => void search(true)}>Search earlier messages</button>{/if}
+          <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} matches`}</p>
+          {#each searchResults as message (message.id)}<p><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> &lt;{message.nickname}&gt; {message.body}</p>{/each}
+        </section></FocusScreen>
+      {/if}
+
+  {#if resultDetails && !locked}
+    <FocusScreen title={resultDetails.output?.kind === 'invitation' ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : resultDetails.output?.kind === 'text' && resultDetails.output.title === 'Reconnect this channel' ? 'Reconnect this channel' : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
+
+      <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
+      {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}
+      <details><summary>Request details</summary><dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl></details>
+      <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
+      {#if resultDetails.recordedMessage && resultDetails.recordedMessage !== resultDetails.message}<p>Last recorded result: {resultDetails.recordedMessage}</p>{/if}
+
+      {#if resultDetails.state !== 'complete'}<button class="primary" disabled={checkingSaved[resultDetails.id]} onclick={() => void checkSaved(resultDetails.id, resultDetails.key)}>{checkingSaved[resultDetails.id] ? 'Checking…' : 'Refresh status'}</button><p class="muted">Checks the original request. It will not submit it again. Older requests may not have retained details.</p>{/if}
+    </section></FocusScreen>
+  {/if}
+  {#if dialog && !locked}
+    <FocusScreen title={dialog === 'choose' ? 'Add a channel' : dialog === 'create' ? 'Create a channel' : 'Join a channel'} close={cancelPrompt}>
+      {#if dialog === 'choose'}<p>Join someone’s channel with their invitation, or create your own.</p><button onclick={() => openDialog('join')}>Join with an invitation</button>{#if snapshot?.instance.capabilities.includes('ChannelAdmin')}<button onclick={() => openDialog('create')}>Create a channel</button>{/if}
+      {:else if dialog === 'join' && !joiningPublic}<NetworkSetup {transport} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} initialInvitation={incomingInvitation} chooseFile={deviceUnlock ? () => chooseInvitation('join') : undefined} selectedFile={invitationSelection?.context === 'join' ? invitationSelection : undefined} fileConsumed={invitationConsumed} /><button onclick={() => void loadDirectory()}>Browse public channels</button>{#if browse && directory}<CommandResult output={directory} choose={chooseChannel} {prepareCommand} />{/if}
+      {:else}<form onsubmit={event => void join(event)}>
+        <label for="channel-name">Channel name</label><input id="channel-name" bind:value={destination} required disabled={joinBusy} placeholder="#friends" />
+        {#if dialog === 'create'}<label for="channel-visibility">Who can join?</label><select id="channel-visibility" bind:value={visibility} disabled={joinBusy}><option value="private">Private — invitation required</option><option value="public">Public — discoverable when published</option></select><p>Both are encrypted. Public channels need a separate directory publication to be discoverable.</p>{/if}
+        <label for="channel-create-nickname">Your nickname in this channel</label><input id="channel-create-nickname" bind:value={nickname} required maxlength="256" autocomplete="nickname" disabled={joinBusy} />
+        <button class="primary" disabled={joinBusy || !destination.trim() || !nickname.trim()}>{joinBusy ? 'Waiting for confirmation…' : dialog === 'create' ? 'Create channel' : 'Join channel'}</button>
+      </form>{/if}
+      {#if joinError}<p role="alert">{joinError}</p>{/if}
+      {#if joinBusy}<p role="status">Your request is in progress. Closing this screen will not cancel or repeat it.</p>{/if}
+    </FocusScreen>
+  {/if}
 
 </div>
 
@@ -1031,7 +1143,7 @@
   .danger { color:var(--danger, #ed9b9b); }
   .network-group { font-size:12px; color:var(--muted); margin-top:12px; }
   @font-face { font-family:GchatFixedsys; src:url('/fonts/fixedsys-excelsior.ttf') format('truetype'); font-display:swap; }
-  .gchat { --content-inset:clamp(44px,4vw,48px); --native-inset:0px; --bg:var(--ghost-bg); --panel:var(--ghost-panel); --line:var(--ghost-line); --ink:var(--ghost-ink); --muted:var(--ghost-muted); --accent:var(--ghost-accent); color-scheme:dark; position:var(--gchat-viewport-position,relative); top:var(--gchat-viewport-top,auto); width:100%; height:var(--gchat-viewport-height,100dvh); min-height:min(260px,var(--gchat-viewport-height,100dvh)); display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
+  .gchat { --content-inset:clamp(44px,4vw,48px); --native-inset:0px; --bg:var(--ghost-bg); --panel:var(--ghost-panel); --line:var(--ghost-line); --ink:var(--ghost-ink); --muted:var(--ghost-muted); --accent:var(--ghost-accent); --self:#89e3ad; color-scheme:dark; position:var(--gchat-viewport-position,relative); top:var(--gchat-viewport-top,auto); width:100%; height:var(--gchat-viewport-height,100dvh); min-height:min(260px,var(--gchat-viewport-height,100dvh)); display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
   .gchat :global(*) { box-sizing:border-box; }
   button,input,textarea { font:inherit; color:inherit; }
   button { background:transparent; border:1px solid transparent; padding:6px 10px; cursor:pointer; text-align:left; min-height:36px; }
@@ -1045,14 +1157,17 @@
   .brand { display:inline-flex; align-items:center; gap:8px; flex:none; }
   .brand :global(.ghost-mark) { --ghost-mark-size:18px; }
   .brand strong { color:var(--accent); letter-spacing:1px; font-size:20px; line-height:1; }
-  .active-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .active-title { flex:0 1 auto; max-width:100%; min-height:44px; padding:4px 8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
   .header-actions { display:flex; align-items:center; flex:none; gap:2px; }
   .header-actions button { white-space:nowrap; }
   .connection-dot { color:#bd9866; font-size:10px; }
   .connection-dot.connected { color:#91b5a0; }
 
 
-  .header-topic { color:var(--muted); font-weight:normal; margin-left:14px; }
+  .conversation-heading { display:flex; align-items:center; flex-wrap:wrap; gap:0 8px; padding:0 var(--content-inset, 20px); min-width:0; }
+  .conversation-heading:empty { display:none; }
+  .header-actions { margin-left:auto; }
+  .header-topic { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; color:var(--muted); font-weight:normal; margin-left:0; }
   .workspace { display:flex; flex:1; min-height:0; position:relative; }
   .channels { background:#22262b; width:200px; flex-shrink:0; border-right:1px solid var(--line); display:none; flex-direction:column; padding-top:8px; }
   .channels.open { display:flex; position:absolute; inset:0 auto 0 0; z-index:4; width:min(300px,85vw); }
@@ -1083,10 +1198,10 @@
   .readable .transcript,.readable .composer { font-family:ui-monospace,'SFMono-Regular',Consolas,monospace; line-height:1.5; }
   .transcript { flex:1; overflow:auto; min-height:0; padding:16px 54px; scrollbar-color:#5a6561 #242728; }
   .activity { color:var(--muted); margin:10px 0; overflow-wrap:anywhere; }
-  .message { display:grid; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
+  .message { display:block; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
   time { color:var(--muted); font-size:14px; }
   .nick { color:#a9c7e8; max-width:24ch; overflow-wrap:anywhere; }
-  .mine .nick { color:var(--accent); }
+  .mine .nick { color:var(--self); }
   .body { white-space:pre-wrap; overflow-wrap:anywhere; min-width:0; }
   .empty { color:var(--muted); }
   .date { margin:14px 0; color:var(--muted); text-align:center; border-bottom:1px solid var(--line); }
@@ -1094,8 +1209,6 @@
   .older { display:block; margin:0 auto 12px; border-color:var(--line); color:var(--accent); }
   .unread-divider { color:var(--accent); border-top:1px solid var(--accent); text-align:center; margin:12px 0; }
   .jump { align-self:center; min-height:40px; color:var(--accent); }
-  .local-results { color:var(--muted); }
-  .local-results button { color:var(--accent); }
   .operation-details dd { overflow-wrap:anywhere; }
 
 
@@ -1111,16 +1224,14 @@
   textarea { resize:none; flex:1; width:0; min-height:36px; max-height:160px; padding:8px 3px; border:0; background:transparent; field-sizing:content; }
   .attach { display:flex; align-items:center; justify-content:center; color:var(--muted); padding:8px; }
   .send { color:var(--accent); border-color:#566476; }
+  .completions [aria-selected="true"] { background:#3a4652; }
   .completions { position:absolute; bottom:100%; left:0; right:0; z-index:2; background:#303739; border:1px solid #566476; max-height:240px; overflow:auto; }
   .completions button { display:flex; gap:20px; width:100%; padding:9px 12px; }.completions span { color:var(--muted); }
   .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,85vw); flex:none; overflow:auto; border-left:1px solid var(--line); background:#22262b; }
   .inspector-heading { display:flex; align-items:center; gap:4px; padding:8px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#22262b; z-index:1; }
   .inspector-heading [role=tablist] { flex:1; display:flex; gap:4px; }.inspector-heading [aria-selected=true] { background:#343b46; }
-  .inspector-heading small { margin-left:4px; }.users-list { padding:8px; }.users-list button { display:flex; justify-content:space-between; gap:8px; width:100%; overflow-wrap:anywhere; }.users-list .self { color:var(--accent); }
-  .scrim { position:absolute; inset:0; z-index:3; background:#0008; width:100%;border:0; }
-  .modal::backdrop { background:#0009; }.modal { color:var(--ink); margin:0; inset:0; width:100%; max-width:none; height:100dvh; max-height:none; overflow:auto; background:var(--panel); border:1px solid #566476; padding:20px; box-shadow:0 14px 60px #0008; }
-  .modal header { position:sticky; top:-20px; padding:16px 0; background:var(--panel); z-index:1; display:flex; align-items:center; gap:12px; margin-bottom:12px; }.modal h2 { flex:1; font-size:20px; font-weight:normal; margin:0; color:var(--accent); }
-  .utility-modal { width:100%; }.font-options { display:grid; gap:8px; }.font-options button { border:1px solid var(--line); padding:12px; }.font-options [aria-pressed=true] { border-color:var(--accent); }.font-options span { display:block; margin-top:8px; font-size:16px; }.font-fixed { font-family:GchatFixedsys,monospace; }.font-readable { font-family:ui-monospace,monospace; }
+  .inspector-heading small { margin-left:4px; }.users-list { padding:8px; }.users-list button { display:flex; justify-content:space-between; gap:8px; width:100%; overflow-wrap:anywhere; }.users-list .self { color:var(--self); font-weight:bold; }
+  .scrim { position:absolute; inset:0; z-index:3; background:#0008; width:100%;border:0; }.font-options { display:grid; gap:8px; }.font-options button { border:1px solid var(--line); padding:12px; }.font-options [aria-pressed=true] { border-color:var(--accent); }.font-options span { display:block; margin-top:8px; font-size:16px; }.font-fixed { font-family:GchatFixedsys,monospace; }.font-readable { font-family:ui-monospace,monospace; }
   @media(max-width:999px) { .inspector { position:absolute; right:0; top:0; bottom:0; z-index:4; width:min(340px,90vw); box-shadow:-4px 0 20px #0006; } }
   @media(max-width:760px) {
     .titlebar { padding:6px 8px 6px calc(var(--content-inset) + var(--native-inset)); gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:44px; }
@@ -1134,7 +1245,6 @@
     button,summary { min-height:44px; min-width:44px; }
     input,textarea,select { font-size:16px; }
     .titlebar button { min-height:44px; }
-    .modal { top:var(--gchat-viewport-top,0px); bottom:auto; margin:0; height:var(--gchat-viewport-height,100dvh); max-height:var(--gchat-viewport-height,100dvh); }
   }
   .circle { display:inline-flex; align-items:center; justify-content:center; flex:none; width:44px; height:44px; min-height:44px; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--bg); position:relative; }
   .edge { position:absolute; top:50%; transform:translateY(-50%); z-index:2; }.edge.left { left:5px; }.edge.right { right:5px; display:flex; flex-direction:column; gap:14px; }
@@ -1145,15 +1255,21 @@
   .users-list,#files-panel { overflow:auto; min-height:0; flex:1; }.inspector-heading { flex:none; }
   .fold-left,.fold-right { position:absolute; top:50%; transform:translateY(-50%); z-index:2; width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; font:28px/1 system-ui; }
   .channels .fold-left { right:-44px; width:44px; padding:0; justify-content:center; }.fold-right { left:-44px; }
-  .help-output { margin:10px 0; }.help-output .help-disclosure { font:inherit; padding:0; min-height:0; text-decoration:none; }.help-disclosure span { display:inline-block; width:1ch; }.help-output .help-keys { margin:6px 0 0; font:inherit; }
   .titlebar .network-button { position:absolute; left:var(--native-inset); top:50%; transform:translateY(-50%); width:var(--content-inset); height:44px; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; background:transparent; }
   .titlebar .help-button { width:44px; height:44px; padding:0; border:0; border-radius:0; background:transparent; text-align:center; }
 
   .private-line { margin:18px 0; color:var(--muted); overflow-wrap:anywhere; }.private-line button,.private-detail button { color:var(--accent); text-decoration:underline; }.private-line small { font:12px system-ui; }
-  .private-detail { margin:12px 0; }.private-detail header { display:flex; align-items:center; gap:12px; }.private-detail h2 { font:inherit; }.operation-details { grid-template-columns:auto minmax(0,1fr); }
+  .private-detail { margin:12px 0; }.operation-details { grid-template-columns:auto minmax(0,1fr); }
   @media(pointer:coarse) { .circle,.channels .circle { width:44px; height:44px; min-height:44px; }.edge.left { left:1px; }.edge.right { right:1px; } }
   .titlebar { position:relative; }.gchat.mac { --native-inset:72px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region):not(.network-button) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
   button { transition:background 120ms,color 120ms; }
   @media(prefers-reduced-motion:reduce) { button { transition:none; } }
   .concealed { visibility:hidden; pointer-events:none; }
+  .message { display:block; padding:3px 0; overflow-wrap:anywhere; }
+  .message time { display:inline; margin-right:10px; }
+  .message .nick { display:inline; margin-right:8px; }
+  .message .body { display:inline; white-space:pre-wrap; }
+  .message.mine .nick, .private-line.mine strong { color:var(--self); font-weight:bold; }
+  .transcript-content { min-height:100%; overflow-anchor:none; }
+  .transfer progress { width:100%; }
 </style>

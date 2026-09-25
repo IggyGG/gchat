@@ -1,0 +1,7 @@
+Package: g-chat
+Pin: release o=GChat
+Pin-Priority: 990
+
+Package: *
+Pin: release o=GChat
+Pin-Priority: -1

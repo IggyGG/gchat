@@ -1,0 +1,138 @@
+{
+  "scope": "retained Android1019 four-emulator lifecycle plus candidate11 native iOS simulator lifecycle; not latest protocol release",
+  "android": {
+    "passed": true,
+    "sources": {
+      "gchat": {
+        "commit": "d6b29477dcae3fedd210961bbdc59e52ae9c7a6b",
+        "tree": "d80c56d09e280ab94c76cb96c2d013e82b040e6d"
+      },
+      "gcoms": {
+        "commit": "3c7b628add1c7748f53e1e702939be5ae0ef6314",
+        "tree": "d0507e604ebca804b98ccebfdc69398ae3355aeb"
+      }
+    },
+    "artifact_sha256": "2b6c42a46be288efb69f3a36b1d61c3f2eb16184b25d0b46ee97315539f792c1",
+    "controller_sha256": "c20c6db80edabbc5f4d1ddd77e5aa4777b7ef13aab1115f6d0bc9b9796bf7b90",
+    "archive_sha256": "63f84d20e49f224a3f550e66703c67098b5f69839fb16852ecef83dcd1758daa",
+    "locally_verified_files": 102
+  },
+  "android_devices": [
+    {
+      "serial": "emulator-5554",
+      "passed": true,
+      "exit_code": 0,
+      "process_stopped": true,
+      "seconds": 230.0809873600956
+    },
+    {
+      "serial": "emulator-5556",
+      "passed": true,
+      "exit_code": 0,
+      "process_stopped": true,
+      "seconds": 230.05942489905283
+    },
+    {
+      "serial": "emulator-5558",
+      "passed": true,
+      "exit_code": 0,
+      "process_stopped": true,
+      "seconds": 220.12579598394223
+    },
+    {
+      "serial": "emulator-5560",
+      "passed": true,
+      "exit_code": 0,
+      "process_stopped": true,
+      "seconds": 226.3329730220139
+    }
+  ],
+  "ios": {
+    "scope": "ios simulator build, installed profile lifecycle, native platform validation and screenshot review",
+    "passed": true,
+    "sources": {
+      "gchat": {
+        "commit": "cf1d4d007c0a02814f907302ab80e3b030accf4f",
+        "tree": "09f1a9a1a6d8a67b427189887d1c64b770672c69"
+      },
+      "gcoms": {
+        "commit": "69609f08f1396be1c6bc60405bea538337fef7b8",
+        "tree": "c2ba613ef1dbae3940c81f7cf3e5b2aeafe18379"
+      }
+    },
+    "candidate_manifest": {
+      "path": "/run/media/user/SSD-2/git/ghost/coms/.worktrees/gcoms-public/gcoms/.worktrees/fleet-files/gchat/target/channel-reconnect-20260923/reliability-20260924-01/candidate-11.json",
+      "sha256": "37dec25197c2520440271d91cc9e79e7921e3fe3ed0d35b56b42b9571a7dc2da"
+    },
+    "build": {
+      "path": "/run/media/user/SSD-2/git/ghost/coms/.worktrees/gcoms-public/gcoms/.worktrees/fleet-files/gchat/target/channel-reconnect-20260923/reliability-20260924-01/ios-final-04/ios-simulator-04/report.json",
+      "sha256": "5ca511bde940cccd75560e25bdd1d729c6f40f960cbd32fa3f480b4645dc361c"
+    },
+    "lifecycle": {
+      "path": "/run/media/user/SSD-2/git/ghost/coms/.worktrees/gcoms-public/gcoms/.worktrees/fleet-files/gchat/target/channel-reconnect-20260923/reliability-20260924-01/ios-final-04/ios-simulator-04/lifecycle/report.json",
+      "sha256": "34b6c0c2b2d3e30bec27b928e2d7ca06ef613b7aee5665ff0570a0c21596e115"
+    },
+    "native_platform": {
+      "path": "/run/media/user/SSD-2/git/ghost/coms/.worktrees/gcoms-public/gcoms/.worktrees/fleet-files/gchat/target/channel-reconnect-20260923/reliability-20260924-01/ios-final-04/native-platform-03/report.json",
+      "sha256": "a9b98d003e27f0cebb259209f6eff9cf529fdd035fba5c2ffad81a373156b443"
+    },
+    "evidence_archive": {
+      "path": "/run/media/user/SSD-2/git/ghost/coms/.worktrees/gcoms-public/gcoms/.worktrees/fleet-files/gchat/target/channel-reconnect-20260923/reliability-20260924-01/simulator-final-04.tgz",
+      "sha256": "b356ce65c8663b75baea9978780e7279f2e9112035ae23a4f9767fe027ce3e60"
+    },
+    "native_tests": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "class": "PushValidationTests",
+          "name": "testOnlyOpaqueGenericHintsAreAccepted"
+        },
+        {
+          "class": "UnlockVaultTests",
+          "name": "testOptInRoundTripUpdateAndDelete"
+        },
+        {
+          "class": "UnlockVaultTests",
+          "name": "testValidationRejectsPathsAndInvalidSecrets"
+        }
+      ]
+    },
+    "lifecycle_passed": 1,
+    "lifecycle_failed": 0,
+    "lifecycle_ignored": 0,
+    "cleanup_complete": true,
+    "visual_review": {
+      "screens": [
+        "fresh encrypted identity",
+        "manual reconnect",
+        "invitation onboarding"
+      ],
+      "result": "controls fit the screen; no overlap/clipping observed"
+    },
+    "deferred_by_user": [
+      "physical iPhone",
+      "live APNs"
+    ],
+    "not_qualified": [
+      "network onboarding",
+      "actual iOS channel messaging/file transfer",
+      "App Store release"
+    ],
+    "codematch": "unreachable"
+  },
+  "physical_devices": "deferred by user",
+  "android_visual_review": {
+    "screens": "identity creation and invitation entry on320x640 emulator viewport",
+    "result": "all four retained screenshots inspected; controls readable and within viewport; no channel-interface claim"
+  },
+  "excluded": [
+    "latest runtime qualification on Android",
+    "mobile network messaging/file journey",
+    "physical-device behavior",
+    "live APNs/FCM",
+    "new store publication"
+  ],
+  "historical_failures": "matrix10 boot deadlines and earlier lifecycle/system ANR failures retained; matrix11 reused exact budgets with byte-verified node-local SDK"
+}

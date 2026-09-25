@@ -58,3 +58,54 @@ describe('attachment-owned file work', () => {
     expect(view().error).toContain('disk full'); expect(view().busy).toBe(false); controller.stop();
   });
 });
+
+it('shows transfer initiation immediately and deduplicates double taps', async () => {
+  const gate = deferred(); let accepts = 0;
+  const offered = { id: 'file-a', conversation: 'channel/a', name: 'notes.txt', size_bytes: '100', verified_bytes: '0', state: 'offered' as const, sources: 1, verified_sources: 0, completed_by: 0, error: null };
+  const controller = new FileController({ async request(r) {
+    if (r.kind !== 'files') throw new Error('unexpected');
+    if (r.request.action === 'accept') { accepts++; await gate.promise; }
+    return { kind: 'files', snapshot: { ...empty, files: [offered] } };
+  } }, 'instance', undefined, () => {});
+  await controller.refresh();
+  const first = controller.act({ action: 'accept', id: offered.id });
+  const duplicate = controller.act({ action: 'accept', id: offered.id });
+  expect(controller.value.transfers[offered.id]).toMatchObject({ pending: true, name: 'notes.txt' });
+  gate.release(); await Promise.all([first, duplicate]);
+  expect(accepts).toBe(1);
+  expect(controller.value.transfers[offered.id].pending).toBe(false);
+  controller.stop();
+});
+
+it('reconciles a lost accept reply without starting a second download', async () => {
+  let accepts = 0;
+  const file = { id: 'retained', conversation: 'channel/a', name: 'retained.txt', size_bytes: '100', verified_bytes: '0', state: 'offered' as 'offered' | 'downloading', sources: 1, verified_sources: 0, completed_by: 0, error: null };
+  const controller = new FileController({ async request(r) {
+    if (r.kind !== 'files') throw new Error('unexpected');
+    if (r.request.action === 'accept') { accepts++; file.state = 'downloading'; throw new Error('reply lost'); }
+    return { kind: 'files', snapshot: { ...empty, files: [{ ...file }] } };
+  } }, 'instance', undefined, () => {});
+  await controller.refresh(); await controller.act({ action: 'accept', id: file.id });
+  expect(accepts).toBe(1);
+  expect(controller.value.snapshot?.files[0].state).toBe('downloading');
+  expect(controller.value.transfers[file.id].error).toBe('');
+  controller.stop();
+});
+
+it('a later cancellation supersedes a delayed accept without automatic retry', async () => {
+  const gate = deferred(), entered = deferred(); const actions: string[] = [];
+  const file = { id: 'cancelled', conversation: 'channel/a', name: 'a.txt', size_bytes: '100', verified_bytes: '0', state: 'offered' as const, sources: 1, verified_sources: 0, completed_by: 0, error: null };
+  const controller = new FileController({ async request(r) {
+    if (r.kind !== 'files') throw new Error('unexpected');
+    actions.push(r.request.action);
+    if (r.request.action === 'accept') { entered.release(); await gate.promise; throw new Error('reply lost'); }
+    return { kind: 'files', snapshot: { ...empty, files: [file] } };
+  } }, 'instance', undefined, () => {});
+  await controller.refresh();
+  const first = controller.act({ action: 'accept', id: file.id }); await entered.promise;
+  const cancel = controller.act({ action: 'cancel', id: file.id }); gate.release();
+  await Promise.all([first, cancel]);
+  expect(actions.filter(a => a === 'accept')).toHaveLength(1);
+  expect(actions.filter(a => a === 'cancel')).toHaveLength(1);
+  controller.stop();
+});

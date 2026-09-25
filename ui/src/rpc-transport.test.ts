@@ -89,3 +89,43 @@ it('imports network invitations through a transient session without operation ha
   expect(handles.list()).toHaveLength(0);
   expect(calls.some(r => r.method === 'submit')).toBe(false);
 });
+
+it('keeps simultaneous live sends out of interrupted-operation recovery', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => release = resolve);
+  const handles = new MemoryHandles();
+  const calls: RpcRequest[] = [];
+  const wire: RpcTransport = { destination: '/rpc', limit: 262144, async exchange(r) {
+    calls.push(r);
+    if (r.method === 'identify') return reply(r, instance);
+    await gate;
+    return reply(r, { kind: 'applied', conversation: 'channel/a', notice: null });
+  } };
+  const client = await attachRpc(legacy, wire, instance.id, handles);
+  const send = (id: string) => client.request({ kind: 'submit', conversation: 'channel/a', operation_id: id, text: 'same text' });
+  const first = send('live-operation-0001'), second = send('live-operation-0002');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(handles.list()).toHaveLength(2);
+  expect(client.pendingOperations?.()).toEqual([]);
+  release(); await Promise.all([first, second]);
+  expect(handles.list()).toEqual([]);
+  expect(calls.filter(r => r.method === 'submit')).toHaveLength(2);
+});
+
+
+it('never coalesces different payloads under the same live operation ID', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => release = resolve);
+  const calls: RpcRequest[] = [];
+  const transport: RpcTransport = { destination: '/rpc', limit: 262144, async exchange(r) {
+    calls.push(r);
+    if (r.method === 'identify') return reply(r, instance);
+    await gate;
+    return reply(r, { kind: 'applied', conversation: 'channel/a', notice: null });
+  } };
+  const client = await attachRpc(legacy, transport, instance.id, new MemoryHandles());
+  const first = client.request({ kind: 'submit', operation_id: 'bound-operation-001', conversation: 'channel/a', text: 'original' });
+  await expect(client.request({ kind: 'submit', operation_id: 'bound-operation-001', conversation: 'channel/a', text: 'different' })).rejects.toMatchObject({ code: 'conflict' });
+  release(); await first;
+  expect(calls.filter(r => r.method === 'submit')).toHaveLength(1);
+});

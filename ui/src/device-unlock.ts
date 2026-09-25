@@ -6,6 +6,7 @@ export type DeviceUnlock = {
   notifications?: {
     status(): Promise<MobilePushStatus>;
     configure(enabled: boolean): Promise<MobilePushStatus>;
+    openSettings?(): Promise<void>;
   };
   unlock(passphrase: string, create: boolean, remember: boolean): Promise<{ response: Response; warning?: string | null }>;
 };

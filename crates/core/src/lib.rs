@@ -1,6 +1,7 @@
 //! gc-client-core: contacts, conversations, encrypted-at-rest store over gc-node.
 
 pub mod bootstrap;
+pub mod build_info;
 pub mod chat_service;
 pub mod client;
 pub mod contact;

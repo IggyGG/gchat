@@ -329,11 +329,13 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
         }
     }
     let (stop, receiver) = tokio::sync::watch::channel(false);
+    let update_host = host.clone();
     let mut server =
         tokio::spawn(async move { crate::chat_service::serve(host, &endpoint, receiver).await });
     let result = tokio::select! {
         result = &mut server => return result.map_err(|e| e.to_string())?,
         signal = shutdown_signal(#[cfg(windows)] args.shutdown_request_file.as_deref()) => signal,
+        _ = update_host.wait_for_update_exit() => Ok(()),
     };
     let _ = stop.send(true);
     let saved = server.await.map_err(|e| e.to_string())?;

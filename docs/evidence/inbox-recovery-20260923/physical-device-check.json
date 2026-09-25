@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-09-23T22:22:26.274805+00:00",
+  "sources": {
+    "gchat": "48ccdfb8b2a4d9dc13acebf3f2701d77504d3a5d",
+    "gcoms": "15be9487812cbd2568638054a6228cd1f6dad20a"
+  },
+  "android": {
+    "version_code": 1015,
+    "apk_sha256": "c11f1b441ea881155127e513b7aee7bf0d8b89dac71adfc0cd9b84267d0ef8b5",
+    "installed_with_replace_only": true,
+    "existing_profile_preserved": true
+  },
+  "passed": {
+    "both_inbox_classes_recovered_after_install": true,
+    "fresh_control_channel_joined": true,
+    "linux_message_authenticated_ack": true,
+    "phone_message_authenticated_ack_in_ui": true,
+    "channel_and_messages_retained_after_reopen": true,
+    "actual_phone_file_download_and_save_as": {
+      "passed": true,
+      "bytes": 59392,
+      "sha256": "4d19e7efbe6a4f4e348ebff16ee7cf14576126e662afe178bcae021022617420",
+      "saved_to": "Downloads/gchat-phone-1015-check.txt",
+      "time": 1790201807.9348087,
+      "scope": "actual Android1015 download and Android Save As export"
+    },
+    "generic_activity_notification_observed_with_app_backgrounded": true
+  },
+  "not_qualified": [
+    "Retained test sender invitation timed out; owner did not admit member",
+    "Background/reopen recovery remains failed: repeated TLS EOF restoring inbox; later replacement attempt also failed and queued message remained local_accepted at 22:21 UTC",
+    "Original personal channel and 122980700-byte file not recovered by these isolated checks",
+    "Notification observations do not uniquely attribute generic wake-ups to a particular message",
+    "Save As completes and matches hash but UI also shows a transient background-paused error and a content URI",
+    "No production rollout/store promotion"
+  ],
+  "notes": [
+    "Failed and successful invitation owners use different terminal relays; do not attribute failure exclusively to retained cryptographic sessions",
+    "Immediate first export pull raced asynchronous write; later completed export matched exact bytes and hash",
+    "No mobile identity replacement, data clearing, repeated failed invitation or personal Linux unlock"
+  ],
+  "evidence": {
+    "installation.json": "3e94f78fd9d476e4679888e3c9841c51ae6c3e6fe487e5f4f571bd22a266274e",
+    "verification.json": "d10620a15a30a544e66e1b6b195815ea5b92bac25c518529a050f1b30cd89ef4",
+    "wifi-retry-01.txt": "9b65c4a015cc17d9eb30df05c8dbbaea3c3e5aba7fddbc0e88f707334abec02c",
+    "join-operation-details.txt": "4b0fbdbbd63c0398e8c4d52c03ef74d8bb356cd2e976996e01018647073914c2",
+    "control-join-submitted.json": "7204efdcb168f1c1d9458d528947bfd172a53ce3daab68bd4b6ac6b218dd6559",
+    "control-join-result.txt": "aa290939605d9a9abb5c2d94e148b6158d68167b6d361c66684f3eb1966fb4b9",
+    "control-history.json": "a070ff99d64b0e0db15488d7046d8991d0ef3a2d89b67bb10635c5eec10ea0d2",
+    "control-file-announcement.txt": "3b6a9b246a5b263381c3d697c0e7835d7a73b3a328dea85942f707f18db158df",
+    "phone-file-verification.json": "48dc20df553732a77a1babe46778db3c9ce21e3a6c6eb8a7daf3f065f279a644",
+    "phone-export-initial-observation.json": "7ffdd327912a32547008cc446c0b0d4205d8352e6420cf1b58c7df1a053c8599",
+    "control-saved-file.txt": "61c0ecd0e476c2e400f3eb002cf71a1b91ef46787f475fde035f69dc723eb097",
+    "background-send.json": "902a5d263121456f3330584ad4dba29004dff6eee770e976f0dd8b3b28912d03",
+    "background-notification.json": "c8a550593f2d42df220d82f89b91cc21a132096569870ee1a53adfa2983e63cb",
+    "background-recovery-third.txt": "21bd4e0f3f77e4c2a2b65b7444fb32c4f190eee5c5818c3dce216ef178a6b004",
+    "background-owner-final-history.json": "5d6d2669b115868bd570052805287834c821a3e991e5b66944d75ec4e8dcf8ba",
+    "owner-route-comparison.json": "41c744e144fa747ce52ec5ca659e14abaddecaa6853bbdfad6aff220a39b5d22"
+  }
+}

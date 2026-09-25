@@ -1,4 +1,13 @@
+Current paired GComs source selects responsive profile 46: messages are eligible
+immediately, with independent randomized interactive cover. Timing/activity privacy
+is unqualified. See [production policy](docs/PRODUCTION_RELEASE.md); this source
+change is not a claim that installed/store artifacts have been updated.
+
 # GChat
+
+Current work follows the [reliability test plan](docs/RELIABILITY_TEST_PLAN.md):
+cluster recovery/concurrency checks, then exact-artifact platform validation.
+Historical release/device observations below are not current qualification.
 
 GChat uses the public `gcoms` Rust application API for its protocol runtime. It
 owns the chat archive and UI; GComs owns identity, encrypted protocol state,
@@ -8,6 +17,13 @@ default. To use a bundled shared service, run `gchat daemon --gcomsd
 /absolute/bundle/gcomsd --gcoms-endpoint /private/runtime/gcoms.sock` with the usual
 instance options. Each GChat profile remains independent inside that service.
 Locking/disconnecting stops that profile without stopping other applications.
+
+In-process hosts retain incoming channel and private messages in a bounded,
+encrypted protocol inbox until the chat archive is saved. Failed archive writes
+leave those messages available for retry and show an actionable storage notice;
+uncommitted history is not published. The external shared-service archive path
+keeps its existing contract and is outside this new transaction boundary. See
+the [archive transaction and rollback requirements](docs/RELIABILITY_TEST_PLAN.md#incoming-archive-transaction-candidate).
 
 For paired-source development, validate against the matching GComs checkout with
 its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public
@@ -22,8 +38,13 @@ Development and release authority remains in the existing local Forgejo reposito
 Public delivery uses [IggyGG/gchat](https://github.com/IggyGG/gchat) and
 [IggyGG/gcoms](https://github.com/IggyGG/gcoms) as GitHub mirrors.
 Signed Linux x86_64, Apple Silicon/Intel Mac and Android APK downloads are available.
-Android profile and picker checks ran on an x86_64 emulator; physical-device
-and push delivery remain unqualified. Windows x86_64 and iOS
+Physical Android and iPhone checks are currently deferred. Four disposable Android
+emulators and the Mac iOS simulator passed their scoped lifecycle checks;
+[exact source/artifact bindings](docs/evidence/emulator-lifecycle-20260924/summary.json)
+remain separate from current runtime and mobile network/file qualification.
+Historical physical-device and release observations remain in [PLAN.md](PLAN.md).
+Live APNs/FCM and new store publication are not qualified by those lifecycle runs.
+Windows x86_64 and iOS
 releases are being qualified independently;
 availability and exact versions are listed on the download page. See
 [platform release delivery](docs/PLATFORM_RELEASES.md).
@@ -106,9 +127,9 @@ GComs provides transport and typed services; GChat owns chat behavior and UI.
 MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
 Published downloads currently cover Linux x86_64, macOS Apple Silicon/Intel and Android
 ARM64/x86_64. Windows and iOS releases are being qualified separately.
-Android lifecycle checks run in an emulator; physical-device, battery and live push
-qualification remain deferred. Each download retains its own source and validation
-scope. See the [release evidence procedure](docs/RELEASE_EVIDENCE.md).
+Android lifecycle checks include emulator coverage and a limited physical-phone
+follow-up; battery and attributable live push qualification remain open. Each
+download retains its own source and validation scope. See the [release evidence procedure](docs/RELEASE_EVIDENCE.md).
 
 The preview uses GComs' rustls/XML advisory fixes and disables unused postcard
 heapless defaults. `deny.toml` records reviewed transitive-version exceptions and

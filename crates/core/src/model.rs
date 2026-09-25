@@ -63,6 +63,10 @@ impl PartialOrd for HomeId {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Message {
     pub id: [u8; 16],
+    #[serde(skip)]
+    pub operation_id: Option<String>,
+    #[serde(skip)]
+    pub delivery: Option<gchat_api::Delivery>,
     pub ts_unix: u64,
     pub sender_member_id: Option<MemberId>,
     pub sender_name: String,
@@ -256,6 +260,8 @@ mod tests {
     fn message(ts: u64, mine: bool, sender: Option<MemberId>) -> Message {
         Message {
             id: [ts as u8; 16],
+            operation_id: None,
+            delivery: None,
             ts_unix: ts,
             sender_member_id: sender,
             sender_name: "x".into(),

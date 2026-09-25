@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Frozen-pair iOS build, simulator startup, pinned IPA verification and upload.
 
-Only retained derived inputs are changed. The simulator scope is startup/relaunch;
-it does not qualify messaging, device persistence, live APNs or physical devices.
+Only retained derived inputs are changed. Simulator checks include startup and
+encrypted-profile background/reopen; they do not qualify messaging, live APNs
+or physical devices.
 """
 import argparse
 import base64
@@ -613,6 +614,7 @@ def verify_ipa(ipa, destination, pin, version):
     shutil.copyfile(certificate, certificate_copy)
     return {'ipa': reference(ipa), 'executable': executable_receipt, 'certificate': reference(certificate_copy),
             'entitlements': entitlements, 'profile': profile, 'build_number': version,
+            'marketing_version': info.get('CFBundleShortVersionString'),
             'bundle': BUNDLE, 'architectures': ['arm64'], 'minimum_ios': '15.0'}
 
 
@@ -769,7 +771,7 @@ def build_simulator(chat, generated, project, config, destination, environment, 
         '-scheme', project.stem + '_iOS', '-configuration', 'release', '-sdk', 'iphonesimulator'],
         env=simulator_env, timeout=120))
     write_json(retained / 'build-settings.json', settings)
-    helper.verify_settings(settings, entitlement_file)
+    helper.verify_settings(settings, entitlement_file, simulator_env['DEVELOPER_DIR'])
     report['simulator_build_settings'] = reference(retained / 'build-settings.json')
     run(['npm', 'run', 'tauri', '--', 'ios', 'build', '--ci', '--target', 'aarch64-sim',
          '--archive-only', '--config', simulator_config], cwd=chat / 'apps/client', env=simulator_env, timeout=5400)
@@ -895,6 +897,10 @@ def build(args):
         # device artifact, but still prevents upload and a passing build verdict.
         report['native_tests'] = native_unit_tests(chat, destination / 'native-tests')
         report['simulator'] = simulator_smoke(simulator_app, destination / 'simulator-smoke')
+        lifecycle_spec = importlib.util.spec_from_file_location('ios_lifecycle', Path(__file__).with_name('ios-lifecycle.py'))
+        lifecycle = importlib.util.module_from_spec(lifecycle_spec)
+        lifecycle_spec.loader.exec_module(lifecycle)
+        report['lifecycle'] = lifecycle.run_application(simulator_app, destination / 'lifecycle')
         verify_derived_inputs(chat, pair)
         report['passed'] = True
     except Exception as error:

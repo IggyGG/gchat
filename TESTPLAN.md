@@ -1,4 +1,104 @@
+## Responsive carrier release binding (2026-09-25)
+
+Release tooling accepts distinct profile-22 and profile-46 contracts and rejects
+mismatched observed profiles. The three changed release tool/test files are
+byte-identical to the paired GComs files tested by the 37 passing release-tool
+checks. This is tooling validation; no existing native, installed, store or
+privacy receipt is relabelled. Current GComs source sends real data immediately
+with independent 10–10,000 ms randomized interactive cover. Older peer and policy
+cache compatibility requires the staged rollout described in PRODUCTION_RELEASE.md.
+
+## Runtime rollback data compatibility
+
+On a copy of a completed encrypted application profile, run current → compatible
+predecessor → current in an empty disconnected namespace. Require identical
+identity and nonempty channel set, exact complete-file export on every phase,
+clean shutdown and unchanged source fixture bytes. Keep signed installers,
+network reconnection and pending-message delivery outside this limited proof.
+[Candidate14/candidate12 receipt](docs/evidence/retained-rollback-20260924/summary.json).
+
+## Disposable mobile lifecycle gates
+
+Run four independent Android AVDs with explicit serials and private profiles,
+retaining every failure and cleanup result. Use a verified node-local SDK copy
+when shared image storage cannot meet the unchanged 180s boot deadline. Check
+profile creation, background/relaunch and picker select/cancel, then visually
+inspect retained screenshots. Use native XCTest for the Mac iOS simulator.
+Keep exact APK/simulator-source bindings; lifecycle success cannot qualify
+network messages, files, live push or a later protocol build. Physical devices
+are deferred. [Completed baseline](docs/evidence/emulator-lifecycle-20260924/summary.json).
+
+## Owner-budget reopen candidate
+
+[Exact source/artifact receipt](docs/evidence/owner-recovery-20260924/summary.json):
+GChat 20979ba / GComs 296d3b6; node 334/0/2 and application core 65/0/2, strict
+node/workspace Clippy, paired Linux daemon/desktop builds and signed Android 1017
+emulator lifecycle checks passed. The real constructor regression first reproduced
+`active owner alias expired before publication` with the old implementation.
+Personal encrypted profiles were preserved during installation; successful user
+unlock and the original conversation/file completion remain required.
+
+## Retained 12.5 MiB application workload follow-up
+
+Use the actual NetworkClient and normal Linux sender, one admitted channel/file
+and one queued message. Flush/reopen after 1 MiB, retain exact file identity and
+bytes, export the completed file and compare SHA-256. The original 600-second
+case failed at 10 MiB; its separate continuation completed with matching hash,
+queued-message delivery and successful shutdown. See PLAN.md for both receipts.
+The later bounded-referral pair likewise missed its original deadline at
+11,010,048 bytes; its separate continuation completed the same 13,107,200-byte
+file with hash equality, authenticated queued-message delivery and shutdown flush.
+Do not relabel either original deadline or infer Android OS responsiveness. The
+physical-phone uncertain-persistence pause requires a captured first cause and
+its own repair validation.
+
 # Application qualification status and remaining checks
+
+## Inbox recovery candidate, 2026-09-23
+
+[Bound receipt](docs/evidence/inbox-recovery-20260923/summary.json): GChat
+`48ccdfb` / GComs `15be948`; node library 333 passed/2 existing exclusions,
+GChat core 65 passed/2 disconnected-namespace exclusions, strict node and GChat
+workspace Clippy, unchanged paired sources, Linux packaging, signed Android
+1015 and emulator installation/reopen/picker checks. Preserve the original
+Linux missing-development-library failure and the successful packaging-only
+retry. Transport interruptions during evidence export are retained separately.
+
+Actual Linux application checks use two preserved test profiles and the same
+installed executable hash: reopen both, verify two inbox subscriptions, submit
+once in each direction, match recipient IDs/content and authenticated sender
+delivery, then transfer/export and hash-check the new 59,392-byte file. The old
+75,776-byte file must also export unchanged after receiver restart. These passed;
+transient route recovery delay is still recorded.
+
+Physical-device checks now have a [separate receipt](docs/evidence/inbox-recovery-20260923/physical-device-check.json):
+profile-preserving 1015 installation, fresh control-channel join, two-way
+authenticated delivery, retained channel/messages and actual 59,392-byte file
+export with matching SHA-256 passed. Generic activity notifications were observed
+while backgrounded; this does not uniquely identify their triggering message.
+The earlier retained-sender join timed out. A later background/reopen attempt
+initially failed retained and replacement inbox recovery with TLS EOF and a
+replacement-install deadline. Preserve that failed checkpoint. The
+[later follow-up](docs/evidence/inbox-recovery-20260923/delayed-recovery-followup.json)
+records authenticated delivery after roughly ten minutes/seven recovery attempts
+and the completed file surviving reopen; do not call its latency acceptable.
+
+The [cluster control](docs/evidence/inbox-recovery-20260923/cluster-reopen-control.json)
+passed fresh provisioning and two normal InstanceHost flush/reopen cycles using
+explicit NetworkClient on a current-thread runtime. Readiness was observed at
+84.621/61.293/61.526 seconds, polling every ten seconds. It uses the frozen
+48ccdfb/15be948 sources with no additional registry packages. It is Linux, has
+no channel/file backlog, and does not qualify Android suspend/resume or explain
+the longer physical-phone failure. Preserve the initial missing-policy-selector
+run and the unchanged-binary retry separately. The worker is disposable; logs,
+probe source/lockfile and executable hash remain retained.
+
+Keep the original personal conversation/file and cold-join/late-Welcome failures
+open. The personal file remained at 92,274,688/122,980,700 verified bytes after
+normal pause/resume. Save As also surfaced an unwanted transient background-paused
+UI error. No speculative runtime repair or new Android build follows from these
+controls alone.
+
 
 Recorded checkpoint: **2026-09-21 17:36 UTC**. The completed scopes below come
 from retained release manifests and publication receipts. Windows16 failed in

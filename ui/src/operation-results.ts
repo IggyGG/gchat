@@ -4,7 +4,8 @@ export type OperationResult = {
   key: string; id: string; instance: string; network: string;
   conversation: string | null; action: string; started: number;
   checked?: number; state: 'pending' | 'complete' | 'unknown' | 'rejected';
-  output?: CommandOutput; message?: string;
+  body?: string;
+  output?: CommandOutput; message?: string; recordedMessage?: string;
 };
 
 /** In-memory projection of the encrypted service journal. Never browser storage. */
@@ -18,7 +19,7 @@ export class OperationResults {
     if (old) return old;
     // Arguments may contain invitations, message contents or passwords.
     const action = text?.startsWith('/') ? text.split(/\s/, 1)[0] : text ? 'Send message' : 'Saved operation';
-    const record: OperationResult = { key, instance, network, id, conversation, action, started: Date.now(), state: 'pending' };
+    const record: OperationResult = { key, instance, network, id, conversation, action, started: Date.now(), state: 'pending', body: text && !text.startsWith('/') ? text : undefined };
     if (this.records.size >= 256) {
       const oldest = [...this.records.values()].find(r => r.state === 'complete');
       if (oldest) { this.records.delete(oldest.key); this.delivered.delete(oldest.key); }
@@ -40,7 +41,7 @@ export class OperationResults {
   error(key: string, code: string, message: string) {
     const old = this.records.get(key);
     // A late failed poll must never replace a confirmed result.
-    if (old && old.state !== 'complete') this.records.set(key, { ...old, state: code === 'rejected' ? 'rejected' : 'unknown', message, checked: Date.now() });
+    if (old && old.state !== 'complete') this.records.set(key, { ...old, state: ['rejected', 'busy', 'expired', 'invalid_argument', 'forbidden'].includes(code) ? 'rejected' : 'unknown', message, checked: Date.now() });
   }
   restore(details: OperationDetail[], networkFor: (conversation: string | null, instance: string) => string) {
     for (const detail of details) {
@@ -48,15 +49,19 @@ export class OperationResults {
       const key = this.key(detail.instance, network, detail.id);
       const old = this.records.get(key);
       if (old?.state === 'complete') continue;
+      // A generic RPC recovery answer carries no diagnostic reason. Preserve
+      // the encrypted journal's last recorded message separately from that answer.
+      if (old && detail.message) old.recordedMessage = detail.message;
       // Polling snapshots contain the original admission error, not the newer
       // check response. Keep that response visible until a terminal result arrives.
       if (old?.checked && detail.state !== 'complete' && detail.state !== 'rejected') continue;
       // A durable terminal snapshot can finish an interrupted original request.
       if (old?.state === 'pending' && detail.state !== 'complete' && detail.state !== 'rejected') continue;
       this.records.set(key, { key, id: detail.id, instance: detail.instance, network,
-        conversation: detail.conversation, action: detail.action, started: detail.started * 1000,
-        state: detail.state === 'complete' ? 'complete' : detail.state === 'rejected' ? 'rejected' : 'unknown',
-        output: detail.output ?? undefined, message: detail.message ?? undefined });
+        conversation: detail.conversation, action: detail.action, started: old?.started ?? detail.started * 1000, body: old?.body,
+        state: detail.state === 'complete' ? 'complete' : detail.state === 'rejected' ? 'rejected' : detail.state === 'pending' ? 'pending' : 'unknown',
+        output: detail.output ?? undefined, message: detail.message ?? undefined,
+        recordedMessage: detail.message ?? old?.recordedMessage });
     }
   }
   values() { return [...this.records.values()]; }

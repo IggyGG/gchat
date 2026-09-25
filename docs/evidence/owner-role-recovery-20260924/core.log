@@ -1,0 +1,135 @@
+warning: patch `gcoms-addon-example v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/examples/typed-addon)` was not used in the crate graph
+warning: patch `gcoms-catalog v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/catalog)` was not used in the crate graph
+warning: patch `gcoms-conformance v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/conformance)` was not used in the crate graph
+warning: patch `gcoms-fuzz v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/fuzz)` was not used in the crate graph
+warning: patch `gcoms-renamed-dependency-check v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/examples/renamed-dependency)` was not used in the crate graph
+warning: patch `gcoms-sim v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/sim)` was not used in the crate graph
+help: Check that the patched package version and available features are compatible
+      with the dependency requirements. If the patch has a different version from
+      what is locked in the Cargo.lock file, run `cargo update` to use the new
+      version. This may also occur with an optional dependency that is not enabled.
+   Compiling gcoms-core v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/core)
+   Compiling gcoms-crypto v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/crypto)
+   Compiling gcoms-private-fs v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/private-fs)
+   Compiling gcoms-gossip v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/gossip)
+   Compiling gcoms-rpc-contract v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc-contract)
+   Compiling gcoms-rpc-macros v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc-macros)
+   Compiling gcoms-transport v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/transport)
+   Compiling gcoms-file-transfer v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/file-transfer)
+   Compiling gcoms-network v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/network)
+   Compiling gcoms-mls v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/mls)
+   Compiling gcoms-protocol v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/protocol)
+   Compiling gcoms-routing v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/routing)
+   Compiling gcoms-network-client v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/network-client)
+   Compiling gcoms-node v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/node)
+   Compiling gcoms-sdk v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/sdk)
+   Compiling gcoms-runtime v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/runtime)
+   Compiling gcoms-rpc v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc)
+   Compiling gcoms v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/application)
+   Compiling gchat-api v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/crates/chat-api)
+   Compiling gchat-core v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/crates/core)
+    Finished `test` profile [unoptimized] target(s) in 1m 01s
+     Running unittests src/lib.rs (/gchat-work/target/debug/deps/gchat_core-cc29a401b8148db1)
+
+running 41 tests
+test chat_service::networks::journey::combined_invitation_joins_another_network_and_retains_chat_and_file ... ignored, requires scripts/test-bootstrap-namespace.py; no external network
+test chat_service::networks::tests::joined_network_registry_is_private_isolated_and_reopens ... ignored, requires the disconnected namespace helper; creates independent protected runtimes
+test chat_service::host::mobile_tests::outbound_host_cannot_launch_an_external_daemon ... ok
+test chat_service::host::mobile_tests::desktop_default_still_uses_the_existing_embedded_attachment ... ok
+test chat_service::responsiveness_tests::reconnect_command_keeps_codes_out_of_recall_and_requires_channel_context ... ok
+test chat_service::host::mobile_tests::outbound_host_refuses_listener_configuration_before_creating_profile ... ok
+test client::catalog_tests::catalog_rejects_repeated_and_oversized_cursors_and_http_in_production ... ok
+test chat_service::host::mobile_tests::notification_failure_and_tap_do_not_unlock_or_replace_the_mobile_runtime ... ok
+test contact::tests::add_get_remove ... ok
+test conversation::tests::channel_lifecycle ... ok
+test conversation::tests::direct_created_lazily_and_dedups_by_id ... ok
+test model::tests::home_uses_latest_own_write_then_visible_fallback_and_typed_ties ... ok
+test model::tests::member_pm_precedes_speech_then_inactive_ties_are_stable ... ok
+test model::tests::public_bucket_is_conservative_and_names_do_not_form_keys ... ok
+test paths::tests::ensure_private_dir_creates_0700_and_rejects_shared ... ok
+test paths::tests::home_override ... ok
+test paths::tests::macos_and_windows_layouts ... ok
+test paths::tests::no_runtime_dir_falls_back_to_data_dir ... ok
+test paths::tests::remediation_message_names_the_fix ... ok
+test paths::tests::xdg_defaults ... ok
+test chat_service::responsiveness_tests::ordinary_send_can_progress_beside_another_send_and_retains_correlation ... ok
+test client::presence_view_tests::activity_is_opt_in_expires_and_is_cleared_on_disable ... ok
+test chat_service::host::retained_scope_tests::personal_host_refuses_retained_machine_before_archive_or_ipc ... ok
+test chat_service::responsiveness_tests::message_metadata_preserves_old_archive_layout_and_survives_sidecar_reopen ... ok
+test chat_service::responsiveness_tests::local_unlock_does_not_wait_for_background_restoration ... ok
+test store::tests::create_makes_missing_parent_directories ... ok
+test store::tests::archive_is_distinct_and_roundtrips ... ok
+test store::tests::create_refuses_clobber ... ok
+test store::tests::corrupted_store_rejected ... ok
+test store::tests::new_store_and_parent_are_private ... ok
+test client::catalog_tests::fake_catalogs_cover_pages_signatures_cache_publication_and_join ... ok
+test store::tests::profile_lock_rejects_a_second_writer ... ok
+test store::tests::create_open_roundtrip ... ok
+test store::tests::protocol_profile_contains_no_chat_archive ... ok
+test chat_service::host::mobile_tests::outbound_host_reopens_encrypted_profile_and_files_without_local_endpoints ... ok
+test store::tests::profile_save_counts_only_successful_replacements_as_committed ... ok
+test store::tests::wrong_passphrase_rejected ... ok
+test store::tests::legacy_store_and_archive_migrate_into_nested_legacy_data ... ok
+test store::tests::store_kind_detects_all_magics ... ok
+test transcript::tests::tamper_and_shared_channel_policy_are_rejected ... ok
+test transcript::tests::append_rotation_and_identity_binding_roundtrip ... ok
+
+test result: ok. 39 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 26.01s
+
+     Running tests/chat_service.rs (/gchat-work/target/debug/deps/chat_service-a2f097c0929ff302)
+
+running 22 tests
+test channel_visibility_and_operation_details_are_explicit_and_lock_private ... ok
+test desktop_default_protected_profile_creates_and_reopens ... ok
+test chat_host_uses_shared_gcoms_and_reopens_the_same_archive ... ok
+test file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive ... ok
+test activity_sharing_preference_survives_profile_reopen ... ok
+test channel_topic_and_nickname_are_authenticated_shared_and_retained ... ok
+test native_file_paths_stay_local_and_export_never_clobbers ... ok
+test files_cross_real_private_channel_after_acceptance_without_transcript_records ... ok
+test channel_owner_can_transfer_and_leave_without_replacing_channel_identity ... ok
+test host_disconnect_cancels_attached_pollers_and_releases_instance_locks ... ok
+test migration_preserves_identity_original_bytes_and_legacy_archive ... ok
+test provider_revocation_removes_cached_conversations_and_stops_automatic_retry ... ok
+test network_invitation_is_local_private_and_survives_reopen_without_chat_authority ... ok
+test slow_command_keeps_reads_and_lock_available_without_duplicate_admission ... ok
+test query_identity_is_scoped_to_channel_for_every_participant ... ok
+test separate_instances_and_archive_lock_are_preserved ... ok
+test reconnect_command_exchanges_existing_member_routes_without_rejoining ... ok
+test typed_completion_storage_failure_stays_unknown_live_and_after_reopen ... ok
+test typed_network_import_is_private_bounded_and_requires_unlock ... ok
+test conversation_history_search_and_recall_keep_context_beyond_two_hundred_messages has been running for over 60 seconds
+test two_ui_clients_share_archive_commands_and_pinned_instance ... ok
+test conversation_history_search_and_recall_keep_context_beyond_two_hundred_messages ... ok
+test typed_host_resumes_the_same_journal_across_lock_and_protocol_restart ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 82.28s
+
+     Running tests/continuity.rs (/gchat-work/target/debug/deps/continuity-b5ea8228fc9c85a4)
+
+running 2 tests
+test production_loopback_profile_unlocks_without_publishing_a_direct_inbox ... ok
+test channel_roster_transcript_and_scoped_pm_survive_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.26s
+
+     Running tests/daemon_archive.rs (/gchat-work/target/debug/deps/daemon_archive-2bcb59ac0407babc)
+
+running 1 test
+test daemon_channel_archive_survives_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.30s
+
+     Running tests/journey.rs (/gchat-work/target/debug/deps/journey-f74771566a57f5af)
+
+running 1 test
+test first_channel_journey_on_hosted_runtimes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.41s
+
+   Doc-tests gchat_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

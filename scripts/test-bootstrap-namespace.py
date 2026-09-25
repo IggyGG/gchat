@@ -34,11 +34,33 @@ def links():
                   for item in json.loads(subprocess.check_output(["ip", "-j", "link"])))
 
 
+def disconnected_links(devices, addresses, routes):
+    """Linux may create a DOWN, unconfigured IPIP fallback in every netns."""
+    if routes or not any(item["ifname"] == "lo" for item in devices):
+        return False
+    for item in devices:
+        if item["ifname"] == "lo":
+            continue
+        if not (item["ifname"] == "tunl0" and item.get("link_type") == "ipip"
+                and item.get("operstate") == "DOWN" and "UP" not in item.get("flags", [])
+                and item.get("address") == "0.0.0.0"
+                and item.get("broadcast") == "0.0.0.0"):
+            return False
+        if any(address.get("addr_info") for address in addresses
+               if address["ifname"] == item["ifname"]):
+            return False
+    return True
+
+
 def worker(args):
     if os.geteuid() != 0 or args.uid <= 0 or namespace() == args.host_namespace:
         raise RuntimeError("worker requires a separate namespace and an unprivileged test user")
-    if [name for _, name in links()] != ["lo"]:
-        raise RuntimeError("fixture namespace must contain only loopback")
+    devices = json.loads(subprocess.check_output(["ip", "-j", "link"]))
+    addresses = json.loads(subprocess.check_output(["ip", "-j", "address"]))
+    routes = json.loads(subprocess.check_output(["ip", "-j", "route", "show", "table", "all"]))
+    routes += json.loads(subprocess.check_output(["ip", "-6", "-j", "route", "show", "table", "all"]))
+    if not disconnected_links(devices, addresses, routes):
+        raise RuntimeError("fixture namespace must have only loopback and inert kernel fallback links, without routes")
     subprocess.run(["ip", "link", "set", "lo", "up"], check=True)
     for address in ADDRESSES:
         subprocess.run(["ip", "address", "add", address, "dev", "lo"], check=True)

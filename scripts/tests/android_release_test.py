@@ -21,6 +21,50 @@ PIN = 'ab' * 32
 
 
 class MobileLauncher(unittest.TestCase):
+    def test_disposable_sdk_setup_is_completed_without_changing_app_permissions(self):
+        def shell(*args, **kwargs):
+            if args == ('getprop','ro.kernel.qemu'): return '1'
+            if args[:1] == ('settings',): return '1'
+            if args == ('locksettings','get-disabled'): return 'true'
+            if args[:2] == ('pm','path'): return 'package:/system/setup.apk'
+            if args[:2] == ('pm','disable-user'): return 'new state: disabled-user'
+            return ''
+        shell=Mock(side_effect=shell)
+        result=android.prepare_emulator_user(shell)
+        self.assertTrue(result['sdk_setup_disabled'])
+        self.assertTrue(result['lockscreen_disabled'])
+        shell.assert_any_call('locksettings','set-disabled','true')
+        shell.assert_any_call('svc','power','stayon','true')
+        shell.assert_any_call('wm','dismiss-keyguard')
+        self.assertNotIn(android.PACKAGE, str(shell.call_args_list))
+
+    def test_disposable_setup_refuses_physical_device_before_mutation(self):
+        shell=Mock(return_value='0')
+        with self.assertRaisesRegex(ValueError,'emulator'):
+            android.prepare_emulator_user(shell)
+        self.assertEqual(shell.call_count,1)
+
+    def test_activity_wait_observes_transition_instead_of_fixed_sleep(self):
+        app='topResumedActivity=ActivityRecord{abc u0 boo.gchat.app/.MainActivity t1}'
+        home='topResumedActivity=ActivityRecord{abc u0 com.android.launcher/.Home t2}'
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(android.time,'monotonic',side_effect=[0,.1,.2,.3,.4]), \
+                patch.object(android.time,'sleep'):
+            report={}
+            android.wait_activity(Mock(side_effect=[app,home]),Path(tmp),report,'background',False)
+            self.assertEqual(len(report['activity_observations']),2)
+            self.assertEqual((Path(tmp)/'background-activities.txt').read_text(),home)
+
+    def test_activity_observed_after_original_deadline_is_not_a_pass(self):
+        app='topResumedActivity=ActivityRecord{abc u0 boo.gchat.app/.MainActivity t1}'
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(android.time,'monotonic',side_effect=[0,.1,11,12]), \
+                patch.object(android.time,'sleep'):
+            report={}
+            with self.assertRaisesRegex(ValueError,'foreground/background'):
+                android.wait_activity(Mock(return_value=app),Path(tmp),report,'foreground',True)
+            self.assertEqual(len(report['activity_observations']),1)
+
     def test_store_screenshot_preserves_native_pixels(self):
         raw = b'\x89PNG\r\n\x1a\n' + struct.pack('>I', 13) + b'IHDR' + struct.pack('>II', 1080, 1920) + b'\0' * 9
         with tempfile.TemporaryDirectory() as tmp, patch.object(android.subprocess, 'check_output', return_value=raw) as call:
@@ -332,7 +376,34 @@ class KeyboardDriver(unittest.TestCase):
         with patch.object(android.time, 'sleep'):
             android.wait_keyboard(shell, False)
         self.assertEqual(shell.call_count, 5)
-        shell.assert_called_with('dumpsys', 'input_method')
+        shell.assert_called_with('dumpsys', '-t', '1', 'input_method', '--dump-priority', 'CRITICAL')
+
+    def test_failed_partial_dump_cannot_count_as_visibility(self):
+        interrupted = subprocess.CalledProcessError(255, ['dumpsys'], output='mInputShown=false')
+        shell = Mock(side_effect=[interrupted, 'mInputShown=false', interrupted,
+                                  'mInputShown=false', 'mInputShown=false'])
+        with patch.object(android.time, 'sleep'):
+            android.wait_keyboard(shell, False)
+        self.assertEqual(shell.call_count, 5)
+
+    def test_repeated_dump_failure_keeps_original_deadline(self):
+        shell = Mock(side_effect=subprocess.CalledProcessError(255, ['dumpsys']))
+        with patch.object(android.time, 'monotonic', side_effect=[0, 0, 11]), \
+                patch.object(android.time, 'sleep'), self.assertRaisesRegex(ValueError, 'expected visibility'):
+            android.wait_keyboard(shell, False)
+        self.assertEqual(shell.call_count, 1)
+
+    def test_other_shell_failure_is_not_retried(self):
+        shell = Mock(side_effect=subprocess.CalledProcessError(1, ['dumpsys']))
+        with self.assertRaises(subprocess.CalledProcessError):
+            android.wait_keyboard(shell, False)
+        self.assertEqual(shell.call_count, 1)
+
+    def test_matching_keyboard_after_deadline_is_not_success(self):
+        shell = Mock(return_value='mInputShown=false')
+        with patch.object(android.time, 'monotonic', side_effect=[0, 0, 1, 11, 11]), \
+                patch.object(android.time, 'sleep'), self.assertRaisesRegex(ValueError, 'expected visibility'):
+            android.wait_keyboard(shell, False)
 
     def test_visibility_timeout_does_not_continue_to_click(self):
         shell = Mock(return_value='mInputShown=true')
@@ -413,6 +484,13 @@ class ArtifactReuse(unittest.TestCase):
 
 
 class EmulatorDriver(unittest.TestCase):
+    def test_invalid_emulator_port_is_rejected_before_sdk_or_avd_changes(self):
+        for port in (True, 5553, 5555, 5684, '5554'):
+            with self.subTest(port=port), patch.object(android, 'sdk') as sdk:
+                with self.assertRaisesRegex(ValueError, 'even number'):
+                    android.emulator(argparse.Namespace(output=Path('/unused'), port=port))
+                sdk.assert_not_called()
+
     def test_avd_tools_share_explicit_private_directory(self):
         with tempfile.TemporaryDirectory() as scratch:
             root = Path(scratch)
@@ -455,16 +533,21 @@ class EmulatorDriver(unittest.TestCase):
                     avd = Path(command[command.index('--path') + 1])
                     avd.mkdir()
                     (avd / 'config.ini').write_text('fixture')
-                    (Path(env['ANDROID_AVD_HOME']) / 'gchat-release-fixture.ini').write_text('fixture')
+                    name=command[command.index('--name')+1]
+                    (Path(env['ANDROID_AVD_HOME']) / (name+'.ini')).write_text('fixture')
                 elif command[-2:] == ['emu', 'kill']:
                     raise subprocess.TimeoutExpired(command, 30)
                 return subprocess.CompletedProcess(command, 0, stdout='1')
             with patch.object(android, 'sdk', return_value=root / 'sdk'), \
                     patch.object(android.subprocess, 'run', side_effect=execute), \
                     patch.object(android.subprocess, 'Popen', return_value=process) as popen, \
-                    patch.object(android, 'smoke', side_effect=ValueError('injected app failure')):
+                    patch.object(android, 'smoke', side_effect=ValueError('injected app failure')) as smoke:
                 with self.assertRaisesRegex(ValueError, 'injected app failure'):
-                    android.emulator(argparse.Namespace(output=root))
+                    android.emulator(argparse.Namespace(output=root, port=5560))
+            self.assertEqual(smoke.call_args.args[0].serial, 'emulator-5560')
+            command = popen.call_args.args[0]
+            self.assertEqual(command[command.index('-port') + 1], '5560')
+            self.assertEqual(command[command.index('-avd') + 1], 'gchat-release-fixture-5560')
             self.assertEqual(popen.call_args.kwargs['env'], create_env[0])
             process.kill.assert_called_once()
             report = json.loads((root / 'emulator-driver.json').read_text())

@@ -19,7 +19,7 @@
   {#if view.notice}<p role="status">{view.notice}</p>{/if}
   {#if view.error}<p role="alert">{view.error}</p>{/if}
   {#each snapshot?.files.filter(f => (showAll || f.conversation === conversation) && f.state !== 'cancelled') ?? [] as file (file.id)}
-    <article>
+    <article aria-busy={view.transfers[file.id]?.pending ?? false}>
       <div><strong>{file.name}</strong>{#if file.conversation !== conversation}<small>Another conversation</small>{/if}<small>{bytes(file.size_bytes)} · {file.state.replaceAll('_', ' ')} · {file.sources} offering peers{#if file.state === 'complete'} · you also share this copy{/if}{#if file.completed_by} · {file.completed_by} confirmed complete{/if}</small></div>
       {#if ['downloading', 'waiting_for_peers', 'paused', 'importing'].includes(file.state)}
         <progress aria-label={`Verified progress for ${file.name}`} value={Number(file.verified_bytes)} max={Math.max(1, Number(file.size_bytes))}></progress>
@@ -28,7 +28,7 @@
       {#if file.error}<p role="alert">{file.error}</p>{/if}
       <div class="actions">
         {#if file.state === 'importing' && canSave && canShare && file.conversation === conversation}<button disabled={busy} onclick={() => choose(file.id)}>Resume import</button>{/if}
-        {#if file.state === 'offered'}<button disabled={busy} onclick={() => controller.act({ action: 'accept', id: file.id })}>Download & share</button>{/if}
+        {#if file.state === 'offered'}<button disabled={busy || view.transfers[file.id]?.pending} onclick={() => controller.act({ action: 'accept', id: file.id })}>{view.transfers[file.id]?.pending ? 'Starting…' : 'Download & share'}</button>{/if}
         {#if ['downloading', 'waiting_for_peers'].includes(file.state)}<button disabled={busy} onclick={() => controller.act({ action: 'pause', id: file.id })}>Pause</button>{/if}
         {#if file.state === 'paused'}<button disabled={busy} onclick={() => controller.act({ action: 'resume', id: file.id })}>Resume</button>{/if}
         {#if file.state === 'complete' && canSave}<button disabled={busy} onclick={() => controller.save(file)}>Save file…</button>{/if}

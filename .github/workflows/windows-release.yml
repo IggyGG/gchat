@@ -3,6 +3,10 @@ run-name: Forgejo Windows ${{ inputs.request_id }}
 on:
   workflow_dispatch:
     inputs:
+      release_manifest:
+        description: Base64 immutable coordinator manifest (optional for manual jobs)
+        required: false
+        type: string
       gchat_ref:
         description: Protected main/release branch or approved version tag, exactly at gchat_commit
         required: true
@@ -84,6 +88,8 @@ jobs:
       - name: Preflight the existing pinned certificate before compilation
         timeout-minutes: 5
         env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
@@ -92,6 +98,10 @@ jobs:
           } finally {
             ./gchat/scripts/windows-signing.ps1 -Action Cleanup -StateDirectory signing-preflight
           }
+      - name: Bind coordinated release identity
+        env:
+          GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+        run: python3 gchat/scripts/release_input.py
       - name: Install pinned native tools and WebView prerequisites
         timeout-minutes: 20
         run: |
@@ -208,6 +218,8 @@ jobs:
         if: always()
         timeout-minutes: 5
         run: ./gchat/scripts/windows-signing.ps1 -Action Cleanup -StateDirectory signing-evidence
+      - name: Bind native artifact to coordinated release
+        run: python3 gchat/scripts/release_attest.py --output signed --platform windows-x86_64
       - name: Retain all native, installer and cleanup evidence
         if: always()
         run: |
@@ -221,7 +233,10 @@ jobs:
           name: windows-x86_64
           path: |
             signed/*.exe
+            signed/updater/**
+            signed/updater-artifacts.json
             signed/build.json
+            signed/release-binding.json
             signed/provenance/**
             signed/native-evidence/**
             signed/worker-evidence/**

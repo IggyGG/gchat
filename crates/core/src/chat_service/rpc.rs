@@ -127,6 +127,10 @@ impl ChatService {
         deadline: u64,
         at: u64,
     ) -> Result<Admission, RpcError> {
+        let _update_request = self
+            .update_gate
+            .enter()
+            .map_err(|message| RpcError::new(ErrorCode::Busy, message))?;
         self.check_key(key)?;
         let mut session = self.session.lock().await;
         let unlocked = session
@@ -180,6 +184,7 @@ impl ChatService {
         );
         unlocked.store.save(&candidate).map_err(storage)?;
         unlocked.state = candidate;
+        self.update_gate.admitted(record_id(key));
         Ok(Admission::New)
     }
     async fn rpc_complete(&self, key: &OperationKey, result: ReplyBody) -> Result<(), RpcError> {
@@ -212,6 +217,7 @@ impl ChatService {
         binding.result = Some(result);
         unlocked.store.save(&candidate).map_err(storage)?;
         unlocked.state = candidate;
+        self.update_gate.completed(&record_id(key));
         Ok(())
     }
 }

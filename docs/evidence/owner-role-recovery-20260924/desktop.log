@@ -1,0 +1,64 @@
+
+> @gchat/client@0.1.0 tauri
+> tauri build --no-bundle --ci
+
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `npm run build`
+
+> @gchat/client@0.1.0 build
+> vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "../../ui/server/local" without a file extension (vite.config.ts:3:49). Add the file extension
+  - import "../../ui/src/api" without a file extension (vite.config.ts:4:29). Add the file extension
+  - import "../src/api" without a file extension (../../ui/server/local.ts:5:56). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+2:46:36 AM [vite-plugin-svelte] no Svelte config found at /gchat-work/owner-role-release-01/pair-02/inputs/gchat/apps/client - using default configuration.
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 165 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.44 kB │ gzip:   0.30 kB
+dist/assets/index-B3HQF_oI.css   23.22 kB │ gzip:   5.00 kB
+dist/assets/index-BlQCctRM.js   830.00 kB │ gzip: 118.72 kB
+
+✓ built in 878ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+warning: patch `gcoms-addon-example v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/examples/typed-addon)` was not used in the crate graph
+warning: patch `gcoms-catalog v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/catalog)` was not used in the crate graph
+warning: patch `gcoms-conformance v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/conformance)` was not used in the crate graph
+warning: patch `gcoms-fuzz v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/fuzz)` was not used in the crate graph
+warning: patch `gcoms-renamed-dependency-check v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/examples/renamed-dependency)` was not used in the crate graph
+warning: patch `gcoms-sim v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/sim)` was not used in the crate graph
+help: Check that the patched package version and available features are compatible
+      with the dependency requirements. If the patch has a different version from
+      what is locked in the Cargo.lock file, run `cargo update` to use the new
+      version. This may also occur with an optional dependency that is not enabled.
+   Compiling gcoms-core v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/core)
+   Compiling gcoms-crypto v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/crypto)
+   Compiling gcoms-private-fs v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/private-fs)
+   Compiling gcoms-gossip v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/gossip)
+   Compiling gcoms-rpc-contract v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc-contract)
+   Compiling gcoms-rpc-macros v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc-macros)
+   Compiling gchat-desktop v0.1.4 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/apps/client/src-tauri)
+   Compiling gcoms-transport v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/transport)
+   Compiling gcoms-file-transfer v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/file-transfer)
+   Compiling gcoms-network v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/network)
+   Compiling gcoms-mls v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/mls)
+   Compiling gcoms-routing v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/routing)
+   Compiling gcoms-protocol v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/protocol)
+   Compiling gcoms-network-client v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/network-client)
+   Compiling gcoms-node v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/node)
+   Compiling gcoms-sdk v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/sdk)
+   Compiling gcoms-runtime v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/runtime)
+   Compiling gcoms-rpc v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc)
+   Compiling gcoms v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/application)
+   Compiling gchat-api v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/crates/chat-api)
+   Compiling gchat-core v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/crates/core)
+    Finished `release` profile [optimized] target(s) in 2m 54s
+       Built application at: /gchat-work/target/release/gchat-desktop

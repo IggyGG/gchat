@@ -34,7 +34,7 @@
     ],
     "android": {
       "minSdkVersion": 26,
-      "versionCode": 1005
+      "versionCode": 1019
     },
     "license": "MIT OR Apache-2.0",
     "resources": {
@@ -63,7 +63,8 @@
     },
     "shortDescription": "Secure communication over GComs",
     "longDescription": "GChat provides encrypted conversations with invitation-based access and signed relay defaults.",
-    "publisher": "Gh0st"
+    "publisher": "Gh0st",
+    "createUpdaterArtifacts": true
   },
   "plugins": {
     "deep-link": {
@@ -80,6 +81,15 @@
           "appLink": false
         }
       ]
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRFNTY5ODJBMkJGQzBBNDcKUldSSEN2d3JLcGhXVG5MVGs2ay8yT1pvcGtRUTY2Z2toVmlMWnJza0oyTXBNZk9RRFVmMTBIY0kK",
+      "endpoints": [
+        "https://gchat.boo/updates/desktop/{{target}}/{{arch}}/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

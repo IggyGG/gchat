@@ -1,0 +1,32 @@
+warning: patch `gcoms-addon-example v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/examples/typed-addon)` was not used in the crate graph
+warning: patch `gcoms-catalog v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/catalog)` was not used in the crate graph
+warning: patch `gcoms-conformance v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/conformance)` was not used in the crate graph
+warning: patch `gcoms-fuzz v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/fuzz)` was not used in the crate graph
+warning: patch `gcoms-renamed-dependency-check v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/examples/renamed-dependency)` was not used in the crate graph
+warning: patch `gcoms-sim v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/sim)` was not used in the crate graph
+help: Check that the patched package version and available features are compatible
+      with the dependency requirements. If the patch has a different version from
+      what is locked in the Cargo.lock file, run `cargo update` to use the new
+      version. This may also occur with an optional dependency that is not enabled.
+   Compiling gcoms-core v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/core)
+   Compiling gcoms-crypto v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/crypto)
+   Compiling gcoms-private-fs v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/private-fs)
+   Compiling gcoms-gossip v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/gossip)
+   Compiling gcoms-rpc-macros v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc-macros)
+   Compiling gcoms-rpc-contract v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc-contract)
+   Compiling gchat-tui v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/crates/tui)
+   Compiling gcoms-transport v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/transport)
+   Compiling gcoms-file-transfer v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/file-transfer)
+   Compiling gcoms-network v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/network)
+   Compiling gcoms-mls v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/mls)
+   Compiling gcoms-protocol v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/protocol)
+   Compiling gcoms-routing v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/routing)
+   Compiling gcoms-network-client v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/network-client)
+   Compiling gcoms-node v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/node)
+   Compiling gcoms-sdk v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/sdk)
+   Compiling gcoms-runtime v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/runtime)
+   Compiling gcoms-rpc v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/rpc)
+   Compiling gcoms v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gcoms/crates/application)
+   Compiling gchat-api v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/crates/chat-api)
+   Compiling gchat-core v0.1.0 (/gchat-work/owner-role-release-01/pair-02/inputs/gchat/crates/core)
+    Finished `release` profile [optimized] target(s) in 6m 18s

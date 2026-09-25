@@ -1,0 +1,37 @@
+{
+  "passed": false,
+  "reason": "retained workload transfer deadline",
+  "gchat": "48ccdfb8b2a4d9dc13acebf3f2701d77504d3a5d",
+  "gcoms": "15be9487812cbd2568638054a6228cd1f6dad20a",
+  "scope": "Actual in-process NetworkClient encrypted profile, channel, admitted message and 12.5 MiB file with flush/reopen; not Android OS qualification",
+  "last_file": {
+    "elapsed_ms": 604312,
+    "file": {
+      "aliases": null,
+      "completed_by": 1,
+      "conversation": "channel/bd2ffb97b48725e909e9af2dbe347d465513cccb76237eee2a418e6c3cf9cf06",
+      "error": null,
+      "id": "5ff0f3c1f771435c83cf7607ba17cb8d",
+      "name": "gchat-reopen-12MiB.bin",
+      "size_bytes": "13107200",
+      "sources": 1,
+      "state": "downloading",
+      "verified_bytes": "10485760",
+      "verified_sources": 1
+    },
+    "phase": "file"
+  },
+  "interrupt": {
+    "phase": "interrupted",
+    "verified_bytes": 1048576
+  },
+  "shutdown": {
+    "flushed": true,
+    "passed": false,
+    "phase": "shutdown"
+  },
+  "run_log_sha256": "90c8b8806851a2b4d9031567352d65282dd51be919ec4a9368df120153c98586",
+  "archive_sha256": "e330d8f8f0e8579d2ea4057d689e45d0265117327f6531ab4f139e2461c315bd",
+  "profile_preserved": true,
+  "continuation": "Separate continuation of same retained file and profile; original deadline failure remains"
+}

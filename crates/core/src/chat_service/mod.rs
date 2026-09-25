@@ -3,8 +3,12 @@ mod extensions;
 mod files;
 mod fleet;
 pub mod host;
+mod host_updates;
 mod networks;
+#[cfg(test)]
+mod responsiveness_tests;
 pub mod rpc;
+mod update_gate;
 
 use crate::client::ClientHandle;
 use crate::model::{ChannelRecord, MemberId, ScopedPmId};
@@ -23,7 +27,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use tokio::sync::{watch, Mutex};
+use tokio::sync::{watch, Mutex, Notify, RwLock};
 use zeroize::Zeroizing;
 
 const HISTORY_LIMIT: usize = 200;
@@ -56,9 +60,42 @@ struct UiState {
     command_history: Vec<String>,
     input_history: Vec<gchat_api::InputHistoryEntry>,
     operations: BTreeMap<String, OperationRecord>,
+    message_metadata: BTreeMap<String, MessageMetadata>,
     file_key: Option<[u8; 32]>,
     file_config: gcoms::sdk::sharing::CacheConfig,
 }
+// Additive metadata lives in the versioned JSON sidecar, never the positional
+// postcard archive. Existing encrypted archives keep their exact binary layout.
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+struct MessageMetadata {
+    operation_id: Option<String>,
+    delivery: Option<gchat_api::Delivery>,
+}
+fn observe_messages(state: &mut UiState, archive: &ArchiveData) {
+    let messages = archive
+        .channels
+        .iter()
+        .flat_map(|c| &c.messages)
+        .chain(archive.scoped_pms.iter().flat_map(|p| &p.messages))
+        .filter(|m| m.mine);
+    let mut retained = std::collections::BTreeSet::new();
+    for m in messages {
+        let id = hex(&m.id);
+        retained.insert(id.clone());
+        if m.operation_id.is_none() && m.delivery.is_none() {
+            continue;
+        }
+        let metadata = state.message_metadata.entry(id).or_default();
+        if let Some(operation) = &m.operation_id {
+            metadata.operation_id = Some(operation.clone());
+        }
+        if metadata.delivery != Some(gchat_api::Delivery::Delivered) && m.delivery.is_some() {
+            metadata.delivery = m.delivery.clone();
+        }
+    }
+    state.message_metadata.retain(|id, _| retained.contains(id));
+}
+
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 struct ObservedChannel {
     members: BTreeMap<String, String>,
@@ -100,6 +137,27 @@ struct Unlocked {
     state: UiState,
 }
 
+struct InFlight<'a> {
+    id: &'a str,
+    operations: &'a std::sync::Mutex<std::collections::BTreeSet<String>>,
+}
+impl Drop for InFlight<'_> {
+    fn drop(&mut self) {
+        self.operations
+            .lock()
+            .expect("active operations")
+            .remove(self.id);
+    }
+}
+fn latency(stage: &str, started: Instant) {
+    if std::env::var_os("GCHAT_LATENCY_DIAGNOSTICS").is_some() {
+        eprintln!(
+            "gchat_latency stage={stage} elapsed_ms={}",
+            started.elapsed().as_millis()
+        );
+    }
+}
+
 /// Hosting the same module in gcd or an Android service does not duplicate logic.
 pub struct ChatService {
     networks: Mutex<BTreeMap<String, Arc<ChatService>>>,
@@ -113,7 +171,11 @@ pub struct ChatService {
     command_extension: Option<extensions::CommandExtension>,
     session: Mutex<Option<Unlocked>>,
     /// Serializes admission/mutations without blocking snapshot, history or lock requests.
-    operations: Mutex<()>,
+    operations: RwLock<()>,
+    active_operations: std::sync::Mutex<std::collections::BTreeSet<String>>,
+    update_gate: update_gate::UpdateGate,
+    startup: Arc<Notify>,
+    startup_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     projection: std::sync::RwLock<(Vec<Conversation>, String)>,
     projection_refresh: Mutex<()>,
     provider_error: std::sync::RwLock<Option<gchat_api::ProviderStatus>>,
@@ -230,7 +292,11 @@ impl ChatService {
             runtime,
             capabilities,
             session: Mutex::new(None),
-            operations: Mutex::new(()),
+            operations: RwLock::new(()),
+            active_operations: std::sync::Mutex::new(std::collections::BTreeSet::new()),
+            update_gate: update_gate::UpdateGate::default(),
+            startup: Arc::new(Notify::new()),
+            startup_worker: std::sync::Mutex::new(None),
             projection: std::sync::RwLock::new((Vec::new(), String::new())),
             projection_refresh: Mutex::new(()),
             provider_error: std::sync::RwLock::new(None),
@@ -268,6 +334,10 @@ impl ChatService {
         }
         *service.file_worker.lock().expect("file worker handle") =
             Some(Self::spawn_file_worker(&service));
+        *service
+            .startup_worker
+            .lock()
+            .expect("startup worker handle") = Some(Self::spawn_startup_worker(&service));
         Ok(service)
     }
 
@@ -342,6 +412,7 @@ impl ChatService {
 
     fn info(&self, locked: bool) -> InstanceInfo {
         InstanceInfo {
+            build: crate::build_info::current(),
             id: self.id.clone(),
             label: self.label.clone(),
             boot_id: self.boot.clone(),
@@ -408,6 +479,23 @@ impl ChatService {
 
     async fn handle_mode(&self, request: Request, admitted: bool) -> Result<Response, String> {
         let request = lifecycle_request(request);
+        let _update_request = if matches!(
+            request,
+            Request::Identify
+                | Request::Snapshot
+                | Request::NetworkStatus
+                | Request::Events { .. }
+                | Request::Catalogue { .. }
+                | Request::History { .. }
+                | Request::Search { .. }
+        ) {
+            None
+        } else {
+            Some(self.update_gate.enter()?)
+        };
+        if matches!(request, Request::Update { .. }) {
+            return Err("This endpoint does not manage desktop updates".into());
+        }
         if let Request::Networks { request } = request {
             return Box::pin(self.networks_request(request))
                 .await
@@ -456,8 +544,16 @@ impl ChatService {
         } else {
             None
         };
-        let _operation = if matches!(request, Request::Submit { .. }) {
-            Some(self.operations.lock().await)
+        // Ordinary sends may wait independently; the SDK orders MLS admission.
+        // Commands which change membership still exclude concurrent sends.
+        let ordinary_send = matches!(&request, Request::Submit { text, .. } if !text.starts_with('/') || matches!(text.split_whitespace().next(), Some("/say" | "/me" | "/join" | "/create")));
+        let _send = if ordinary_send {
+            Some(self.operations.read().await)
+        } else {
+            None
+        };
+        let _mutation = if matches!(request, Request::Submit { .. }) && !ordinary_send {
+            Some(self.operations.write().await)
         } else {
             None
         };
@@ -468,6 +564,7 @@ impl ChatService {
             });
         }
         if let Request::Unlock { passphrase, create } = request {
+            let started = Instant::now();
             self.require(Capability::ChannelMember)?;
             let passphrase = Zeroizing::new(passphrase);
             if passphrase.len() > 4096 {
@@ -505,20 +602,11 @@ impl ChatService {
                 }
                 state.instance_id = self.id.clone();
                 state.safety_number = safety;
-                let file_key = *state.file_key.get_or_insert_with(rand::random);
+                state.file_key.get_or_insert_with(rand::random);
                 store.save(&state)?;
-                let cache_path = self.archive.with_extension("pieces");
-                let cache_config = state.file_config.clone();
-                let files =
-                    files::FileRuntime::open(&self.runtime, &cache_path, file_key, cache_config)
-                        .await;
-                let (files, file_error) = match files {
-                    Ok(files) => (Some(files), None),
-                    Err(error) => (None, Some(format!("File cache unavailable: {error}. Chat history remains available; preserve the cache for recovery."))),
-                };
                 *session = Some(Unlocked {
-                    files,
-                    file_error,
+                    files: None,
+                    file_error: Some("Preparing encrypted file cache…".into()),
                     ui_locked: false,
                     client,
                     store,
@@ -529,14 +617,12 @@ impl ChatService {
                 if current.ui_locked {
                     current.store.verify_passphrase(&passphrase)?;
                     current.ui_locked = false;
-                    if let Some(files) = &current.files {
-                        files.enabled(true).await?;
-                    }
                 }
             }
             let snapshot = self.project(session.as_ref());
             drop(session);
-            Box::pin(self.restore_networks()).await?;
+            latency("local_unlock", started);
+            self.startup.notify_one();
             if let Some(fleet) = self.fleet.lock().await.as_mut() {
                 fleet.resume();
             }
@@ -545,7 +631,7 @@ impl ChatService {
         if let Request::Lock = request {
             if let Some(current) = session.as_mut() {
                 current.client.save().await?;
-                current.store.save(&current.state)?;
+                Self::save_message_metadata(current)?;
                 if let Some(files) = &current.files {
                     files.enabled(false).await?;
                 }
@@ -635,6 +721,12 @@ impl ChatService {
                     return Ok(response);
                 }
                 let archive = unlocked.client.archive_snapshot();
+                let mut candidate = unlocked.state.clone();
+                observe_messages(&mut candidate, &archive);
+                if candidate.message_metadata != unlocked.state.message_metadata {
+                    unlocked.store.save(&candidate)?;
+                    unlocked.state = candidate;
+                }
                 let all_messages = conversation_messages(&archive, &conversation)?;
                 let messages: Vec<_> = all_messages
                     .iter()
@@ -655,7 +747,7 @@ impl ChatService {
                 let start = end.saturating_sub(usize::from(limit.clamp(1, 200)));
                 let messages = messages[start..end]
                     .iter()
-                    .map(|m| message(&conversation, m))
+                    .map(|m| message(&conversation, m, &unlocked.state))
                     .collect::<Vec<_>>();
                 let before = if start > 0 {
                     messages.first().map(|m| m.id.clone())
@@ -822,6 +914,15 @@ impl ChatService {
                 unlocked.store.save(&unlocked.state)?;
                 // Persist admission before any protocol mutation. A crash cannot silently replay it.
                 let client = unlocked.client.clone();
+                self.active_operations
+                    .lock()
+                    .expect("active operations")
+                    .insert(operation_id.clone());
+                let _active = InFlight {
+                    id: &operation_id,
+                    operations: &self.active_operations,
+                };
+                let started = Instant::now();
                 drop(session);
                 let response =
                     match self.validate_submission(&client, conversation.as_deref(), &text) {
@@ -841,6 +942,7 @@ impl ChatService {
                             },
                         },
                     };
+                latency("command_completion", started);
                 client.save().await?;
                 let mut session = self.session.lock().await;
                 let unlocked = session
@@ -849,6 +951,7 @@ impl ChatService {
                 // Keep destination context, and never put bearer invitations into recall.
                 let history_text = recall_text(&text);
                 let mut candidate = unlocked.state.clone();
+                observe_messages(&mut candidate, &client.archive_snapshot());
                 candidate.command_history.push(history_text.clone());
                 candidate.input_history.push(gchat_api::InputHistoryEntry {
                     conversation,
@@ -882,9 +985,18 @@ impl ChatService {
         Ok(self.project(session.as_ref()))
     }
 
+    fn save_message_metadata(current: &mut Unlocked) -> Result<(), String> {
+        let mut candidate = current.state.clone();
+        observe_messages(&mut candidate, &current.client.archive_snapshot());
+        current.store.save(&candidate)?;
+        current.state = candidate;
+        Ok(())
+    }
+
     async fn refresh_channel_topics(current: &mut Unlocked) -> Result<(), String> {
         let mut candidate = current.state.clone();
         let archive = current.client.archive_snapshot();
+        observe_messages(&mut candidate, &archive);
         for channel in &archive.channels {
             let key = record_key(channel);
             let topic = if channel.active {
@@ -971,7 +1083,8 @@ impl ChatService {
             }
             candidate.observed_channels.insert(key, observed);
         }
-        if candidate.topics != current.state.topics
+        if candidate.message_metadata != current.state.message_metadata
+            || candidate.topics != current.state.topics
             || candidate.observed_channels != current.state.observed_channels
         {
             current.store.save(&candidate)?;
@@ -1114,7 +1227,7 @@ impl ChatService {
             input_history = session.state.input_history.clone();
             conversations.extend(self.projection.read().expect("projection lock").0.clone());
         }
-        let provider_errors: Vec<_> = if instance.locked {
+        let mut provider_errors: Vec<_> = if instance.locked {
             Vec::new()
         } else {
             self.provider_error
@@ -1124,6 +1237,14 @@ impl ChatService {
                 .into_iter()
                 .collect()
         };
+        if session.is_some_and(|s| !s.ui_locked && s.client.archive_waiting_for_storage()) {
+            provider_errors.push(gchat_api::ProviderStatus {
+                id: "archive".into(),
+                code: "local_storage_unavailable".into(),
+                message: "Couldn't finish saving received messages. Check free disk space and write access; GChat will retry automatically.".into(),
+                retryable: true,
+            });
+        }
         let activity = session
             .filter(|s| !s.ui_locked)
             .map(|s| s.state.activity.clone())
@@ -1137,6 +1258,7 @@ impl ChatService {
                     Some(Response::Applied { notice, .. }) => ("complete", None, notice.clone()),
                     Some(Response::Error { code, message }) => (if code == "rejected" { "rejected" } else { "unknown" }, None, Some(message.clone())),
                     Some(_) => ("complete", None, None),
+                    None if self.active_operations.lock().expect("active operations").contains(id) => ("pending", None, Some("Working on this request.".into())),
                     None => ("unknown", None, Some("No confirmed result retained. This operation will not run again automatically.".into())),
                 };
                 gchat_api::OperationDetail { network: None, id: id.clone(), instance: self.id.clone(), conversation: r.conversation.clone(), action: r.action.clone(), started: r.at, state: state.into(), output, message }
@@ -1145,6 +1267,9 @@ impl ChatService {
         if operations.len() > 30 {
             operations.drain(..operations.len() - 30);
         }
+        let delivery_revision = session
+            .filter(|s| !s.ui_locked)
+            .map(|s| &s.state.message_metadata);
         let revision = hex(&Sha256::digest(
             serde_json::to_vec(&(
                 &instance,
@@ -1154,6 +1279,7 @@ impl ChatService {
                 &provider_errors,
                 &operations,
                 &activity,
+                &delivery_revision,
                 &self.projection.read().expect("projection lock").1,
             ))
             .expect("serializable projection"),
@@ -1241,6 +1367,12 @@ impl ChatService {
             context_channel(&archive, conversation)?;
         }
         match name.as_str() {
+            "/reconnect"
+                if args.len() > 8192
+                    || (!args.is_empty() && !args.starts_with("gchat-reconnect1:")) =>
+            {
+                return Err("Paste the complete reconnect command from an existing member, or use /reconnect to create one.".into());
+            }
             "/owner" => {
                 self.require(Capability::ChannelAdmin)?;
                 let channel = context_channel(&archive, conversation)?;
@@ -1412,6 +1544,7 @@ impl ChatService {
                 &archive,
                 conversation.ok_or("open a channel or query before sending")?,
                 text,
+                operation_id,
             )
             .await?;
             return applied(conversation.map(str::to_string), None);
@@ -1436,6 +1569,22 @@ impl ChatService {
                 Ok(response)
             }
             "help" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Help { commands: self.context_commands(conversation) } }),
+            "status" if args == "--details" => {
+                let text = match self.runtime.embedded() {
+                    Some(client) => {
+                        // Local counts and bounded backend errors; no authority objects or payloads.
+                        let status = client.node().transport_status();
+                        format!("Protocol: {}\nReady entries: {}\nUsable inbox routes: {}\nOwned inboxes: {}\nSubscribed inboxes: {}\nInteractive subscriptions: {}\nBulk subscriptions: {}\nRecovering inbox: {}\nRouting ready: {}\nOwner checkpoint paused: {}\nRecovery attempts: {}\nRecovery phase: {}\nLast recovery failure: {}",
+                            status.protocol, status.ready_entries, status.usable_terminal_routes,
+                            status.owned_aliases, status.subscribed_owned_aliases,
+                            status.interactive_subscriptions, status.bulk_subscriptions,
+                            status.recovering_inbox, status.routing_ready, status.owner_transition_failed,
+                            status.recovery.attempts, status.recovery.phase, status.recovery.failure.as_deref().unwrap_or("None recorded"))
+                    }
+                    None => "Transport details are owned by the attached service.".into(),
+                };
+                Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: "Connection details".into(), text } })
+            }
             "status" => Ok(Response::Output { conversation: None, output: gchat_api::CommandOutput::Status { text: format!("{} joined channels. Closing a view keeps receiving; /lock hides the archive in every view; /quit stops this instance.", archive.channels.iter().filter(|c| c.active).count()) } }),
             "list" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Directory { channels: archive.channels.iter().filter(|c| c.active).map(|c| gchat_api::DirectoryEntry { name: format!("#{}", c.title), joined: true, conversation: Some(channel_key(c.id)) }).chain(archive.public_descriptors.iter().map(|d| gchat_api::DirectoryEntry { name: format!("#{}", d.descriptor.title), joined: false, conversation: None })).chain(self.projection.read().expect("projection lock").0.iter().map(|c| gchat_api::DirectoryEntry { name: c.name.clone(), joined: c.active, conversation: Some(c.id.clone()) })).collect() } }),
             "close" | "hide" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Close { conversation: conversation.ok_or("Select a conversation to close")?.into() } }),
@@ -1443,6 +1592,19 @@ impl ChatService {
                 let channel = context_channel(&archive, conversation)?;
                 client.change_channel(channel.id, gcoms::sdk::ChannelChange::Nickname(args.into())).await?;
                 applied(conversation.map(str::to_owned), Some("Channel nickname updated. Your identity and history are unchanged.".into()))
+            }
+            "reconnect" => {
+                self.require(Capability::ChannelMember)?;
+                let channel = context_channel(&archive, conversation)?;
+                let code = Zeroizing::new(args.trim().to_owned());
+                let output = self.runtime.sdk_client().channel_reconnect(
+                    &channel.protocol_name, (!code.is_empty()).then_some(code.as_str())
+                ).await.map_err(|e| e.to_string())?;
+                if code.is_empty() {
+                    Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: "Reconnect this channel".into(), text: output } })
+                } else {
+                    applied(conversation.map(str::to_owned), Some("Channel addresses refreshed. Saved messages are retrying; delivery still requires the other member's acknowledgment.".into()))
+                }
             }
             "topic" => {
                 let channel = context_channel(&archive, conversation)?;
@@ -1475,7 +1637,7 @@ impl ChatService {
             "me" => {
                 self.require(Capability::ChannelMember)?;
                 if args.is_empty() { return Err("Usage: /me action".into()); }
-                send(client, &archive, conversation.ok_or("open a conversation first")?, &format!("\u{1}ACTION {args}\u{1}")).await?;
+                send(client, &archive, conversation.ok_or("open a conversation first")?, &format!("\u{1}ACTION {args}\u{1}"), operation_id).await?;
                 applied(conversation.map(str::to_string), None)
             }
             "names" => {
@@ -1627,6 +1789,7 @@ impl ChatService {
                     &archive,
                     conversation.ok_or("open a conversation first")?,
                     args,
+                    operation_id,
                 )
                 .await?;
                 applied(conversation.map(str::to_string), None)
@@ -1688,7 +1851,7 @@ impl ChatService {
                     "/create" | "/invite" | "/kick" | "/owner" | "/publish" => {
                         Some("ChannelAdmin".into())
                     }
-                    "/join" | "/query" | "/msg" | "/say" | "/me" | "/nick" => {
+                    "/join" | "/query" | "/msg" | "/say" | "/me" | "/nick" | "/reconnect" => {
                         Some("ChannelMember".into())
                     }
                     _ => None,
@@ -1701,6 +1864,7 @@ impl ChatService {
                             | "/msg"
                             | "/names"
                             | "/invite"
+                            | "/reconnect"
                             | "/kick"
                             | "/say"
                             | "/me"
@@ -1774,7 +1938,12 @@ impl ChatService {
                         .description
                         .push_str(" Select a conversation first.");
                 }
-                if extension && matches!(command.name.as_str(), "/invite" | "/kick" | "/publish") {
+                if extension
+                    && matches!(
+                        command.name.as_str(),
+                        "/invite" | "/kick" | "/publish" | "/reconnect"
+                    )
+                {
                     command.available = false;
                     command.description = "Unavailable in this conversation provider.".into();
                 }
@@ -1801,9 +1970,82 @@ impl ChatService {
             .expect("catalog configuration lock") = urls;
     }
 
+    /// Owned by the service, never by an attachment or a discarded unlock request.
+    fn spawn_startup_worker(service: &Arc<Self>) -> tokio::task::JoinHandle<()> {
+        let weak = Arc::downgrade(service);
+        let mut stopped = service.stopped.subscribe();
+        let notify = service.startup.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = stopped.changed() => break,
+                    _ = notify.notified() => {}
+                }
+                let Some(service) = weak.upgrade() else { break };
+                if *stopped.borrow() {
+                    break;
+                }
+                let started = Instant::now();
+                // Lock/disconnect coordinate with restoration, so a finished open
+                // cannot publish a child after the lifecycle barrier completes.
+                {
+                    let _lifecycle = service.network_operations.lock().await;
+                    let inputs = {
+                        let session = service.session.lock().await;
+                        session.as_ref().filter(|s| !s.ui_locked).map(|s| {
+                            (
+                                s.files.clone(),
+                                s.state.file_key,
+                                s.state.file_config.clone(),
+                            )
+                        })
+                    };
+                    if let Some((existing, key, config)) = inputs {
+                        let result = if let Some(files) = existing {
+                            files.enabled(true).await.map(|_| files)
+                        } else if let Some(key) = key {
+                            files::FileRuntime::open(
+                                &service.runtime,
+                                &service.archive.with_extension("pieces"),
+                                key,
+                                config,
+                            )
+                            .await
+                        } else {
+                            Err("File cache key unavailable".into())
+                        };
+                        let mut session = service.session.lock().await;
+                        if let Some(current) = session.as_mut().filter(|s| !s.ui_locked) {
+                            match result {
+                                Ok(files) => { current.files = Some(files); current.file_error = None; }
+                                Err(error) => current.file_error = Some(format!("File cache unavailable: {error}. Chat history remains available.")),
+                            }
+                        }
+                    }
+                }
+                if *stopped.borrow() {
+                    break;
+                }
+                latency("file_cache_ready", started);
+                let _ = Box::pin(service.restore_networks()).await;
+                latency("retained_network_restoration", started);
+            }
+        })
+    }
+
     pub async fn disconnect(&self) -> Result<(), String> {
-        let _network_lifecycle = self.network_operations.lock().await;
         self.stopped.send_replace(true);
+        let startup = self
+            .startup_worker
+            .lock()
+            .map_err(|_| "Startup worker unavailable")?
+            .take();
+        if let Some(worker) = startup {
+            worker
+                .await
+                .map_err(|_| "Startup worker stopped unexpectedly")?;
+        }
+        let _network_lifecycle = self.network_operations.lock().await;
         if let Some(fleet) = self.fleet.lock().await.as_mut() {
             fleet.pause().await;
         }
@@ -1824,7 +2066,7 @@ impl ChatService {
                 .map_err(|_| "File worker stopped unexpectedly")?;
         }
         let mut session = self.session.lock().await;
-        let result = if let Some(current) = session.as_ref() {
+        let result = if let Some(current) = session.as_mut() {
             if let Some(files) = &current.files {
                 files.enabled(false).await?;
             }
@@ -1833,7 +2075,7 @@ impl ChatService {
                 .client
                 .save()
                 .await
-                .and_then(|_| current.store.save(&current.state))
+                .and_then(|_| Self::save_message_metadata(current))
         } else {
             Ok(())
         };
@@ -1841,11 +2083,40 @@ impl ChatService {
         result.and(network_result)
     }
 
+    pub(super) async fn pause_for_update(&self) -> Result<(), String> {
+        self.update_gate.pause()?;
+        let networks = self
+            .networks
+            .lock()
+            .await
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        for network in networks {
+            if let Err(error) = Box::pin(network.pause_for_update()).await {
+                self.resume_after_update().await;
+                return Err(error);
+            }
+        }
+        if let Err(error) = self.flush().await {
+            self.resume_after_update().await;
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    pub(super) async fn resume_after_update(&self) {
+        for network in self.networks.lock().await.values() {
+            Box::pin(network.resume_after_update()).await;
+        }
+        self.update_gate.resume();
+    }
+
     pub async fn flush(&self) -> Result<(), String> {
-        let session = self.session.lock().await;
-        if let Some(session) = session.as_ref() {
+        let mut session = self.session.lock().await;
+        if let Some(session) = session.as_mut() {
             session.client.save().await?;
-            session.store.save(&session.state)?;
+            Self::save_message_metadata(session)?;
         }
         drop(session);
         self.flush_networks().await?;
@@ -1913,6 +2184,8 @@ fn conversation_messages(
             .iter()
             .map(|m| crate::model::Message {
                 id: m.id,
+                operation_id: None,
+                delivery: None,
                 ts_unix: m.ts_unix,
                 sender_member_id: None,
                 sender_name: m.sender.clone(),
@@ -1934,24 +2207,33 @@ async fn send(
     archive: &ArchiveData,
     key: &str,
     text: &str,
+    operation: &str,
 ) -> Result<(), String> {
     if let Some(c) = archive
         .channels
         .iter()
         .find(|c| c.active && channel_key(c.id) == key)
     {
-        return client.send_channel(c.id, text).await;
+        return client
+            .send_channel_operation(c.id, text, Some(operation))
+            .await;
     }
     if let Some(p) = archive
         .scoped_pms
         .iter()
         .find(|p| p.active && query_key(p.id) == key)
     {
-        return client.send_scoped_pm(p.id, text).await;
+        return client
+            .send_scoped_pm_operation(p.id, text, Some(operation))
+            .await;
     }
     Err("conversation is not active in this instance".into())
 }
-fn message(key: &str, m: &crate::model::Message) -> Message {
+fn message(key: &str, m: &crate::model::Message, state: &UiState) -> Message {
+    let metadata = m
+        .mine
+        .then(|| state.message_metadata.get(&hex(&m.id)))
+        .flatten();
     Message {
         id: hex(&m.id),
         conversation_id: key.into(),
@@ -1960,7 +2242,8 @@ fn message(key: &str, m: &crate::model::Message) -> Message {
         body: m.text.clone(),
         timestamp: m.ts_unix,
         mine: m.mine,
-        delivery: m.mine.then_some(gchat_api::Delivery::LocalAccepted),
+        operation_id: metadata.and_then(|v| v.operation_id.clone()),
+        delivery: metadata.and_then(|v| v.delivery.clone()),
         result: None,
     }
 }
@@ -2001,6 +2284,10 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
         ),
         ("/list", "List channels"),
         ("/names", "List this channel's members"),
+        (
+            "/reconnect",
+            "Exchange fresh addresses with an existing member when channel delivery is stuck",
+        ),
         (
             "/part",
             "Leave this channel through its owner; keep your history",
@@ -2053,6 +2340,7 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
 }
 fn command_usage(name: &str) -> &str {
     match name {
+        "/reconnect" => "/reconnect [code]",
         "/presence" => "/presence on|off",
         "/publish" => "/publish https://directory.example/",
         "/network" => "/network join invitation-code | dns on|off|status",
@@ -2077,6 +2365,9 @@ fn network_arguments(text: &str) -> Option<&str> {
 }
 fn recall_text(text: &str) -> String {
     let (name, args) = split_head(text);
+    if name.eq_ignore_ascii_case("/reconnect") {
+        return "/reconnect".into();
+    }
     if name.eq_ignore_ascii_case("/network") {
         return if matches!(args, "dns on" | "dns off" | "dns status") {
             format!("/network {args}")

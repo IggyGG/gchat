@@ -59,3 +59,31 @@ Recently-active sharing is optional and defaults off. `/presence on` enables
 short-lived channel signals for this profile; `/presence off` stops them. Unknown
 means there is no fresh observation, not that the person is offline. Presence is
 kept in memory and never used as a condition for message delivery.
+
+## Reconnect existing members
+
+If both devices show messages as **accepted locally** but neither receives them,
+keep them online and use `/reconnect` in the affected channel. Copy the resulting
+command to the other member through another app and run it in that same channel.
+This exchanges current encrypted addresses; it does not leave, rejoin, reset
+history or resend messages with new identities. Saved messages retry normally,
+and delivery is confirmed only by recipient acknowledgments.
+
+A reconnect code is not a new-member invitation. It works only for current
+members of the same membership epoch while its addresses remain valid. If it
+expires, create a fresh code. This is an explicit fallback when all retained
+peer addresses have expired, not automatic discovery of offline members.
+
+If the network remains disconnected, open **Network → Connection details** (or
+run `/status --details`). This shows local route and subscription counts without
+addresses, invitation tokens or identity keys. It does not retry a saved action.
+An operation's Details view retains its recorded error alongside a later generic
+“outcome unknown” reply; neither indicates delivery or authorizes automatic replay.
+
+Connection details also reports the background inbox recovery phase, attempt count, bounded last backend failure and whether an unconfirmed owner checkpoint has paused recovery. These local diagnostics do not alter retry timing, lease authority or delivery acknowledgements.
+
+A stalled retained inbox no longer blocks every later recovery round: after two
+failed retained attempts, background recovery proceeds to authenticated inbox
+replacement. The previous inboxes retain their original cleanup deadlines; saved
+messages and membership are preserved. Connection details identifies the recovery
+stage if the round times out. This does not imply recipient delivery.

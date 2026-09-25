@@ -6,9 +6,10 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex;
 
-struct Attachment {
-    client: Mutex<Option<ChatClient>>,
+pub(super) struct Attachment {
+    pub(super) client: Mutex<Option<ChatClient>>,
     config: InstanceConfig,
+    pub(super) updating: std::sync::atomic::AtomicBool,
 }
 
 #[tauri::command]
@@ -31,7 +32,10 @@ async fn chat_request(
     })
 }
 
-async fn attached(state: &tauri::State<'_, Attachment>) -> Result<ChatClient, String> {
+pub(super) async fn attached(state: &tauri::State<'_, Attachment>) -> Result<ChatClient, String> {
+    if state.updating.load(std::sync::atomic::Ordering::SeqCst) {
+        return Err("GChat is restarting to activate an update".into());
+    }
     let mut client = state.client.lock().await;
     if client.is_none() {
         {
@@ -194,6 +198,12 @@ fn chat_desktop_platform() -> &'static str {
 }
 
 pub fn run() {
+    // Never expose an interactive window until the one startup activation has
+    // finished or been deferred. Updates found later only stage for next launch.
+    let mut context = tauri::generate_context!();
+    for window in &mut context.config_mut().app.windows {
+        window.visible = false;
+    }
     let mut builder = tauri::Builder::default();
     // Explicit separate profiles keep independent GUI processes; the receiving
     // service dispatches --interactive before reaching this builder.
@@ -211,6 +221,7 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             #[cfg(not(target_os = "macos"))]
             if let Some(window) = app.get_webview_window("main") {
@@ -226,12 +237,18 @@ pub fn run() {
                 .map_err(std::io::Error::other)?;
             app.manage(Attachment {
                 client: Mutex::new(None),
+                updating: std::sync::atomic::AtomicBool::new(false),
                 config,
             });
+            crate::updates::setup(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             chat_desktop_platform,
+            crate::updates::chat_update_activity,
+            crate::updates::chat_update_status,
+            crate::updates::chat_update_check,
+            crate::updates::chat_update_install,
             chat_request,
             chat_rpc,
             chat_file_io,
@@ -239,6 +256,6 @@ pub fn run() {
             chat_invitation_save,
             chat_invitation_card_save
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("gchat native application");
 }
