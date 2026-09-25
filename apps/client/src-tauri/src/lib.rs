@@ -11,6 +11,8 @@ mod mobile_export;
 mod mobile_push;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod startup;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod updates;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

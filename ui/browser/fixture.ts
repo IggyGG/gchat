@@ -5,6 +5,8 @@ import Workspace from '../src/Workspace.svelte';
 import type { DeviceUnlock } from '../src/device-unlock';
 import type { CommandSpec, Conversation, FileInfo, NetworkState, Request, Response, Snapshot } from '../src/api';
 const parameters = new URLSearchParams(location.search);
+let updateRestarts = 0;
+let updateStatus = {state:'ready',version:'0.1.5',downloaded:1024,total:1024,message:'Update ready.'};
 const primaryNetwork = 'a'.repeat(64), otherNetwork = 'b'.repeat(64);
 let joinedNetwork = parameters.has('two-networks');
 const presence = new Map<string, boolean>();
@@ -40,6 +42,7 @@ const status = () => ({ state, message: state === 'connected' ? 'Connected to th
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
   setArchiveBlocked(value: boolean) { archiveBlocked = value; revision++; },
+  updateRestarts: () => updateRestarts, setUpdate(value: Partial<typeof updateStatus>) { updateStatus = {...updateStatus,...value}; },
   requests, unlockChoices, recoverInvitation() {
     const request = requests.filter((r): r is Extract<Request, {kind: 'submit'}> => r.kind === 'submit' && r.text === '/invite').at(-1);
     if (request && savedReply?.kind === 'output') recovered.push({ id: request.operation_id, instance: instance.id, conversation: request.conversation, action: '/invite', started: Math.floor(Date.now()/1000), state: 'complete', output: savedReply.output, message: null });
@@ -134,6 +137,7 @@ mount(Workspace, { target: document.getElementById('app')!, props: { transport: 
   pendingOperations: () => savedId ? [{ operation: { id: savedId } } as OperationHandle] : [],
   async checkOperation() { checks++; if (savedReply) return savedReply; throw new ChatError('outcome_unknown', 'Interrupted after admission. No new result is available.'); },
 }, deviceUnlock, nativeShell: parameters.has('native-shell') ? {
+  updates: parameters.has('updates') ? {status: async()=>updateStatus, check: async()=>updateStatus, install: async()=>{updateRestarts++;}} : undefined,
   mac: parameters.has('mac'), minimize: async () => { window.dispatchEvent(new Event('fixture-minimize')); },
   maximize: async () => { window.dispatchEvent(new Event('fixture-maximize')); }, close: async () => { window.dispatchEvent(new Event('fixture-close')); },
   drag: async () => {}, resize: async () => {},

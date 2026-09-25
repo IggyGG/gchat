@@ -5,8 +5,10 @@ use ts_rs::TS;
 
 pub mod files;
 pub mod networks;
+pub mod updates;
 pub use files::{FileInfo, FileRequest, FileSnapshot, FileState};
 pub use networks::{InvitationPreview, JoinedNetwork, NetworkRequest, NetworkResponse};
+pub use updates::{BuildInfo, PrepareUpdateResult, UpdateRequest};
 
 pub const VERSION: u16 = 2;
 pub const MAX_FRAME_BYTES: usize = 16 * 1024 * 1024;
@@ -65,6 +67,9 @@ impl NetworkStatus {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceInfo {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub build: Option<BuildInfo>,
     pub id: String,
     pub label: String,
     pub boot_id: String,
@@ -305,6 +310,9 @@ pub struct Completion {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Request {
+    Update {
+        request: UpdateRequest,
+    },
     Networks {
         request: NetworkRequest,
     },
@@ -359,6 +367,9 @@ pub enum Request {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Response {
+    Update {
+        result: PrepareUpdateResult,
+    },
     Networks {
         response: NetworkResponse,
     },
@@ -459,6 +470,9 @@ pub fn typescript() -> String {
         FileState::decl(),
         NetworkState::decl(),
         NetworkStatus::decl(),
+        BuildInfo::decl(),
+        UpdateRequest::decl(),
+        PrepareUpdateResult::decl(),
         InstanceInfo::decl(),
         Member::decl(),
         Conversation::decl(),

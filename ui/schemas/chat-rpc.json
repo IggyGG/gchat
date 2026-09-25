@@ -255,6 +255,23 @@
                   "additionalProperties": false,
                   "properties": {
                     "kind": {
+                      "const": "update",
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/UpdateRequest"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "request"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
                       "const": "networks",
                       "type": "string"
                     },
@@ -567,6 +584,108 @@
                   "type": "object"
                 }
               ]
+            },
+            "UpdateRequest": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Views renew this lease every fifteen seconds. No private view data.",
+                  "properties": {
+                    "action": {
+                      "const": "heartbeat",
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "detach",
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "prepare",
+                      "type": "string"
+                    },
+                    "release": {
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view",
+                    "release"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "abort",
+                      "type": "string"
+                    },
+                    "release": {
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view",
+                    "release"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "exit",
+                      "type": "string"
+                    },
+                    "release": {
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view",
+                    "release"
+                  ],
+                  "type": "object"
+                }
+              ]
             }
           },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -695,6 +814,29 @@
               "required": [
                 "name",
                 "url"
+              ],
+              "type": "object"
+            },
+            "BuildInfo": {
+              "properties": {
+                "gchatCommit": {
+                  "type": "string"
+                },
+                "gcomsCommit": {
+                  "type": "string"
+                },
+                "releaseId": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "releaseId",
+                "gchatCommit",
+                "gcomsCommit",
+                "version"
               ],
               "type": "object"
             },
@@ -1152,6 +1294,16 @@
                 "bootId": {
                   "type": "string"
                 },
+                "build": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/BuildInfo"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "capabilities": {
                   "items": {
                     "type": "string"
@@ -1433,6 +1585,60 @@
               ],
               "type": "object"
             },
+            "PrepareUpdateResult": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "state": {
+                      "const": "attached",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "boot_id": {
+                      "type": "string"
+                    },
+                    "process_id": {
+                      "format": "uint32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "state": {
+                      "const": "ready",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "process_id",
+                    "boot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "reason": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "const": "busy",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "reason"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
             "ProviderStatus": {
               "properties": {
                 "code": {
@@ -1458,6 +1664,22 @@
             },
             "Response": {
               "oneOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "update",
+                      "type": "string"
+                    },
+                    "result": {
+                      "$ref": "#/$defs/PrepareUpdateResult"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "result"
+                  ],
+                  "type": "object"
+                },
                 {
                   "properties": {
                     "kind": {
@@ -2086,6 +2308,23 @@
                   "additionalProperties": false,
                   "properties": {
                     "kind": {
+                      "const": "update",
+                      "type": "string"
+                    },
+                    "request": {
+                      "$ref": "#/$defs/UpdateRequest"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "request"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
                       "const": "networks",
                       "type": "string"
                     },
@@ -2398,6 +2637,108 @@
                   "type": "object"
                 }
               ]
+            },
+            "UpdateRequest": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Views renew this lease every fifteen seconds. No private view data.",
+                  "properties": {
+                    "action": {
+                      "const": "heartbeat",
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "detach",
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "prepare",
+                      "type": "string"
+                    },
+                    "release": {
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view",
+                    "release"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "abort",
+                      "type": "string"
+                    },
+                    "release": {
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view",
+                    "release"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "exit",
+                      "type": "string"
+                    },
+                    "release": {
+                      "type": "string"
+                    },
+                    "view": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "view",
+                    "release"
+                  ],
+                  "type": "object"
+                }
+              ]
             }
           },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2526,6 +2867,29 @@
               "required": [
                 "name",
                 "url"
+              ],
+              "type": "object"
+            },
+            "BuildInfo": {
+              "properties": {
+                "gchatCommit": {
+                  "type": "string"
+                },
+                "gcomsCommit": {
+                  "type": "string"
+                },
+                "releaseId": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "releaseId",
+                "gchatCommit",
+                "gcomsCommit",
+                "version"
               ],
               "type": "object"
             },
@@ -2983,6 +3347,16 @@
                 "bootId": {
                   "type": "string"
                 },
+                "build": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/BuildInfo"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "capabilities": {
                   "items": {
                     "type": "string"
@@ -3264,6 +3638,60 @@
               ],
               "type": "object"
             },
+            "PrepareUpdateResult": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "state": {
+                      "const": "attached",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "boot_id": {
+                      "type": "string"
+                    },
+                    "process_id": {
+                      "format": "uint32",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "state": {
+                      "const": "ready",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "process_id",
+                    "boot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "reason": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "const": "busy",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "reason"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
             "ProviderStatus": {
               "properties": {
                 "code": {
@@ -3289,6 +3717,22 @@
             },
             "Response": {
               "oneOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "update",
+                      "type": "string"
+                    },
+                    "result": {
+                      "$ref": "#/$defs/PrepareUpdateResult"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "result"
+                  ],
+                  "type": "object"
+                },
                 {
                   "properties": {
                     "kind": {
@@ -4012,6 +4456,31 @@
         "id": "identify",
         "kind": "query",
         "output_schema": {
+          "$defs": {
+            "BuildInfo": {
+              "properties": {
+                "gchatCommit": {
+                  "type": "string"
+                },
+                "gcomsCommit": {
+                  "type": "string"
+                },
+                "releaseId": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "releaseId",
+                "gchatCommit",
+                "gcomsCommit",
+                "version"
+              ],
+              "type": "object"
+            }
+          },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "properties": {
             "archiveExists": {
@@ -4019,6 +4488,16 @@
             },
             "bootId": {
               "type": "string"
+            },
+            "build": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/BuildInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "capabilities": {
               "items": {
@@ -4059,7 +4538,7 @@
           "title": "InstanceInfo",
           "type": "object"
         },
-        "output_typescript": "{ id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, }"
+        "output_typescript": "{ build?: BuildInfo, id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, }"
       },
       {
         "args_schema": {
@@ -4131,6 +4610,29 @@
                 "kind",
                 "text",
                 "timestamp"
+              ],
+              "type": "object"
+            },
+            "BuildInfo": {
+              "properties": {
+                "gchatCommit": {
+                  "type": "string"
+                },
+                "gcomsCommit": {
+                  "type": "string"
+                },
+                "releaseId": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "releaseId",
+                "gchatCommit",
+                "gcomsCommit",
+                "version"
               ],
               "type": "object"
             },
@@ -4432,6 +4934,16 @@
                 },
                 "bootId": {
                   "type": "string"
+                },
+                "build": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/BuildInfo"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "capabilities": {
                   "items": {
@@ -4690,6 +5202,31 @@
         "id": "lock",
         "kind": "session",
         "output_schema": {
+          "$defs": {
+            "BuildInfo": {
+              "properties": {
+                "gchatCommit": {
+                  "type": "string"
+                },
+                "gcomsCommit": {
+                  "type": "string"
+                },
+                "releaseId": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "releaseId",
+                "gchatCommit",
+                "gcomsCommit",
+                "version"
+              ],
+              "type": "object"
+            }
+          },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "properties": {
             "archiveExists": {
@@ -4697,6 +5234,16 @@
             },
             "bootId": {
               "type": "string"
+            },
+            "build": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/BuildInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "capabilities": {
               "items": {
@@ -4737,7 +5284,7 @@
           "title": "InstanceInfo",
           "type": "object"
         },
-        "output_typescript": "{ id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, }"
+        "output_typescript": "{ build?: BuildInfo, id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, }"
       },
       {
         "args_schema": {
@@ -4797,6 +5344,29 @@
                 "kind",
                 "text",
                 "timestamp"
+              ],
+              "type": "object"
+            },
+            "BuildInfo": {
+              "properties": {
+                "gchatCommit": {
+                  "type": "string"
+                },
+                "gcomsCommit": {
+                  "type": "string"
+                },
+                "releaseId": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "releaseId",
+                "gchatCommit",
+                "gcomsCommit",
+                "version"
               ],
               "type": "object"
             },
@@ -5098,6 +5668,16 @@
                 },
                 "bootId": {
                   "type": "string"
+                },
+                "build": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/BuildInfo"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "capabilities": {
                   "items": {
@@ -5387,6 +5967,29 @@
               ],
               "type": "object"
             },
+            "BuildInfo": {
+              "properties": {
+                "gchatCommit": {
+                  "type": "string"
+                },
+                "gcomsCommit": {
+                  "type": "string"
+                },
+                "releaseId": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "releaseId",
+                "gchatCommit",
+                "gcomsCommit",
+                "version"
+              ],
+              "type": "object"
+            },
             "CommandOutput": {
               "oneOf": [
                 {
@@ -5685,6 +6288,16 @@
                 },
                 "bootId": {
                   "type": "string"
+                },
+                "build": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/BuildInfo"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "capabilities": {
                   "items": {
@@ -7028,5 +7641,5 @@
     "name": "ghost.chat",
     "version": 1
   },
-  "typescript": "// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = 2;\nexport const MAX_INPUT_BYTES = 12000;\nexport const MAX_NETWORK_INVITATION_BYTES = 174778;\nexport type JoinedNetwork = { id: string, name: string, fingerprint: string, primary: boolean, status: NetworkStatus, };\nexport type InvitationPreview = { network: JoinedNetwork, channel: string | null, newNetwork: boolean, expires: number, };\nexport type NetworkRequest = { \"kind\": \"list\" } | { \"kind\": \"inspect\", code: string, } | { \"kind\": \"join\", code: string, nickname: string, accepted_network: string, operation_id: string, } | { \"kind\": \"call\", network: string, request: Request, };\nexport type NetworkResponse = { \"kind\": \"list\", networks: Array<JoinedNetwork>, } | { \"kind\": \"preview\", preview: InvitationPreview, } | { \"kind\": \"result\", network: string, response: Response, };\nexport type FileInfo = { id: string, aliases?: Array<string>, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,\n/**\n * Peers contributing verified pieces since this process opened the cache.\n */\nverified_sources: number, completed_by: number, error: string | null, };\nexport type FileRequest = { \"action\": \"list\", conversation: string | null, } | { \"action\": \"prepare\", id: string, conversation: string, name: string, size_bytes: string, } | { \"action\": \"commit\", id: string, } | { \"action\": \"accept\", id: string, } | { \"action\": \"pause\", id: string, } | { \"action\": \"resume\", id: string, } | { \"action\": \"cancel\", id: string, } | { \"action\": \"configure\", quota_bytes: string, retention_days: number, };\nexport type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };\nexport type FileState = \"offered\" | \"importing\" | \"downloading\" | \"waiting_for_peers\" | \"paused\" | \"complete\" | \"failed\" | \"cancelled\";\nexport type NetworkState = \"locked\" | \"local_only\" | \"invitation_required\" | \"connecting\" | \"connected\" | \"reconnecting\" | \"invitation_expired\" | \"unavailable\";\nexport type NetworkStatus = { state: NetworkState, message: string, };\nexport type InstanceInfo = { id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };\nexport type Member = { id: string, nickname: string, isSelf: boolean, recentlyActive?: boolean, capabilities: Array<string>, };\nexport type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };\nexport type ConversationKind = \"channel\" | \"query\" | \"archive\";\nexport type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean, operationId?: string,\n/**\n * Delivered is an authenticated recipient acknowledgement, never a read receipt.\n */\ndelivery: Delivery | null, result: ActionResult | null, };\nexport type ActionResult = { id: string, messageId: string | null, state: string,\n/**\n * Exact signed bytes, base64 encoded; views decode only for display.\n */\noutputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };\nexport type Artifact = { name: string, url: string, };\nexport type Delivery = \"local_accepted\" | \"delivered\";\nexport type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };\nexport type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };\nexport type CommandOutput = { \"kind\": \"help\", commands: Array<CommandSpec>, } | { \"kind\": \"directory\", channels: Array<DirectoryEntry>, } | { \"kind\": \"invitation\", channel: string, link: string, expires: number, localOnly: boolean, } | { \"kind\": \"text\", title: string, text: string, } | { \"kind\": \"status\", text: string, } | { \"kind\": \"close\", conversation: string, };\nexport type InputHistoryEntry = { conversation: string | null, text: string, };\nexport type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };\nexport type Activity = { id: string, conversation: string, kind: string, text: string, timestamp: number, };\nexport type OperationDetail = { network?: string, id: string, instance: string, conversation: string | null, action: string, started: number, state: string, output: CommandOutput | null, message: string | null, };\nexport type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, };\nexport type HistoryPage = { messages: Array<Message>, before: string | null, };\nexport type Completion = { text: string, description: string, };\nexport type Request = { \"kind\": \"networks\", request: NetworkRequest, } | { \"kind\": \"files\", request: FileRequest, } | { \"kind\": \"identify\" } | { \"kind\": \"unlock\", passphrase: string, create: boolean, } | { \"kind\": \"lock\" } | { \"kind\": \"disconnect\" } | { \"kind\": \"snapshot\" } | { \"kind\": \"network_status\" } | { \"kind\": \"import_network_invitation\", code: string, } | { \"kind\": \"catalogue\", conversation: string | null, } | { \"kind\": \"history\", conversation: string, before: string | null, limit: number, } | { \"kind\": \"search\", conversation: string, text: string, before: string | null, limit: number, } | { \"kind\": \"submit\", operation_id: string, conversation: string | null, text: string, } | { \"kind\": \"complete\", conversation: string | null, text: string, } | { \"kind\": \"mark_read\", conversation: string, message_id: string, } | { \"kind\": \"events\", after: string, wait_ms: number, };\nexport type Response = { \"kind\": \"networks\", response: NetworkResponse, } | { \"kind\": \"files\", snapshot: FileSnapshot, } | { \"kind\": \"network_status\", status: NetworkStatus, } | { \"kind\": \"instance\", instance: InstanceInfo, } | { \"kind\": \"snapshot\", snapshot: Snapshot, } | { \"kind\": \"history\", page: HistoryPage, } | { \"kind\": \"completed\", items: Array<Completion>, } | { \"kind\": \"catalogue\", commands: Array<CommandSpec>, } | { \"kind\": \"projection\", conversations: Array<Conversation>, revision: string, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, } | { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"changed\", revision: string, } | { \"kind\": \"error\", code: string, message: string, };\nexport type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };\nexport type ResponseEnvelope = { version: number, instance_id: string, response: Response, };\n\nexport type ChatError = { code: string, message: string, };\nexport type Applied = { conversation: string | null, notice: string | null, };\nexport type SubmitOutcome = { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, };\n"
+  "typescript": "// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = 2;\nexport const MAX_INPUT_BYTES = 12000;\nexport const MAX_NETWORK_INVITATION_BYTES = 174778;\nexport type JoinedNetwork = { id: string, name: string, fingerprint: string, primary: boolean, status: NetworkStatus, };\nexport type InvitationPreview = { network: JoinedNetwork, channel: string | null, newNetwork: boolean, expires: number, };\nexport type NetworkRequest = { \"kind\": \"list\" } | { \"kind\": \"inspect\", code: string, } | { \"kind\": \"join\", code: string, nickname: string, accepted_network: string, operation_id: string, } | { \"kind\": \"call\", network: string, request: Request, };\nexport type NetworkResponse = { \"kind\": \"list\", networks: Array<JoinedNetwork>, } | { \"kind\": \"preview\", preview: InvitationPreview, } | { \"kind\": \"result\", network: string, response: Response, };\nexport type FileInfo = { id: string, aliases?: Array<string>, conversation: string, name: string, size_bytes: string, verified_bytes: string, state: FileState, sources: number,\n/**\n * Peers contributing verified pieces since this process opened the cache.\n */\nverified_sources: number, completed_by: number, error: string | null, };\nexport type FileRequest = { \"action\": \"list\", conversation: string | null, } | { \"action\": \"prepare\", id: string, conversation: string, name: string, size_bytes: string, } | { \"action\": \"commit\", id: string, } | { \"action\": \"accept\", id: string, } | { \"action\": \"pause\", id: string, } | { \"action\": \"resume\", id: string, } | { \"action\": \"cancel\", id: string, } | { \"action\": \"configure\", quota_bytes: string, retention_days: number, };\nexport type FileSnapshot = { files: Array<FileInfo>, quota_bytes: string, used_bytes: string, retention_days: number, };\nexport type FileState = \"offered\" | \"importing\" | \"downloading\" | \"waiting_for_peers\" | \"paused\" | \"complete\" | \"failed\" | \"cancelled\";\nexport type NetworkState = \"locked\" | \"local_only\" | \"invitation_required\" | \"connecting\" | \"connected\" | \"reconnecting\" | \"invitation_expired\" | \"unavailable\";\nexport type NetworkStatus = { state: NetworkState, message: string, };\nexport type BuildInfo = { releaseId: string, gchatCommit: string, gcomsCommit: string, version: string, };\nexport type UpdateRequest = { \"action\": \"heartbeat\", view: string, } | { \"action\": \"detach\", view: string, } | { \"action\": \"prepare\", view: string, release: string, } | { \"action\": \"abort\", view: string, release: string, } | { \"action\": \"exit\", view: string, release: string, };\nexport type PrepareUpdateResult = { \"state\": \"attached\" } | { \"state\": \"ready\", process_id: number, boot_id: string, } | { \"state\": \"busy\", reason: string, };\nexport type InstanceInfo = { build?: BuildInfo, id: string, label: string, bootId: string, locked: boolean, protocolLocked: boolean, profileExists: boolean, archiveExists: boolean, safetyNumber: string, capabilities: Array<string>, };\nexport type Member = { id: string, nickname: string, isSelf: boolean, recentlyActive?: boolean, capabilities: Array<string>, };\nexport type Conversation = { provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };\nexport type ConversationKind = \"channel\" | \"query\" | \"archive\";\nexport type Message = { id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean, operationId?: string,\n/**\n * Delivered is an authenticated recipient acknowledgement, never a read receipt.\n */\ndelivery: Delivery | null, result: ActionResult | null, };\nexport type ActionResult = { id: string, messageId: string | null, state: string,\n/**\n * Exact signed bytes, base64 encoded; views decode only for display.\n */\noutputBase64: string | null, stderr: boolean, details: Array<string>, artifacts: Array<Artifact>, };\nexport type Artifact = { name: string, url: string, };\nexport type Delivery = \"local_accepted\" | \"delivered\";\nexport type CommandSpec = { name: string, usage: string, description: string, scope: string, capability: string | null, available: boolean, };\nexport type DirectoryEntry = { name: string, joined: boolean, conversation: string | null, };\nexport type CommandOutput = { \"kind\": \"help\", commands: Array<CommandSpec>, } | { \"kind\": \"directory\", channels: Array<DirectoryEntry>, } | { \"kind\": \"invitation\", channel: string, link: string, expires: number, localOnly: boolean, } | { \"kind\": \"text\", title: string, text: string, } | { \"kind\": \"status\", text: string, } | { \"kind\": \"close\", conversation: string, };\nexport type InputHistoryEntry = { conversation: string | null, text: string, };\nexport type ProviderStatus = { id: string, code: string, message: string, retryable: boolean, };\nexport type Activity = { id: string, conversation: string, kind: string, text: string, timestamp: number, };\nexport type OperationDetail = { network?: string, id: string, instance: string, conversation: string | null, action: string, started: number, state: string, output: CommandOutput | null, message: string | null, };\nexport type Snapshot = { instance: InstanceInfo, revision: string, conversations: Array<Conversation>, commandHistory: Array<string>, inputHistory: Array<InputHistoryEntry>, providerErrors: Array<ProviderStatus>, operations?: Array<OperationDetail>, activity?: Array<Activity>, presenceEnabled?: boolean, };\nexport type HistoryPage = { messages: Array<Message>, before: string | null, };\nexport type Completion = { text: string, description: string, };\nexport type Request = { \"kind\": \"update\", request: UpdateRequest, } | { \"kind\": \"networks\", request: NetworkRequest, } | { \"kind\": \"files\", request: FileRequest, } | { \"kind\": \"identify\" } | { \"kind\": \"unlock\", passphrase: string, create: boolean, } | { \"kind\": \"lock\" } | { \"kind\": \"disconnect\" } | { \"kind\": \"snapshot\" } | { \"kind\": \"network_status\" } | { \"kind\": \"import_network_invitation\", code: string, } | { \"kind\": \"catalogue\", conversation: string | null, } | { \"kind\": \"history\", conversation: string, before: string | null, limit: number, } | { \"kind\": \"search\", conversation: string, text: string, before: string | null, limit: number, } | { \"kind\": \"submit\", operation_id: string, conversation: string | null, text: string, } | { \"kind\": \"complete\", conversation: string | null, text: string, } | { \"kind\": \"mark_read\", conversation: string, message_id: string, } | { \"kind\": \"events\", after: string, wait_ms: number, };\nexport type Response = { \"kind\": \"update\", result: PrepareUpdateResult, } | { \"kind\": \"networks\", response: NetworkResponse, } | { \"kind\": \"files\", snapshot: FileSnapshot, } | { \"kind\": \"network_status\", status: NetworkStatus, } | { \"kind\": \"instance\", instance: InstanceInfo, } | { \"kind\": \"snapshot\", snapshot: Snapshot, } | { \"kind\": \"history\", page: HistoryPage, } | { \"kind\": \"completed\", items: Array<Completion>, } | { \"kind\": \"catalogue\", commands: Array<CommandSpec>, } | { \"kind\": \"projection\", conversations: Array<Conversation>, revision: string, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, } | { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"changed\", revision: string, } | { \"kind\": \"error\", code: string, message: string, };\nexport type RequestEnvelope = { version: number, instance_id: string | null, request: Request, };\nexport type ResponseEnvelope = { version: number, instance_id: string, response: Response, };\n\nexport type ChatError = { code: string, message: string, };\nexport type Applied = { conversation: string | null, notice: string | null, };\nexport type SubmitOutcome = { \"kind\": \"applied\", conversation: string | null, notice: string | null, } | { \"kind\": \"output\", conversation: string | null, output: CommandOutput, };\n"
 }

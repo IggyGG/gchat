@@ -3,6 +3,10 @@ run-name: Forgejo Android ${{ inputs.request_id }}
 on:
   workflow_dispatch:
     inputs:
+      release_manifest:
+        description: Base64 immutable coordinator manifest (optional for manual jobs)
+        required: false
+        type: string
       gchat_ref:
         description: Protected main/release branch or approved tag at gchat_commit
         required: true
@@ -65,6 +69,10 @@ jobs:
           --gchat gchat --gcoms gcoms
           --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT"
           --gchat-ref "$GCHAT_REF" --gcoms-ref "$GCOMS_REF"
+      - name: Bind coordinated release identity
+        env:
+          GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+        run: python3 gchat/scripts/release_input.py
       - name: Install pinned Rust, Java 17, Android SDK and NDK
         timeout-minutes: 15
         run: |
@@ -112,6 +120,8 @@ jobs:
         run: |
           sudo chmod 666 /dev/kvm
           python3 gchat/scripts/android-build.py emulator --output android-output --probe-picker --from-bundle --store-screenshots
+      - name: Bind native artifact to coordinated release
+        run: python3 gchat/scripts/release_attest.py --output android-output --platform android
       - name: Retain exact APKs and success/failure evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -121,6 +131,7 @@ jobs:
           retention-days: 30
           path: |
             android-output/build.json
+            android-output/release-binding.json
             android-output/signing.json
             android-output/signed/*.apk
             android-output/signed/*.aab

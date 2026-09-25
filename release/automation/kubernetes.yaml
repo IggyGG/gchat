@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gchat-release-state
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ghost-replicated-fsn
+  resources:
+    requests:
+      storage: 128Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gchat-release
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: gchat-release}
+  template:
+    metadata:
+      labels: {app: gchat-release}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 10001
+      initContainers:
+        - name: prepare-state
+          image: busybox:1.37
+          securityContext: {runAsUser: 10001, runAsGroup: 10001}
+          command: [sh, -c, 'mkdir -p /state/tmp /state/public/updates; chmod 700 /state/tmp']
+          volumeMounts: [{name: state, mountPath: /state}]
+      containers:
+        - name: coordinator
+          image: GCHAT_RELEASE_IMAGE
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          envFrom: [{secretRef: {name: gchat-release-env}}]
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: '2', memory: 2Gi}
+          volumeMounts:
+            - {name: state, mountPath: /state}
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: keys, mountPath: /keys, readOnly: true}
+        - name: public
+          image: nginx:1.29-alpine
+          ports: [{containerPort: 8080}]
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - {name: state, mountPath: /state, readOnly: true}
+            - {name: nginx, mountPath: /etc/nginx/conf.d, readOnly: true}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+      volumes:
+        - name: state
+          persistentVolumeClaim: {claimName: gchat-release-state}
+        - name: config
+          configMap: {name: gchat-release-config}
+        - name: nginx
+          configMap: {name: gchat-release-nginx}
+        - name: keys
+          secret: {secretName: gchat-release-keys, defaultMode: 288}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: gchat-release}
+spec:
+  selector: {app: gchat-release}
+  ports: [{name: http, port: 80, targetPort: 8080}]

@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+# APT verifies the signed InRelease and package digest. Limit index refresh and
+# package selection to GChat; never reboot or restart the running GUI/service.
+exec 9>/run/lock/gchat-package-update.lock
+flock -n 9 || exit 0
+apt-get -o Dir::Etc::sourcelist=sources.list.d/gchat.sources -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 update
+DEBIAN_FRONTEND=noninteractive apt-get --yes --only-upgrade --no-install-recommends install g-chat

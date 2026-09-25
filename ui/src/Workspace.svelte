@@ -4,6 +4,7 @@
   import { mentionSuggestions, insertMention } from './mentions';
   import MessageText from './MessageText.svelte';
   import ResizeHandles from './ResizeHandles.svelte';
+  import UpdatePanel from './UpdatePanel.svelte';
   import type { NativeShell } from './native-shell';
   import { onMount, tick, type Snippet } from 'svelte';
   import type { OperationHandle } from '@gcoms/rpc';
@@ -79,7 +80,7 @@
   let panel = $state<'users' | 'files' | null>(null);
 
   const navigationModal = $derived(channelsOpen || !!panel);
-  let utility = $state<'network' | 'help' | 'font' | 'info' | 'notifications' | null>(null);
+  let utility = $state<'network' | 'help' | 'font' | 'info' | 'notifications' | 'update' | null>(null);
   let pushStatus = $state<MobilePushStatus>();
   let pushBusy = $state(false), pushError = $state('');
   let pushRefreshing = false;
@@ -164,6 +165,7 @@
     utility = null; cancelPrompt();
     const command = usage.split(/\s/)[0];
     if (command === '/join' || command === '/create') { openDialog(command.slice(1) as 'join' | 'create'); return; }
+    if (command === '/update') { openUtility('update'); return; }
     if (command === '/find') { void find(); return; }
     if (command === '/font') { openUtility('font'); return; }
     if (command === '/network' || command === '/status') { openUtility('network'); return; }
@@ -227,7 +229,7 @@
     await tick(); composer?.focus(); composer?.setSelectionRange(inserted.caret, inserted.caret);
   }
   let historyPosition: number | undefined;
-  let savedDraft = '';
+  let savedDraft = $state('');
   let transcript = $state<HTMLDivElement>();
   let composer = $state<HTMLTextAreaElement>();
   let running = true;
@@ -670,7 +672,8 @@
     if (local) {
       if (text === draft) draft = '';
       completions = []; historyPosition = undefined;
-      if (local.name === 'help') await showHelp();
+      if (local.name === 'update') openUtility('update');
+      else if (local.name === 'help') await showHelp();
       else if (local.name === 'find') await find(local.args);
       else if (!local.args) openUtility('font');
       else if (local.args === 'fixedsys' || local.args === 'readable') chooseFont(local.args);
@@ -791,7 +794,7 @@
     channelsOpen = mode === 'channels'; panel = mode === 'channels' ? null : mode;
     await tick(); document.querySelector<HTMLButtonElement>(`.gchat .${mode === 'channels' ? 'channels' : 'inspector'}.open button:not(:disabled)`)?.focus();
   }
-  let promptDraft = '';
+  let promptDraft = $state('');
   let incomingInvitation = $state('');
   function cancelPrompt() {
     if (dialog) draft = promptDraft;
@@ -1018,8 +1021,10 @@
     <FocusScreen title="Files" close={closeNavigation}><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></FocusScreen>
   {/if}
   {#if utility}
-    <FocusScreen title={utility === 'network' ? 'Network' : utility === 'font' ? 'Chat font' : utility === 'help' ? 'Commands' : utility === 'notifications' ? 'Notifications' : title} close={() => { utility = null; replacingInvitation = false; }}>
-      {#if utility === 'network'}
+    <FocusScreen title={utility === 'update' ? 'Application updates' : utility === 'network' ? 'Network' : utility === 'font' ? 'Chat font' : utility === 'help' ? 'Commands' : utility === 'notifications' ? 'Notifications' : title} close={() => { utility = null; replacingInvitation = false; }}>
+      {#if utility === 'update'}
+        <UpdatePanel updates={nativeShell?.updates} busy={!!draft || !!promptDraft || !!savedDraft || views.hasDraftsExcept(selected) || !!Object.keys(pending).length || joinBusy || fileState.busy || !!pickerView} />
+      {:else if utility === 'network'}
         <details><summary>Your identity</summary><p>This is this instance’s identity, not a password or invitation. Compare its safety number when verifying who you are talking to.</p><p class="identity">{snapshot?.instance.id}</p><p class="identity">{snapshot?.instance.safetyNumber}</p></details>
         {#if networks.length > 1}<label for="network-detail-selection">Network</label><select id="network-detail-selection" bind:value={selectedNetwork} onchange={() => { transport.select(selectedNetwork); networkGeneration++; networkStatus = networks.find(n => n.id === selectedNetwork)?.status; }}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
         <p role="status">{networkStatus?.message || networkError || connectionLabel}</p>

@@ -1,0 +1,112 @@
+name: Linux release worker
+run-name: Forgejo Linux ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      gchat_ref:
+        required: true
+        type: string
+      gcoms_ref:
+        required: true
+        type: string
+      gchat_commit:
+        required: true
+        type: string
+      gcoms_commit:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+      release_manifest:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    environment: release-signing
+    timeout-minutes: 120
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_BUILD_JOBS: '3'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.23.2'
+      - name: Verify frozen workflow, sources and versions
+        env:
+          GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+        run: python3 gchat/scripts/release_input.py
+      - name: Prepare native tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2t64 xvfb xauth gnupg minisign
+          python3 - <<'PY'
+          import os, subprocess, tomllib
+          from pathlib import Path
+          pins=[tomllib.loads(Path(p,'rust-toolchain.toml').read_text())['toolchain'] for p in ('gchat','gcoms')]
+          assert pins[0]==pins[1]
+          subprocess.run(['rustup','toolchain','install',pins[0]['channel'],'--profile','minimal','--component','clippy,rustfmt'],check=True)
+          with open(os.environ['GITHUB_ENV'],'a') as stream:stream.write('RUSTUP_TOOLCHAIN='+pins[0]['channel']+'\n')
+          PY
+          npm install --global npm@11.6.2
+          cargo install cargo-deny --locked --version 0.18.5
+      - name: Qualify the frozen pair
+        run: |
+          python3 gchat/scripts/ci.py --gcoms gcoms --provenance-output native-evidence/paired-gchat
+          python3 gcoms/scripts/ci.py
+      - name: Build signed Linux bundles
+        env:
+          GCHAT_RELEASE_KEY: F4F6F8550D2AA952A189640D58430838AA3230BB
+          GCHAT_RELEASE_PASSPHRASE: ${{ secrets.GCHAT_RELEASE_PASSPHRASE }}
+          GCHAT_RELEASE_PRIVATE_KEY_BASE64: ${{ secrets.GCHAT_RELEASE_PRIVATE_KEY_BASE64 }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/gchat-signing"
+          mkdir -m 700 "$GNUPGHOME"
+          trap 'gpgconf --kill gpg-agent; rm -rf "$GNUPGHOME"' EXIT
+          python3 - <<'PY'
+          import os,base64,subprocess
+          subprocess.run(['gpg','--batch','--import'],input=base64.b64decode(os.environ.pop('GCHAT_RELEASE_PRIVATE_KEY_BASE64'),validate=True),stdout=subprocess.DEVNULL,check=True)
+          PY
+          python3 gchat/scripts/build-installer.py --target linux-x86_64 --gcoms gcoms --native-ci-report native-evidence/paired-gchat/native-ci.json --output signed
+      - name: Verify packaged profile lifecycle
+        run: |
+          dpkg-deb --extract signed/*.deb extracted
+          python3 gchat/scripts/test-native-application.py --binary extracted/usr/bin/gchat-desktop --build-manifest signed/build.json --native-receipt signed/provenance/native-ci.json --output signed/application-smoke
+          python3 gchat/scripts/release_attest.py --output signed --platform linux-x86_64
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: linux-x86_64
+          include-hidden-files: true
+          path: |
+            signed/*.deb
+            signed/*.AppImage
+            signed/*.asc
+            signed/build.json
+            signed/release-binding.json
+            signed/provenance/**
+            signed/updater/**
+            signed/updater-artifacts.json
+            signed/application-smoke/**
+            native-evidence/**
+          if-no-files-found: error

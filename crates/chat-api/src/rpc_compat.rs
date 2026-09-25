@@ -31,6 +31,12 @@ pub(super) async fn request<T: gcoms::rpc::Transport>(
 ) -> Result<Response, ChatError> {
     let client = rpc::ChatClient::new(client);
     Ok(match request {
+        Request::Update { .. } => {
+            return Err(ChatError {
+                code: "unsupported".into(),
+                message: "Use the owner-only v2 maintenance exchange".into(),
+            })
+        }
         Request::Files { request } => Response::Files {
             snapshot: client.files(request).await.map_err(error)?,
         },

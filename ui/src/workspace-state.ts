@@ -13,13 +13,14 @@ export function networkLabel(status: NetworkStatus | undefined, offline: boolean
   };
   return status ? labels[status.state] : 'Checking network';
 }
-export type LocalCommand = { name: 'font' | 'find' | 'help'; args: string };
+export type LocalCommand = { name: 'font' | 'find' | 'help' | 'update'; args: string };
 export function localCommand(text: string): LocalCommand | undefined {
-  const match = text.trim().match(/^\/(font|find|help)(?:\s+([\s\S]*))?$/i);
+  const match = text.trim().match(/^\/(font|find|help|update)(?:\s+([\s\S]*))?$/i);
   return match ? { name: match[1].toLowerCase() as LocalCommand['name'], args: (match[2] ?? '').trim() } : undefined;
 }
 export function viewCommands(hasConversation: boolean): CommandSpec[] {
   return [
+    { name: '/update', usage: '/update', description: 'Check this device’s application update', scope: 'view', capability: null, available: true },
     { name: '/font', usage: '/font [fixedsys|readable]', description: 'Choose the chat font for this device', scope: 'view', capability: null, available: true },
     { name: '/find', usage: '/find [text]', description: 'Search this conversation · Ctrl/Cmd+F', scope: 'view', capability: null, available: hasConversation },
   ];

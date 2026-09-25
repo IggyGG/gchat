@@ -1,0 +1,41 @@
+name: Qualified iOS upload
+run-name: GChat iOS upload ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id: {type: string, required: true}
+      release_manifest: {type: string, required: true}
+      artifact_id: {type: string, required: true}
+      artifact_sha256: {type: string, required: true}
+permissions:
+  contents: read
+  actions: read
+jobs:
+  upload:
+    runs-on: macos-15
+    environment: release-signing
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Independently verify and upload original IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          IOS_SIGNING_CERT_SHA256: ${{ vars.IOS_SIGNING_CERT_SHA256 }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: python3 scripts/release_ios_upload.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ios-upload-${{ inputs.request_id }}
+          path: |
+            upload-output/verification.json
+            upload-output/relocation.json
+            upload-output/upload.json
+            upload-output/upload.log
+          if-no-files-found: error

@@ -15,6 +15,7 @@ export class ConversationViews {
   restore(id: string | null): ConversationView {
     return this.views.get(id) ?? { draft: '', messages: [], before: null, scrollTop: 0, atBottom: true };
   }
+  hasDraftsExcept(current: string | null) { return [...this.views].some(([id, view]) => id !== current && !!view.draft); }
   clear() { this.views.clear(); }
   retain(ids: string[]) { for (const id of this.views.keys()) if (id && !ids.includes(id)) this.views.delete(id); }
   has(id: string | null) { return this.views.has(id); }

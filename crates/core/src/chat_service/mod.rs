@@ -2,10 +2,12 @@
 mod extensions;
 mod files;
 pub mod host;
+mod host_updates;
 mod networks;
 #[cfg(test)]
 mod responsiveness_tests;
 pub mod rpc;
+mod update_gate;
 
 use crate::client::ClientHandle;
 use crate::model::{ChannelRecord, MemberId, ScopedPmId};
@@ -168,6 +170,7 @@ pub struct ChatService {
     /// Serializes admission/mutations without blocking snapshot, history or lock requests.
     operations: RwLock<()>,
     active_operations: std::sync::Mutex<std::collections::BTreeSet<String>>,
+    update_gate: update_gate::UpdateGate,
     startup: Arc<Notify>,
     startup_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     projection: std::sync::RwLock<(Vec<Conversation>, String)>,
@@ -287,6 +290,7 @@ impl ChatService {
             session: Mutex::new(None),
             operations: RwLock::new(()),
             active_operations: std::sync::Mutex::new(std::collections::BTreeSet::new()),
+            update_gate: update_gate::UpdateGate::default(),
             startup: Arc::new(Notify::new()),
             startup_worker: std::sync::Mutex::new(None),
             projection: std::sync::RwLock::new((Vec::new(), String::new())),
@@ -403,6 +407,7 @@ impl ChatService {
 
     fn info(&self, locked: bool) -> InstanceInfo {
         InstanceInfo {
+            build: crate::build_info::current(),
             id: self.id.clone(),
             label: self.label.clone(),
             boot_id: self.boot.clone(),
@@ -469,6 +474,23 @@ impl ChatService {
 
     async fn handle_mode(&self, request: Request, admitted: bool) -> Result<Response, String> {
         let request = lifecycle_request(request);
+        let _update_request = if matches!(
+            request,
+            Request::Identify
+                | Request::Snapshot
+                | Request::NetworkStatus
+                | Request::Events { .. }
+                | Request::Catalogue { .. }
+                | Request::History { .. }
+                | Request::Search { .. }
+        ) {
+            None
+        } else {
+            Some(self.update_gate.enter()?)
+        };
+        if matches!(request, Request::Update { .. }) {
+            return Err("This endpoint does not manage desktop updates".into());
+        }
         if let Request::Networks { request } = request {
             return Box::pin(self.networks_request(request))
                 .await
@@ -2045,6 +2067,35 @@ impl ChatService {
         };
         *session = None;
         result.and(network_result)
+    }
+
+    pub(super) async fn pause_for_update(&self) -> Result<(), String> {
+        self.update_gate.pause()?;
+        let networks = self
+            .networks
+            .lock()
+            .await
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        for network in networks {
+            if let Err(error) = Box::pin(network.pause_for_update()).await {
+                self.resume_after_update().await;
+                return Err(error);
+            }
+        }
+        if let Err(error) = self.flush().await {
+            self.resume_after_update().await;
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    pub(super) async fn resume_after_update(&self) {
+        for network in self.networks.lock().await.values() {
+            Box::pin(network.resume_after_update()).await;
+        }
+        self.update_gate.resume();
     }
 
     pub async fn flush(&self) -> Result<(), String> {

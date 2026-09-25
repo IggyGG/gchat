@@ -216,3 +216,71 @@ fn reconnect_command_keeps_codes_out_of_recall_and_requires_channel_context() {
         .any(|c| c.text == "/reconnect"));
     assert!(context_channel(&ArchiveData::default(), None).is_err());
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn updater_waits_for_real_mutation_and_refuses_failed_archive_checkpoint() {
+    let (home, runtime, service) = fixture().await;
+    service
+        .handle(Request::Unlock {
+            passphrase: "responsiveness-fixture".into(),
+            create: true,
+        })
+        .await
+        .unwrap();
+    let gate = service.operations.write().await;
+    let pending = {
+        let service = service.clone();
+        tokio::spawn(async move {
+            service
+                .handle(Request::Submit {
+                    operation_id: "update-retained-create".into(),
+                    conversation: None,
+                    text: "/create #retained owner".into(),
+                })
+                .await
+        })
+    };
+    // Wait until the actual public request enters maintenance accounting, while
+    // the existing operation barrier keeps its mutation unfinished.
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if service.update_gate.active_requests() > 0 {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(service.pause_for_update().await.is_err());
+    drop(gate);
+    let response = pending.await.unwrap().unwrap();
+    assert!(matches!(
+        response,
+        Response::Applied {
+            conversation: Some(_),
+            ..
+        }
+    ));
+    let archive = home.path().join("archive");
+    let backup = home.path().join("archive-retained");
+    std::fs::rename(&archive, &backup).unwrap();
+    std::fs::create_dir(&archive).unwrap();
+    assert!(service.pause_for_update().await.is_err());
+    std::fs::remove_dir(&archive).unwrap();
+    std::fs::rename(&backup, &archive).unwrap();
+    // Failed preparation resumes admission, and the same archive can checkpoint.
+    service.handle(Request::Lock).await.unwrap();
+    service.pause_for_update().await.unwrap();
+    assert!(service
+        .handle(Request::Submit {
+            operation_id: "must-not-admit-update".into(),
+            conversation: None,
+            text: "/create #rejected owner".into()
+        })
+        .await
+        .is_err());
+    service.resume_after_update().await;
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}

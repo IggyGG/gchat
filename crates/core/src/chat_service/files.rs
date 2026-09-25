@@ -259,6 +259,7 @@ impl ChatService {
         }
     }
     pub(super) async fn file_piece_io(&self, frame: Vec<u8>) -> Result<Vec<u8>, String> {
+        let _update_request = self.update_gate.enter()?;
         self.require(Capability::ChannelMember)?;
         let (mut header, bytes) = gchat_api::files::decode_io(&frame)?;
         if header.instance != self.id {

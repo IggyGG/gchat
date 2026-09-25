@@ -3,8 +3,36 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      gcoms_commit:
+        description: Exact companion commit (empty resolves main once)
+        required: false
+        type: string
 jobs:
+  pair:
+    runs-on: gcoms-linux-x64
+    outputs:
+      gcoms_commit: ${{ steps.identity.outputs.commit }}
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: ghost-local/gcoms
+          ref: ${{ inputs.gcoms_commit || 'main' }}
+          persist-credentials: false
+      - id: identity
+        name: Resolve companion once for every native worker
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if not re.fullmatch('[0-9a-f]{40}', commit):
+              raise SystemExit('invalid source object')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('commit=' + commit + '\n')
+          PY
   native:
+    needs: pair
     strategy:
       fail-fast: false
       matrix:
@@ -16,11 +44,11 @@ jobs:
           persist-credentials: false
           path: gchat
           fetch-depth: 0
-      # Qualify the unpublished SDK additions against an immutable source pair.
+      # Both operating systems use the same resolved source object.
       - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: ghost-local/gcoms
-          ref: b6f9bb084daf40a54f33c7284bede1ef6b98f3fb
+          ref: ${{ needs.pair.outputs.gcoms_commit }}
           path: gcoms
           persist-credentials: false
       - run: python3 gchat/scripts/ci.py --gcoms gcoms

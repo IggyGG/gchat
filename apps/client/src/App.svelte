@@ -19,8 +19,11 @@
     let active = true;
     let stop: (() => void) | undefined;
     let stopLinks: (() => void) | undefined;
+    const activity = () => { if (nativeShell) void invoke('chat_update_activity').catch(() => {}); };
+    window.addEventListener('pointerdown', activity, { capture: true });
+    window.addEventListener('keydown', activity, { capture: true });
     if (isTauri()) {
-      void invoke<string>('chat_desktop_platform').then(platform => { if (!active) return; const window = getCurrentWindow(); nativeShell = { mac: platform === 'macos', minimize: () => window.minimize(), maximize: () => window.toggleMaximize(), close: () => window.close(), resize: direction => window.startResizeDragging(direction), drag: () => window.startDragging() }; }).catch(() => {});
+      void invoke<string>('chat_desktop_platform').then(platform => { if (!active) return; const window = getCurrentWindow(); nativeShell = { mac: platform === 'macos', updates: { status: () => invoke('chat_update_status'), check: () => invoke('chat_update_check'), install: () => invoke('chat_update_install') }, minimize: () => window.minimize(), maximize: () => window.toggleMaximize(), close: () => window.close(), resize: direction => window.startResizeDragging(direction), drag: () => window.startDragging() }; }).catch(() => {});
       // Subscribe before reading cold-start URLs; duplicates share a memory-only inbox.
       void listen<string[]>('deep-link://new-url', event => { if (active) receiveInvitations(event.payload); }).then(async unlisten => {
         if (!active) { unlisten(); return; } stopLinks = unlisten;
@@ -42,7 +45,7 @@
         });
       }
     }).catch(() => { /* Desktop uses its existing local service. */ });
-    return () => { active = false; stop?.(); stopLinks?.(); invitations.clear(); };
+    return () => { active = false; window.removeEventListener('pointerdown', activity, { capture: true }); window.removeEventListener('keydown', activity, { capture: true }); stop?.(); stopLinks?.(); invitations.clear(); };
   });
   const exchange: Exchange = isTauri() ? envelope => invoke('chat_request', { envelope }) : httpExchange('/_gchat');
   const rpcTransport: RpcTransport = isTauri() ? { destination: 'tauri:chat-rpc', limit: 16 * 1024 * 1024, exchange: request => invoke('chat_rpc', { request }) } : httpTransport('/_gchat_rpc');

@@ -225,6 +225,25 @@ def application_from_nsis(bundle_dir, policy):
 def bundle(target, output, environment, identity, policy, checkout):
     system, arch, triple, bundles = TARGETS[target]
     config = {'bundle': {'publisher': identity['name']}}
+    release_manifest = environment.get('GCHAT_RELEASE_MANIFEST')
+    if release_manifest:
+        from release_pair import validate
+        candidate = validate(json.loads(Path(release_manifest).read_text()))
+        if candidate['versions'][target] != json.loads((checkout / 'apps/client/src-tauri/tauri.conf.json').read_text())['version']:
+            raise ValueError('release version differs from committed application version')
+        for project in ('gchat',):
+            actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+            # The companion is a derived snapshot: provenance, checked by main(),
+            # binds it; do not substitute a newly observed branch head.
+            if project == 'gchat' and actual != candidate['sources'][project]['commit']:
+                raise ValueError('release manifest names another GChat source')
+        environment.update(GCHAT_RELEASE_ID=candidate['release_id'],
+                           GCHAT_SOURCE_COMMIT=candidate['sources']['gchat']['commit'],
+                           GCOMS_SOURCE_COMMIT=candidate['sources']['gcoms']['commit'],
+                           GCHAT_APP_VERSION=candidate['versions'][target])
+        if system == 'Linux':
+            marker = output / 'release-id'; marker.write_text(candidate['release_id'] + '\n')
+            config['bundle']['linux'] = {'deb': {'files': {'/var/lib/gchat-update/release-id': str(marker)}}}
     if system == 'Windows':
         config['bundle']['windows'] = {'certificateThumbprint':fingerprint('WINDOWS_CERTIFICATE_THUMBPRINT', (40,)), 'digestAlgorithm':'sha256'}
         if policy == 'publicly-trusted':
@@ -282,6 +301,14 @@ def bundle(target, output, environment, identity, policy, checkout):
             with application_from_nsis(bundle_dir, policy) as executable:
                 verify_windows(executable, policy)
                 executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
+        elif system == 'Linux':
+            packages = list(bundle_dir.glob('deb/*.deb'))
+            if len(packages) != 1: raise ValueError('expected one Debian package')
+            extracted = Path(temp) / 'deb-extracted'
+            run(['dpkg-deb', '--extract', str(packages[0]), str(extracted)])
+            executable = extracted / 'usr/bin/gchat-desktop'
+            if not executable.is_file() or executable.is_symlink(): raise ValueError('packaged Linux executable is missing')
+            executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
         patterns = {'deb':'deb/*.deb', 'appimage':'appimage/*.AppImage', 'nsis':'nsis/*.exe', 'dmg':'dmg/*.dmg'}
         files = []
         for kind in bundles:
@@ -298,6 +325,20 @@ def bundle(target, output, environment, identity, policy, checkout):
                 run(['gpg', '--batch', '--yes', '--pinentry-mode', 'loopback', '--passphrase-fd', '0', '--local-user', required('GCHAT_RELEASE_KEY'), '--armor', '--detach-sign', str(destination)], input=required('GCHAT_RELEASE_PASSPHRASE').encode(), env=environment)
                 verify(str(destination)+'.asc', destination, required('GCHAT_RELEASE_KEY'))
             files.append({'name':destination.name,'format':kind,'sha256':sha(destination),'signing_verified':True})
+        # Keep Tauri updater artifacts separate from ordinary installers. Mac's
+        # update is the signed .app archive, not the DMG download.
+        updates = []
+        for signature in bundle_dir.rglob('*.sig'):
+            payload = signature.with_suffix('')
+            if not payload.is_file(): raise ValueError('updater signature has no payload')
+            destination = output / 'updater' / payload.name
+            destination.parent.mkdir(exist_ok=True)
+            shutil.copyfile(payload, destination)
+            shutil.copyfile(signature, str(destination) + '.sig')
+            updates.append({'name': 'updater/' + payload.name, 'sha256': sha(destination),
+                            'signature_sha256': sha(Path(str(destination) + '.sig'))})
+        if release_manifest and not updates: raise ValueError('signed desktop updater artifact is missing')
+        (output / 'updater-artifacts.json').write_text(json.dumps(updates, indent=2) + '\n')
         return files, executables
 
 
@@ -318,6 +359,11 @@ def main(argv=None):
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:
         if subprocess.check_output(['git','status','--porcelain'],cwd=path).strip(): raise ValueError('release source must be clean')
         sources[name]=subprocess.check_output(['git','rev-parse','HEAD'],cwd=path,text=True).strip()
+    if os.environ.get('GCHAT_RELEASE_MANIFEST'):
+        from release_pair import validate
+        release = validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
+        if {name: source['commit'] for name, source in release['sources'].items()} != sources:
+            raise ValueError('release manifest does not bind the exact installer source pair')
     output=a.output.resolve();output.mkdir(parents=True,exist_ok=False)
     checkout, dependency_inputs = prepare_pair(ROOT, a.gcoms, output, triple, dict(os.environ))
     ci_report = output / 'provenance/native-ci.json'

@@ -614,6 +614,7 @@ def verify_ipa(ipa, destination, pin, version):
     shutil.copyfile(certificate, certificate_copy)
     return {'ipa': reference(ipa), 'executable': executable_receipt, 'certificate': reference(certificate_copy),
             'entitlements': entitlements, 'profile': profile, 'build_number': version,
+            'marketing_version': info.get('CFBundleShortVersionString'),
             'bundle': BUNDLE, 'architectures': ['arm64'], 'minimum_ios': '15.0'}
 
 

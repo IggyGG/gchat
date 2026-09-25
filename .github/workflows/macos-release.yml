@@ -3,6 +3,10 @@ run-name: Forgejo macOS ${{ inputs.request_id }}
 on:
   workflow_dispatch:
     inputs:
+      release_manifest:
+        description: Base64 immutable coordinator manifest (optional for manual jobs)
+        required: false
+        type: string
       target:
         description: Native architectures to qualify (single-target retries retain their own scope)
         required: true
@@ -72,6 +76,10 @@ jobs:
           --gchat gchat --gcoms gcoms
           --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT"
           --gchat-ref "$GCHAT_REF" --gcoms-ref "$GCOMS_REF"
+      - name: Bind coordinated release identity
+        env:
+          GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+        run: python3 gchat/scripts/release_input.py
       - name: Install pinned Rust, build tools and test loopback aliases
         timeout-minutes: 15
         run: |
@@ -109,10 +117,12 @@ jobs:
         timeout-minutes: 45
         working-directory: gchat
         env:
-          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_SIGNING_IDENTITY: "Developer ID Application: Movsai AB (U93DVTJ3T5)"
           APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -125,6 +135,8 @@ jobs:
           --build-manifest ../signed/build.json
           --native-receipt ../signed/provenance/native-ci.json
           --output ../signed/application-smoke --temp-parent /private/tmp --timeout 30
+      - name: Bind native artifact to coordinated release
+        run: python3 gchat/scripts/release_attest.py --output signed --platform ${{ matrix.target }}
       - name: Retain native qualification evidence
         if: always()
         run: |
@@ -143,7 +155,10 @@ jobs:
           path: |
             signed/*.dmg
             signed/build/*/release/bundle/dmg/*.dmg
+            signed/updater/**
+            signed/updater-artifacts.json
             signed/build.json
+            signed/release-binding.json
             signed/provenance/**
             signed/evidence/**
             signed/application-smoke/**
