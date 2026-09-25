@@ -123,6 +123,7 @@ fn snapshot(snapshot: api::Snapshot, archive: &ArchiveData, filter: Option<&str>
                 Some(FileInfo {
                     id: hex(&view.id),
                     aliases: None,
+                    publication: None,
                     conversation,
                     name: view.name,
                     size_bytes: view.size_bytes.to_string(),
@@ -175,6 +176,7 @@ impl ChatService {
     pub(super) async fn files_request(&self, request: FileRequest) -> Result<FileSnapshot, String> {
         self.require(Capability::ChannelMember)?;
         self.wait_for_file_cache().await?;
+        let publications = matches!(request, FileRequest::Publications { .. });
         let mut session = self.session.lock().await;
         let unlocked = session
             .as_mut()
@@ -189,7 +191,7 @@ impl ChatService {
         let archive = unlocked.client.file_context();
         let mut filter = None;
         let operation = match request {
-            FileRequest::List { conversation } => {
+            FileRequest::List { conversation } | FileRequest::Publications { conversation } => {
                 filter = conversation;
                 api::Request::List
             }
@@ -231,7 +233,7 @@ impl ChatService {
             }
         };
         // Serialize against archive locking so a finished lock cannot admit another write.
-        match files.request(operation).await? {
+        let result: Result<FileSnapshot, String> = match files.request(operation).await? {
             api::Reply::Snapshot(value) => Ok(snapshot(value, &archive, filter.as_deref())),
             api::Reply::Committed {
                 original,
@@ -242,6 +244,36 @@ impl ChatService {
                 if let Some(file) = value.files.iter_mut().find(|f| f.id == hex(&canonical)) {
                     file.aliases = Some(vec![hex(&original)]);
                     let mut candidate = unlocked.state.clone();
+                    let mut changed = false;
+                    if !candidate.file_publications.contains_key(&hex(&original)) {
+                        // An older shared host can still complete ordinary uploads;
+                        // without a verified commitment it cannot publish a fleet release.
+                        if let Ok(api::Reply::Metadata(metadata)) =
+                            files.request(api::Request::Inspect { id: original }).await
+                        {
+                            if metadata.id != original
+                                || metadata.size_bytes.to_string() != file.size_bytes
+                            {
+                                return Err("Committed file does not match its manifest".into());
+                            }
+                            candidate.file_publication_sequence = candidate
+                                .file_publication_sequence
+                                .checked_add(1)
+                                .ok_or("File publication sequence exhausted")?;
+                            candidate.file_publications.insert(
+                                hex(&original),
+                                gchat_api::files::FilePublication {
+                                    name: metadata.name,
+                                    canonical_id: hex(&canonical),
+                                    sha256: hex(&metadata.sha256),
+                                    publisher_safety_number: unlocked.client.safety_number().into(),
+                                    sequence: candidate.file_publication_sequence.to_string(),
+                                    committed_unix: now().to_string(),
+                                },
+                            );
+                            changed = true;
+                        }
+                    }
                     if candidate.shared_files.insert(file.id.clone()) {
                         record_activity(
                             &mut candidate,
@@ -249,6 +281,14 @@ impl ChatService {
                             "file",
                             format!("File shared: {} ({} bytes)", file.name, file.size_bytes),
                         );
+                        changed = true;
+                    }
+                    if changed {
+                        let retained: std::collections::BTreeSet<_> =
+                            value.files.iter().map(|f| f.id.clone()).collect();
+                        candidate
+                            .file_publications
+                            .retain(|_, p| retained.contains(&p.canonical_id));
                         unlocked.store.save(&candidate)?;
                         unlocked.state = candidate;
                     }
@@ -256,7 +296,27 @@ impl ChatService {
                 Ok(value)
             }
             _ => Err("Invalid file service reply".into()),
+        };
+        let mut result = result?;
+        if publications {
+            result.files = unlocked
+                .state
+                .file_publications
+                .iter()
+                .filter_map(|(original, publication)| {
+                    let mut file = result
+                        .files
+                        .iter()
+                        .find(|f| f.id == publication.canonical_id)?
+                        .clone();
+                    file.id = original.clone();
+                    file.name = publication.name.clone();
+                    file.publication = Some(publication.clone());
+                    Some(file)
+                })
+                .collect();
         }
+        Ok(result)
     }
     pub(super) async fn file_piece_io(&self, frame: Vec<u8>) -> Result<Vec<u8>, String> {
         let _update_request = self.update_gate.enter()?;

@@ -95,6 +95,13 @@ impl InstanceHost {
                 Ok(ResultState::Attached)
             }
             UpdateRequest::Prepare { view, release } => {
+                if self.config.fleet_config.is_some() {
+                    return Ok(ResultState::Busy {
+                        reason:
+                            "This fleet-managed instance must be upgraded through its controller."
+                                .into(),
+                    });
+                }
                 if !updates.views.contains_key(&view) {
                     return Err("Attach this view before preparing an update".into());
                 }
