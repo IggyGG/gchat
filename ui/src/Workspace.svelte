@@ -399,6 +399,7 @@
     if (snapshot && snapshot.instance.id !== next.instance.id) { discardInvitations?.(); stagedInvitation = ''; selectedNetwork = undefined; }
     const changed = snapshot?.revision !== next.revision;
     if ((next.instance.locked && !snapshot?.instance.locked) || (snapshot && (snapshot.instance.bootId !== next.instance.bootId || snapshot.instance.id !== next.instance.id))) {
+      stagedInvitation = '';
       invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
       generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptStep = null; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
     }
@@ -857,7 +858,7 @@
       {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
       {#if (pendingInvitation || stagedInvitation) && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation || stagedInvitation; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); stagedInvitation = ''; }}>Review invitation</button><button onclick={() => { consumeInvitation?.(); stagedInvitation = ''; }}>Dismiss</button></div>{/if}
       {#if locked}
-        <Welcome known={!!snapshot} {creating} protocolLocked={snapshot?.instance.protocolLocked ?? false} {busy} bind:password bind:rememberDevice mobile={!!deviceUnlock} companion={!!tools} submit={unlock} error={notice || connectionError?.message || ''} receiveInvitation={code => stagedInvitation = code} />
+        <Welcome profileKey={`${snapshot?.instance.id ?? ''}:${snapshot?.instance.bootId ?? ''}`} known={!!snapshot} {creating} protocolLocked={snapshot?.instance.protocolLocked ?? false} {busy} bind:password bind:rememberDevice mobile={!!deviceUnlock} companion={!!tools} submit={unlock} error={notice || connectionError?.message || ''} receiveInvitation={code => stagedInvitation = code} />
       {:else if !networkAccepted}
         <div class="welcome network-gate">
           <h1>Connect to GChat</h1>

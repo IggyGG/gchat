@@ -62,3 +62,24 @@ for (const width of [320, 1100]) test(`welcome fits ${width}px with reduced moti
   expect(await button.evaluate(el => getComputedStyle(el).transitionDuration)).toBe('0s');
   await page.screenshot({ path: testInfo.outputPath(`welcome-${width}.png`), fullPage: true });
 });
+
+test('a late welcome-card read cannot cross a replaced profile', async ({ page }) => {
+  await page.goto('/?networks&device-unlock');
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+  await page.evaluate(() => {
+    const original = File.prototype.arrayBuffer;
+    File.prototype.arrayBuffer = async function () {
+      await new Promise<void>(resolve => { (window as any).releaseCard = resolve; });
+      return original.call(this);
+    };
+  });
+  await page.getByLabel('Open invitation card', { exact: true }).setInputFiles({ name: 'invitation.png', mimeType: 'image/png', buffer: Buffer.from(embedInvitationCard(pixel, 'GCI1-valid-fixture')) });
+  await expect(page.getByRole('button', { name: 'Opening card…', exact: true })).toBeVisible();
+  await page.evaluate(() => (window as any).fixture.replaceProfile('replacement-profile'));
+  await expect(page.getByRole('button', { name: 'Open invitation card', exact: true })).toBeEnabled();
+  await page.evaluate(() => (window as any).releaseCard());
+  await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review invitation', exact: true })).toHaveCount(0);
+});

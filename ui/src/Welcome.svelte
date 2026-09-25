@@ -2,13 +2,14 @@
   import EntryFrame from './EntryFrame.svelte';
   import { readInvitationFile } from './invitation-card';
   import { onDestroy } from 'svelte';
-  let { known, creating, protocolLocked, busy, password = $bindable(''), rememberDevice = $bindable(false), mobile = false, companion = false, submit, receiveInvitation, error = '' }: {
-    known: boolean; creating: boolean; protocolLocked: boolean; busy: boolean; password?: string; rememberDevice?: boolean; mobile?: boolean; companion?: boolean;
+  let { profileKey, known, creating, protocolLocked, busy, password = $bindable(''), rememberDevice = $bindable(false), mobile = false, companion = false, submit, receiveInvitation, error = '' }: {
+    profileKey: string; known: boolean; creating: boolean; protocolLocked: boolean; busy: boolean; password?: string; rememberDevice?: boolean; mobile?: boolean; companion?: boolean;
     submit: (event: SubmitEvent) => void; receiveInvitation: (code: string) => void; error?: string;
   } = $props();
   let confirmation = $state(''), reveal = $state(false), localError = $state(''), invitationReady = $state(false), reading = $state(false);
   let input = $state<HTMLInputElement>();
   let alive = true, generation = 0;
+  $effect(() => { profileKey; generation++; invitationReady = false; reading = false; localError = ''; confirmation = ''; });
   onDestroy(() => { alive = false; generation++; confirmation = ''; });
   async function open(file?: File) {
     if (!file || busy || reading) return;
@@ -51,6 +52,6 @@
   .hint { color:var(--ghost-muted); font-size:13px; line-height:1.55; margin:10px 0 16px; }
   .primary { margin-top:10px; }.invitation { border-top:1px solid var(--ghost-line); margin-top:28px; padding-top:24px; }
   .invitation button { width:100%; }.file-input { display:none; }.remember { display:flex; gap:10px; align-items:center; }
-  details { color:var(--ghost-muted); font-size:13px; } summary { cursor:pointer; padding:8px 0; }
+  details { color:var(--ghost-muted); font-size:13px; } summary { cursor:pointer; padding:8px 0; min-height:44px; }
   @media(max-width:480px) { .arrival { padding:12px 0; } }
 </style>

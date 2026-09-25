@@ -8,13 +8,13 @@
 .ghost-entry { box-sizing:border-box; color:var(--ghost-ink); font:16px/1.55 var(--ghost-font); }
 .ghost-entry * { box-sizing:border-box; }
 .ghost-entry button,.ghost-entry input { font:inherit; }
-.ghost-entry button { min-height:44px; padding:10px 18px; border:1px solid var(--ghost-line); border-radius:6px; background:transparent; color:var(--ghost-ink); cursor:pointer; transition:background 120ms,color 120ms,transform 120ms; }
+.ghost-entry button { min-height:44px; padding:10px 18px; border:1px solid #74877b; border-radius:6px; background:transparent; color:var(--ghost-ink); cursor:pointer; transition:background 120ms,color 120ms,transform 120ms; }
 .ghost-entry button:hover:not(:disabled) { background:#303b35; }
 .ghost-entry button:active:not(:disabled) { transform:translateY(1px); }
 .ghost-entry button:disabled { opacity:.6; cursor:default; }
 .ghost-entry button.primary { background:var(--ghost-accent); color:#19251e; border-color:var(--ghost-accent); font-weight:600; }
 .ghost-entry button.primary:hover:not(:disabled) { background:#d0e8d9; }
-.ghost-entry input:not([type=checkbox]) { width:100%; min-height:48px; padding:10px 12px; color:var(--ghost-ink); background:#171b1c; border:1px solid var(--ghost-line); border-radius:5px; }
+.ghost-entry input:not([type=checkbox]) { width:100%; min-height:48px; padding:10px 12px; color:var(--ghost-ink); background:#171b1c; border:1px solid #74877b; border-radius:5px; }
 .ghost-entry :is(button,input,summary,a):focus-visible { outline:2px solid var(--ghost-accent); outline-offset:3px; }
 .ghost-entry label { display:block; margin:16px 0 6px; }
 .ghost-entry a { color:var(--ghost-accent); text-underline-offset:3px; }
