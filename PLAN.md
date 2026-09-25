@@ -1,3 +1,13 @@
+## Responsive carrier release binding (2026-09-25)
+
+Release tooling accepts distinct profile-22 and profile-46 contracts and rejects
+mismatched observed profiles. The three changed release tool/test files are
+byte-identical to the paired GComs files tested by the 37 passing release-tool
+checks. This is tooling validation; no existing native, installed, store or
+privacy receipt is relabelled. Current GComs source sends real data immediately
+with independent 10–10,000 ms randomized interactive cover. Older peer and policy
+cache compatibility requires the staged rollout described in PRODUCTION_RELEASE.md.
+
 ## Retained data rollback compatibility, 2026-09-24
 
 A disposable copy of the successful 1 GiB receiver profile reopened under
