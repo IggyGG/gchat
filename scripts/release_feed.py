@@ -115,7 +115,10 @@ def publish(manifest, platform, artifact, signature, root, url, public_key, sign
             subprocess.run([*signer, str(path)], check=True, stdout=subprocess.DEVNULL)
             binding_signature = path.with_suffix('.json.sig').read_text().strip()
             minisign_verify(path, binding_signature, public_key)
-        feed = {'version': number, 'notes': 'GChat production update. See the release notes for changes and remaining privacy improvements.',
+        notes = 'GChat production update. See the release notes for changes and remaining privacy improvements.'
+        if manifest['policy'].get('file_qualification', {}).get('large_file_blocks_release') is False:
+            notes += ' Large-file (1 GiB) qualification runs separately and remains incomplete.'
+        feed = {'version': number, 'notes': notes,
                 'pub_date': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 'url': url.rstrip('/') + '/' + destination.relative_to(root).as_posix(),
                 'signature': signature.strip(), 'binding': binding.decode(), 'binding_signature': binding_signature}

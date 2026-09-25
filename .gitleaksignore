@@ -9,3 +9,6 @@ b5614f023f56305a07c64b140facea800b7de764:apps/client/src-tauri/Cargo.lock:generi
 96d969697b03c211db2e7bfa1516d9f46409c2b9:apps/client/src-tauri/tauri.conf.json:generic-api-key:85
 96d969697b03c211db2e7bfa1516d9f46409c2b9:.github/workflows/linux-release.yml:generic-api-key:77
 96d969697b03c211db2e7bfa1516d9f46409c2b9:scripts/release_config.py:generic-api-key:40
+
+# Same reviewed minisign PUBLIC key; adding the file policy changed its trailing comma.
+3d8f4ba5299dff790f913c3e8de84c17ab8615e1:release/automation/policy.json:generic-api-key:23
