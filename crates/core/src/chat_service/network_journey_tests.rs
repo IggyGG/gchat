@@ -52,7 +52,8 @@ async fn journey() {
     crate::paths::ensure_private_dir(&sender_home, "sender").unwrap();
     crate::paths::ensure_private_dir(&receiver_home, "receiver").unwrap();
     let mut relays = Vec::new();
-    for n in 71..75u8 {
+    // GC/2 application routes require five distinct relay identities.
+    for n in 71..76u8 {
         relays.push(
             start_with_routing(
                 NodeConfig {
