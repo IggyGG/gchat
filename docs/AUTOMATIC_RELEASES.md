@@ -23,6 +23,12 @@ Linux, Windows, macOS, Android or the SDK lane.
 3. Verify provider archive hashes, paired native provenance, publisher pins and
    the separately signed updater payload. Authentication, durable delivery,
    file integrity, recovery and state-compatible upgrades remain prerequisites.
+   The file release check is a 16 MiB interrupted transfer: abrupt receiver stop,
+   retained pieces and identity, authenticated chat ACK during resume, verified
+   final SHA-256, then orderly reopen and re-export. Its file-completion budget
+   is 180 seconds and the entire isolated journey is capped at 600 seconds.
+   Use `gchat-turnover.py --mode file-recovery --release-check` with the frozen
+   build and qualification host. A timeout remains a failure, never a pass.
 4. `release_compatibility.py` consumes the fleet controller's recent, exact-pair
    application/rollback receipt and eight compatible relay observations from
    `/state/acceptance/<release_id>.json`. It **does not manufacture that receipt**
@@ -39,6 +45,23 @@ Linux, Windows, macOS, Android or the SDK lane.
 There is no 24-hour campaign, physical-device requirement or statistical privacy
 release gate. This does not claim traffic-analysis privacy qualification. The
 remaining privacy work remains described in `PRODUCTION_RELEASE.md`.
+
+The owner removed the 1 GiB interrupted-transfer release gate on 2026-09-25.
+That test and the historical ~123 MB device transfer run separately; their
+results cannot substitute for the mandatory bounded check. Retain their exact
+source bindings and disclose timeouts or missing qualification. The two retained
+1 GiB runs exceeded the original 1200-second completion deadline, including the
+node-local-storage retry; neither is a pass. Do not alter an active run's budget.
+
+For candidates with `policy.file_qualification`, the exact-pair acceptance JSON
+also contains `file_check`: `mode`, integer `bytes`, measured
+`completion_elapsed_seconds` and `total_elapsed_seconds`, matching
+`source_sha256`/`export_sha256`, and true `abrupt_stop`, `verified_pieces_retained`,
+`same_identity`, `authenticated_chat_ack`, `hash_verified_after_reopen` and
+`cleanup_complete`. Bind the underlying logs/reports through `evidence`. This
+supplements all existing required checks and relay/rollback observations; it
+cannot turn the isolated fixture into installed-network acceptance. Previously
+frozen manifests and their receipts keep their original policy.
 
 ## Desktop behavior
 

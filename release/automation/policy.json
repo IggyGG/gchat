@@ -20,5 +20,13 @@
   "ios_certificate_sha256": "575c69108062e8a523117b57785563dba10a2265ee72df4771701813e5cbfbb7",
   "france_included": true,
   "audience": "18+",
-  "updater_public_key": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRFNTY5ODJBMkJGQzBBNDcKUldSSEN2d3JLcGhXVG5MVGs2ay8yT1pvcGtRUTY2Z2toVmlMWnJza0oyTXBNZk9RRFVmMTBIY0kK"
+  "updater_public_key": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRFNTY5ODJBMkJGQzBBNDcKUldSSEN2d3JLcGhXVG5MVGs2ay8yT1pvcGtRUTY2Z2toVmlMWnJza0oyTXBNZk9RRFVmMTBIY0kK",
+  "file_qualification": {
+    "mode": "file-recovery",
+    "bytes": 16777216,
+    "completion_seconds": 180,
+    "total_seconds": 600,
+    "large_file_bytes": 1073741824,
+    "large_file_blocks_release": false
+  }
 }

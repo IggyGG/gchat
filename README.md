@@ -160,3 +160,5 @@ installer qualification remains separate.
 
 The desktop dependency policy records exact native API version duplicates required
 by the updater's existing dependencies; see [the graph review](docs/DEPENDENCIES.md).
+
+Release file checks use a bounded 16 MiB interrupted transfer; the 1 GiB campaign runs separately. See [automatic releases](docs/AUTOMATIC_RELEASES.md).

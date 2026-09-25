@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -67,6 +68,38 @@ class CoordinatorTests(unittest.TestCase):
         verify(proof,manifest,101)
         proof['checks']['reopen_recovery']=False
         with self.assertRaises(ValueError):verify(proof,manifest,101)
+
+    def test_bounded_file_gate_rejects_missing_late_or_incomplete_recovery(self):
+        from release_compatibility import verify_file_check
+        policy=json.loads((Path(__file__).resolve().parents[2]/'release/automation/policy.json').read_text())['file_qualification']
+        proof={'mode':'file-recovery','bytes':16777216,'completion_elapsed_seconds':30,
+               'total_elapsed_seconds':120,'source_sha256':'a'*64,'export_sha256':'a'*64,
+               'abrupt_stop':True,'verified_pieces_retained':True,'same_identity':True,
+               'authenticated_chat_ack':True,'hash_verified_after_reopen':True,'cleanup_complete':True}
+        verify_file_check(proof,policy)
+        for field, bad in [('bytes',1073741824),('bytes',True),('mode','smoke'),
+                           ('completion_elapsed_seconds',181),('total_elapsed_seconds',601),
+                           ('completion_elapsed_seconds',float('nan')),('total_elapsed_seconds',float('inf')),
+                           ('completion_elapsed_seconds',True),('completion_elapsed_seconds',0),
+                           ('export_sha256','b'*64),('source_sha256','invalid')]:
+            with self.subTest(field=field,value=bad),self.assertRaises(ValueError):
+                verify_file_check({**proof,field:bad},policy)
+        for field in ('abrupt_stop','verified_pieces_retained','same_identity',
+                      'authenticated_chat_ack','hash_verified_after_reopen','cleanup_complete'):
+            with self.subTest(field=field),self.assertRaises(ValueError):
+                verify_file_check({**proof,field:False},policy)
+        with self.assertRaises(ValueError):verify_file_check(None,policy)
+        with self.assertRaises(ValueError):verify_file_check({**proof,'total_elapsed_seconds':10},policy)
+        manifest=copy.deepcopy(self.manifest)
+        manifest['policy']={'carrier_profile':46,'required_checks':['files'],'file_qualification':policy}
+        acceptance={'schema':1,'passed':True,'sources':manifest['sources'],'release_id':manifest['release_id'],
+                    'carrier_profile':46,'completed_at':100,'checks':{'files':True},
+                    'relays':[{'id':str(i),'gcoms_commit':manifest['sources']['gcoms']['commit'],
+                               'carrier_profile':46,'healthy':True} for i in range(8)],
+                    'rollback_state_compatible':True,'large_file_campaign':{'passed':False,'failure':'deadline'}}
+        with self.assertRaises(ValueError):verify(acceptance,manifest,101)
+        acceptance['file_check']=proof
+        verify(acceptance,manifest,101)  # Separate capacity failure does not veto the bounded pass.
 
     def test_bad_incoming_manifest_does_not_block_other_candidates(self):
         c=Coordinator(self.root,{'workers':{}});self.addCleanup(c.ledger.close)

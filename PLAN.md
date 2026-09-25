@@ -292,3 +292,7 @@ Launchers, fleet process and updater preserved; verified rollback retained.
 Evidence: docs/evidence/ux-cards/signed-local-summary.json and docs/UX-CARDS.md.
 No public release. Native save/export/drop, other OS, screen-reader/usability
 sessions and CMD target selection remain unfinished scopes.
+
+## Bounded release qualification (2026-09-25)
+
+Owner-approved: replace the release-blocking 1 GiB campaign with a 16 MiB interrupted-transfer/hash/reopen check, 180-second completion and 600-second overall ceiling. Preserve both failed large-file attempts; capacity qualification runs separately. Authentication, persistence, signatures and rollback remain required. Implementation and cluster validation are tracked in GChat `target/release-automation-20260925/`; no new installed or fleet qualification is inferred.

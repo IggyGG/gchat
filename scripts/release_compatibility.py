@@ -9,6 +9,8 @@ import argparse
 import hashlib
 import json
 import os
+import math
+import re
 from pathlib import Path
 import shutil
 import time
@@ -27,6 +29,8 @@ def verify(proof, manifest, now):
     checks = proof.get('checks', {})
     if any(checks.get(name) is not True for name in required):
         raise ValueError('required application/upgrade acceptance remains incomplete')
+    if 'file_qualification' in manifest['policy']:
+        verify_file_check(proof.get('file_check'), manifest['policy']['file_qualification'])
     relays = proof.get('relays', [])
     if len(relays) != 8 or len({r.get('id') for r in relays}) != 8 or any(
             r.get('healthy') is not True or r.get('gcoms_commit') != manifest['sources']['gcoms']['commit']
@@ -35,6 +39,29 @@ def verify(proof, manifest, now):
     if proof.get('rollback_state_compatible') is not True:
         raise ValueError('rollback does not preserve the active profile format')
     return proof
+
+
+def verify_file_check(check, policy):
+    """A bounded resume pass is mandatory; separate capacity results cannot replace it."""
+    if not isinstance(check, dict) or check.get('mode') != policy['mode']:
+        raise ValueError('bounded file recovery evidence is missing')
+    if type(check.get('bytes')) is not int or check['bytes'] != policy['bytes']:
+        raise ValueError('bounded file recovery size does not match release policy')
+    for field, limit in (('completion_elapsed_seconds', 'completion_seconds'),
+                         ('total_elapsed_seconds', 'total_seconds')):
+        elapsed = check.get(field)
+        if (type(elapsed) not in (int, float) or not math.isfinite(elapsed)
+                or not 0 < elapsed <= policy[limit]):
+            raise ValueError('bounded file recovery deadline was not met')
+    if check['completion_elapsed_seconds'] > check['total_elapsed_seconds']:
+        raise ValueError('file completion duration exceeds total run duration')
+    for name in ('abrupt_stop', 'verified_pieces_retained', 'same_identity',
+                 'authenticated_chat_ack', 'hash_verified_after_reopen', 'cleanup_complete'):
+        if check.get(name) is not True:
+            raise ValueError('bounded file recovery proof incomplete: ' + name)
+    digest = check.get('source_sha256')
+    if not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest) or check.get('export_sha256') != digest:
+        raise ValueError('bounded file export hash mismatch')
 
 
 def main():

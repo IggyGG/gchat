@@ -4,6 +4,16 @@ On 2026-09-20 the owner selected production rollout and removed statistical priv
 
 Linux and macOS downloads are published. Current Mac 0.1.4 `.2` DMGs for both architectures are signed with the pinned Movsai AB Developer ID, notarized by Apple, stapled and checked with quarantine and Gatekeeper enabled. Android APKs are published with their documented emulator qualification. Windows, mobile push and store delivery remain in progress. See CROSS_PLATFORM.md and the signed per-platform release manifests for exact scope. Gh0st detached release signatures remain pinned; historical self-signed Mac `.1` downloads do not acquire the new notarization qualification.
 
+## Large-file qualification
+
+As of 2026-09-25, releases require a bounded 16 MiB interrupted-transfer,
+restart and SHA-256 check (180-second completion, 600-second whole-run ceiling).
+The 1 GiB campaign runs separately and does not block publication. Both retained
+1 GiB attempts exceeded their original 1200-second completion budget; large-file
+completion and latency remain unqualified. Authentication, durable admission,
+recipient ACK accounting, persistence, signatures and safe rollback remain
+mandatory. A smaller-file pass does not relabel either large-file failure.
+
 ## Privacy improvements still outstanding
 
 Production status does not mean traffic-analysis resistance is qualified. The four profile-22 comparisons (idle/chat and matched bulk/mixed, for time windows and connection observations) are improvement targets, not release vetoes. Existing unfavorable/calibration reports remain retained. Further work includes reducing observable activity and volume differences, establishing repeatable whole-client measurements across startup, DNS/HTTPS bootstrap, protected catalog access, reconnect/reopen and connection lifetimes, and measuring adverse-link behavior without pooled-relay substitutions. No <=0.55 claim is made.
