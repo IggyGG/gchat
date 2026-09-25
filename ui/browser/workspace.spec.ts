@@ -536,9 +536,9 @@ for (const width of [320, 390, 1100]) test(`conversation heading does not consum
 
 test('shows immediate unlock feedback and accepts another message while sends are pending', async ({ page }) => {
   await page.goto('/?device-unlock&slow-unlock');
-  await page.getByLabel('Instance passphrase', { exact: true }).fill('fixture-passphrase');
+  await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Unlocking…', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Opening…', exact: true })).toBeVisible();
   await expect(page.locator('.active-title')).toContainText('#general');
   await page.evaluate(() => (window as any).fixture.holdSends());
   await command(page, 'first pending message');
@@ -627,7 +627,7 @@ for (const width of [320,390,1100]) test(`focused forms fit ${width}px and never
 
 test('notification setup is explicit, distinguishes registration and offers device settings', async ({page}) => {
   await page.goto('/?device-unlock&notifications');
-  await page.getByLabel('Instance passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
+  await page.getByLabel('Identity passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
   const screen=page.getByRole('dialog',{name:'Notifications',exact:true});
   await expect(screen).toBeVisible();
   expect(await page.evaluate(()=>(window as any).fixture.pushRequests)).toEqual([]);
@@ -642,7 +642,7 @@ test('notification setup is explicit, distinguishes registration and offers devi
   expect(await page.evaluate(()=>(window as any).fixture.settingsOpened())).toBe(1);
   await screen.getByRole('button',{name:'Turn notifications off'}).click();
   await screen.getByRole('button',{name:'Not now'}).click();
-  await page.reload(); await page.getByLabel('Instance passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
+  await page.reload(); await page.getByLabel('Identity passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
   await expect(page.locator('.active-title')).toBeVisible(); await expect(screen).toHaveCount(0);
 });
 
