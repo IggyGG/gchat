@@ -90,6 +90,12 @@ After an interrupted external action, the request ID is reconciled with the
 provider. Unknown uploads/commits are never blindly repeated. A blocked target
 resumes its previous stage with `release_coordinator.py --resume RELEASE TARGET`;
 it cannot skip verification. New source changes supersede only unstarted work.
+Only one candidate per platform is newly dispatched while an earlier candidate
+is building or verifying. New commits remain queued and coalesce to the latest
+candidate; already-dispatched workers keep running on their frozen inputs.
+Other platforms continue independently. Waiting for compatibility or store
+review does not prevent preparing the next candidate.
+
 The public status document distinguishes building, verification, publication,
 processing, review, blocked and available.
 

@@ -132,6 +132,11 @@ class Coordinator:
                     (state='blocked' AND resume_state IN ('submitting','processing','in_review')))""", (platform, release)).fetchone()
                 if other: return  # retain the candidate while the current review finishes
             if state == 'queued':
+                active = self.ledger.db.execute("""SELECT 1 FROM platforms
+                    WHERE platform=? AND candidate!=? AND state IN ('building','verifying')""",
+                    (platform, release)).fetchone()
+                if active:
+                    return  # Coalesce newer commits before dispatch; preserve frozen workers.
                 self.ledger.transition(release, platform, 'building')
                 state = 'building'
             stage = {'building': 'build', 'verifying': 'verify', 'verified': 'compatibility',
