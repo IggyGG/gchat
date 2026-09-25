@@ -115,7 +115,10 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
       if (!req.text.startsWith('/')) { sentMessages.push({ id: 'wire-' + req.operation_id, operationId: req.operation_id, conversationId: req.conversation!, memberId: 'self', nickname: 'Iggy', body: req.text, timestamp: Math.floor(Date.now()/1000), mine: true, delivery: 'local_accepted', result: null }); revision++; }
       if (req.text === '/lock' || req.text === '/disconnect') { instance.locked = true; instance.protocolLocked = req.text === '/disconnect'; revision++; }
       return { kind: 'applied', conversation: req.conversation, notice: null };
-    case 'unlock': if (parameters.has('slow-unlock')) await delay(1200); instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };
+    case 'unlock':
+      if (parameters.has('slow-unlock')) await delay(1200);
+      if (parameters.has('reject-passphrase') && req.passphrase !== 'fixture-passphrase') throw new ChatError('rejected', 'wrong passphrase or corrupted protocol profile');
+      instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };
     case 'files': {
       const r = req.request;
       if (r.action === 'prepare') files.push({ id: r.id, conversation: r.conversation, name: r.name, size_bytes: r.size_bytes, verified_bytes: '0', state: 'importing', sources: 0, verified_sources: 0, completed_by: 0, error: null });

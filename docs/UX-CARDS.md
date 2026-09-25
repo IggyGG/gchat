@@ -93,3 +93,14 @@ separate jobs with debug symbols omitted, preserving normal test assertions.
 Earlier failed/interrupted logs are retained separately. Frozen source identities
 and derived dependency inputs were verified unchanged. No application runtime
 behavior was altered to accommodate qualification.
+
+## Linux installation follow-up
+
+The real Linux WebKit check found a rejected passphrase announced both inline
+and in the workspace notice bar. Locked views now keep that message beside the
+passphrase field; unlocked operation notices are unchanged. A browser regression
+checks one announcement and successful retry. Type checks, all 53 browser tests
+and the production frontend build pass (`native-polish-frontend.log`). Native
+candidate and retained-profile upgrade evidence is recorded separately from
+public installer qualification; user sessions and other operating systems remain
+unqualified until their actual runs.
