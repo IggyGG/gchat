@@ -26,11 +26,11 @@ def discover(config, state, ledger):
         if not root.exists():
             root.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(['git', 'clone', '--bare', config[project]['url'], str(root)], check=True,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        bare = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--is-bare-repository'], text=True).strip()
+                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+        bare = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--is-bare-repository'], text=True, timeout=15).strip()
         if bare != 'true': raise ValueError('release discovery requires dedicated bare mirrors')
         subprocess.run(['git', '-C', str(root), 'fetch', '--no-tags', 'origin',
-                        'refs/heads/main:refs/heads/main'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                        'refs/heads/main:refs/heads/main'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
         sources[project] = identity(root, 'refs/heads/main')
     root = Path(config['gchat']['mirror'])
     def read(path):
@@ -41,11 +41,11 @@ def discover(config, state, ledger):
         for destination in config.get('candidate_remotes', []):
             subprocess.run(['git', '-C', str(root), 'push', destination,
                             candidate['sources']['gchat']['commit'] + ':' + candidate['refs']['gchat']],
-                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
         for destination in config.get('companion_remotes', []):
             subprocess.run(['git', '-C', config['gcoms']['mirror'], 'push', destination,
                             candidate['sources']['gcoms']['commit'] + ':' + candidate['refs']['gcoms']],
-                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
     for row in ledger.db.execute('SELECT manifest FROM candidates'):
         previous = json.loads(row[0])
         if previous.get('upstream') == upstream and previous['policy'] == policy:

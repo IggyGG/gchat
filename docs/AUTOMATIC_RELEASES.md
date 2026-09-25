@@ -58,7 +58,9 @@ updater. The saved profile remains and may need unlocking after a restart.
 Debian installations are upgraded by a GChat-only systemd APT timer, without
 restarting running clients. `scripts/install-local-updates.py` first verifies the
 public signed repository, then installs the source, pinned key and timer when
-run as root with `--apply`. AppImage/macOS/Windows use signed Tauri updates.
+run as root with `--apply`. A first deployment may initialize a signed empty
+repository with `release/automation/initialize-apt`; this enables polling without
+advertising an unqualified app. AppImage/macOS/Windows use signed Tauri updates.
 Mobile stores own mobile installation and their automatic-update preferences.
 
 ## Controller deployment and secrets
