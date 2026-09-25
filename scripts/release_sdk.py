@@ -36,6 +36,17 @@ def expected_names(kind,commit):
     variant='push' if kind.endswith('push') else 'base'
     return {f'mobile-{platform}-{role}-{variant}-{commit}' for platform in ('android','apple') for role in ('client','relay')}
 
+def matching_run(run, kind, commit, request, prefix):
+    if run.get('head_sha') != commit:
+        return False
+    if run.get('event') == 'workflow_dispatch':
+        return run.get('display_title') == prefix + request
+    # Main already runs the full native Rust and base mobile matrices. Reuse
+    # that exact-source work; the optional push variant still needs its own job.
+    return (kind in ('rust', 'mobile-base') and run.get('event') == 'push'
+            and run.get('head_branch') == 'main'
+            and run.get('display_title') == prefix + commit)
+
 def build(manifest,cache):
     commit=manifest['sources']['gcoms']['commit'];cache=cache/commit;cache.mkdir(parents=True,exist_ok=True)
     complete=True;archives=[]
@@ -43,8 +54,8 @@ def build(manifest,cache):
         work=cache/kind;work.mkdir(exist_ok=True);request=hashlib.sha256(canonical([commit,kind])).hexdigest()
         found=[]
         for page in range(1,11):
-            runs=api(f'actions/workflows/{workflow}/runs?event=workflow_dispatch&per_page=100&page={page}')['workflow_runs']
-            found += [r for r in runs if r.get('display_title')==prefix+request]
+            runs=api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}')['workflow_runs']
+            found += [r for r in runs if matching_run(r,kind,commit,request,prefix)]
             if len(runs)<100 or found:break
         if len(found)>1:raise ValueError('duplicate SDK dispatch requires reconciliation')
         if not found:

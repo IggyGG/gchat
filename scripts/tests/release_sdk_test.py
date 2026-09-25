@@ -28,3 +28,18 @@ class SdkMatrixTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'another source pair'):
                 publish_archives(manifest,[(payload,sha)],public)
             self.assertEqual(json.loads((public/'latest.json').read_text()),first)
+
+class ExistingSdkRunTests(unittest.TestCase):
+    def test_reuses_only_exact_main_default_matrix_and_never_push_for_optional_push(self):
+        from release_sdk import matching_run
+        commit='a'*40; request='b'*64; prefix='GComs SDK Mobile '
+        run={'head_sha':commit,'head_branch':'main','event':'push','display_title':prefix+commit}
+        self.assertTrue(matching_run(run,'mobile-base',commit,request,prefix))
+        self.assertFalse(matching_run(run,'mobile-push',commit,request,prefix))
+        self.assertFalse(matching_run(run,'mobile-base','c'*40,request,prefix))
+        run['head_branch']='another-branch'
+        self.assertFalse(matching_run(run,'mobile-base',commit,request,prefix))
+        run.update(event='workflow_dispatch',display_title=prefix+request)
+        self.assertTrue(matching_run(run,'mobile-push',commit,request,prefix))
+        run['display_title']=prefix+'another-request'
+        self.assertFalse(matching_run(run,'mobile-push',commit,request,prefix))
