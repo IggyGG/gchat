@@ -42,11 +42,13 @@ class WindowsPackageTest(unittest.TestCase):
     def test_native_zip_cannot_escape_its_destination(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for name in ('../outside', '/absolute', r'C:\outside', r'bad\path'):
+            for name in ('../outside', '/absolute', r'C:\outside', r'bad\path', 'file:stream', 'file\0hidden'):
                 with self.subTest(name=name):
                     archive = root / 'bad.zip'
+                    entry = zipfile.ZipInfo('fixture')
+                    entry.filename = name  # Preserve hostile separators on Windows too.
                     with zipfile.ZipFile(archive, 'w') as stream:
-                        stream.writestr(name, b'untrusted')
+                        stream.writestr(entry, b'untrusted')
                     with self.assertRaisesRegex(ValueError, 'unsafe'):
                         package.extract(archive, root / 'output')
                     self.assertFalse((root / 'output').exists())

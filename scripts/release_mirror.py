@@ -4,7 +4,7 @@
 This small workstation bridge runs no builds or app/device operations. Native
 qualification and release work execute in the cluster/platform workers.
 """
-import argparse,fcntl,json,os,subprocess,tempfile,time
+import argparse,json,os,subprocess,tempfile,time
 from pathlib import Path
 from release_coordinator import atomic_json
 
@@ -31,6 +31,7 @@ def mirror(project,state,environment):
 
 
 def main():
+    import fcntl  # This timer runs on the Linux Forgejo workstation.
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--token-file',type=Path,required=True);p.add_argument('--tools',type=Path,required=True);a=p.parse_args()
     a.state.mkdir(mode=0o700,parents=True,exist_ok=True);(a.state/'tmp').mkdir(mode=0o700,exist_ok=True)
     if a.token_file.stat().st_mode & 0o077:raise ValueError('mirror token file must be private')

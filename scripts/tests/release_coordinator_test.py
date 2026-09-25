@@ -50,9 +50,10 @@ class CoordinatorTests(unittest.TestCase):
         self.assertEqual(seen,[['first'],['recover']])
     def test_archive_traversal_and_symlink_rejected(self):
         import zipfile
-        for name in ('../escape','/absolute','C:/windows','back\\slash'):
+        for name in ('../escape','/absolute','C:/windows','back\\slash','file:stream','file\0hidden'):
             archive=self.root/'bad.zip'
-            with zipfile.ZipFile(archive,'w') as z:z.writestr(name,b'bad')
+            entry=zipfile.ZipInfo('fixture');entry.filename=name
+            with zipfile.ZipFile(archive,'w') as z:z.writestr(entry,b'bad')
             with self.assertRaises(ValueError):extract(archive,self.root/'out')
             self.assertFalse((self.root.parent/'escape').exists())
     def test_component_pass_cannot_qualify_production(self):

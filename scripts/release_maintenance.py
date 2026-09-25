@@ -2,7 +2,6 @@
 """Maintain release state without changing which application is advertised."""
 import datetime
 import email.utils
-import fcntl
 import os
 from pathlib import Path
 import shutil
@@ -17,6 +16,7 @@ from release_signatures import fingerprint, verify
 
 
 def refresh_apt(output, key, now=None):
+    import fcntl  # The APT publisher requires POSIX locks and atomic symlinks.
     output = Path(output)
     stable = output / 'dists/stable'
     if not stable.exists(): return False

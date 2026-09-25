@@ -117,8 +117,9 @@ def extract(archive, output):
         if sum(row.file_size for row in stream.infolist()) > 2 * 1024**3:
             raise ValueError('native evidence archive exceeds extraction bound')
         for row in stream.infolist():
-            path = PurePosixPath(row.filename)
-            if path.is_absolute() or '..' in path.parts or '\\' in row.filename or ':' in row.filename or stat.S_ISLNK(row.external_attr >> 16):
+            original = row.orig_filename
+            path = PurePosixPath(original)
+            if path.is_absolute() or '..' in path.parts or '\\' in original or '\0' in original or ':' in original or stat.S_ISLNK(row.external_attr >> 16):
                 raise ValueError('unsafe native evidence archive member')
         stream.extractall(output)
 

@@ -52,7 +52,7 @@ def write_json(path, value):
 
 
 def reference(path):
-    return {'path': str(path.resolve()), 'sha256': digest(path), 'size': path.stat().st_size}
+    return {'path': path.resolve().as_posix(), 'sha256': digest(path), 'size': path.stat().st_size}
 
 
 def verify_reference(item):

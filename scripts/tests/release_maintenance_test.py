@@ -19,7 +19,7 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertEqual(len(list((root/'backups').glob('*.sqlite'))),1);self.assertEqual(evidence.read_text(),'keep')
             finally:ledger.close()
 
-    @unittest.skipUnless(shutil.which('gpg'),'native GPG required')
+    @unittest.skipUnless(os.name == 'posix' and shutil.which('gpg'),'POSIX APT publisher and native GPG required')
     def test_refresh_verifies_old_index_and_preserves_package_hashes(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);home=root/'gnupg';home.mkdir(mode=0o700)

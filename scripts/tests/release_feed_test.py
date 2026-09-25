@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,7 +13,7 @@ from release_feed import minisign_verify, publish
 from release_pair import canonical
 from release_automation_test import candidate
 
-@unittest.skipUnless(shutil.which('minisign'), 'native minisign required for signed-feed qualification')
+@unittest.skipUnless(os.name == 'posix' and shutil.which('minisign'), 'POSIX publisher and native minisign required for signed-feed qualification')
 class FeedTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)

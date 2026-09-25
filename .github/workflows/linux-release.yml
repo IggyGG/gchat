@@ -67,7 +67,7 @@ jobs:
           with open(os.environ['GITHUB_ENV'],'a') as stream:stream.write('RUSTUP_TOOLCHAIN='+pins[0]['channel']+'\n')
           PY
           npm install --global npm@11.6.2
-          cargo install cargo-deny --locked --version 0.18.5
+          cargo install cargo-deny --locked --version 0.20.2
       - name: Qualify the frozen pair
         run: |
           python3 gchat/scripts/ci.py --gcoms gcoms --provenance-output native-evidence/paired-gchat

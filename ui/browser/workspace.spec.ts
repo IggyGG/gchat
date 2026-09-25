@@ -660,8 +660,9 @@ for (const width of [390, 1100]) test(`mentions suggest local members without su
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit').length)).toBe(0);
 });
 
-test('channel reconnect opens a focused explanation and copies an existing-member command', async ({ page, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+test('channel reconnect opens a focused explanation and copies an existing-member command', async ({ page, context, browserName }) => {
+  // WebKit grants clipboard access through read permission; clipboard-write is Chromium-only.
+  await context.grantPermissions(browserName === 'webkit' ? ['clipboard-read'] : ['clipboard-read', 'clipboard-write']);
   await page.setViewportSize({ width: 390, height: 720 });
   await ready(page); await command(page, '/reconnect');
   const dialog = page.getByRole('dialog', { name: 'Reconnect this channel', exact: true });

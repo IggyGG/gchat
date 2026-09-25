@@ -250,6 +250,7 @@ def firebase_resources(value):
 
 def derive_bundle_apks(root, bundle, jar, key, private, tools, pin, expected):
     """Build and verify the actual x86 emulator split set from the signed AAB."""
+    require(os.name == 'posix', 'bundle signing requires the POSIX private-file worker')
     device = {'supportedAbis': ['x86_64'], 'supportedLocales': ['en'], 'screenDensity': 420, 'sdkVersion': 35}
     spec = root / 'bundle-device.json'
     write_json(spec, device)
@@ -744,6 +745,14 @@ def ui_nodes(shell, diagnostics):
         return []
 
 
+def ui_bounds(node):
+    match = re.fullmatch(r'\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]', node.attrib.get('bounds', ''))
+    if not match:
+        return None
+    x1, y1, x2, y2 = map(int, match.groups())
+    return (x1, y1, x2, y2) if 0 <= x1 < x2 and 0 <= y1 < y2 else None
+
+
 def select_picker_fixture(wait_node, tap):
     """Select one exact harmless Downloads file through the real Documents UI."""
     name = PurePosixPath(PICKER_FIXTURE_PATH).name
@@ -860,32 +869,44 @@ def smoke(args):
             nonlocal ui_dump_created
             ui_dump_created = True  # A failed dump may still leave a partial file.
             return ui_nodes(shell, report['ui_observation_errors'])
-        def wait_node(predicate, timeout=60):
+        def wait_node(predicate, timeout=60, reveal=False):
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
-                for node in nodes():
-                    if predicate(node):
+                current = nodes()
+                matches = [node for node in current if predicate(node)]
+                for node in matches:
+                    if not reveal or ui_bounds(node):
                         return node
+                if reveal and matches:
+                    bounds = next((ui_bounds(n) for n in current
+                                   if n.attrib.get('package') == PACKAGE and ui_bounds(n)), None)
+                    require(bounds is not None, 'fixture has no visible app surface for scrolling')
+                    x1, y1, x2, y2 = bounds
+                    shell('input', 'swipe', str((x1+x2)//2), str(y1+(y2-y1)*4//5),
+                          str((x1+x2)//2), str(y1+(y2-y1)//3), '250')
                 time.sleep(1)
             raise ValueError('expected app UI state was not observed before the fixture deadline')
         def tap(node):
-            points = [int(x) for x in re.findall('[0-9]+', node.attrib['bounds'])]
-            require(len(points) == 4, 'UI node lacks tappable bounds')
+            points = ui_bounds(node)
+            require(points is not None, 'UI node lacks visible tappable bounds')
             shell('input', 'tap', str((points[0] + points[2]) // 2), str((points[1] + points[3]) // 2))
         def text(value):
             return lambda node: node.attrib.get('text') == value or node.attrib.get('content-desc') == value
-        def fill_passphrase():
+        def fill_passphrase(confirm=False):
             expected = 'gchat-emulator-fixture-only-42'
-            password = wait_node(lambda n: n.attrib.get('password') == 'true')
-            tap(password)
-            wait_keyboard(shell, True)
-            shell('input', 'text', expected)
-            password = wait_node(lambda n: n.attrib.get('password') == 'true')
-            require(password.attrib.get('text') == expected, 'fixture passphrase input differs before submission')
-            shell('input', 'keyevent', '4')  # Android Back dismisses the shown IME.
-            wait_keyboard(shell, False)
-            password = wait_node(lambda n: n.attrib.get('password') == 'true')
-            require(password.attrib.get('text') == expected, 'fixture passphrase changed during keyboard dismissal')
+            count = 2 if confirm else 1
+            for _ in range(count):
+                password = wait_node(lambda n: n.attrib.get('password') == 'true'
+                                     and not n.attrib.get('text'), reveal=True)
+                tap(password)
+                wait_keyboard(shell, True)
+                shell('input', 'text', expected)
+                password = wait_node(lambda n: n.attrib.get('password') == 'true' and n.attrib.get('focused') == 'true')
+                require(password.attrib.get('text') == expected, 'fixture passphrase input differs before submission')
+                shell('input', 'keyevent', '4')  # Android Back dismisses the shown IME.
+                wait_keyboard(shell, False)
+            populated = [n for n in nodes() if n.attrib.get('password') == 'true' and n.attrib.get('text') == expected]
+            require(len(populated) == count, 'fixture passphrase/confirmation changed during keyboard dismissal')
         def activity_state(phase, expected_foreground):
             wait_activity(shell, dest, report, phase, expected_foreground)
         def no_listener(phase):
@@ -898,8 +919,8 @@ def smoke(args):
         no_listener('fresh_locked')
         if getattr(args, 'store_screenshots', False):
             report['screenshots'] = [screenshot(adb, dest / 'store-screenshots/01-create-identity.png')]
-        fill_passphrase()
-        tap(wait_node(text('Create identity')))
+        fill_passphrase(confirm=True)
+        tap(wait_node(text('Create identity'), reveal=True))
         wait_node(text('Connect to GChat'), timeout=120)
         no_listener('created_unlocked_without_network_invitation')
         if getattr(args, 'store_screenshots', False):
@@ -913,7 +934,7 @@ def smoke(args):
         activity_state('foreground', True)
         wait_node(text('Reconnect'))
         fill_passphrase()
-        tap(wait_node(text('Reconnect')))
+        tap(wait_node(text('Reconnect'), reveal=True))
         wait_node(text('Connect to GChat'), timeout=120)
         no_listener('foreground_reopened')
         shell('am', 'force-stop', PACKAGE)
@@ -924,7 +945,7 @@ def smoke(args):
         report['profile_lifecycle_passed'] = True
         if getattr(args, 'probe_picker', False):
             fill_passphrase()
-            tap(wait_node(text('Reconnect')))
+            tap(wait_node(text('Reconnect'), reveal=True))
             wait_node(text('Connect to GChat'), timeout=120)
             tap(wait_node(text('Or choose an invitation file')))
             picker = wait_node(lambda n: n.attrib.get('package', '').endswith('.documentsui'), timeout=30)
@@ -938,7 +959,7 @@ def smoke(args):
             activity_state('picker_cancel_return', True)
             no_listener('invitation_picker_cancel_return')
             fill_passphrase()
-            tap(wait_node(text('Reconnect')))
+            tap(wait_node(text('Reconnect'), reveal=True))
             wait_node(text('Connect to GChat'), timeout=120)
             require(not any(text('Continue selected file')(n) for n in nodes()),
                     'cancelled picker retained a selected file')
@@ -966,7 +987,7 @@ def smoke(args):
             require(not any(text(PICKER_FIXTURE_TEXT)(n) for n in nodes()),
                     'invitation contents were exposed while the profile was locked')
             fill_passphrase()
-            tap(wait_node(text('Reconnect')))
+            tap(wait_node(text('Reconnect'), reveal=True))
             wait_node(text('Connect to GChat'), timeout=120)
             tap(wait_node(text('Continue selected file')))
             wait_node(lambda n: n.attrib.get('class') == 'android.widget.EditText'

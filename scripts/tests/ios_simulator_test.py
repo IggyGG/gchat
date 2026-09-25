@@ -99,6 +99,7 @@ class SimulatorBoundaryTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 sim.verify_settings([{'buildSettings': value | {key: replacement}}], entitlements, developer)
 
+    @unittest.skipUnless(os.name == 'posix', 'Xcode wrapper uses the native POSIX exec handoff')
     def test_wrapper_removes_account_access_and_preserves_build_arguments(self):
         config, _ = sim.configure_simulator(self.root / 'settings')
         folder = self.root / 'wrapper'

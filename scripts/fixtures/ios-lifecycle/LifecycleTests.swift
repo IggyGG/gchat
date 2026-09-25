@@ -40,8 +40,8 @@ final class GChatLifecycleTests: XCTestCase {
         let ready = NSPredicate { _, _ in
             let unlocked = self.app.state == .runningForeground
                 && self.heading("Connect to GChat").exists
-                && !self.heading("Reconnect this instance").exists
-                && !self.heading("Create your GChat identity").exists
+                && !self.heading("Welcome back.").exists
+                && !self.heading("Make yourself at home.").exists
             guard unlocked else { readySince = nil; return false }
             let now = ProcessInfo.processInfo.systemUptime
             if readySince == nil { readySince = now }
@@ -54,11 +54,18 @@ final class GChatLifecycleTests: XCTestCase {
         )).firstMatch.exists)
     }
 
-    func enterPassphrase() {
+    func enterPassphrase(confirm: Bool = false) {
         let field = app.webViews.secureTextFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
         field.typeText(passphrase)
+        if confirm {
+            XCTAssertEqual(app.webViews.secureTextFields.count, 2)
+            let confirmation = app.webViews.secureTextFields.element(boundBy: 1)
+            XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
+            confirmation.tap()
+            confirmation.typeText(passphrase)
+        }
         // WKWebView's native input accessory can cover the form button even
         // when XCTest reports that button as hittable. Use the same Done
         // control as a person, then require the keyboard to leave before tapping.
@@ -94,6 +101,11 @@ final class GChatLifecycleTests: XCTestCase {
         // tapping coordinates clipped behind the native input accessory.
         XCTAssertFalse(app.keyboards.firstMatch.exists)
         XCTAssertFalse(app.toolbars.buttons["Done"].firstMatch.exists)
+        let revealDeadline = ProcessInfo.processInfo.systemUptime + 10
+        while button.exists && (!button.isHittable || !main.frame.contains(button.frame))
+                && ProcessInfo.processInfo.systemUptime < revealDeadline {
+            app.webViews.firstMatch.swipeUp()
+        }
         XCTAssertTrue(button.exists && button.isHittable)
         XCTAssertTrue(main.exists && main.frame.contains(button.frame))
         let frame = button.frame
@@ -134,16 +146,16 @@ final class GChatLifecycleTests: XCTestCase {
 
     func testProfileBackgroundAndReopen() {
         app.launch()
-        XCTAssertTrue(heading("Create your GChat identity").waitForExistence(timeout: 30))
+        XCTAssertTrue(heading("Make yourself at home.").waitForExistence(timeout: 30))
         screenshot("01-fresh-profile")
-        enterPassphrase()
+        enterPassphrase(confirm: true)
         tapFormButton("Create identity")
         waitForUnlockedProfile()
         screenshot("02-encrypted-profile-created")
 
         // Default-off credential storage must require manual unlock on return.
         backgroundAndActivate()
-        XCTAssertTrue(heading("Reconnect this instance").waitForExistence(timeout: 30))
+        XCTAssertTrue(heading("Welcome back.").waitForExistence(timeout: 30))
         screenshot("03-background-requires-passphrase")
         enterPassphrase()
         let remember = app.webViews.switches

@@ -8,7 +8,6 @@ replacement is forbidden, including after a partial publication or restart.
 import argparse
 import base64
 import datetime
-import fcntl
 import hashlib
 import json
 import os
@@ -50,6 +49,7 @@ def minisign_verify(path, signature, public_key):
 
 
 def publish(manifest, platform, artifact, signature, root, url, public_key, signer, receipt, compatibility):
+    import fcntl  # Publication runs on the POSIX release controller.
     validate(manifest)
     os_name, arch = TARGETS[platform]
     release = manifest['release_id']

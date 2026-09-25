@@ -68,6 +68,12 @@ jobs:
           python-version: '3.12.10'
       - name: Install Python measurement-test dependency
         run: python -m pip install --disable-pip-version-check numpy==2.3.5
+      - name: Select Java 17 for real bundle-signature regressions
+        run: |
+          $Java = $env:JAVA_HOME_17_X64
+          if (!(Test-Path "$Java/bin/java.exe")) { throw 'Java 17 toolchain is missing' }
+          "JAVA_HOME=$Java" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$Java/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22.23.2'

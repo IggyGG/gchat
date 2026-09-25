@@ -293,6 +293,13 @@ class EmulatorCleanup(unittest.TestCase):
 
 
 class UiObservation(unittest.TestCase):
+    def test_tap_bounds_refuse_hidden_or_malformed_nodes(self):
+        import xml.etree.ElementTree as ET
+        self.assertEqual(android.ui_bounds(ET.Element('node', bounds='[24,347][211,396]')), (24,347,211,396))
+        for bounds in ('[0,0][0,0]', '[-20,4][10,30]', '[20,30][10,40]', '', '[1,2,3,4]'):
+            with self.subTest(bounds=bounds):
+                self.assertIsNone(android.ui_bounds(ET.Element('node', bounds=bounds)))
+
     def test_successful_exit_without_dump_is_pending_observation(self):
         missing = subprocess.CalledProcessError(1, ['cat'], stderr='No such file or directory')
         shell = Mock(side_effect=['', 'ERROR: could not get idle state.', missing,

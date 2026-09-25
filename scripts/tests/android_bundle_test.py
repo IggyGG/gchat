@@ -98,6 +98,12 @@ class BundleSmokeBinding(unittest.TestCase):
         import os
         with tempfile.TemporaryDirectory() as scratch:
             root = Path(scratch); private = root / 'private'; private.mkdir()
+            if os.name != 'posix':
+                with self.assertRaisesRegex(ValueError, 'POSIX private-file'):
+                    worker.derive_bundle_apks(root, root / 'app.aab', root / 'tool.jar', root / 'key.p12',
+                                             private, root / 'tools', 'a' * 64, [])
+                self.assertEqual(list(private.iterdir()), [])
+                return
             def fail(command):
                 self.assertTrue(all((private / (name + '.txt')).stat().st_mode & 0o777 == 0o600
                                     for name in ('ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD')))

@@ -36,9 +36,12 @@ def extract(archive, destination):
             raise ValueError('worker archive exceeds extraction budget')
         seen = set()
         for entry in entries:
-            path = Path(entry.filename)
-            if (path.is_absolute() or '..' in path.parts or '\\' in entry.filename or
-                re.match('[A-Za-z]:', entry.filename) or path.as_posix() in seen or
+            # ZipInfo normalizes host separators and truncates NULs; validate the
+            # original archive spelling before the host filesystem sees it.
+            original = entry.orig_filename
+            path = Path(original)
+            if (path.is_absolute() or '..' in path.parts or '\\' in original or '\0' in original or
+                ':' in original or path.as_posix() in seen or
                 (entry.external_attr >> 16) & 0o170000 == 0o120000):
                 raise ValueError('unsafe worker archive path')
             seen.add(path.as_posix())
