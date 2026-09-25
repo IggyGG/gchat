@@ -5,7 +5,7 @@ import base64
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import time
@@ -39,7 +39,7 @@ def extract(archive, destination):
             # ZipInfo normalizes host separators and truncates NULs; validate the
             # original archive spelling before the host filesystem sees it.
             original = entry.orig_filename
-            path = Path(original)
+            path = PurePosixPath(original)
             if (path.is_absolute() or '..' in path.parts or '\\' in original or '\0' in original or
                 ':' in original or path.as_posix() in seen or
                 (entry.external_attr >> 16) & 0o170000 == 0o120000):

@@ -2,7 +2,6 @@
 """Build an atomic APT snapshot containing only source-qualified GChat packages."""
 import argparse
 import datetime
-import fcntl
 import gzip
 import hashlib
 import json
@@ -20,6 +19,7 @@ from release_signatures import fingerprint, verify
 
 
 def build(manifest, package, signature, verification, compatibility, output, key):
+    import fcntl  # Only the Linux controller publishes APT repositories.
     validate(manifest)
     platform = 'linux-x86_64'
     qualified, _ = read_receipt(verification, manifest, platform, 'verify')

@@ -10,14 +10,22 @@ from release_automation_test import candidate
 
 class PreparationTests(unittest.TestCase):
     def test_version_commit_is_idempotent_and_does_not_change_main(self):
+        for newline in ('\n', '\r\n'):
+            with self.subTest(newline=repr(newline)):
+                self.check_version_commit(newline)
+
+    def check_version_commit(self, newline):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
             def git(*args):return subprocess.check_output(['git','-C',str(root),*args],stderr=subprocess.PIPE,text=True).strip()
             git('init','-b','main');git('config','user.name','Test');git('config','user.email','test@example.com')
+            git('config','core.autocrlf','false')
             (root/'apps/client/src-tauri').mkdir(parents=True);(root/'release').mkdir()
             (root/'apps/client/src-tauri/tauri.conf.json').write_text(json.dumps({'version':'0.1.0','bundle':{'android':{'versionCode':1}}}))
-            (root/'apps/client/src-tauri/Cargo.toml').write_text('[package]\nname = "gchat-desktop"\nversion = "0.1.0"\n')
-            (root/'apps/client/src-tauri/Cargo.lock').write_text('version = 4\n\n[[package]]\nname = "gchat-desktop"\nversion = "0.1.0"\n')
+            cargo='[package]\nname = "gchat-desktop"\nversion = "0.1.0"\n'.replace('\n',newline).encode()
+            lock='version = 4\n\n[[package]]\nname = "gchat-desktop"\nversion = "0.1.0"\n'.replace('\n',newline).encode()
+            (root/'apps/client/src-tauri/Cargo.toml').write_bytes(cargo)
+            (root/'apps/client/src-tauri/Cargo.lock').write_bytes(lock)
             (root/'release/publication.json').write_text('{"version":"0.1.0"}')
             git('add','.');git('commit','-m','initial');base=git('rev-parse','HEAD');before=git('status','--porcelain')
             branch='refs/heads/release/gchat-'+'a'*20
@@ -25,6 +33,9 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(first,prepare(root,base,'b'*40,candidate()['versions'],branch))
             self.assertEqual(git('rev-parse','HEAD'),base);self.assertEqual(git('status','--porcelain'),before)
             self.assertEqual(git('rev-parse',first+'^'),base)
+            for name,original in [('Cargo.toml',cargo),('Cargo.lock',lock)]:
+                actual=subprocess.check_output(['git','-C',str(root),'show',first+':apps/client/src-tauri/'+name])
+                self.assertEqual(actual,original.replace(b'0.1.0',b'1.0.1'))
             with self.assertRaisesRegex(ValueError,'different inputs'):prepare(root,base,'b'*40,candidate(2)['versions'],branch)
 
     def test_discovery_retries_failed_ref_publication_without_reserving_again(self):

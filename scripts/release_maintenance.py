@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Maintain release state without changing which application is advertised."""
 import datetime
+from contextlib import closing
 import email.utils
 import os
 from pathlib import Path
@@ -69,7 +70,8 @@ def maintain(state, ledger, config):
     backup.mkdir(mode=0o700, exist_ok=True)
     name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     temporary = backup / (name + '.partial')
-    with sqlite3.connect(temporary) as destination: ledger.db.backup(destination)
+    with closing(sqlite3.connect(temporary)) as destination:
+        ledger.db.backup(destination)
     temporary.chmod(0o600); os.replace(temporary, backup / (name + '.sqlite'))
     # Only our completed, daily database backups expire. Job receipts, provider
     # journals, manifests, source and published payloads are never removed here.

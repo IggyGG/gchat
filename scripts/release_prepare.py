@@ -25,10 +25,11 @@ def prepare(root, base, coms, versions, branch):
     config['version'] = app_version; config['bundle']['android']['versionCode'] = int(versions['android'])
     publication = json.loads(read('release/publication.json')); publication['version'] = app_version
     cargo = read('apps/client/src-tauri/Cargo.toml').decode()
-    cargo, count = re.subn(r'(?m)^version = "[^"\n]+"$', f'version = "{app_version}"', cargo, count=1)
+    cargo, count = re.subn(r'(?m)^(version = ")[^"\r\n]+("\r?)$',
+                          lambda m: m[1] + app_version + m[2], cargo, count=1)
     if count != 1: raise ValueError('desktop version field missing')
     lock = read('apps/client/src-tauri/Cargo.lock').decode()
-    lock, count = re.subn(r'(\[\[package\]\]\nname = "gchat-desktop"\nversion = ")[^"]+("\n)',
+    lock, count = re.subn(r'(\[\[package\]\]\r?\nname = "gchat-desktop"\r?\nversion = ")[^"\r\n]+("\r?\n)',
                           lambda m: m[1] + app_version + m[2], lock, count=1)
     if count != 1: raise ValueError('desktop lock version missing')
     files = {'apps/client/src-tauri/tauri.conf.json': canonical(config), 'release/publication.json': canonical(publication),

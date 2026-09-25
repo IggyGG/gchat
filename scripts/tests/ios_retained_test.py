@@ -332,7 +332,7 @@ class OriginalSimulatorLifecycleTests(unittest.TestCase):
         (self.root / 'xctest.log').write_bytes(b'modified')
         with self.assertRaisesRegex(ValueError, 'hash mismatch'):
             self.validate()
-        outside = {'path': str(self.root / '../outside'), 'sha256': '0' * 64, 'size': 0}
+        outside = {'path': (self.root / '../outside').as_posix(), 'sha256': '0' * 64, 'size': 0}
         with self.assertRaisesRegex(ValueError, 'unsafe lifecycle'):
             retained.lifecycle_file(outside, self.root)
 

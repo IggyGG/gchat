@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import closing
 import datetime,hashlib,os,shutil,sqlite3,subprocess,sys,tempfile,unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -14,7 +15,7 @@ class MaintenanceTests(unittest.TestCase):
                 jobs=root/'jobs';jobs.mkdir();evidence=jobs/'receipt';evidence.write_text('keep')
                 maintain(root,ledger,{})
                 backups=list((root/'backups').glob('*.sqlite'));self.assertEqual(len(backups),1)
-                with sqlite3.connect(backups[0]) as copy:self.assertEqual(copy.execute('PRAGMA integrity_check').fetchone()[0],'ok')
+                with closing(sqlite3.connect(backups[0])) as copy:self.assertEqual(copy.execute('PRAGMA integrity_check').fetchone()[0],'ok')
                 maintain(root,ledger,{})
                 self.assertEqual(len(list((root/'backups').glob('*.sqlite'))),1);self.assertEqual(evidence.read_text(),'keep')
             finally:ledger.close()
