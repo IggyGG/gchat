@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "scope": "CPU optimization deployment and bounded release checks",
+  "source_pair": {
+    "gchat": "ecd7af57a4d95df803004639d9560c98a6082d89",
+    "gcoms": "547dd4c770f356c357d08429d05ed5b98478dbba"
+  },
+  "release_id": "cae4709d0ed40b9e6f33774509ac0ebb1cdb1b10e7705bacef79a0250cebe446",
+  "linux": {
+    "version": "0.1.13",
+    "package_sha256": "ad658d111bb9ad8c25f709e013699f95d7d532066cfa27a422db755bd62139f5",
+    "executable_sha256": "ebc5b3d6f720875002ca8dce1a56f96972292ec4ec2821d5078cd30f0bea463e",
+    "signed_apt_publication_verified": true,
+    "local_install_verified": true,
+    "running_profiles_restarted": false
+  },
+  "cpu": {
+    "controlled_benchmark_sha256": "df85beafba4af29a28a5d303de597ed55a8fbe0ca5cb8c1bec5145596baecfbd",
+    "before_percent_one_core": 9.933092,
+    "after_percent_one_core": 0.74999,
+    "reduction_percent": 92.45,
+    "relay_observation_seconds": 30,
+    "relay_observed_percent_one_core": [
+      0.9,
+      0.6,
+      0.6667,
+      0.4333,
+      0.3667,
+      0.3333,
+      0.5667,
+      0.4667
+    ],
+    "relay_observation_is_not_capacity_benchmark": true,
+    "legacy_fleet_host_activation": "updated launch configuration; existing unlocked old process retained until next start"
+  },
+  "bounded_application": {
+    "authenticated_chat_acks": 4,
+    "file_bytes": 16777216,
+    "completion_seconds": 158.27546474337578,
+    "whole_seconds": 272.97048285230994,
+    "interrupted_resume_reopen_hash": true,
+    "packaged_upgrade_rollback_upgrade": true,
+    "all_eight_deployed_relays_verified": true
+  },
+  "publication_tool_repairs": {
+    "duplicate_artifact_references": "d7ddae50cbb5b16eee734c60a50b658d54b19929",
+    "play_display_name": "d9499d7c6d6c1eb45d883ca07f2d41c43184fc82",
+    "python_checks": {
+      "total": 72,
+      "skipped_native_only": 4,
+      "failed": 0
+    }
+  },
+  "limits": [
+    "Traffic-analysis privacy is unqualified.",
+    "1 GiB qualification remains separate and incomplete.",
+    "No new Mac/Windows/iOS production availability is claimed.",
+    "Android 1028 is in review, not claimed available."
+  ],
+  "retained_receipts": {
+    "publication-summary.json": "26806ad13272851160ad3a409c9ac9d1428da351521f8ae98494fc33ddd97192",
+    "linux-publication-receipt.json": "b4cec2b7b4700cd9ac1d59b8943ba2b09c4858c6c945b36b4cfd30382dfd565b",
+    "android-review-receipt.json": "9a14df68d2e450e38286dedd66eb8037fec02ef906df0e954da69921a733dfce",
+    "relay-cpu-observation.json": "d1b49635d51d32c470669129cd095665064a1d0cd2e400d70da60c872b01851b",
+    "publisher-store-regression.log": "97354f33deb042e968c4bde5d460f9f56bee7812dcb3ce5a457e9bb602d95155",
+    "local-cpu-before-package.json": "273a9f82aea2bb49e8456f3d46c3a6e86c6d1b017a77724c4bf4552cfb959d04",
+    "fleet-host-next-start.json": "c1177473efc5c4115e952badd1f81bdc6f07e3d20a0fd5263f1e625935a90104",
+    "retained-live-manifest.json": "1f9c079c457cab8063e02a03c549c8ae5dd5d853573401e8e364ce6058a8b591"
+  }
+}

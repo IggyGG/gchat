@@ -1,3 +1,14 @@
+## CPU optimization delivery (2026-09-27)
+
+Signed Linux 0.1.13 is published through the update/APT feeds and installed locally.
+Four authenticated message acknowledgments, the 16 MiB interrupted/resumed/reopened
+file hash and packaged upgrade/rollback checks passed against all eight upgraded
+relays. The controlled benchmark measured 92.45% less idle presentation CPU; a
+separate 30-second relay observation measured 0.33–0.90% of one core. Running
+profiles were preserved; the old fleet host picks up the packaged executable at
+its next start. [Exact scope and bindings](docs/evidence/idle-cpu-20260925/deployment-20260927.json).
+Android 1028 is in review. Other platforms and large-file/privacy claims remain separate.
+
 ## Play release display name (2026-09-27)
 
 R07: retain the full source identity in the submission journal, but use a bounded

@@ -31,6 +31,9 @@ persistence, delivery acknowledgments and the cover schedule are unchanged.
 The [controlled idle benchmark](docs/evidence/idle-cpu-20260925/summary.json)
 measured 92.45% less CPU with four views and a large retained operation history;
 this is not an installed-client or relay-load measurement.
+Signed Linux 0.1.13 now carries this fix through the update/APT feeds.
+Existing unlocked instances retain their running executable until their next start;
+see the [deployment receipt](docs/evidence/idle-cpu-20260925/deployment-20260927.json).
 
 For paired-source development, validate against the matching GComs checkout with
 its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public
