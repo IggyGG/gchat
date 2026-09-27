@@ -1,3 +1,11 @@
+## Linux publisher duplicate references (2026-09-27)
+
+R07: the verified Linux receipt can name one file as both installer and updater.
+Deduplicate identical paths after checking every evidence hash; reject distinct
+Debian candidates and ambiguous signatures. Validate the complete selection before
+changing either public feed. Five focused regressions pass; the original failed
+production publication remains retained. Application binaries are unchanged.
+
 ## Windows update-owner fixture (2026-09-27)
 
 The native Windows gate correctly rejected the update test's temporary directory:

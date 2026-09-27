@@ -17,14 +17,11 @@ def job(state, manifest, platform, stage):
     return state/'jobs'/key
 
 
-def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--config',type=Path,required=True);a=p.parse_args()
-    config=json.loads(a.config.read_text());manifest=validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
-    platform=os.environ['GCHAT_RELEASE_TARGET'];output=Path(os.environ['GCHAT_RELEASE_RECEIPT'])
-    verified=job(a.state,manifest,platform,'verify')/'receipt.json'
-    compatibility=job(a.state,manifest,platform,'compatibility')/'receipt.json'
-    proof,_=read_receipt(verified,manifest,platform,'verify');read_receipt(compatibility,manifest,platform,'compatibility')
-    paths=[verified.parent/i['path'] for i in proof['evidence']]
+def select_artifacts(paths, platform):
+    # A file may be referenced as both an installer and an updater artifact.
+    # read_receipt verifies every reference before selection; deduplicate paths,
+    # never distinct installer candidates or conflicting signature files.
+    paths = list(dict.fromkeys(paths))
     endings={'linux-x86_64':'.AppImage','macos-aarch64':'.app.tar.gz','macos-x86_64':'.app.tar.gz','windows-x86_64':'.exe'}
     payloads=[x for x in paths if x.name.endswith(endings[platform])]
     # Installers and updater payloads can be the same NSIS bytes; deduplicate by hash.
@@ -35,15 +32,35 @@ def main():
     original=payload.name[65:]
     signatures=[x for x in paths if x.name[65:]==original+'.sig']
     if len(signatures)!=1:raise ValueError('verified updater signature missing or ambiguous')
+    updater_signature = signatures[0]
+    package = package_signature = None
+    if platform == 'linux-x86_64':
+        packages = [x for x in paths if x.name.endswith('.deb')]
+        if len(packages) != 1:
+            raise ValueError('verified Debian package missing or ambiguous')
+        package = packages[0]
+        signatures = [x for x in paths if x.name[65:] == package.name[65:] + '.asc']
+        if len(signatures) != 1:
+            raise ValueError('verified Debian signature missing or ambiguous')
+        package_signature = signatures[0]
+    return payload, updater_signature, package, package_signature
+
+
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--config',type=Path,required=True);a=p.parse_args()
+    config=json.loads(a.config.read_text());manifest=validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
+    platform=os.environ['GCHAT_RELEASE_TARGET'];output=Path(os.environ['GCHAT_RELEASE_RECEIPT'])
+    verified=job(a.state,manifest,platform,'verify')/'receipt.json'
+    compatibility=job(a.state,manifest,platform,'compatibility')/'receipt.json'
+    proof,_=read_receipt(verified,manifest,platform,'verify');read_receipt(compatibility,manifest,platform,'compatibility')
+    paths=[verified.parent/i['path'] for i in proof['evidence']]
+    payload, signature, package, package_signature = select_artifacts(paths, platform)
     root=Path(config['public_root'])
-    feed=publish(manifest,platform,payload,signatures[0].read_text(),root,config['public_url'],
+    feed=publish(manifest,platform,payload,signature.read_text(),root,config['public_url'],
                  manifest['policy']['updater_public_key'],config['signer'],verified,compatibility)
-    if platform=='linux-x86_64':
-        packages=[x for x in paths if x.name.endswith('.deb')]
-        if len(packages)!=1:raise ValueError('verified Debian package missing')
-        signatures=[x for x in paths if x.name[65:]==packages[0].name[65:]+'.asc']
-        if len(signatures)!=1:raise ValueError('verified Debian signature missing')
-        publish_apt(manifest,packages[0],signatures[0],verified,compatibility,root/'apt',config['gpg_key'])
+    if package is not None:
+        publish_apt(manifest,package,package_signature,verified,compatibility,root/'apt',config['gpg_key'])
     # Availability requires the actual public URL to serve the candidate pointer.
     binding=json.loads(feed['binding']);os_name,arch=binding['target'].split('-',1)
     url=config['public_url'].rstrip('/')+'/desktop/'+os_name+'/'+arch+'/latest.json'

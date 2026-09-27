@@ -1,3 +1,10 @@
+## Linux publication reference regression
+
+Run `python3 -m unittest discover -s scripts/tests -p release_publish_test.py`.
+Repeated references to the same verified file must publish once; conflicting
+hashes, distinct Debian packages and missing/ambiguous signatures must fail.
+Missing package evidence must fail before changing the updater pointer.
+
 ## Windows update-owner fixture
 
 Run `maintenance_owner_lease_and_prepared_exit_are_enforced` with a directory

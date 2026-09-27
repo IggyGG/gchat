@@ -175,3 +175,7 @@ including on Windows. Interrupted copies leave the previous index intact.
 
 The macOS release worker allows 120 seconds per browser-download socket;
 this setup budget does not change application test deadlines.
+
+Release publication accepts repeated references to the same verified artifact,
+while checking every evidence hash and rejecting ambiguous installer candidates.
+Both updater and package inputs are selected before public pointers change.
