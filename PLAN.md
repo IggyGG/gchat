@@ -1,3 +1,14 @@
+## Retained Windows network gate (2026-09-28)
+
+R06/R07/R12: run the already-signed Windows installer through the existing native
+installation/signature/cleanup checks, followed by a portable service-IPC journey.
+Use fresh fixture profiles and an explicit protected network invitation. Require
+actual recipient ACKs, a 16 MiB abrupt receiver stop, retained verified pieces,
+the original 180-second completion/600-second total budgets, and matching export
+hashes after reopening. Keep original installer/native receipt bindings; do not
+compile or sign another application just to run this gate. This is not GUI,
+Windows 11, steady-state latency, rollback, or publication evidence by itself.
+
 ## Windows updater signature environment (2026-09-27)
 
 Supply the protected Tauri updater key to the actual NSIS packaging step. The

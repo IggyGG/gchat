@@ -338,3 +338,16 @@ next. R04's 30-second join and R03's 10-second reconnect targets are nonblocking
 authentication, delivery, persistence, signatures and rollback remain mandatory.
 Publish the limitation on the downloads page. Existing frozen candidate checks
 and recorded failures retain their exact source and outcome bindings.
+## Retained Windows network qualification (2026-09-28)
+
+- `scripts.tests.native_network_test`: reject stage/global deadline overruns,
+  including a successful response arriving after its original budget.
+- `scripts.tests.windows_installer_test`: network failure, different executable
+  binding, or a surviving child must fail even when offline lifecycle passed.
+- The portable runner must pass against the retained signed Linux executable
+  before its native Windows dispatch. Bind the final helper bytes, build manifest,
+  native receipt, executable and source pair separately from its prototype run.
+- Native Windows uses immutable artifact 10942212091 from successful run
+  36345150554. Existing offline installer checks remain mandatory. Upload only
+  reports/logs; exclude disposable profile directories and remove the temporary
+  invitation. A native result is required before claiming Windows network success.

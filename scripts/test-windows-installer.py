@@ -324,6 +324,28 @@ def run(args):
         require(code == 0 and service.get("passed") is True and children_stopped and service.get("temporary_profile_removed") is True,
                 "installed application service lifecycle failed")
         require(service.get("inputs") == report["application_inputs"], "service tested different installed inputs")
+        invitation = getattr(args, "network_invitation", None)
+        if invitation is not None:
+            report["production_network_requested"] = True
+            report["scope"] = "windows_server_2022_current_user_nsis_service_and_network"
+            network_script = ROOT / "scripts/test-native-network.py"
+            report["network_harness"] = smoke.reference(network_script)
+            network_output = output / "network"
+            children_stopped = False
+            code, _ = commands.run("network", [sys.executable, str(network_script),
+                "--binary", str(binary), "--build-manifest", str(manifest),
+                "--native-receipt", str(native), "--invitation", str(invitation.resolve(strict=True)),
+                "--output", str(network_output)], timeout=660, allow_failure=True)
+            network_path = network_output / "report.json"
+            require(network_path.is_file(), "installed network journey produced no receipt")
+            network = read_json(network_path)
+            report["network_receipt"] = smoke.reference(network_path)
+            children_stopped = network.get("children_stopped") is True
+            require(code == 0 and network.get("passed") is True and children_stopped
+                    and network.get("temporary_profile_removed") is True,
+                    "installed network delivery/recovery failed")
+            require(network.get("inputs") == report["application_inputs"],
+                    "network journey tested different installed inputs")
         for name, path in (("installer", installer), ("build_manifest", manifest), ("native_receipt", native), ("publication", publication_path)):
             require(smoke.reference(path) == report["inputs"][name], f"{name} changed during installer smoke")
         report["inputs_unchanged"] = True
@@ -355,6 +377,8 @@ def main():
     parser.add_argument("--publication", type=Path, default=ROOT / "release/publication.json")
     parser.add_argument("--output", type=Path, required=True, help="new retained evidence directory")
     parser.add_argument("--temp-parent", type=Path, help="existing parent for owned disposable installation")
+    parser.add_argument("--network-invitation", type=Path,
+                        help="explicit private fixture invitation for the additional 16 MiB network journey")
     parser.add_argument("--timeout", type=float, default=60)
     args = parser.parse_args()
     require(0 < args.timeout <= 300, "timeout must be between 0 and 300 seconds")

@@ -138,14 +138,14 @@ class WorkflowTests(Fixture):
                     (installation / "gchat-desktop.exe").write_bytes(b"wrong executable" if mode == "wrong_binary" else b"fixture executable")
                     (installation / "uninstall.exe").write_bytes(b"fixture uninstaller")
                     state.update(registered=True, metadata=True)
-                if label == "service":
+                if label in ("service", "network"):
                     output = Path(command[command.index("--output") + 1])
                     output.mkdir()
                     binary = Path(command[command.index("--binary") + 1])
                     inputs = windows.smoke.validate_artifacts(binary, test.manifest, test.native)
-                    if mode == "different_receipt":
+                    if mode == "different_receipt" or (label == "network" and mode == "network_wrong_input"):
                         inputs["binary"]["sha256"] = "0" * 64
-                    (output / "report.json").write_text(json.dumps({"passed": mode != "service_failed", "children_stopped": mode != "live_child",
+                    (output / "report.json").write_text(json.dumps({"passed": mode != "service_failed" and not (label == "network" and mode == "network_failed"), "children_stopped": mode != "live_child" and not (label == "network" and mode == "network_live_child"),
                                                                    "temporary_profile_removed": True, "inputs": inputs}))
                     return (1 if mode == "service_failed" else 0), b""
                 if label == "uninstall":
@@ -168,6 +168,9 @@ class WorkflowTests(Fixture):
         environment = {"GCHAT_ISOLATED_SIGNING_WORKER": "1", "LOCALAPPDATA": str(self.root / "local"), "APPDATA": str(self.root / "roaming")}
         args = argparse.Namespace(build_manifest=self.manifest, native_receipt=self.native, publication=self.publication,
                                   installer=None, output=self.root / "output", temp_parent=self.root, timeout=1)
+        if mode.startswith("network_"):
+            args.network_invitation = self.root / "invitation.private"
+            args.network_invitation.write_text("disposable fixture invitation")
         with patch.object(windows, "server_identity", return_value={"system": "Windows", "CurrentBuildNumber": "20348"}), \
              patch.object(windows.smoke, "native_target", return_value="windows-x86_64"), \
              patch.object(windows.smoke, "private_directory"), patch.object(windows, "Commands", FakeCommands), \
@@ -245,6 +248,30 @@ class WorkflowTests(Fixture):
         self.assertEqual(code, 1)
         self.assertTrue(report["cleanup"]["passed"])
         self.assertFalse(report["persistent_certificate_stores_unchanged"])
+
+    def test_network_opt_in_binds_same_installed_binary_and_cleans_up(self):
+        code, report = self.execute("network_normal")
+        self.assertEqual(code, 0, report.get("error"))
+        self.assertTrue(report["production_network_requested"])
+        self.assertIn("network_receipt", report)
+        self.assertTrue(report["cleanup"]["passed"])
+
+    def test_network_failure_cannot_be_hidden_by_offline_success(self):
+        code, report = self.execute("network_failed")
+        self.assertEqual(code, 1)
+        self.assertIn("network delivery/recovery failed", report["error"])
+        self.assertTrue(report["cleanup"]["passed"])
+
+    def test_network_wrong_source_receipt_fails(self):
+        code, report = self.execute("network_wrong_input")
+        self.assertEqual(code, 1)
+        self.assertIn("different installed inputs", report["error"])
+
+    def test_network_live_child_prevents_uninstall(self):
+        code, report = self.execute("network_live_child")
+        self.assertEqual(code, 1)
+        self.assertFalse(report["cleanup"]["passed"])
+        self.assertNotIn("uninstall", [row["name"] for row in report["commands"]])
 
 
 if __name__ == "__main__":

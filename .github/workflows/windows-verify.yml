@@ -6,10 +6,17 @@ on:
       request_id:
         required: true
         type: string
+      network_candidate:
+        description: Optional network qualification of a retained installer; no rebuild
+        required: false
+        type: choice
+        default: none
+        options: [none, windows18]
 permissions:
   contents: read
 jobs:
   windows:
+    if: inputs.network_candidate != 'windows18'
     runs-on: windows-2022
     timeout-minutes: 20
     defaults:
@@ -60,5 +67,47 @@ jobs:
         with:
           name: windows-x86_64
           path: verified/**
+          include-hidden-files: true
+          if-no-files-found: error
+  network:
+    if: inputs.network_candidate == 'windows18'
+    environment: release-signing
+    runs-on: windows-2022
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    defaults:
+      run:
+        shell: powershell
+    env:
+      GCHAT_ISOLATED_SIGNING_WORKER: '1'
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: controller
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Verify gate failure and cleanup controls
+        working-directory: controller
+        run: python -m unittest scripts.tests.native_network_test scripts.tests.windows_installer_test -v
+      - name: Prepare isolated WebView prerequisites
+        run: python controller/scripts/windows-build.py --prepare-webview --worker-evidence verification-worker
+      - name: Install the retained artifact and exercise network recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GCHAT_NETWORK_INVITATION: ${{ secrets.GCHAT_NETWORK_INVITATION }}
+        run: python controller/scripts/windows-network.py --output network-verification
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: windows18-network
+          path: network-verification/evidence/**
           include-hidden-files: true
           if-no-files-found: error
