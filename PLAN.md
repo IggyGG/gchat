@@ -1,3 +1,12 @@
+## Windows update-owner fixture (2026-09-27)
+
+The native Windows gate correctly rejected the update test's temporary directory:
+it set Unix permissions only. Use the existing cross-platform private-directory
+helper before opening the fixture. Runtime ownership checks and updater behavior
+are unchanged. The focused cluster check passed (one test); formatting and source
+audits passed. [Evidence](docs/evidence/windows-update-fixture-20260927/summary.json)
+retains the native Windows failure. The corrected native Windows rerun remains open.
+
 ## Release blocker follow-up (2026-09-27)
 
 Windows native CI exposed an open temporary archive handle in SDK publication.

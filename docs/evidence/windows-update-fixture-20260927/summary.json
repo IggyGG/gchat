@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "scope": "portable fixture focused Linux run; Windows native still required",
+  "source_sha256": "5392d25a51d33e5f4bb9cd8a31c74bcdec8b5f4ec50df6297359e02ed3476f29",
+  "log_sha256": "edae5aa0b0ab2b7e90e2218eb733dfc51fdb024ca645df7c8d07db985653f843",
+  "command": [
+    "cargo",
+    "test",
+    "--config",
+    "/work/release-repro-20260927/paired.toml",
+    "--offline",
+    "-p",
+    "gchat-core",
+    "--all-features",
+    "--lib",
+    "chat_service::host_updates::tests::maintenance_owner_lease_and_prepared_exit_are_enforced",
+    "--",
+    "--exact",
+    "--test-threads=1"
+  ],
+  "original_native_failure": {
+    "run": 36312645012,
+    "artifact_id": 10929628199,
+    "artifact_sha256": "a39e50183e30ec51d09722d300e96dfa550da0d239019184ef386a1bab8a0a3d",
+    "reason": "fixture only secured its directory on Unix; Windows owner check correctly rejected it"
+  },
+  "runtime_changed": false,
+  "codematch": "unreachable"
+}

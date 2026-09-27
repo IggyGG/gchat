@@ -1,3 +1,9 @@
+## Windows update-owner fixture
+
+Run `maintenance_owner_lease_and_prepared_exit_are_enforced` with a directory
+secured by the production cross-platform helper. Keep Windows ACL and Unix mode
+checks enabled; do not skip the owner-lease and prepared-exit assertions.
+
 ## Portable SDK archive publication
 
 Run `python3 -m unittest discover -s scripts/tests -p release_sdk_test.py`.

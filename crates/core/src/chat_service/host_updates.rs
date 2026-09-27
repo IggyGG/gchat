@@ -177,12 +177,7 @@ mod tests {
     #[tokio::test]
     async fn maintenance_owner_lease_and_prepared_exit_are_enforced() {
         let directory = tempfile::tempdir().unwrap();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))
-                .unwrap();
-        }
+        crate::private_fs::make_private(directory.path(), true).unwrap();
         let mut config = InstanceConfig::from_home(Some(directory.path())).unwrap();
         config.protocol_backend = gcoms::Backend::Embedded;
         let host = InstanceHost::new(config).unwrap();
