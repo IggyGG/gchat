@@ -1,0 +1,39 @@
+{
+  "scope": "GChat test/docs only. Wait for authenticated bootstrap metadata ACK before ownership transfer; production guard and protocol unchanged.",
+  "gchat_base": "e969966fbdd1b4c61a279c78a4db823b63f27e72",
+  "gcoms_tested": "9e9d2e8dd688f262ea5518c263a53db5290105ab",
+  "source_sha256": {
+    "crates/core/tests/chat_service.rs": "8913e6069324f1bf76491cd4ab3f7c66fece2a53a0df5573205eec9b3ab411cf"
+  },
+  "failure": {
+    "run": 36345144429,
+    "target": "macos-aarch64",
+    "test": "channel_owner_can_transfer_and_leave_without_replacing_channel_identity",
+    "error": "Wait for pending channel messages before transferring ownership",
+    "archive_sha256": "52cf853e23e272be6b7fe915f6d8d3539ee84431144491253f4e8d01d02d7f62"
+  },
+  "validation": {
+    "target": "aarch64-apple-darwin",
+    "focused_tests": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 63.37
+    },
+    "strict_core_all_target_all_feature_clippy": true,
+    "fmt": true,
+    "frozen_source_paths": 1353,
+    "source_unchanged": true,
+    "evidence_archive_sha256": "b305ab5680a277821f2127f50bc823e566168cb43d73e94f6b8360769d9741ae",
+    "paired_registry_overrides": "All resolved GComs packages verified against exact companion source; disposable derived Cargo lock retained.",
+    "later_changes": "TESTPLAN and this receipt only; no full-native receipt relabelled."
+  },
+  "retained_attempt": "Initial Mac shell Python lacked tomllib, before any extraction/test; supported Homebrew Python completed checks.",
+  "codematch": "unreachable",
+  "not_claimed": [
+    "new full native pair qualification",
+    "installed artifact qualification",
+    "Android recovery",
+    "fleet or privacy qualification"
+  ]
+}

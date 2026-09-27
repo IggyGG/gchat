@@ -1,3 +1,16 @@
+## Ownership-transfer fixture admission
+
+Subscribe to the owner's events before admitting the successor, then require the
+authenticated bootstrap-metadata delivery event before requesting transfer. A
+successful receiver join does not establish that its ACK has reached the owner.
+Keep the production pending-message guard, event-lag failure, channel identity,
+successor admission, authenticated leave/close and reopen assertions unchanged.
+
+Retained-profile diagnostics must follow one checkpoint lineage. After a copy has
+transmitted, do not restart an older snapshot of that identity: replay and sender
+ratchet reuse can invalidate the result. Keep emulator and copied native instances
+mutually exclusive, and label cross-platform diagnostics separately from app tests.
+
 ## Windows updater signing scope
 
 Verify both updater-key environment entries belong to the NSIS build step,

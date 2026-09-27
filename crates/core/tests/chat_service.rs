@@ -41,6 +41,9 @@ async fn channel_owner_can_transfer_and_leave_without_replacing_channel_identity
     let id = owner.list_channels().await.unwrap()[0].id;
     let join = next.prepare_channel_join("successor").await.unwrap();
     let package = next.channel_key_package(join).await.unwrap();
+    // Admission sends tracked bootstrap metadata. Joining the receiver does
+    // not mean that its authenticated ACK has reached the owner yet.
+    let mut owner_events = owner.subscribe_events();
     let welcome = owner
         .admit_channel("handoff", &package, "successor")
         .await
@@ -48,6 +51,27 @@ async fn channel_owner_can_transfer_and_leave_without_replacing_channel_identity
     next.join_channel(join, "handoff", ChannelVisibility::Private, &welcome)
         .await
         .unwrap();
+    tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            match owner_events
+                .recv()
+                .await
+                .expect("owner event stream stays open")
+            {
+                gcoms::sdk::ClientEvent::ChannelDelivered { channel, .. }
+                    if channel == "handoff" =>
+                {
+                    break
+                }
+                gcoms::sdk::ClientEvent::EventsLagged { .. } => {
+                    panic!("lost admission ACK observation")
+                }
+                _ => {}
+            }
+        }
+    })
+    .await
+    .expect("bootstrap metadata is acknowledged before ownership transfer");
     let next_service = make_service(b.path(), br.clone());
     unlock(&next_service, true).await;
     assert!(matches!(
