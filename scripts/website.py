@@ -128,6 +128,10 @@ def validate_platforms(data):
                 raise ValueError('platform artifact checksum missing')
     if used != set(releases) or not {('linux-x86_64', 'deb'), ('linux-x86_64', 'appimage')} <= seen:
         raise ValueError('preserve complete Linux downloads and reference each release')
+    managed = data.get('managed_downloads', {})
+    allowed = {'linux-x86_64': 'https://gchat.boo/updates/downloads/linux-x86_64/latest.html'}
+    if not isinstance(managed, dict) or any(key not in allowed or value != allowed[key] for key, value in managed.items()):
+        raise ValueError('unexpected managed download endpoint')
     return data
 
 
@@ -225,7 +229,13 @@ def downloads(data):
     escape = html.escape
     if data.get('schema') == 2:
         links = '<p>Production downloads · versions qualified independently by platform.</p><ul>'
+        managed = data.get('managed_downloads', {})
+        if 'linux-x86_64' in managed:
+            links += (f'<li><a href="{escape(managed["linux-x86_64"])}">Download Linux · latest qualified release</a>'
+                      ' · Ubuntu / Debian and AppImage · signatures and build details included</li>')
         for a in data['artifacts']:
+            if a['target'] in managed:
+                continue
             release = data['releases'][a['release']]
             links += (f'<li><a href="{escape(a["url"])}">Download {TARGETS[(a["target"], a["format"])]}</a>'
                       f' · {escape(release["version"])} · <a href="{escape(a["signature_url"])}">Signature</a>'

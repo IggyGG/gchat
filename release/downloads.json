@@ -190,5 +190,8 @@
       "sha256": "832d2db07e44e349a038428c29a48e8a97c37b8e25463ab86d01f29b62515cad",
       "signature_sha256": "e3fd0a9e9739bd68ba239c63649b3cb2bb2c9f4a5dbc9780df92e9367134fb3c"
     }
-  ]
+  ],
+  "managed_downloads": {
+    "linux-x86_64": "https://gchat.boo/updates/downloads/linux-x86_64/latest.html"
+  }
 }

@@ -2,14 +2,88 @@
 """Publish qualified desktop updates and observe their exact public bytes."""
 import argparse
 import hashlib
+import html
 import json
 import os
+import tempfile
 from pathlib import Path
 import urllib.request
 from release_pair import canonical, validate
 from release_coordinator import atomic_json, read_receipt
 from release_feed import publish, digest
 from release_apt import build as publish_apt
+
+
+def write_public(path, data, immutable=False):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if immutable and path.exists():
+        if path.read_bytes() != data:
+            raise ValueError('immutable download details changed')
+        return
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            stream.write(data); stream.flush(); os.fsync(stream.fileno())
+            temporary.chmod(0o644); os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def linux_download_page(manifest, feed, apt, signature, root, url):
+    """Expose the already qualified publication to humans without a browser API.
+
+    The caller has verified source receipts, signatures and public updater bytes.
+    Hold the feed lock so replaying an older publication cannot regress this page.
+    """
+    import fcntl
+    validate(manifest)
+    binding = json.loads(feed['binding'])
+    release = manifest['release_id']; number = manifest['versions']['linux-x86_64']
+    if (binding['release_id'], binding['version'], binding['target'], feed['version']) != (
+            release, number, 'linux-x86_64', number):
+        raise ValueError('download page differs from qualified release')
+    package_path = f'pool/{release}/g-chat_{number}_amd64.deb'
+    if apt['package'] != package_path or digest(root / 'apt' / package_path) != apt['sha256']:
+        raise ValueError('download package differs from published APT artifact')
+    url = url.rstrip('/')
+    # Same origin and immutable path as the signed updater binding.
+    prefix = f'{url}/artifacts/{release}/{binding["sha256"]}'
+    if not feed['url'].startswith(prefix) or '/' in feed['url'][len(prefix):] or not feed['url'].endswith('.AppImage'):
+        raise ValueError('unexpected public updater URL')
+    base = f'{url}/downloads/linux-x86_64/{release}'
+    escape = html.escape
+    details = {'schema': 1, 'release_id': release, 'sources': manifest['sources'],
+               'version': number, 'updater': feed,
+               'debian': {'url': f'{url}/apt/{package_path}', 'sha256': apt['sha256'],
+                          'signature_url': base + '/package.asc'}}
+    page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>GChat {escape(number)} for Linux</title>
+<style>body{{font:1rem/1.6 system-ui,sans-serif;max-width:44rem;margin:3rem auto;padding:0 1rem;background:#191d21;color:#e7edf3}}a{{color:#9ed1ff}}code{{overflow-wrap:anywhere}}li{{margin:1rem 0}}</style></head><body>
+<a href="https://gchat.boo/#downloads">← GChat downloads</a>
+<h1>GChat {escape(number)} for Linux</h1><p>64-bit Intel / AMD. Signed production download.</p>
+<ul><li><a href="{escape(details['debian']['url'])}">Download Ubuntu / Debian package</a><br>
+Open with your package installer. <a href="{escape(base)}/package.asc">GPG signature</a><br>
+SHA-256: <code>{escape(apt['sha256'])}</code></li>
+<li><a href="{escape(feed['url'])}">Download AppImage</a><br>Allow execution, then launch it.<br>
+SHA-256: <code>{escape(binding['sha256'])}</code></li></ul>
+<p>{escape(feed['notes'])}</p>
+<p><a href="{escape(base)}/release.json">Exact source, hashes and signed updater details</a> ·
+<a href="https://github.com/IggyGG/gchat/blob/main/docs/INSTALL.md">Install and verify signatures</a></p>
+<p>Existing APT installations receive the same qualified package through their configured repository.
+Your open instance keeps running until its next normal start.</p></body></html>'''.encode()
+    destination = root / 'downloads/linux-x86_64'
+    with (root / '.publish.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if json.loads((root / 'desktop/linux/x86_64/latest.json').read_text()) != feed:
+            raise ValueError('a different release is now public; do not regress downloads')
+        write_public(destination / release / 'release.json', canonical(details), immutable=True)
+        write_public(destination / release / 'package.asc', Path(signature).read_bytes(), immutable=True)
+        write_public(destination / release / 'index.html', page, immutable=True)
+        latest = destination / 'latest.html'
+        write_public(latest, page)
+    return latest
 
 
 def job(state, manifest, platform, stage):
@@ -59,8 +133,9 @@ def main():
     root=Path(config['public_root'])
     feed=publish(manifest,platform,payload,signature.read_text(),root,config['public_url'],
                  manifest['policy']['updater_public_key'],config['signer'],verified,compatibility)
+    apt = None
     if package is not None:
-        publish_apt(manifest,package,package_signature,verified,compatibility,root/'apt',config['gpg_key'])
+        apt = publish_apt(manifest,package,package_signature,verified,compatibility,root/'apt',config['gpg_key'])
     # Availability requires the actual public URL to serve the candidate pointer.
     binding=json.loads(feed['binding']);os_name,arch=binding['target'].split('-',1)
     url=config['public_url'].rstrip('/')+'/desktop/'+os_name+'/'+arch+'/latest.json'
@@ -79,6 +154,8 @@ def main():
             observed.update(chunk)
     if size != binding['size'] or observed.hexdigest() != binding['sha256']:
         raise ValueError('public artifact bytes differ from signed binding')
+    if apt is not None:
+        linux_download_page(manifest, public, apt, package_signature, root, config['public_url'])
     result=output.parent/'public-feed.json' ;atomic_json(result,public)
     atomic_json(output,{'schema':1,'release_id':manifest['release_id'],'sources':manifest['sources'],
         'platform':platform,'stage':'publish','passed':True,'source_unchanged':True,

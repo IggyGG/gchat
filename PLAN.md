@@ -1,3 +1,11 @@
+## Current Linux website downloads (2026-09-27)
+
+R07: point new Linux installs at the release coordinator’s qualified download page.
+Publish immutable package/source/signature details and atomically advance the human
+page only while its exact updater feed remains current. Existing archived release
+metadata and independently qualified platform downloads remain retained. Tests cover
+replayed releases, changed package/signature bytes and stale website links.
+
 ## CPU optimization delivery (2026-09-27)
 
 Signed Linux 0.1.13 is published through the update/APT feeds and installed locally.

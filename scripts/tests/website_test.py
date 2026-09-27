@@ -15,6 +15,22 @@ spec = importlib.util.spec_from_file_location('website', Path(__file__).resolve(
 site = importlib.util.module_from_spec(spec); spec.loader.exec_module(site)
 
 class WebsiteTests(unittest.TestCase):
+    def test_managed_linux_downloads_do_not_advertise_stale_version(self):
+        data = json.loads((site.ROOT / 'release/downloads.json').read_text())
+        endpoint = 'https://gchat.boo/updates/downloads/linux-x86_64/latest.html'
+        data['managed_downloads'] = {'linux-x86_64': endpoint}
+        page = site.downloads(site.validate(data))
+        self.assertIn(endpoint, page)
+        self.assertIn('latest qualified release', page)
+        for item in data['artifacts']:
+            if item['target'] == 'linux-x86_64':
+                self.assertNotIn(item['url'], page)
+            else:
+                self.assertIn(item['url'], page)
+        data['managed_downloads']['linux-x86_64'] = 'https://another.example/latest'
+        with self.assertRaisesRegex(ValueError, 'managed download'):
+            site.validate(data)
+
     def test_source_head_retry_preserves_method(self):
         url = 'https://github.com/IggyGG/gchat'
         with patch.object(site, 'urlopen', side_effect=[HTTPError(url, 504, 'fixture', {}, None), io.BytesIO()]) as fetch:

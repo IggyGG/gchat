@@ -1,3 +1,12 @@
+## Website follows qualified Linux publication
+
+Run `release_publish_test.py`, `website_test.py` and `website_deploy_test.py`.
+Require immutable package and signature links, exact source bindings, HTML escaping,
+idempotent publication and refusal of stale replay or changed package bytes. The
+website must link the managed Linux endpoint instead of an old static installer.
+After deployment, verify public page bytes, package hash and unchanged live updater
+identity. This changes release delivery only; no native build receipt is relabelled.
+
 ## Play release metadata
 
 `release_stores_test.py` requires a display name at most 50 characters, exact

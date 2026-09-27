@@ -1,5 +1,6 @@
 """Select immutable release artifacts before changing either public feed."""
 import hashlib
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -9,6 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import release_publish
 from release_coordinator import atomic_json, read_receipt
+from release_automation_test import candidate
 
 
 class PublishSelectionTests(unittest.TestCase):
@@ -73,6 +75,68 @@ class PublishSelectionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Debian signature'):
                 release_publish.main()
             publish.assert_not_called()
+
+
+class DownloadPageTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.manifest = candidate()
+        self.release = self.manifest['release_id']
+        number = self.manifest['versions']['linux-x86_64']
+        self.url = 'https://gchat.boo/updates'
+        self.apt = {'package': f'pool/{self.release}/g-chat_{number}_amd64.deb',
+                    'sha256': hashlib.sha256(b'package').hexdigest()}
+        package = self.root / 'apt' / self.apt['package']
+        package.parent.mkdir(parents=True); package.write_bytes(b'package')
+        self.signature = self.root / 'source.asc'; self.signature.write_bytes(b'signature')
+        self.feed = {'version': number, 'notes': 'Privacy <unqualified>',
+                     'url': f'{self.url}/artifacts/{self.release}/' + 'b' * 64 + '.AppImage',
+                     'binding': json.dumps({'release_id': self.release, 'version': number,
+                                            'target': 'linux-x86_64', 'sha256': 'b' * 64})}
+        self.pointer = self.root / 'desktop/linux/x86_64/latest.json'
+        self.pointer.parent.mkdir(parents=True)
+        atomic_json(self.pointer, self.feed)
+
+    def publish(self):
+        return release_publish.linux_download_page(self.manifest, self.feed, self.apt,
+                                                   self.signature, self.root, self.url)
+
+    def test_current_page_has_immutable_links_and_is_idempotent(self):
+        latest = self.publish(); before = latest.read_bytes()
+        self.assertEqual(self.publish().read_bytes(), before)
+        self.assertIn((self.url + '/apt/' + self.apt['package']).encode(), before)
+        self.assertIn(b'Privacy &lt;unqualified&gt;', before)
+        details = json.loads((latest.parent / self.release / 'release.json').read_text())
+        self.assertEqual(details['sources'], self.manifest['sources'])
+        self.assertEqual(details['updater'], self.feed)
+        self.assertEqual((latest.parent / self.release / 'package.asc').read_bytes(), b'signature')
+
+    def test_old_candidate_cannot_overwrite_current_page(self):
+        latest = self.publish(); original = latest.read_bytes()
+        atomic_json(self.pointer, {**self.feed, 'version': '999.0.0'})
+        with self.assertRaisesRegex(ValueError, 'do not regress'):
+            self.publish()
+        self.assertEqual(latest.read_bytes(), original)
+
+    def test_changed_package_or_immutable_details_fail_without_replacement(self):
+        latest = self.publish(); original = latest.read_bytes()
+        package = self.root / 'apt' / self.apt['package']; package.write_bytes(b'wrong')
+        with self.assertRaisesRegex(ValueError, 'APT artifact'):
+            self.publish()
+        package.write_bytes(b'package')
+        self.signature.write_bytes(b'changed')
+        with self.assertRaisesRegex(ValueError, 'immutable'):
+            self.publish()
+        self.assertEqual(latest.read_bytes(), original)
+
+    def test_wrong_release_or_public_location_rejected(self):
+        self.feed['url'] = 'https://another.example/download'
+        with self.assertRaisesRegex(ValueError, 'updater URL'):
+            self.publish()
+        self.feed['version'] = '999.0.0'
+        with self.assertRaisesRegex(ValueError, 'qualified release'):
+            self.publish()
 
 
 if __name__ == '__main__':

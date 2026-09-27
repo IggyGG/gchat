@@ -170,3 +170,14 @@ must also be enabled for the dependent website job to run.
 See Kubernetes' [ConfigMap documentation](https://kubernetes.io/docs/concepts/configuration/configmap/)
 and [RBAC reference](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 for immutable objects and the limits on restricting creation permissions.
+
+## Qualified Linux download page
+
+`release_publish.py` publishes `/updates/downloads/linux-x86_64/latest.html`
+after native/signing/compatibility gates and public updater verification. It links
+the immutable signed APT package and AppImage, and retains source/verification
+metadata beside the version-specific page. Feed locking prevents an older replay
+from replacing a newer download page. No browser API or JavaScript is needed.
+The website opts into this endpoint through `managed_downloads`; archived signed
+release metadata remains retained and other platform versions stay independent.
+The endpoint is served with `Cache-Control: no-store`.
