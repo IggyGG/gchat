@@ -1,3 +1,11 @@
+## Publisher host scope
+
+Download-page feed-lock tests run on the POSIX publication host alongside signed
+feed/APT tests. Native Windows retains all portable artifact selection and source
+receipt tests; it does not host the Linux publisher. Keep all four page tests
+mandatory in Linux CI. The retained Windows 0.1.18 failure was an unsupported
+`fcntl` import in those four server-side tests, before native Rust validation.
+
 ## Current versus archived website downloads
 
 Website tests require one Play link for both Android architectures, no archived

@@ -1,6 +1,7 @@
 """Select immutable release artifacts before changing either public feed."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -77,6 +78,9 @@ class PublishSelectionTests(unittest.TestCase):
             publish.assert_not_called()
 
 
+# The publication service runs on Linux, just like FeedTests and APT tests.
+# Native Windows still runs the portable artifact/receipt selection cases above.
+@unittest.skipUnless(os.name == "posix", "POSIX publication host required for feed-lock qualification")
 class DownloadPageTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
