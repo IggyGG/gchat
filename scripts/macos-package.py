@@ -6,6 +6,7 @@ identity for the original native application inputs. Packaging helper changes
 are recorded separately and never modify the qualified application checkout.
 """
 import argparse
+import base64
 import fnmatch
 import hashlib
 import importlib.util
@@ -41,6 +42,15 @@ def write_json(path, value):
 
 def reference(path):
     return {'sha256': digest(path), 'size': path.stat().st_size}
+
+
+def original_release(encoded, sources, version, target):
+    from release_pair import validate
+    require(len(encoded) <= 32768, 'original release input exceeds bound')
+    manifest = validate(json.loads(base64.b64decode(encoded, validate=True)))
+    require(manifest['sources'] == sources, 'original release sources differ from native evidence')
+    require(manifest['versions'].get(target) == version, 'original release version differs from application')
+    return manifest
 
 
 def gh_json(endpoint):
@@ -197,6 +207,15 @@ def prepare(args):
               'original_run': reference(output / 'original-run.json'),
               'original_artifact': reference(output / 'original-artifact.json'),
               'original_archive': reference(archive), 'prepared': True}
+    encoded = os.environ.get('GCHAT_RELEASE_MANIFEST_BASE64', '')
+    if encoded:
+        config = read_json(args.gchat.resolve() / 'apps/client/src-tauri/tauri.conf.json')
+        manifest = original_release(encoded, native['sources'], config['version'], args.target)
+        path = output / 'original-release.json'
+        write_json(path, manifest)
+        report['original_release'] = reference(path)
+        with Path(os.environ['GITHUB_ENV']).open('a') as stream:
+            stream.write('GCHAT_RELEASE_MANIFEST=' + str(path) + '\n')
     write_json(output / 'prepared.json', report)
     print('Verified original native reports and exact package sources; no native tests relabeled or rerun')
 
@@ -215,6 +234,10 @@ def load_prepared(args):
     expected = {name: value['commit'] for name, value in report['sources'].items()}
     require(verify_native(output / 'original-native', args.target, expected) == report['native'],
             'original native evidence changed after preparation')
+    if 'original_release' in report:
+        path = output / 'original-release.json'
+        require(reference(path) == report['original_release'] and
+                os.environ.get('GCHAT_RELEASE_MANIFEST') == str(path), 'original release binding changed')
     return output, report
 
 

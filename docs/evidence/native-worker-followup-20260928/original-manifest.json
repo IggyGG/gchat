@@ -1,0 +1,12 @@
+{
+  "scope": "original coordinator identity during retained Mac packaging",
+  "tests": 18,
+  "passed": true,
+  "log_sha256": "3e701337e0fc99f87c926f5ffd5c4db7a2f2a396c641b10a995db59d3742c2e4",
+  "sources": {
+    "scripts/macos-package.py": "f640115e8170387e0d108bc579d2de580ddded767005d69d7861c6d020d762d4",
+    "scripts/tests/macos_package_test.py": "914a16544aad7647b25117775533bb103f224112fa4d7880c4c395a546827678",
+    ".github/workflows/macos-package.yml": "dc934236b0733528655e8579cab681ac6c3943879d2ef68b74afff22ab1e21be"
+  },
+  "application_requalified": false
+}

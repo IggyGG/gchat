@@ -29,6 +29,10 @@ on:
       request_id:
         required: true
         type: string
+      release_manifest:
+        description: Optional original coordinator manifest; never the controller source identity
+        required: false
+        type: string
 permissions:
   contents: read
   actions: read
@@ -75,6 +79,7 @@ jobs:
           GCHAT_COMMIT: ${{ inputs.gchat_commit }}
           GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
           TARGET: ${{ inputs.target }}
+          GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
         run: >-
           python3 controller/scripts/macos-package.py prepare
           --gchat gchat --gcoms gcoms --target "$TARGET" --output retry-evidence
@@ -145,9 +150,9 @@ jobs:
         timeout-minutes: 2
         env:
           TARGET: ${{ inputs.target }}
-        run: >-
-          python3 controller/scripts/macos-package.py finish --gchat gchat --gcoms gcoms
-          --target "$TARGET" --output retry-evidence --signed signed
+        run: |
+          python3 controller/scripts/macos-package.py finish --gchat gchat --gcoms gcoms --target "$TARGET" --output retry-evidence --signed signed
+          python3 controller/scripts/release_attest.py --output signed --platform "$TARGET"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -157,6 +162,9 @@ jobs:
             signed/*.dmg
             signed/build/*/release/bundle/dmg/*.dmg
             signed/build.json
+            signed/release-binding.json
+            signed/updater-artifacts.json
+            signed/updater/**
             signed/provenance/**
             signed/application-smoke/**
             retry-evidence/**

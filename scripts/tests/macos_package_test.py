@@ -1,5 +1,6 @@
 """Package retries reuse exact native inputs, never a newer controller's identity."""
 import copy
+import base64
 import hashlib
 import importlib.util
 import io
@@ -21,6 +22,32 @@ sys.path.insert(0, str(SCRIPTS))
 spec = importlib.util.spec_from_file_location('macos_package', SCRIPTS / 'macos-package.py')
 package = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(package)
+
+
+class OriginalReleaseTest(unittest.TestCase):
+    def setUp(self):
+        from release_pair import canonical
+        self.sources = {name: {'commit': value * 40, 'tree': value * 40}
+                        for name, value in [('gchat', 'a'), ('gcoms', 'b')]}
+        self.manifest = {'schema': 1, 'sources': self.sources,
+                         'versions': {'macos-x86_64': '0.1.23'}, 'policy': {}}
+        self.manifest['release_id'] = hashlib.sha256(canonical(self.manifest)).hexdigest()
+        self.encoded = base64.b64encode(json.dumps(self.manifest).encode()).decode()
+
+    def test_original_manifest_keeps_its_own_identity(self):
+        self.assertEqual(package.original_release(self.encoded, self.sources, '0.1.23', 'macos-x86_64'), self.manifest)
+
+    def test_controller_or_other_version_cannot_replace_original_inputs(self):
+        with self.assertRaisesRegex(ValueError, 'sources differ'):
+            package.original_release(self.encoded, {}, '0.1.23', 'macos-x86_64')
+        with self.assertRaisesRegex(ValueError, 'version differs'):
+            package.original_release(self.encoded, self.sources, '0.1.24', 'macos-x86_64')
+
+    def test_modified_manifest_digest_is_rejected(self):
+        self.manifest['versions']['macos-x86_64'] = '0.1.24'
+        encoded = base64.b64encode(json.dumps(self.manifest).encode()).decode()
+        with self.assertRaisesRegex(ValueError, 'digest mismatch'):
+            package.original_release(encoded, self.sources, '0.1.24', 'macos-x86_64')
 
 
 class OriginTest(unittest.TestCase):

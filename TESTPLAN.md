@@ -1,3 +1,12 @@
+## Original Mac packaging identity
+
+A packaging controller may differ from the native-qualified application. Its
+optional coordinator manifest must match the exact original commit/tree pair and
+committed app version; a modified digest, another source, or another version is
+rejected. Bind and recheck that manifest throughout recovery, retain updater
+artifacts, and attest the original candidate. Eighteen cluster packaging tests
+pass; packaging/native application outcomes remain separate.
+
 ## Protected native worker inputs
 
 Windows release verification now requires the explicit environment-backed network
