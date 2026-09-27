@@ -43,6 +43,8 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
       HOMEBREW_NO_AUTO_UPDATE: '1'
+      # CDN setup has its own bounded budget; application test deadlines stay unchanged.
+      PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '120000'
     strategy:
       fail-fast: false
       matrix:

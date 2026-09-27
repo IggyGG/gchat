@@ -5,7 +5,9 @@ Close and fsync the file before digest verification, atomic replacement and
 cleanup; preserve immutable-version and incomplete-publication checks. Four
 focused cases and the release-script suite pass (62 passed, four native-only
 exclusions). Native Windows requalification remains required. Original failure:
-run 36161747998. No runtime or installed profile change.
+run 36161747998. No runtime or installed profile change. The macOS release worker now gives
+browser CDN setup a bounded 120-second socket timeout instead of 30 seconds;
+application-test deadlines are unchanged.
 
 ## Idle presentation CPU (2026-09-25)
 

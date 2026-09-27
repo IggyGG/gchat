@@ -172,3 +172,6 @@ Release file checks use a bounded 16 MiB interrupted transfer; the 1 GiB campaig
 
 SDK release archives are closed and hash-checked before atomic publication,
 including on Windows. Interrupted copies leave the previous index intact.
+
+The macOS release worker allows 120 seconds per browser-download socket;
+this setup budget does not change application test deadlines.
