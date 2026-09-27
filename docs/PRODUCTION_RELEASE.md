@@ -2,7 +2,20 @@
 
 On 2026-09-20 the owner selected production rollout and removed statistical privacy thresholds and mandatory 24-hour campaigns as release gates. Releases use bounded delivery, authentication, persistence/reopen, artifact-signature and rollback checks. Reuse source-bound completed checks for unchanged code; extended research and soak campaigns run separately and never impose a minimum release duration. Failed historical evidence stays failed.
 
-Linux and macOS downloads are published. Current Mac 0.1.4 `.2` DMGs for both architectures are signed with the pinned Movsai AB Developer ID, notarized by Apple, stapled and checked with quarantine and Gatekeeper enabled. Android APKs are published with their documented emulator qualification. Windows, mobile push and store delivery remain in progress. See CROSS_PLATFORM.md and the signed per-platform release manifests for exact scope. Gh0st detached release signatures remain pinned; historical self-signed Mac `.1` downloads do not acquire the new notarization qualification.
+Current downloads and platform availability are listed at [gchat.boo](https://gchat.boo/#downloads). Each platform is published independently after its exact artifact checks pass; archived installers are not automatically compatible with the current network. Historical Mac 0.1.4 `.2` notarization and other earlier receipts remain bound to those artifacts. See CROSS_PLATFORM.md and each platform's signed manifest for exact scope.
+
+## Join and reconnect latency
+
+On 2026-09-27 the owner approved production publication with slow joins and
+reconnects disclosed, followed by latency optimization. The 30-second join and
+10-second reconnect targets remain improvement targets rather than release
+blockers. Joining or reconnecting can take over a minute. A four-emulator
+concurrent-join check on Android 1035 measured approximately 7, 73, 21 and
+55 seconds; these measurements do not qualify later artifacts or establish a
+maximum wait. Authentication, actual recipient delivery, persistence, artifact
+signatures and rollback remain mandatory. Local acceptance is not a delivery
+confirmation. Failures, timeouts and incomplete operations retain their recorded
+outcomes; this decision does not turn them into passes.
 
 ## Large-file qualification
 

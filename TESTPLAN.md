@@ -294,3 +294,11 @@ sessions and CMD target selection remain unfinished scopes.
 ## Bounded release files (2026-09-25)
 
 Use `gchat-turnover.py --mode file-recovery --release-check` with the frozen paired build and qualification host: 16 MiB, 180-second completion and 600-second total ceiling. Require abrupt restart, retained pieces/identity, authenticated chat ACK, final hash and reopen/export. The separate 1 GiB campaign is nonblocking; retain its failed deadlines. Authentication, persistence, signatures and rollback remain mandatory.
+
+## Disclosed latency policy (2026-09-27)
+
+Owner-approved: publish with slow joins/reconnects disclosed and optimize latency
+next. R04's 30-second join and R03's 10-second reconnect targets are nonblocking;
+authentication, delivery, persistence, signatures and rollback remain mandatory.
+Publish the limitation on the downloads page. Existing frozen candidate checks
+and recorded failures retain their exact source and outcome bindings.
