@@ -1,0 +1,20 @@
+{
+  "scope": "native release worker configuration; no application binary requalification",
+  "cluster_tests": 42,
+  "passed": true,
+  "log_sha256": "bb13c6e2d1ddfe653aac850359226d563e5270ce9324702acec98cfdcabdbfe3",
+  "sources": {
+    ".github/workflows/macos-package.yml": "bc77e4ac99fea5381bd550eef9627a1481607f5272521dc1c25706b2521fbf21",
+    ".github/workflows/windows-release.yml": "a9867c7a07fcab0f9c9ed86eb3757f56d4d606deec6ad840258b20bc5d90db22",
+    "scripts/test-windows-installer.py": "8be4e82d64a1dab25d2bf139ad8962d3f64956b8631474f8a756484661e1fdcc",
+    "scripts/tests/macos_package_test.py": "494b47df00641d33173f7d5eae8ae92a9c2acccb5f40232d7c060ceaa8c01365",
+    "scripts/tests/windows_installer_test.py": "da3f247124520a52bdee3d7baf11481b239dd8221ecee1f0fb37bf92923b3d3d"
+  },
+  "retained_failures": {
+    "windows_network": 36356329877,
+    "intel_missing_team": 36348971384,
+    "intel_recovery_old_identity": 36356488502
+  },
+  "windows_runtime_fix": "7be1757d612b15b234f9c28305ec74e0cacedb5e",
+  "codematch": "unreachable"
+}

@@ -274,5 +274,32 @@ class WorkflowTests(Fixture):
         self.assertNotIn("uninstall", [row["name"] for row in report["commands"]])
 
 
+class EnvironmentInvitationTests(unittest.TestCase):
+    def test_environment_is_consumed_and_private_file_removed_after_failure(self):
+        paths = []
+
+        def failure(args):
+            self.assertNotIn("GCHAT_NETWORK_INVITATION", os.environ)
+            self.assertEqual(args.network_invitation.read_text(), "fixture-only")
+            paths.append(args.network_invitation)
+            raise RuntimeError("fixture failure")
+
+        args = argparse.Namespace(network_invitation=None)
+        with patch.dict(os.environ, {"GCHAT_NETWORK_INVITATION": "fixture-only"}), \
+                patch.object(windows, "run", side_effect=failure):
+            with self.assertRaisesRegex(RuntimeError, "fixture failure"):
+                windows.run_with_environment_invitation(args)
+        self.assertEqual(len(paths), 1)
+        self.assertFalse(paths[0].exists())
+        self.assertFalse(paths[0].parent.exists())
+
+    def test_missing_environment_never_starts_installer(self):
+        with patch.dict(os.environ, {"GCHAT_NETWORK_INVITATION": ""}), \
+                patch.object(windows, "run") as run:
+            with self.assertRaisesRegex(ValueError, "missing bounded"):
+                windows.run_with_environment_invitation(argparse.Namespace(network_invitation=None))
+            run.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

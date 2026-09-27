@@ -1,3 +1,13 @@
+## Protected native worker inputs
+
+Windows release verification now requires the explicit environment-backed network
+fixture. Tests reject missing input before installation, consume it before child
+execution, and remove the private temporary file even on failure. Existing exact
+binary/native binding, authentication, failed-network rejection and cleanup tests
+remain mandatory. Mac packaging checks require Developer ID inputs in both signing
+stages and updater keys in the packaging stage. Cluster run: 42 focused tests pass;
+native application gates retain their separate source-bound outcomes.
+
 ## iOS lifecycle input focus
 
 Dismiss the native keyboard and wait for viewport geometry to settle before

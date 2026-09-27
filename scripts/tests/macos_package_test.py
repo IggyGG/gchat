@@ -249,6 +249,16 @@ class PackagingHelperTest(unittest.TestCase):
         self.assertIn('if: always()', workflow)
         self.assertNotIn('python3 scripts/build-installer.py --target', workflow)
 
+    def test_recovery_uses_pinned_developer_id_and_updater_signing_inputs(self):
+        workflow = (SCRIPTS.parent / '.github/workflows/macos-package.yml').read_text()
+        for name in ('APPLE_DEVELOPER_ID_CERTIFICATE_BASE64', 'APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD'):
+            self.assertEqual(workflow.count('secrets.' + name), 2)
+        self.assertEqual(workflow.count('"Developer ID Application: Movsai AB (U93DVTJ3T5)"'), 2)
+        self.assertNotIn('secrets.APPLE_SIGNING_IDENTITY', workflow)
+        packaging = workflow.split('- name: Package unchanged native-qualified application')[1].split('- name: Verify installed')[0]
+        self.assertIn('secrets.TAURI_SIGNING_PRIVATE_KEY', packaging)
+        self.assertIn('secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD', packaging)
+
 
 if __name__ == '__main__':
     unittest.main()

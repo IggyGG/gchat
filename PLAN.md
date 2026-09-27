@@ -1,3 +1,18 @@
+## Native publication follow-up (2026-09-28)
+
+Windows retained candidate18 failed its actual network journey when SDK named-pipe
+admission terminated the service (1368). GComs 7be1757 fixes authentication after a
+bounded preserved byte; native Windows checks and the original-source negative
+control passed. Keep the failed application gate; a newly built Windows installer
+must run the 16 MiB interrupted chat/file/reopen check using the protected fixture
+invitation. Remove that invitation after success or failure.
+
+Mac packaging recovery selected obsolete preview signing inputs while the main
+release already used Developer ID. Align both preflight and packaging with the
+pinned Developer ID certificate and supply updater signing keys to packaging.
+Reuse Intel19's passing native receipts; its two original packaging failures stay
+failed. This does not qualify MacARM's failed 24-node overlay.
+
 ## Retained Windows network gate (2026-09-28)
 
 R06/R07/R12: run the already-signed Windows installer through the existing native

@@ -369,6 +369,20 @@ def run(args):
     return 0 if report["passed"] else 1
 
 
+def run_with_environment_invitation(args):
+    require(args.network_invitation is None, "choose one fixture invitation input")
+    code = os.environ.pop("GCHAT_NETWORK_INVITATION", "")
+    require(0 < len(code.encode()) <= 180000, "missing bounded fixture invitation")
+    with tempfile.TemporaryDirectory(prefix="gc-net-") as directory:
+        root = Path(directory)
+        smoke.private_directory(root)
+        invitation = root / "network.private"
+        invitation.write_text(code, encoding="utf-8")
+        smoke.private_fixture_path(invitation, directory=False)
+        args.network_invitation = invitation
+        return run(args)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-manifest", type=Path, required=True)
@@ -379,10 +393,12 @@ def main():
     parser.add_argument("--temp-parent", type=Path, help="existing parent for owned disposable installation")
     parser.add_argument("--network-invitation", type=Path,
                         help="explicit private fixture invitation for the additional 16 MiB network journey")
+    parser.add_argument("--network-invitation-env", action="store_true",
+                        help="consume protected GCHAT_NETWORK_INVITATION and remove the temporary file")
     parser.add_argument("--timeout", type=float, default=60)
     args = parser.parse_args()
     require(0 < args.timeout <= 300, "timeout must be between 0 and 300 seconds")
-    return run(args)
+    return run_with_environment_invitation(args) if args.network_invitation_env else run(args)
 
 
 if __name__ == "__main__":

@@ -218,8 +218,10 @@ jobs:
       - name: Install, reopen, uninstall and clean up the actual application
         timeout-minutes: 15
         working-directory: gchat
+        env:
+          GCHAT_NETWORK_INVITATION: ${{ secrets.GCHAT_NETWORK_INVITATION }}
         run: |
-          python scripts/test-windows-installer.py --build-manifest ../signed/build.json --native-receipt ../signed/provenance/native-ci.json --output ../signed/application-smoke --timeout 30
+          python scripts/test-windows-installer.py --build-manifest ../signed/build.json --native-receipt ../signed/provenance/native-ci.json --output ../signed/application-smoke --timeout 30 --network-invitation-env
           if ($LASTEXITCODE -ne 0) { throw 'Windows installer/service lifecycle failed' }
       - name: Remove the imported private key and verify untouched trust stores
         if: always()
