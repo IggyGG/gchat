@@ -1,3 +1,11 @@
+## Portable SDK archive publication
+
+Run `python3 -m unittest discover -s scripts/tests -p release_sdk_test.py`.
+Require handles closed before archive verification and rename; interrupted or
+corrupted copies leave no temporary file or published index. Retrying an exact
+release is idempotent; another source pair cannot replace its version. Validate
+on native Windows as part of its normal CI.
+
 ## Idle presentation CPU regression
 
 Run the core library chat-service tests, full core integration tests and strict

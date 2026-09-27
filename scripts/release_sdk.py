@@ -106,15 +106,18 @@ def publish_archives(manifest, paths, public):
         target = public / manifest['release_id'] / path.name
         target.parent.mkdir(exist_ok=True)
         if not target.exists():
-            with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as stream:
-                temporary = Path(stream.name)
-                try:
+            stream = tempfile.NamedTemporaryFile(dir=target.parent, delete=False)
+            temporary = Path(stream.name)
+            try:
+                with stream:
                     with path.open('rb') as source: shutil.copyfileobj(source, stream)
                     stream.flush(); os.fsync(stream.fileno())
-                    if digest(temporary) != expected: raise ValueError('SDK source archive changed')
-                    temporary.chmod(0o644); os.replace(temporary, target)
-                finally:
-                    temporary.unlink(missing_ok=True)
+                # Windows forbids reopening/renaming/deleting this file while
+                # NamedTemporaryFile still holds its non-sharing handle.
+                if digest(temporary) != expected: raise ValueError('SDK source archive changed')
+                temporary.chmod(0o644); os.replace(temporary, target)
+            finally:
+                temporary.unlink(missing_ok=True)
         if digest(target) != expected: raise ValueError('published SDK archive changed')
         records.append({'path': target.relative_to(public).as_posix(), 'sha256': expected,
                         'size': target.stat().st_size})

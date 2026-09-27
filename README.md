@@ -169,3 +169,6 @@ The desktop dependency policy records exact native API version duplicates requir
 by the updater's existing dependencies; see [the graph review](docs/DEPENDENCIES.md).
 
 Release file checks use a bounded 16 MiB interrupted transfer; the 1 GiB campaign runs separately. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
+
+SDK release archives are closed and hash-checked before atomic publication,
+including on Windows. Interrupted copies leave the previous index intact.

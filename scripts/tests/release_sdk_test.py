@@ -22,12 +22,40 @@ class SdkMatrixTests(unittest.TestCase):
                 with self.assertRaises(OSError):publish_archives(manifest,[(payload,sha)],public)
             self.assertFalse((public/'latest.json').exists())
             self.assertFalse((public/manifest['release_id']/payload.name).exists())
+            self.assertEqual(list((public/manifest['release_id']).iterdir()), [])
             first=publish_archives(manifest,[(payload,sha)],public)
             self.assertEqual(first,publish_archives(manifest,[(payload,sha)],public))
             manifest['release_id']='b'*64
             with self.assertRaisesRegex(ValueError,'another source pair'):
                 publish_archives(manifest,[(payload,sha)],public)
             self.assertEqual(json.loads((public/'latest.json').read_text()),first)
+
+    def test_archive_is_closed_before_verification_and_failed_publication_cleanup(self):
+        import tempfile, hashlib
+        from unittest.mock import patch
+        from release_sdk import publish_archives
+        from release_automation_test import candidate
+        original = tempfile.NamedTemporaryFile
+        streams = []
+        def opened(*args, **kwargs):
+            stream = original(*args, **kwargs)
+            streams.append(stream)
+            return stream
+        def closed_digest(path):
+            self.assertTrue(all(stream.closed for stream in streams))
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); payload = root/'sdk.zip'
+            payload.write_bytes(b'qualified sdk')
+            manifest = candidate(); public = root/'public'
+            expected = hashlib.sha256(payload.read_bytes()).hexdigest()
+            with patch('release_sdk.tempfile.NamedTemporaryFile', side_effect=opened), \
+                    patch('release_sdk.digest', side_effect=closed_digest):
+                with self.assertRaisesRegex(ValueError, 'source archive changed'):
+                    publish_archives(manifest, [(payload, '0'*64)], public)
+                self.assertFalse((public/'latest.json').exists())
+                self.assertEqual(list((public/manifest['release_id']).iterdir()), [])
+                publish_archives(manifest, [(payload, expected)], public)
 
 class ExistingSdkRunTests(unittest.TestCase):
     def test_reuses_only_exact_main_default_matrix_and_never_push_for_optional_push(self):

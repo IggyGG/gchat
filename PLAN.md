@@ -1,3 +1,12 @@
+## Release blocker follow-up (2026-09-27)
+
+Windows native CI exposed an open temporary archive handle in SDK publication.
+Close and fsync the file before digest verification, atomic replacement and
+cleanup; preserve immutable-version and incomplete-publication checks. Four
+focused cases and the release-script suite pass (62 passed, four native-only
+exclusions). Native Windows requalification remains required. Original failure:
+run 36161747998. No runtime or installed profile change.
+
 ## Idle presentation CPU (2026-09-25)
 
 The service caches its UI projection across attachments and waits for archive or
