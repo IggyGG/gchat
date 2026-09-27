@@ -139,7 +139,10 @@ def submit_google(api, config, candidate, aab, journal):
         if str(result.get('versionCode')) != code or result.get('sha256') != digest:
             raise ValueError('uploaded bundle identity differs')
     track = config.get('track', 'production')
-    desired = {'track': track, 'releases': [{'name': candidate['release_id'], 'versionCodes': [code], 'status': 'completed'}]}
+    # Play limits the display name to 50 characters; the full immutable identity
+    # remains in the submission journal and source-bound qualification receipt.
+    name = 'GChat ' + code + ' (' + candidate['release_id'][:16] + ')'
+    desired = {'track': track, 'releases': [{'name': name, 'versionCodes': [code], 'status': 'completed'}]}
     # PUT of the exact retained edit is idempotent. No new release/version on retry.
     api.request('PUT', edit + '/tracks/' + track, json=desired)
     api.request('POST', edit + ':validate', json={})

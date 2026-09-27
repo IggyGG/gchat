@@ -1,3 +1,9 @@
+## Play release metadata
+
+`release_stores_test.py` requires a display name at most 50 characters, exact
+version code and complete immutable journal identity. Preserve unknown-outcome
+reconciliation; never create a second edit/upload to repair metadata.
+
 ## Linux publication reference regression
 
 Run `python3 -m unittest discover -s scripts/tests -p release_publish_test.py`.

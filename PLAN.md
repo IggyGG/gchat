@@ -1,3 +1,9 @@
+## Play release display name (2026-09-27)
+
+R07: retain the full source identity in the submission journal, but use a bounded
+version/hash display name within Play's 50-character limit. The original HTTP 400
+validation is retained; retry reconciles the same edit and uploaded bundle.
+
 ## Linux publisher duplicate references (2026-09-27)
 
 R07: the verified Linux receipt can name one file as both installer and updater.

@@ -40,6 +40,27 @@ class SubmissionTests(unittest.TestCase):
             for _ in range(2):
                 with self.assertRaises(ProviderError):submit_google(api,{},candidate,aab,root/'journal')
             self.assertEqual(api.calls,[('POST','/edits')])
+    def test_google_display_name_fits_limit_and_keeps_full_journal_identity(self):
+        import tempfile, hashlib
+        from release_stores import submit_google
+        digest = hashlib.sha256(b'qualified').hexdigest()
+        class API:
+            def request(self, method, path, **kwargs):
+                if path == '/edits': return {'id': 'retained'}
+                if path.endswith('/bundles'):
+                    return {'bundles': [{'versionCode': '1028', 'sha256': digest}]}
+                if method == 'PUT':
+                    self.track = kwargs['json']
+                    assert len(self.track['releases'][0]['name']) <= 50
+                return {}
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); aab = root / 'app.aab'; aab.write_bytes(b'qualified')
+            candidate = {'release_id': 'a' * 64, 'version_code': '1028', 'aab_sha256': digest}
+            api = API()
+            submit_google(api, {}, candidate, aab, root / 'journal')
+            self.assertEqual(api.track['releases'][0]['versionCodes'], ['1028'])
+            self.assertEqual(json.loads((root / 'journal').read_text())['identity'], candidate)
+
     def test_bundle_mismatch_fails_before_any_provider_call(self):
         import tempfile
         from release_stores import submit_google
