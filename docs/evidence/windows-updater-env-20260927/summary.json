@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "scope": "workflow updater key placement; native Windows rerun pending",
+  "source_sha256": "0bdd82c372803550239f7380a073ee323609cbf217a234caeca9fc426c33751a",
+  "both_required_keys_in_consuming_build_step": true,
+  "existing_windows_release_tests": 26,
+  "test_log_sha256": "fd63e5f5d59b2a252e83354baa8f098399b1d5c7eede0b73ddece945eb01980f",
+  "original_failed_run": 36328979195,
+  "limits": [
+    "Static workflow scope check and existing script regressions; not a signed-installer pass."
+  ],
+  "codematch": "unreachable"
+}

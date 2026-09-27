@@ -94,8 +94,6 @@ jobs:
       - name: Preflight the existing pinned certificate before compilation
         timeout-minutes: 5
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
@@ -211,6 +209,9 @@ jobs:
       - name: Build and verify signed NSIS
         timeout-minutes: 45
         working-directory: gchat
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           python scripts/build-installer.py --target windows-x86_64 --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
           if ($LASTEXITCODE -ne 0) { throw 'Signed NSIS build failed' }

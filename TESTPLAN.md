@@ -1,3 +1,10 @@
+## Windows updater signing scope
+
+Verify both updater-key environment entries belong to the NSIS build step,
+then require the normal signed-installer, pinned signature and installed-profile
+lifecycle checks. A certificate-only preflight cannot qualify updater signing.
+Retain run 36328979195's missing-key failure and its completed native checks.
+
 ## Publisher host scope
 
 Download-page feed-lock tests run on the POSIX publication host alongside signed

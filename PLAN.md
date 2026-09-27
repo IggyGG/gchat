@@ -1,3 +1,12 @@
+## Windows updater signature environment (2026-09-27)
+
+Supply the protected Tauri updater key to the actual NSIS packaging step. The
+previous workflow scoped it only to certificate preflight: Authenticode signing
+completed but updater signing then refused the missing key. Preserve certificate
+pinning, cleanup and required updater signatures; do not disable updater output.
+Frozen prior runs remain bound to their original workflow.
+[Scope and validation](docs/evidence/windows-updater-env-20260927/summary.json).
+
 ## Current-network download availability (2026-09-27)
 
 R07: Google Play reports Android1028 available. Link that store record instead of
