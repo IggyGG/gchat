@@ -1,3 +1,9 @@
+## Current versus archived website downloads
+
+Website tests require one Play link for both Android architectures, no archived
+installer links for pending targets, and availability text limited to current
+platforms. Reject arbitrary managed URLs and unsupported pending target names.
+
 ## Website follows qualified Linux publication
 
 Run `release_publish_test.py`, `website_test.py` and `website_deploy_test.py`.

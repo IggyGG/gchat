@@ -1,3 +1,11 @@
+## Current-network download availability (2026-09-27)
+
+R07: Google Play reports Android1028 available. Link that store record instead of
+old standalone APKs. The archived Mac/Windows installers select profile22; hide
+them from current downloads while profile46 replacements finish qualification.
+Keep their immutable signed metadata and artifacts; no historical pass is erased.
+Linux uses the qualified managed page. Store/native states remain independent.
+
 ## Current Linux website downloads (2026-09-27)
 
 R07: point new Linux installs at the release coordinator’s qualified download page.

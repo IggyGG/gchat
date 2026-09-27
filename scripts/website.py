@@ -129,9 +129,18 @@ def validate_platforms(data):
     if used != set(releases) or not {('linux-x86_64', 'deb'), ('linux-x86_64', 'appimage')} <= seen:
         raise ValueError('preserve complete Linux downloads and reference each release')
     managed = data.get('managed_downloads', {})
-    allowed = {'linux-x86_64': 'https://gchat.boo/updates/downloads/linux-x86_64/latest.html'}
+    allowed = {'linux-x86_64': 'https://gchat.boo/updates/downloads/linux-x86_64/latest.html',
+               'android-arm64': 'https://play.google.com/store/apps/details?id=boo.gchat.app',
+               'android-x86_64': 'https://play.google.com/store/apps/details?id=boo.gchat.app'}
     if not isinstance(managed, dict) or any(key not in allowed or value != allowed[key] for key, value in managed.items()):
         raise ValueError('unexpected managed download endpoint')
+    if ('android-arm64' in managed) != ('android-x86_64' in managed):
+        raise ValueError('Play manages both Android architectures')
+    pending = data.get('pending_targets', [])
+    if (not isinstance(pending, list) or any(not isinstance(key, str) or key not in
+            {'macos-aarch64', 'macos-x86_64', 'windows-x86_64'} for key in pending)
+            or len(set(pending)) != len(pending)):
+        raise ValueError('unexpected pending download target')
     return data
 
 
@@ -159,7 +168,8 @@ def validate_signed_manifest(release, manifest, artifacts):
 def client_status(data):
     if data['version'] is None and data.get('schema') != 2:
         return 'Desktop and mobile applications. Signed public installers are being prepared.'
-    present = {item['target'].split('-', 1)[0] for item in data['artifacts']}
+    present = {item['target'].split('-', 1)[0] for item in data['artifacts']
+               if item['target'] not in data.get('pending_targets', [])}
     platforms = ', '.join(label for key, label in PLATFORMS.items() if key in present)
     return ('Signed downloads available above for ' + platforms + '. '
             'Privacy improvements and platform testing limits are documented in the release notes.')
@@ -233,8 +243,11 @@ def downloads(data):
         if 'linux-x86_64' in managed:
             links += (f'<li><a href="{escape(managed["linux-x86_64"])}">Download Linux · latest qualified release</a>'
                       ' · Ubuntu / Debian and AppImage · signatures and build details included</li>')
+        if 'android-arm64' in managed:
+            links += (f'<li><a href="{escape(managed["android-arm64"])}">Get Android on Google Play</a>'
+                      ' · the store selects your device’s version</li>')
         for a in data['artifacts']:
-            if a['target'] in managed:
+            if a['target'] in managed or a['target'] in data.get('pending_targets', []):
                 continue
             release = data['releases'][a['release']]
             links += (f'<li><a href="{escape(a["url"])}">Download {TARGETS[(a["target"], a["format"])]}</a>'
@@ -242,6 +255,12 @@ def downloads(data):
                       f' · <a href="{escape(release["manifest"]["url"])}">Build evidence</a></li>')
         key = next(iter(data['releases'].values()))['release_key']
         links += '</ul><p><a href="' + escape(key['url']) + '">Release signing key</a> · Fingerprint: <code>' + escape(data['publisher_fingerprint']) + '</code></p>'
+        pending = {target.split('-', 1)[0] for target in data.get('pending_targets', [])}
+        if pending:
+            labels = ', '.join(PLATFORMS[name] for name in PLATFORMS if name in pending)
+            links += (f'<p>{escape(labels)}: updates for the current network are being qualified. '
+                      'Earlier installers remain archived, but are not offered as current downloads.</p>')
+        links += '<p>Timing and activity privacy remain unqualified. iOS store availability is pending Apple’s encryption review.</p>'
     elif data['version'] is None:
         links = '<p>Desktop and mobile apps are being prepared. Downloads will appear here after installation and signing checks pass.</p>'
     else:

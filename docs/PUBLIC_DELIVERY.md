@@ -181,3 +181,9 @@ from replacing a newer download page. No browser API or JavaScript is needed.
 The website opts into this endpoint through `managed_downloads`; archived signed
 release metadata remains retained and other platform versions stay independent.
 The endpoint is served with `Cache-Control: no-store`.
+
+The current manifest directs both Android architectures to the same published Play
+app and marks current-network Mac/Windows replacements pending. Archived source
+bindings remain in `downloads.json`; `managed_downloads` and `pending_targets`
+determine which artifacts are offered as current on the page. Do not restore an
+archived installer as current merely because its signature is valid.

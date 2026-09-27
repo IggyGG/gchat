@@ -15,10 +15,28 @@ spec = importlib.util.spec_from_file_location('website', Path(__file__).resolve(
 site = importlib.util.module_from_spec(spec); spec.loader.exec_module(site)
 
 class WebsiteTests(unittest.TestCase):
+    def test_store_and_pending_targets_do_not_offer_archived_installers(self):
+        data = json.loads((site.ROOT / 'release/downloads.json').read_text())
+        data['managed_downloads'] = {
+            'linux-x86_64': 'https://gchat.boo/updates/downloads/linux-x86_64/latest.html',
+            'android-arm64': 'https://play.google.com/store/apps/details?id=boo.gchat.app',
+            'android-x86_64': 'https://play.google.com/store/apps/details?id=boo.gchat.app'}
+        data['pending_targets'] = ['macos-aarch64', 'macos-x86_64', 'windows-x86_64']
+        page = site.downloads(site.validate(data))
+        self.assertEqual(page.count('>Get Android on Google Play'), 1)
+        for item in data['artifacts']:
+            self.assertNotIn(item['url'], page)
+        self.assertIn('updates for the current network are being qualified', page)
+        self.assertIn('for Linux, Android.', site.client_status(data))
+        data['pending_targets'].append('linux-x86_64')
+        with self.assertRaisesRegex(ValueError, 'pending download'):
+            site.validate(data)
+
     def test_managed_linux_downloads_do_not_advertise_stale_version(self):
         data = json.loads((site.ROOT / 'release/downloads.json').read_text())
         endpoint = 'https://gchat.boo/updates/downloads/linux-x86_64/latest.html'
         data['managed_downloads'] = {'linux-x86_64': endpoint}
+        data.pop('pending_targets', None)
         page = site.downloads(site.validate(data))
         self.assertIn(endpoint, page)
         self.assertIn('latest qualified release', page)
