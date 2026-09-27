@@ -1,0 +1,47 @@
+{
+  "scope": "retained exact iOS 1.0.41 simulator binary; corrected XCTest field focus only; no application rebuild or resign",
+  "passed": true,
+  "sources": {
+    "gchat": {
+      "commit": "f3584d9b108c800981c4f7235cf3dd6fb7b52b0e",
+      "tree": "759b1f78bb19af60e58de7fc5ba79c0aaca615f3"
+    },
+    "gcoms": {
+      "commit": "2aeb86ebfb57ffece666a23803f90f014f3768ef",
+      "tree": "ab6d5f410dbd274bc1bd6d181d96d48327405aeb"
+    }
+  },
+  "original_failed_run": 36346380289,
+  "original_artifact_sha256": "696666b164290be0cad21218324b6dfd93150b6e69ed3e6977b11c317aed4e78",
+  "original_failure": "XCTest typed into confirmation without keyboard focus; field clipped by native keyboard",
+  "application_sha256": "b2c26717e00697b3fb8962cb8dff2a4a75e474274b2c46b39fa5fb079f8de26e",
+  "application_recompiled": false,
+  "application_resigned": false,
+  "fixture_sha256": "94962628bde0cb22c24c3505f59dce7b4f5a523e137f7532a1facb98e8a444ce",
+  "tests": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 92.16000008583069
+  },
+  "cleanup_complete": true,
+  "evidence_archive_sha256": "30ecb41c933563bd7111451e30a79026a3c8efdb2a5f5b6b37168d8377ed0c5e",
+  "evidence_files": {
+    "summary.json": "b53c2ab6e06df840edf6f6c319bae1023385d7019f8f95902f8c417477e70222",
+    "result/report.json": "ad184e189ad74029beec53b8fd4d96f6ffb9ac60229e5c242eb0e27b1a4cfdbc",
+    "result/test-summary.json": "0066b9aea4098c8be650416fbc4597a2d026d52a4cc7a069b6baf656fd68d6c8",
+    "result/xctest.log": "01e5eacdf409e784e991a2b1082c98e455e74591367ad29ca1966c550844b57b"
+  },
+  "visual_review": [
+    "fresh profile fields and button visible without overlap",
+    "retained reopen shows invitation onboarding without keyboard obstruction"
+  ],
+  "not_qualified": [
+    "network onboarding",
+    "message/file delivery",
+    "live push",
+    "physical device",
+    "App Store approval"
+  ],
+  "codematch": "unreachable"
+}

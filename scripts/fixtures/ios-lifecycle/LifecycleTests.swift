@@ -63,9 +63,24 @@ final class GChatLifecycleTests: XCTestCase {
             XCTAssertEqual(app.webViews.secureTextFields.count, 2)
             let confirmation = app.webViews.secureTextFields.element(boundBy: 1)
             XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
+            // The keyboard can clip the second field below the WebView's main
+            // viewport even when XCTest considers it hittable. Dismiss through
+            // the native accessory, then reveal it before transferring focus.
+            finishKeyboardInput()
+            let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
+            let deadline = ProcessInfo.processInfo.systemUptime + 10
+            while confirmation.exists && (!confirmation.isHittable || !main.frame.contains(confirmation.frame))
+                    && ProcessInfo.processInfo.systemUptime < deadline {
+                app.webViews.firstMatch.swipeUp()
+            }
+            XCTAssertTrue(confirmation.isHittable && main.frame.contains(confirmation.frame))
             confirmation.tap()
             confirmation.typeText(passphrase)
         }
+        finishKeyboardInput()
+    }
+
+    func finishKeyboardInput() {
         // WKWebView's native input accessory can cover the form button even
         // when XCTest reports that button as hittable. Use the same Done
         // control as a person, then require the keyboard to leave before tapping.

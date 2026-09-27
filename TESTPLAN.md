@@ -1,3 +1,13 @@
+## iOS lifecycle input focus
+
+Dismiss the native keyboard and wait for viewport geometry to settle before
+revealing the confirmation field. Require that field to be fully inside the
+main viewport before focusing and typing. Keep the original create/unlock,
+default-off background lock, opted-in Keychain resume, relaunch and cleanup
+assertions. Run the native XCTest against the retained app without rebuilding
+or re-signing it; preserve the original workflow failure separately.
+[Exact simulator evidence](docs/evidence/ios-lifecycle-focus-20260927/summary.json).
+
 ## Native external-probe exclusion inventory
 
 Native CI records three additional explicit exclusions: the live deployed-relay
