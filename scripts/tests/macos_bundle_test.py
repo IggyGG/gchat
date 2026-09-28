@@ -259,11 +259,18 @@ class WorkflowTests(BundleFixture):
             retained.append(args.network_invitation)
             self.assertEqual(args.network_invitation.read_text(), "private fixture")
             self.assertNotIn("GCHAT_NETWORK_INVITATION", os.environ)
-            self.assertEqual(args.network_invitation.stat().st_mode & 0o777, 0o600)
+            # Windows reports DOS attributes through st_mode; the real helper
+            # instead verifies the protected, owner-only DACL there.
+            if os.name != "nt":
+                self.assertEqual(args.network_invitation.stat().st_mode & 0o777, 0o600)
             raise RuntimeError("fixture failed")
-        with patch.dict(os.environ, {"GCHAT_NETWORK_INVITATION": "private fixture"}), patch.object(bundle, "run", side_effect=fail):
+        with patch.dict(os.environ, {"GCHAT_NETWORK_INVITATION": "private fixture"}), \
+                patch.object(bundle, "run", side_effect=fail), \
+                patch.object(bundle.smoke, "private_fixture_path", wraps=bundle.smoke.private_fixture_path) as protect:
             with self.assertRaisesRegex(RuntimeError, "fixture failed"):
                 bundle.run_with_environment_invitation(argparse.Namespace(network_invitation=None, temp_parent=self.root))
+            protect.assert_any_call(retained[0].parent, directory=True)
+            protect.assert_any_call(retained[0], directory=False)
         self.assertFalse(retained[0].exists())
 
     def test_missing_environment_invitation_refuses_before_installation(self):
