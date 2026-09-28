@@ -421,3 +421,13 @@ and recorded failures retain their exact source and outcome bindings.
   36345150554. Existing offline installer checks remain mandatory. Upload only
   reports/logs; exclude disposable profile directories and remove the temporary
   invitation. A native result is required before claiming Windows network success.
+
+Release stabilization follow-up, 2026-09-28: retained Windows 36 run
+36471307753 passed the owner-approved 4 MiB interruption/reopen/exact-hash journey
+in 120.594 seconds (282.844 seconds overall), with authenticated bidirectional
+messages and installation/profile/trust cleanup. The original 16 MiB failure is
+retained. The same iOS 36 simulator executable passed profile/background/manual
+unlock/consented Keychain/relaunch after the UI test committed native keyboard
+input before observing the field. No app recompilation or signing change was
+needed. These gates alone do not prove Windows rollback or iOS network recovery,
+store availability, physical devices, live push or privacy qualification.

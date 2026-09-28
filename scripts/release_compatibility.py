@@ -18,7 +18,34 @@ from release_pair import validate
 from release_coordinator import atomic_json
 
 
-def verify(proof, manifest, now):
+def file_policy(manifest, proof, platform):
+    """Apply only a checked-in, artifact-specific owner authorization.
+
+    Receipts cannot nominate a policy path or alter the original manifest. The
+    native verification stage independently binds the installed binary; this
+    reference must be carried into the linked acceptance evidence as well.
+    """
+    policy = manifest['policy']['file_qualification']
+    change = proof.get('qualification_policy_sha256')
+    if change is None:
+        return policy
+    path = Path(__file__).resolve().parents[1] / 'release/automation/qualification/windows36-4mib.json'
+    raw = path.read_bytes()
+    authorized = json.loads(raw)
+    if (change != hashlib.sha256(raw).hexdigest()
+            or platform != 'windows-x86_64' or proof.get('platform') != platform
+            or authorized['platform'] != platform
+            or manifest['release_id'] != authorized['release_id']
+            or {k: v['commit'] for k, v in manifest['sources'].items()} != authorized['sources']
+            or proof.get('binary_sha256') != authorized['binary_sha256']
+            or policy['bytes'] != authorized['original_bytes']
+            or policy['completion_seconds'] != authorized['completion_seconds']
+            or policy['total_seconds'] != authorized['total_seconds']):
+        raise ValueError('file qualification authorization does not bind this artifact/platform')
+    return {**policy, 'bytes': authorized['bytes']}
+
+
+def verify(proof, manifest, now, platform=None):
     if (proof.get('schema') != 1 or proof.get('passed') is not True or
         proof.get('sources') != manifest['sources'] or proof.get('release_id') != manifest['release_id'] or
         proof.get('carrier_profile') != manifest['policy']['carrier_profile']):
@@ -30,7 +57,7 @@ def verify(proof, manifest, now):
     if any(checks.get(name) is not True for name in required):
         raise ValueError('required application/upgrade acceptance remains incomplete')
     if 'file_qualification' in manifest['policy']:
-        verify_file_check(proof.get('file_check'), manifest['policy']['file_qualification'])
+        verify_file_check(proof.get('file_check'), file_policy(manifest, proof, platform))
     relays = proof.get('relays', [])
     if len(relays) != 8 or len({r.get('id') for r in relays}) != 8 or any(
             r.get('healthy') is not True or r.get('gcoms_commit') != manifest['sources']['gcoms']['commit']
@@ -69,7 +96,7 @@ def main():
     manifest=validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
     source=a.receipts/(manifest['release_id']+'.json')
     if not source.is_file(): raise SystemExit(75)
-    proof=verify(json.loads(source.read_text()),manifest,int(time.time()))
+    proof=verify(json.loads(source.read_text()),manifest,int(time.time()),os.environ['GCHAT_RELEASE_TARGET'])
     output=Path(os.environ['GCHAT_RELEASE_RECEIPT']);dest=output.parent/'network-acceptance.json';shutil.copyfile(source,dest)
     linked=[]
     for ref in proof.get('evidence',[]):

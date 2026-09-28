@@ -69,6 +69,33 @@ class CoordinatorTests(unittest.TestCase):
         proof['checks']['reopen_recovery']=False
         with self.assertRaises(ValueError):verify(proof,manifest,101)
 
+    def test_windows_size_authorization_cannot_change_other_releases_or_platforms(self):
+        from release_compatibility import file_policy
+        from release_pair import canonical
+        path=Path(__file__).resolve().parents[2]/'release/automation/qualification/windows36-4mib.json'
+        raw=path.read_bytes(); authorization=json.loads(raw)
+        manifest=copy.deepcopy(self.manifest)
+        manifest.update(release_id=authorization['release_id'],sources={
+            name:{'commit':commit,'tree':'a'*40} for name,commit in authorization['sources'].items()})
+        manifest['policy']['file_qualification']={'mode':'file-recovery','bytes':16777216,
+            'completion_seconds':180,'total_seconds':600}
+        original=canonical(manifest)
+        proof={'platform':'windows-x86_64','binary_sha256':authorization['binary_sha256'],
+            'qualification_policy_sha256':hashlib.sha256(raw).hexdigest()}
+        self.assertEqual(file_policy(manifest,proof,'windows-x86_64')['bytes'],4194304)
+        self.assertEqual(file_policy(manifest,{},'windows-x86_64')['bytes'],16777216)
+        for field,value in [('platform','android'),('binary_sha256','0'*64),
+                            ('qualification_policy_sha256','0'*64)]:
+            with self.subTest(field=field),self.assertRaises(ValueError):
+                file_policy(manifest,{**proof,field:value},'windows-x86_64')
+        for platform in (None,'android','ios','linux-x86_64','macos-aarch64'):
+            with self.subTest(platform=platform),self.assertRaises(ValueError):
+                file_policy(manifest,proof,platform)
+        for field,value in [('release_id','0'*64),('sources',self.manifest['sources'])]:
+            with self.subTest(field=field),self.assertRaises(ValueError):
+                file_policy({**manifest,field:value},proof,'windows-x86_64')
+        self.assertEqual(canonical(manifest),original)
+
     def test_bounded_file_gate_rejects_missing_late_or_incomplete_recovery(self):
         from release_compatibility import verify_file_check
         policy=json.loads((Path(__file__).resolve().parents[2]/'release/automation/policy.json').read_text())['file_qualification']

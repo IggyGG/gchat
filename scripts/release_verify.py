@@ -37,9 +37,19 @@ def verify(manifest, platform, directory, output, tools=None):
     reports = [p for p in reports if not any(part in ('inputs', 'build', 'native-tests') for part in p.relative_to(directory).parts[:-1])]
     if len(reports) != 1: raise ValueError('native build receipt missing or ambiguous')
     report = reports[0]; build = json.loads(report.read_text()); root = report.parent
-    binding = json.loads((root / 'release-binding.json').read_text())
-    if binding.get('candidate') != manifest or binding.get('platform') != platform or binding.get('build_sha256') != sha(report):
-        raise ValueError('native worker did not attest to this exact reserved candidate')
+    recovered_windows = False
+    recovery = directory.parent / 'recovery'
+    if platform == 'windows-x86_64' and (recovery / 'binding.json').is_file():
+        # The failed workflow stopped before its final candidate attestation.
+        # Independently verify the explicitly registered immutable original and
+        # follow-up; never fabricate an attestation inside the original archive.
+        from release_recovery import verify_windows
+        verify_windows(manifest, root, recovery, load_module('windows-build'))
+        recovered_windows = True
+    else:
+        binding = json.loads((root / 'release-binding.json').read_text())
+        if binding.get('candidate') != manifest or binding.get('platform') != platform or binding.get('build_sha256') != sha(report):
+            raise ValueError('native worker did not attest to this exact reserved candidate')
     artifacts = []
     if platform in ('android', 'ios'):
         if build.get('passed') is not True or build.get('sources_unchanged') is not True or not source_pair(build.get('sources', {}), manifest['sources']):
@@ -99,7 +109,8 @@ def verify(manifest, platform, directory, output, tools=None):
             for item in build['files']:
                 verify_gpg(root / (item['name'] + '.asc'), root / item['name'], 'F4F6F8550D2AA952A189640D58430838AA3230BB')
         if platform == 'windows-x86_64':
-            load_module('windows-build').collect(root, expected)
+            if not recovered_windows:
+                load_module('windows-build').collect(root, expected)
         elif platform.startswith('macos'):
             mac = load_module('macos-build')
             evidence = root / 'evidence'; candidate = json.loads((evidence / 'candidate.json').read_text())
@@ -130,7 +141,10 @@ def verify(manifest, platform, directory, output, tools=None):
     import shutil
     retained = output.parent / 'verified'; retained.mkdir(exist_ok=True)
     evidence = []
-    for path in [report, *artifacts]:
+    followup_evidence = []
+    if platform == 'windows-x86_64' and (directory.parent / 'recovery/binding.json').is_file():
+        followup_evidence = [p for p in (directory.parent / 'recovery').rglob('*') if p.is_file() and p.suffix in ('.json', '.zip', '.tar')]
+    for path in [report, *artifacts, *followup_evidence]:
         name = sha(path) + '-' + path.name
         destination = retained / name
         if not destination.exists(): shutil.copyfile(path, destination)

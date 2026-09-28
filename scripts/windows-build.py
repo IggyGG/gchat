@@ -151,22 +151,27 @@ def verify_signing_cleanup(directory, publisher, source_archive):
         raise ValueError('Windows signing key/trust cleanup did not pass')
 
 
-def verify_installer_smoke(directory, build, source_archive, *, lifecycle_source_archive=None):
+def verify_installer_smoke(directory, build, source_archive, *, lifecycle_source_archive=None,
+                           smoke_directory=None, qualification_source_archive=None):
     # A packaging recovery may use a separately frozen lifecycle fixture. Its
     # archive must be authenticated by the caller; it cannot replace any other
     # application, native, installer or signing source binding below.
     lifecycle_source = source_archive if lifecycle_source_archive is None else lifecycle_source_archive
-    smoke = directory / 'application-smoke'
+    smoke = directory / 'application-smoke' if smoke_directory is None else Path(smoke_directory)
+    harness_source = source_archive if qualification_source_archive is None else qualification_source_archive
     report = json.loads((smoke / 'report.json').read_text())
+    network_requested = report.get('network_receipt') is not None
+    expected_scope = ('windows_server_2022_current_user_nsis_service_and_network' if network_requested
+                      else 'windows_server_2022_current_user_nsis_service_lifecycle')
     if (report.get('schema') != 1 or
-        report.get('scope') != 'windows_server_2022_current_user_nsis_service_lifecycle' or
+        report.get('scope') != expected_scope or
         report.get('passed') is not True or report.get('inputs_unchanged') is not True or
         report.get('target') != build['target'] or
         report.get('sources') != build['dependency_inputs']['sources'] or
         report.get('persistent_certificate_stores_unchanged') is not True):
         raise ValueError('Windows installed application scope, result or source binding mismatch')
-    if any(report.get(name) is not False for name in
-           ('gui_tested', 'windows_11_qualified', 'production_network_requested')):
+    if (any(report.get(name) is not False for name in ('gui_tested', 'windows_11_qualified'))
+            or report.get('production_network_requested') is not network_requested):
         raise ValueError('Windows installer receipt exceeds its qualified scope')
     host = report.get('host', {})
     if (host.get('system') != 'Windows' or host.get('architecture') != 'x86_64' or
@@ -182,9 +187,9 @@ def verify_installer_smoke(directory, build, source_archive, *, lifecycle_source
                       ('build_manifest', directory / 'build.json'),
                       ('native_receipt', directory / 'provenance/native-ci.json')):
         source.verify_reference(path, inputs.get(key))
-    source.verify_archived_file(source_archive, 'scripts/test-windows-installer.py', report.get('harness'))
+    source.verify_archived_file(harness_source, 'scripts/test-windows-installer.py', report.get('harness'))
     source.verify_archived_file(source_archive, 'scripts/verify-windows-signature.ps1', report.get('signature_verifier'))
-    publication = json.loads(source.verify_archived_file(source_archive, 'release/publication.json', inputs.get('publication')))
+    publication = json.loads(source.verify_archived_file(harness_source, 'release/publication.json', inputs.get('publication')))
     publisher = publication['publisher_identities']['windows']
     if build['publisher'] != publisher or build['signing_policy'] != publication['signing_policy']:
         raise ValueError('Windows application publisher differs from frozen source')
@@ -247,6 +252,18 @@ def verify_installer_smoke(directory, build, source_archive, *, lifecycle_source
     commands = report.get('commands', [])
     required = {'initial-processes', 'trust-before', 'installer-signature', 'install', 'application-signature',
                 'service', 'cleanup-processes', 'uninstaller-signature', 'uninstall', 'trust-after'}
+    if report.get('network_receipt') is not None:
+        required.add('network')
+        network_path = smoke / 'network/report.json'
+        source.verify_reference(network_path, report['network_receipt'])
+        network = json.loads(network_path.read_text())
+        if (any(network.get(name) is not True for name in
+                ('passed', 'inputs_unchanged', 'binary_unchanged', 'children_stopped', 'temporary_profile_removed'))
+                or network.get('inputs') != application or network.get('binary_sha256') != binary['sha256']):
+            raise ValueError('Windows network receipt does not bind the installed application')
+        source.verify_archived_file(harness_source, 'scripts/test-native-network.py', report.get('network_harness'))
+        source.verify_archived_file(harness_source, 'scripts/test-native-network.py', network.get('harness'))
+        source.verify_archived_file(lifecycle_source, 'scripts/test-native-application.py', network.get('ipc_helper'))
     if len(commands) != len(required) or {command.get('name') for command in commands} != required:
         raise ValueError('Windows installer receipt omits required install/signature/cleanup commands')
     for command in commands:
@@ -264,7 +281,8 @@ def verify_installer_smoke(directory, build, source_archive, *, lifecycle_source
     return report
 
 
-def collect(directory, expected, *, lifecycle_source_archive=None):
+def collect(directory, expected, *, lifecycle_source_archive=None, smoke_directory=None,
+            qualification_source_archive=None):
     manifest = directory / 'build.json'
     build = json.loads(manifest.read_text())
     if build.get('sources') != expected or build.get('target') != 'windows-x86_64':
@@ -303,7 +321,8 @@ def collect(directory, expected, *, lifecycle_source_archive=None):
         raise ValueError('Windows installer path, digest or signing mismatch')
     archived_source = file_reference(evidence, candidate['sources']['gchat']['archive'])
     verify_installer_smoke(directory, build, archived_source,
-                           lifecycle_source_archive=lifecycle_source_archive)
+                           lifecycle_source_archive=lifecycle_source_archive, smoke_directory=smoke_directory,
+                           qualification_source_archive=qualification_source_archive)
     verify_signing_cleanup(directory, build['publisher'], archived_source)
     prereqs = json.loads((directory / 'worker-evidence/prerequisites.json').read_text())
     if (prereqs.get('scope') != 'windows_server_2022_x64_prerequisites' or prereqs.get('passed') is not True or

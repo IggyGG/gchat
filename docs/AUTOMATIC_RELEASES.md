@@ -151,3 +151,13 @@ upgrade/reopen result and provider observations before claiming it operational.
 Provider references: [Google release lifecycle API](https://developers.google.com/android-publisher/api-ref/rest/v3/applications.tracks.releases),
 [Apple version metadata](https://developer.apple.com/help/app-store-connect/update-your-app/create-a-new-version),
 [Apple encryption states](https://developer.apple.com/documentation/appstoreconnectapi/appencryptiondeclarationstate).
+
+Retained worker recovery is explicit, not a generic success override. The reviewed
+Windows 36 registry in `scripts/release_recovery.py` binds the failed original
+run/archive to the exact successful 4 MiB follow-up run/archive and qualification
+source commit. Collection preserves both; verification rechecks every extracted
+member, original native/signing evidence, the installed executable, trust-store
+cleanup and new network journey. It does not edit the original failed report or
+invent its missing final worker attestation. Compatibility and upgrade/rollback
+remain separate mandatory gates before publication. An unrelated candidate,
+platform, changed artifact or failed follow-up has no recovery entry.

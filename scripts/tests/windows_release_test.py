@@ -108,7 +108,8 @@ class WindowsEvidenceTest(unittest.TestCase):
         publication = json.loads((SCRIPTS.parent / 'release/publication.json').read_text())
         self.publisher = publication['publisher_identities']['windows']
         paths = ['scripts/test-windows-installer.py', 'scripts/test-native-application.py',
-                 'scripts/verify-windows-signature.ps1', 'scripts/windows-signing.ps1', 'release/publication.json']
+                 'scripts/verify-windows-signature.ps1', 'scripts/windows-signing.ps1', 'release/publication.json',
+                 'scripts/test-native-network.py']
         self.archive = self.root / 'source.tar.gz'
         self.source_refs = {}
         with tarfile.open(self.archive, 'w:gz') as archive:
@@ -196,6 +197,39 @@ class WindowsEvidenceTest(unittest.TestCase):
         (self.smoke / 'report.json').write_text(json.dumps(self.report))
         return worker.verify_installer_smoke(self.root, self.build, self.archive,
                                              lifecycle_source_archive=lifecycle_source_archive)
+
+    def add_network_receipt(self):
+        network={'passed':True,'inputs_unchanged':True,'binary_unchanged':True,
+                 'children_stopped':True,'temporary_profile_removed':True,
+                 'inputs':copy.deepcopy(self.application),'binary_sha256':self.binary['sha256'],
+                 'harness':self.source_refs['scripts/test-native-network.py'],
+                 'ipc_helper':self.source_refs['scripts/test-native-application.py']}
+        (self.smoke/'network').mkdir(exist_ok=True)
+        path=self.smoke/'network/report.json';path.write_text(json.dumps(network))
+        self.report['network_receipt']=reference(path.read_bytes(),path)
+        self.report['scope']='windows_server_2022_current_user_nsis_service_and_network'
+        self.report['production_network_requested']=True
+        self.report['network_harness']=network['harness']
+        command={'name':'network','exit_code':0}
+        for stream in ('stdout','stderr'):
+            path=self.smoke/('network.'+stream);path.write_bytes(b'')
+            command[stream]=reference(b'',path)
+        self.report['commands'].append(command)
+        return network
+
+    def test_optional_network_command_requires_bound_success_and_cleanup(self):
+        network=self.add_network_receipt()
+        self.verify()
+        for field,value in [('passed',False),('binary_sha256','0'*64),
+                            ('children_stopped',False),('inputs',{})]:
+            with self.subTest(field=field):
+                path=self.smoke/'network/report.json';path.write_text(json.dumps({**network,field:value}))
+                self.report['network_receipt']=reference(path.read_bytes(),path)
+                with self.assertRaises(ValueError):self.verify()
+
+    def test_unreferenced_extra_network_command_rejected(self):
+        self.add_network_receipt();del self.report['network_receipt']
+        with self.assertRaises(ValueError):self.verify()
 
     def verify_signer(self):
         for name, report in (('import', self.imported), ('cleanup', self.signing_cleanup)):

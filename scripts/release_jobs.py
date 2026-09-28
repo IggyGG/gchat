@@ -88,7 +88,9 @@ def collect(manifest, target, work, request_id, reconcile=False):
             or run['path'] != '.github/workflows/' + workflow):
         raise ValueError('worker run does not bind the requested source/workflow')
     if run['status'] != 'completed': return None
-    if run['conclusion'] != 'success': raise ValueError('native worker failed; retained provider run ' + str(run['id']))
+    if run['conclusion'] != 'success':
+        from release_recovery import collect as collect_recovery
+        return collect_recovery(manifest, target, work, run)
     artifacts = gh(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']
     name = target if target.startswith(('linux', 'macos', 'windows')) else f'{target}-{expected}-{manifest["sources"]["gcoms"]["commit"]}'
     if target == 'ios': name += '-' + manifest['versions']['ios']

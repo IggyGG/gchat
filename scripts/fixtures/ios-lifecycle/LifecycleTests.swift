@@ -84,6 +84,11 @@ final class GChatLifecycleTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         focusField(field)
         field.typeText(passphrase)
+        // The retained failure's final accessibility snapshot contains the
+        // masked value, but the keyboard clips the field and its query goes
+        // stale. Commit native keyboard input and settle the viewport before
+        // inspecting it; the populated-value and actual reopen checks remain.
+        finishKeyboardInput()
         waitForPopulated(field)
         if confirm {
             XCTAssertEqual(app.webViews.secureTextFields.count, 2)
@@ -99,6 +104,7 @@ final class GChatLifecycleTests: XCTestCase {
             XCTAssertTrue(confirmation.isHittable && main.frame.contains(confirmation.frame))
             focusField(confirmation)
             confirmation.typeText(passphrase)
+            finishKeyboardInput()
             waitForPopulated(confirmation)
         }
         finishKeyboardInput()
