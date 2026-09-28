@@ -63,6 +63,7 @@ def acquire(name, output, commands):
     binary=matches[0]
     pin=build['publisher']['certificate_fingerprint'].replace(' ','').upper()
     signature=installer.verify_signature(commands,binary,pin,build['signing_policy'],name+'-signature')
+    smoke.validate_artifacts(binary, manifest, root / 'original/provenance/native-ci.json')
     return {'binary':binary,'build_manifest':manifest,'native_receipt':root/'original/provenance/native-ci.json',
             'build':build,'signature':signature,'archive_sha256':bound['archive']}
 
@@ -74,7 +75,7 @@ def main():
     report={'schema':1,'passed':False,'scope':'native Windows retained executable profile/history/cache rollback',
             'application_rebuilt':False,'personal_profiles_accessed':False,'nsis_upgrade_ui_qualified':False,
             'windows_11_qualified':False,'commands':[],'phases':[]}
-    commands=smoke.Commands(out,report);journey=None; invitation=out/'invitation.private'
+    commands=installer.Commands(out,report);journey=None; invitation=out/'invitation.private'
     try:
         current=acquire('windows36',out,commands); baseline=acquire('windows18',out,commands)
         smoke.require(current['build']['publisher']==baseline['build']['publisher'],'rollback publisher differs')

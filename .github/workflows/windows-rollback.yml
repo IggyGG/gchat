@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.12.10'
       - name: Verify native private fixture permissions before acquisition
-        run: python -m unittest scripts.tests.native_application_test.PrivateDirectoryTests -v
+        run: python -m unittest scripts.tests.native_application_test.PrivateDirectoryTests scripts.tests.windows_rollback_test -v
       - name: Same-profile current to baseline to current with exact artifacts
         env:
           GH_TOKEN: ${{ github.token }}
