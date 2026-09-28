@@ -33,8 +33,16 @@ class InputTests(unittest.TestCase):
             second = fingerprints(roots, sources)
             self.assertEqual(first['artifacts'], second['artifacts'])
             self.assertNotEqual(first['qualification'], second['qualification'])
+            for path in ('release/downloads.json', 'scripts/website.py',
+                         '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py'):
+                before = fingerprints(roots, sources)
+                commit('gchat', path, 'reviewed non-application change')
+                after = fingerprints(roots, sources)
+                self.assertEqual(before['artifacts'], after['artifacts'])
+                self.assertNotEqual(before['qualification'], after['qualification'])
             for project, path in [('gchat', 'new-unclassified-input'),
                                   ('gchat', 'scripts/release_prepare.py'),
+                                  ('gchat', 'release/publication.json'),
                                   ('gchat', '.github/workflows/windows-release.yml'),
                                   ('gcoms', 'crates/node/src/lib.rs')]:
                 before = fingerprints(roots, sources)
