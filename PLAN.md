@@ -1,3 +1,10 @@
+## Retained Windows 36 diagnosis (2026-09-28)
+
+R07: native compilation, signatures and offline install/reopen passed, but the
+interrupted transfer stopped at 6.5 MiB when the original 180-second budget expired.
+Use the exact immutable installer with aggregate diagnostics and fresh disposable
+profiles. Do not rebuild, extend deadlines or qualify the failed run.
+
 ## Retained iOS startup recovery (2026-09-28)
 
 R07: support the specific post-native-test simulator launch timeout after verified

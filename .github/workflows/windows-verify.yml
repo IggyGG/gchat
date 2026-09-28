@@ -11,7 +11,7 @@ on:
         required: false
         type: choice
         default: none
-        options: [none, windows18, windows29]
+        options: [none, windows18, windows29, windows36]
 permissions:
   contents: read
 jobs:

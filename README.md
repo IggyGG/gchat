@@ -1,3 +1,8 @@
+Windows candidate 36 can be diagnosed with the retained-installer workflow,
+without compiling again. Its interrupted-transfer deadline failure is preserved;
+a later run must meet the same budgets and cleanup checks. iOS retained-verification
+archives also retain the original failed startup report referenced by recovery.
+
 Retained iOS releases can recover from a simulator launch timeout using the
 original signed IPA and unchanged simulator app. The original failure remains
 retained; fresh native tests, profile/reopen lifecycle and complete cleanup must

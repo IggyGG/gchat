@@ -122,6 +122,7 @@ jobs:
             ios-verification/simulator-original/ios-lifecycle-output/original/ios-output/build.json
             ios-verification/simulator-original/ios-lifecycle-output/original/ios-output/signing-cleanup.json
             ios-verification/simulator-original/ios-lifecycle-output/original/ios-output/native-tests/
+            ios-verification/simulator-original/ios-lifecycle-output/original/ios-output/simulator-smoke/report.json
             ios-verification/simulator-original/ios-lifecycle-output/original/ios-output/simulator-xcode/authority/
             ios-verification/simulator-verification/
             ios-verification/simulator-lifecycle/report.json

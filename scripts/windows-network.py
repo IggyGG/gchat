@@ -38,6 +38,12 @@ RETAINED = {
                     'gcoms': '0b41cb2ef16f8ddab81ca8b38182522a31735900'},
         'conclusion': 'failure', 'executable': {'name': 'gchat-desktop.exe',
             'sha256': '072ff89231d1f2b333a75a5c7bd8cc3ee01d16eeb89f3abb394e5a0d207445ac', 'size': 47525664}},
+    'windows36': {'run': 36413216786, 'artifact': 10970753773,
+        'archive': '4d567ce80b4bb813570f2c5439f74b4e0fc5512fef56f2e4bd77d76c007172b2',
+        'sources': {'gchat': '21ad84ed266fdc237fd745e4b1aca6139b6d6728',
+                    'gcoms': '8cdfd3fee2ab7809f1c348dc3a60ef24393b4101'},
+        'conclusion': 'failure', 'executable': {'name': 'gchat-desktop.exe',
+            'sha256': 'd37a2e334c76d5988dc9a8aefbec3c6db18e1cb14a74826a47cfb784ece9b100', 'size': 47526688}},
 }
 
 

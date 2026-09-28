@@ -1,3 +1,9 @@
+## Windows 36 retained diagnostic inputs
+
+Run `native_network_test.py` and `windows_installer_test.py`. The additional
+immutable candidate uses the existing failure/cleanup verifier and original
+180-second file budget. Fresh actual Windows network execution remains required.
+
 ## Retained iOS startup recovery
 
 Run `ios_lifecycle_test.py` and `ios_retained_test.py` through unittest discovery.
