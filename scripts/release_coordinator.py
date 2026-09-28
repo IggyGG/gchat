@@ -64,6 +64,9 @@ def read_receipt(path, manifest, platform, stage):
 
 class Coordinator:
     def __init__(self, state, config):
+        self.poll_interval = config.get('poll_interval_seconds', 30)
+        if type(self.poll_interval) is not int or not 10 <= self.poll_interval <= 300:
+            raise ValueError('poll_interval_seconds must be an integer between 10 and 300')
         self.state = Path(state).resolve()
         self.state.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(self.state / 'ledger.sqlite')
@@ -223,7 +226,7 @@ def main():
                 controller.tick()
                 if args.once:
                     break
-                time.sleep(300)
+                time.sleep(controller.poll_interval)
         finally:
             controller.ledger.close()
 

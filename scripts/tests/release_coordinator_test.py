@@ -16,6 +16,27 @@ class CoordinatorTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.manifest=candidate()
+    def test_invalid_poll_interval_cannot_create_release_state(self):
+        for interval in (0, 9, 301, True, 0.5, '30', None):
+            state=self.root / 'unused'
+            with self.subTest(interval=interval),self.assertRaisesRegex(ValueError,'poll_interval_seconds'):
+                Coordinator(state,{'poll_interval_seconds':interval})
+            self.assertFalse(state.exists())
+
+    def test_daemon_polling_uses_configured_interval_and_releases_lock(self):
+        import release_coordinator
+        for interval in (None, 10, 300):
+            config=self.root/'config.json'
+            config.write_text(json.dumps({} if interval is None else {'poll_interval_seconds':interval}))
+            argv=['release_coordinator.py','--state',str(self.root/'state'),'--config',str(config)]
+            with self.subTest(interval=interval),patch.object(sys,'argv',argv), \
+                    patch.object(Coordinator,'tick') as tick, \
+                    patch('release_coordinator.time.sleep',side_effect=KeyboardInterrupt) as sleep:
+                with self.assertRaises(KeyboardInterrupt):release_coordinator.main()
+                tick.assert_called_once()
+                sleep.assert_called_once_with(30 if interval is None else interval)
+            # The next daemon can acquire the same lock after interruption.
+
     def test_selected_platforms_preserve_other_queued_and_active_work(self):
         from release_pair import canonical
         c=Coordinator(self.root,{'workers':{}});self.addCleanup(c.ledger.close)

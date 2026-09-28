@@ -69,6 +69,11 @@ separate and their speed limitation must be disclosed.
    processed build to a version and submits review. Store rejection or missing
    listing information remains an explicit blocked state.
 
+The coordinator checks pending work every 30 seconds, after the previous tick
+finishes. `poll_interval_seconds` may be set to an integer from 10 to 300 in its
+configuration. This removes the former five-minute delay between completed
+stages without overlapping workers or resubmitting an unknown external result.
+
 There is no 24-hour campaign, physical-device requirement or statistical privacy
 release gate. This does not claim traffic-analysis privacy qualification. The
 remaining privacy work remains described in `PRODUCTION_RELEASE.md`.
