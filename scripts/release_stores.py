@@ -149,7 +149,14 @@ def submit_google(api, config, candidate, aab, journal):
     state['commit_attempted'] = True; atomic_json(journal, state)
     api.request('POST', edit + ':commit', params={'changesNotSentForReview': 'false'}, json={})
     state['commit_accepted'] = True; atomic_json(journal, state)
-    return observe_google(api, code, track)
+    observed = observe_google(api, code, track)
+    # The lifecycle endpoint can lag the successful commit. Defer exactly this
+    # first observation; later polls retain normal blocking/rejection semantics.
+    # The durable journal prevents another upload or commit during reconciliation.
+    if observed.get('provider_status') == 'RELEASE_LIFECYCLE_STATE_NOT_SENT_FOR_REVIEW':
+        return {**observed, 'state': 'processing',
+                'reason': 'Commit accepted; waiting for the store lifecycle to reconcile'}
+    return observed
 
 
 def submit_apple(api, config, candidate, journal):

@@ -68,6 +68,40 @@ class SubmissionTests(unittest.TestCase):
             root=Path(d);aab=root/'app.aab';aab.write_bytes(b'changed')
             with self.assertRaisesRegex(ValueError,'changed'):
                 submit_google(None,{}, {'aab_sha256':'f'*64},aab,root/'journal')
+
+    def test_accepted_google_commit_allows_one_stale_lifecycle_observation(self):
+        import tempfile, hashlib
+        from release_stores import submit_google
+        digest = hashlib.sha256(b'qualified').hexdigest()
+        for status, expected in [
+            ('NOT_SENT_FOR_REVIEW', 'processing'), ('IN_REVIEW', 'in_review'),
+            ('PUBLISHED', 'available'), ('NOT_APPROVED', 'blocked'),
+            ('APPROVED_NOT_PUBLISHED', 'blocked'), ('DRAFT', 'blocked'),
+        ]:
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as d:
+                calls = []
+                class API:
+                    def request(self, method, path, **kwargs):
+                        calls.append((method, path))
+                        if path == '/edits': return {'id': 'retained'}
+                        if path.endswith('/bundles'):
+                            return {'bundles': [{'versionCode': '1047', 'sha256': digest}]}
+                        if path == '/tracks/production/releases':
+                            return {'releases': [{'track': 'production',
+                                'activeArtifacts': [{'versionCode': '1047'}],
+                                'releaseLifecycleState': 'RELEASE_LIFECYCLE_STATE_' + status}]}
+                        return {}
+                root = Path(d); aab = root / 'app.aab'; aab.write_bytes(b'qualified')
+                candidate = {'release_id': 'a' * 64, 'version_code': '1047', 'aab_sha256': digest}
+                api = API(); journal = root / 'journal'
+                first = submit_google(api, {}, candidate, aab, journal)
+                self.assertEqual(first['state'], expected)
+                self.assertTrue(json.loads(journal.read_text())['commit_accepted'])
+                mutations = [call for call in calls if call[0] != 'GET']
+                second = submit_google(api, {}, candidate, aab, journal)
+                self.assertEqual(second['state'], 'blocked' if status == 'NOT_SENT_FOR_REVIEW' else expected)
+                self.assertEqual([call for call in calls if call[0] != 'GET'], mutations)
+
     def test_apple_build_must_belong_to_our_app_and_reserved_version(self):
         import tempfile
         from release_stores import submit_apple
