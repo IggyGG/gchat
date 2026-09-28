@@ -47,6 +47,17 @@ Delivery, authentication, persistence, signatures and rollback remain mandatory.
 
 ## Large-file qualification
 
+Mac 0.1.44 remains blocked by the 16 MiB interrupted-transfer deadline. The
+2026-09-29 retained Apple-silicon diagnostic used the original signed installer
+without rebuilding it. Both authenticated message ACKs passed and reopening
+retained the initial 256 KiB. Peer rediscovery took approximately 52 seconds;
+the transfer reached 8.25 MiB before the unchanged completion deadline. Recorded
+counters showed no rejected pieces or persistence failures. These observations
+do not identify a root cause or qualify the incomplete file. Original failed
+ARM/Intel runs and diagnostic run 36499810218 remain failed; later builds need
+their own passing file and rollback receipts. No runtime tuning or deadline
+change follows from this diagnostic alone.
+
 On 2026-09-28 the owner approved reducing the Windows blocking check to 4 MiB,
 with slow transfers disclosed and 16 MiB checked separately. Interruption,
 retained pieces/identity, reopen, authenticated delivery, exact export hash,
