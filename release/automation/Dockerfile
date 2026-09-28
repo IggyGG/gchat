@@ -7,6 +7,7 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && npm install --global @tauri-apps/cli@2.11.4
 COPY scripts /opt/gchat/scripts
+COPY release /opt/gchat/release
 COPY release/automation /opt/gchat/automation
 RUN useradd --uid 10001 --create-home release
 USER 10001
