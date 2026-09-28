@@ -47,4 +47,3 @@ You need an invitation to a GChat network. Keep your passphrase safe: there is n
 Optional activity notifications use Apple push services and contain no message text, sender names or filenames. Availability depends on the network operator and platform; background delivery is not guaranteed.
 
 Privacy and support: https://gchat.boo/privacy.html
-
