@@ -1,0 +1,66 @@
+name: Focused Mac catalog qualification
+run-name: Mac catalog qualification ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      gcoms_commit:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  catalog:
+    runs-on: macos-15-intel
+    timeout-minutes: 25
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_BUILD_JOBS: '3'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: gchat
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          persist-credentials: false
+      - name: Preflight exact source, native tools and loopback fixture
+        env:
+          EXPECTED_COMMIT: ${{ inputs.gcoms_commit }}
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess, tomllib
+          from pathlib import Path
+          expected=os.environ['EXPECTED_COMMIT']
+          assert re.fullmatch('[0-9a-f]{40}',expected)
+          assert subprocess.check_output(['git','-C','gcoms','rev-parse','HEAD'],text=True).strip()==expected
+          toolchain=tomllib.loads(Path('gcoms/rust-toolchain.toml').read_text())['toolchain']['channel']
+          subprocess.run(['rustup','toolchain','install',toolchain,'--profile','minimal'],check=True)
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('RUSTUP_TOOLCHAIN='+toolchain+'\n')
+          PY
+          python3 gchat/scripts/macos-loopback.py
+          mkdir evidence
+          git -C gcoms rev-parse HEAD HEAD^{tree} > evidence/source.txt
+      - name: Original pinned-source catalog tests
+        working-directory: gcoms
+        run: |
+          set -o pipefail
+          cargo test -p gcoms-routing --all-features --locked --lib catalog::tests:: -- --test-threads=1 --nocapture 2>&1 | tee ../evidence/catalog.log
+      - name: Retain result and unchanged source
+        if: always()
+        run: |
+          git -C gcoms status --porcelain > evidence/source-after.txt
+          test ! -s evidence/source-after.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: macos-intel-catalog
+          path: evidence/
+          retention-days: 30

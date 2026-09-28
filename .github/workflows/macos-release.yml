@@ -108,6 +108,12 @@ jobs:
           echo "$(brew --prefix node@22)/bin" >> "$GITHUB_PATH"
           python3 gchat/scripts/macos-loopback.py
           python3 -m pip install --disable-pip-version-check numpy==2.3.5
+      - name: Preflight the locked WebKit download before native compilation
+        timeout-minutes: 12
+        working-directory: gchat
+        run: |
+          npm ci --ignore-scripts
+          npm exec --workspace @gchat/ui -- playwright install webkit
       - name: Qualify both native workspaces with retained evidence
         timeout-minutes: 275
         run: |
