@@ -62,6 +62,9 @@ Windows x86_64 and iOS
 releases are being qualified independently;
 availability and exact versions are listed on the download page. See
 [platform release delivery](docs/PLATFORM_RELEASES.md).
+Retained Windows network diagnosis can reuse a pinned signed installer via
+`windows-verify.yml` (`network_candidate: windows29`), without rebuilding it;
+aggregate fixture diagnostics preserve the original recovery deadlines.
 
 For installation and first launch, see [gchat.boo](https://gchat.boo/#downloads)
 and the [installation guide](docs/INSTALL.md). GChat includes signed Hetzner relay

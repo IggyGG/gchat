@@ -11,12 +11,12 @@ on:
         required: false
         type: choice
         default: none
-        options: [none, windows18]
+        options: [none, windows18, windows29]
 permissions:
   contents: read
 jobs:
   windows:
-    if: inputs.network_candidate != 'windows18'
+    if: inputs.network_candidate == 'none'
     runs-on: windows-2022
     timeout-minutes: 20
     defaults:
@@ -70,7 +70,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
   network:
-    if: inputs.network_candidate == 'windows18'
+    if: inputs.network_candidate != 'none'
     environment: release-signing
     runs-on: windows-2022
     timeout-minutes: 25
@@ -84,6 +84,7 @@ jobs:
       GCHAT_ISOLATED_SIGNING_WORKER: '1'
       PYTHONUTF8: '1'
       PYTHONIOENCODING: utf-8
+      GCHAT_NETWORK_DIAGNOSTICS: '1'
     steps:
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -103,11 +104,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GCHAT_NETWORK_INVITATION: ${{ secrets.GCHAT_NETWORK_INVITATION }}
-        run: python controller/scripts/windows-network.py --output network-verification
+          GCHAT_RETAINED_CANDIDATE: ${{ inputs.network_candidate }}
+        run: python controller/scripts/windows-network.py --output network-verification --candidate $env:GCHAT_RETAINED_CANDIDATE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: windows18-network
+          name: ${{ inputs.network_candidate }}-network
           path: network-verification/evidence/**
           include-hidden-files: true
           if-no-files-found: error

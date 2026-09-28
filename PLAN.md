@@ -1,3 +1,11 @@
+## Windows 29 retained recovery diagnosis (2026-09-28)
+
+The signed Windows 29 installer passed native/offline installation and two-way
+message ACKs, but its interrupted 16 MiB recovery exceeded the unchanged 180-second
+budget. Preserve that failed receipt. Reuse its pinned immutable installer for a
+single diagnostic journey with aggregate file counters and periodic byte progress;
+no application rebuild, deadline extension, personal profile or publication claim.
+
 ## Native publication follow-up (2026-09-28)
 
 Windows retained candidate18 failed its actual network journey when SDK named-pipe

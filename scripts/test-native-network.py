@@ -13,6 +13,14 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 PIECE = 262144
 
+def fixture_environment(home):
+    environment = m.isolated_environment(home)
+    if os.environ.get('GCHAT_NETWORK_DIAGNOSTICS') == '1':
+        # Explicit aggregate counters, never inherited provider/authority controls.
+        environment['GCHAT_FILE_DIAGNOSTICS'] = '1'
+        environment['GCHAT_LATENCY_DIAGNOSTICS'] = '1'
+    return environment
+
 def binary_worker():
     r = json.load(sys.stdin)
     body = base64.b64decode(r['frame'], validate=True)
@@ -87,7 +95,10 @@ class Journey:
         command = m.service_command(self.args.binary.resolve(), home, stop)
         command.remove('--no-network-bootstrap')
         log = (self.root / (f'client{i}-' + uuid.uuid4().hex + '.log')).open('xb')
-        p = subprocess.Popen(command, env=m.isolated_environment(home), stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+        environment = fixture_environment(home)
+        if environment.get('GCHAT_FILE_DIAGNOSTICS') == '1':
+            self.report['aggregate_diagnostics_enabled'] = True
+        p = subprocess.Popen(command, env=environment, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
         self.children.append((i, p, stop, log))
         c = m.Client(home / 'protocol.chat', self.timeout())
         self.clients[i] = c
@@ -214,7 +225,18 @@ class Journey:
             self.event('pieces_retained', bytes=retained)
             remaining = 180 - (time.monotonic() - started)
             m.require(remaining > 0, 'file completion deadline')
-            self.until(lambda: self.row(1, ident)['state'] == 'complete', remaining)
+            last_progress = float('-inf')
+
+            def completed():
+                nonlocal last_progress
+                row = self.row(1, ident)
+                now = time.monotonic()
+                if now - last_progress >= 5 or row['state'] == 'complete':
+                    self.event('file_progress', **{key: row.get(key) for key in
+                        ('state', 'verified_bytes', 'size_bytes', 'sources', 'verified_sources', 'completed_by')})
+                    last_progress = now
+                return row['state'] == 'complete'
+            self.until(completed, remaining)
             completion = time.monotonic() - started
             m.require(completion <= 180, 'late file completion')
             m.require(self.export(ident) == expected, 'export hash mismatch')

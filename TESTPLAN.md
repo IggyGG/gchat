@@ -1,3 +1,12 @@
+## Retained failed network artifacts
+
+`windows-verify.yml` supports the explicitly pinned Windows 29 artifact after its
+failed network journey. Reject unrelated installer failures, changed source/archive
+bindings, incomplete cleanup, changed trust stores and failed offline service checks.
+Explicit fixture diagnostics must retain provider/environment isolation. Cluster
+`native_network_test` and `windows_installer_test`: 29 tests passed. The real Windows
+journey remains separately required with the original 180/600-second budgets.
+
 ## Original Mac packaging identity
 
 A packaging controller may differ from the native-qualified application. Its
