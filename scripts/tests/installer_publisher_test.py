@@ -298,6 +298,12 @@ class DiskImageApplicationTest(unittest.TestCase):
                 if command[:3] == ['npm', 'run', 'tauri']:
                     (bundle_dir / 'dmg').mkdir(parents=True)
                     (bundle_dir / 'dmg/GChat.dmg').write_bytes(b'signed image')
+                    # DMG implicitly builds an app but Tauri only emits the
+                    # updater archive when app is an explicit bundle target.
+                    if 'app' in command[command.index('--bundles') + 1].split(','):
+                        (bundle_dir / 'macos').mkdir()
+                        (bundle_dir / 'macos/GChat.app.tar.gz').write_bytes(b'updater app')
+                        (bundle_dir / 'macos/GChat.app.tar.gz.sig').write_bytes(b'updater signature')
                 return self.execute(command, **kwargs)
 
             details = subprocess.CompletedProcess(['codesign'], 0, stderr='Authority=Gh0st\n')
@@ -313,6 +319,10 @@ class DiskImageApplicationTest(unittest.TestCase):
                         'sha256': hashlib.sha256(b'signed executable').hexdigest(), 'size': 17}])
                     self.assertTrue(files[0]['signing_verified'])
                     self.assertEqual((output / 'GChat.dmg').read_bytes(), b'signed image')
+                    self.assertEqual((output / 'updater/GChat.app.tar.gz').read_bytes(), b'updater app')
+                    updates = json.loads((output / 'updater-artifacts.json').read_text())
+                    self.assertEqual(len(updates), 1)
+                    self.assertEqual(updates[0]['signature_sha256'], hashlib.sha256(b'updater signature').hexdigest())
                 else:
                     with self.assertRaisesRegex(ValueError, 'certificate differs'):
                         installer.bundle('macos-aarch64', output, {}, identity, 'self-signed', self.root)

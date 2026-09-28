@@ -265,7 +265,10 @@ def bundle(target, output, environment, identity, policy, checkout):
         environment['CARGO_TARGET_DIR'] = str(build_root)
         run([sys.executable, 'scripts/collect-notices.py'], env=environment, cwd=checkout)
         npm = 'npm.cmd' if system == 'Windows' else 'npm'
-        run([npm, 'run', 'tauri', '-w', '@gchat/client', '--', 'build', '--target', triple, '--bundles', ','.join(bundles), '--config', str(config_path)], env=environment, cwd=checkout)
+        # A DMG implicitly builds then removes its .app. Tauri only retains
+        # the signed updater archive when app is also an explicit target.
+        build_bundles = ['app', *bundles] if system == 'Darwin' else bundles
+        run([npm, 'run', 'tauri', '-w', '@gchat/client', '--', 'build', '--target', triple, '--bundles', ','.join(build_bundles), '--config', str(config_path)], env=environment, cwd=checkout)
         graph = json.loads(subprocess.check_output(
             ['cargo', 'metadata', '--manifest-path', 'apps/client/src-tauri/Cargo.toml',
              '--locked', '--filter-platform', triple, '--format-version=1'],
