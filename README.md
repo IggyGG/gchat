@@ -211,3 +211,10 @@ this setup budget does not change application test deadlines.
 Release publication accepts repeated references to the same verified artifact,
 while checking every evidence hash and rejecting ambiguous installer candidates.
 Both updater and package inputs are selected before public pointers change.
+# Release operation
+
+Production uses immutable artifacts and separately bound qualification evidence.
+See [automatic releases](docs/AUTOMATIC_RELEASES.md) for conservative source-change
+classification, paused admission during stabilization, and the owner-approved
+Windows 4 MiB recovery check. A tooling update or policy decision is not a native
+application pass.

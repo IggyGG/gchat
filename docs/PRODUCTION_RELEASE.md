@@ -26,6 +26,13 @@ Delivery, authentication, persistence, signatures and rollback remain mandatory.
 
 ## Large-file qualification
 
+On 2026-09-28 the owner approved reducing the Windows blocking check to 4 MiB,
+with slow transfers disclosed and 16 MiB checked separately. Interruption,
+retained pieces/identity, reopen, authenticated delivery, exact export hash,
+cleanup and the 180/600-second deadlines are unchanged. Other platforms retain
+16 MiB. This decision does not relabel historical failures or itself establish
+that any Windows artifact passed the smaller check.
+
 As of 2026-09-25, releases require a bounded 16 MiB interrupted-transfer,
 restart and SHA-256 check (180-second completion, 600-second whole-run ceiling).
 The 1 GiB campaign runs separately and does not block publication. Both retained

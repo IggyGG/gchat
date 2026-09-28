@@ -2,7 +2,7 @@
 
 The caller separately verifies the installer signature. This test binds the
 executable to its native receipt, checks real recipient ACKs and interrupted
-16 MiB export/reopen, and never changes a personal profile or relay service.
+bounded export/reopen, and never changes a personal profile or relay service.
 It does not qualify GUI behavior, steady-state latency, or rollback.
 """
 import argparse, base64, hashlib, importlib.util, json, os, secrets, shutil, socket, struct, subprocess, sys, time, uuid
@@ -12,6 +12,11 @@ spec = importlib.util.spec_from_file_location('smoke', Path(__file__).resolve().
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 PIECE = 262144
+
+def validate_file_bytes(value, platform):
+    m.require(type(value) is int and (value == 16777216 or
+              (platform == 'nt' and value == 4194304)),
+              'release size must be 16 MiB, or the explicitly selected Windows 4 MiB check')
 
 def fixture_environment(home):
     environment = m.isolated_environment(home)
@@ -298,5 +303,5 @@ if __name__ == '__main__':
         p.add_argument('--bytes', type=int, default=16777216)
         a = p.parse_args()
         a.binary_sha256 = m.digest(a.binary)
-        m.require(a.bytes == 16777216, 'release size must be 16 MiB')
+        validate_file_bytes(a.bytes, os.name)
         sys.exit(Journey(a).run())

@@ -69,4 +69,23 @@ class PreparationTests(unittest.TestCase):
                 self.assertEqual(len(ledger.status()['candidates']),1)
                 manifest=ledger.manifest(release)
                 self.assertEqual(git('rev-parse',manifest['refs']['gchat']),manifest['sources']['gchat']['commit'])
+                # Keep the companion source frozen while the application
+                # controller advances; no new application/store version is due.
+                stable=root/'stable-coms.git'
+                subprocess.run(['git','clone','--bare',str(origin),str(stable)],check=True,capture_output=True)
+                subprocess.run(['git','-C',config['gcoms']['mirror'],'remote','set-url','origin',str(stable)],check=True)
+                (origin/'scripts').mkdir()
+                (origin/'scripts/release_coordinator.py').write_text('# qualification revision\n')
+                git('add','.');git('commit','-m','controller only')
+                self.assertEqual(discover(config,state,ledger),release)
+                self.assertEqual(len(ledger.status()['candidates']),1)
+                observation=json.loads((state/'qualification-needed.json').read_text())
+                self.assertTrue(observation['artifact_inputs_unchanged'])
+                self.assertFalse(observation['qualification_passed'])
+                self.assertEqual(ledger.manifest(release),manifest)
+                (origin/'new-runtime-input').write_text('must rebuild')
+                git('add','.');git('commit','-m','runtime input')
+                self.assertIsNone(discover(config,state,ledger))
+                self.assertNotEqual(discover(config,state,ledger),release)
+                self.assertEqual(len(ledger.status()['candidates']),2)
             finally:ledger.close()

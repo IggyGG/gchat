@@ -12,6 +12,12 @@ on:
         type: choice
         default: none
         options: [none, windows18, windows29, windows36]
+      file_bytes:
+        description: Retained Windows 36 may use the owner-approved 4 MiB check
+        required: false
+        type: choice
+        default: '16777216'
+        options: ['16777216', '4194304']
 permissions:
   contents: read
 jobs:
@@ -105,7 +111,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GCHAT_NETWORK_INVITATION: ${{ secrets.GCHAT_NETWORK_INVITATION }}
           GCHAT_RETAINED_CANDIDATE: ${{ inputs.network_candidate }}
-        run: python controller/scripts/windows-network.py --output network-verification --candidate $env:GCHAT_RETAINED_CANDIDATE
+          GCHAT_FILE_BYTES: ${{ inputs.file_bytes }}
+        run: python controller/scripts/windows-network.py --output network-verification --candidate $env:GCHAT_RETAINED_CANDIDATE --file-bytes $env:GCHAT_FILE_BYTES
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

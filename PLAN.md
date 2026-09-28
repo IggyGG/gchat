@@ -1,3 +1,14 @@
+## Production stabilization (2026-09-28)
+
+R07: pause automatic discovery without cancelling frozen workers. Separate
+reviewed controller/qualification changes from conservative artifact fingerprints;
+unknown/build/runtime inputs still reserve new versions. Qualification-only
+observations cannot advance publication. Use the explicitly approved, source and
+binary-bound Windows 36 4 MiB recovery check with unchanged 180/600-second budgets.
+Original 16 MiB failures remain failed. Implementation checks and actual native
+acceptance have separate receipts under target/release-ready-20260927/stabilization-20260928.
+This boundary does not qualify or publish Windows/iOS/Mac artifacts.
+
 ## Retained Windows 36 diagnosis (2026-09-28)
 
 R07: native compilation, signatures and offline install/reopen passed, but the

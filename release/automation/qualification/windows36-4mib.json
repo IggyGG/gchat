@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "release_id": "c6165120748d3adc093e7a0cfff84f6ad99546e3b48a08eb980b1758b34b637b",
+  "platform": "windows-x86_64",
+  "sources": {
+    "gchat": "21ad84ed266fdc237fd745e4b1aca6139b6d6728",
+    "gcoms": "8cdfd3fee2ab7809f1c348dc3a60ef24393b4101"
+  },
+  "binary_sha256": "d37a2e334c76d5988dc9a8aefbec3c6db18e1cb14a74826a47cfb784ece9b100",
+  "original_bytes": 16777216,
+  "bytes": 4194304,
+  "completion_seconds": 180,
+  "total_seconds": 600,
+  "authorization": "Owner approved: Use 4 MiB; disclose slow transfers. Interruption, reopen, exact hash, authentication and cleanup remain mandatory; 16 MiB runs separately.",
+  "authorized_on": "2026-09-28",
+  "disclosure": "Windows passed a bounded 4 MiB interrupted-transfer check. Larger transfers can be slow; the 16 MiB deadline and 1 GiB qualification remain unproven."
+}

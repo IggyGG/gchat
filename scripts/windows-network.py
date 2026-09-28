@@ -59,12 +59,32 @@ def original_network_failure(original):
             'retained failure is not the expected cleaned-up network failure')
 
 
+def qualification_policy(candidate, file_bytes):
+    if file_bytes == 16777216:
+        return None
+    require(candidate == 'windows36' and type(file_bytes) is int and file_bytes == 4194304,
+            '4 MiB authorization binds only the retained Windows 36 artifact')
+    path = ROOT / 'release/automation/qualification/windows36-4mib.json'
+    policy = json.loads(path.read_text())
+    bound = RETAINED[candidate]
+    require(policy.get('schema') == 1 and policy.get('platform') == 'windows-x86_64'
+            and policy.get('release_id') == 'c6165120748d3adc093e7a0cfff84f6ad99546e3b48a08eb980b1758b34b637b'
+            and policy.get('sources') == bound['sources']
+            and policy.get('binary_sha256') == bound['executable']['sha256']
+            and policy.get('original_bytes') == 16777216 and policy.get('bytes') == file_bytes
+            and policy.get('completion_seconds') == 180 and policy.get('total_seconds') == 600,
+            'retained Windows qualification authorization differs')
+    return path
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--candidate', choices=sorted(RETAINED), default='windows18')
+    p.add_argument('--file-bytes', type=int, choices=(4194304, 16777216), default=16777216)
     args = p.parse_args()
     bound = RETAINED[args.candidate]
+    policy = qualification_policy(args.candidate, args.file_bytes)
     require(os.name == 'nt' and os.environ.get('GITHUB_ACTIONS') == 'true',
             'requires isolated native Windows Actions worker')
     root = args.output.resolve()
@@ -74,6 +94,10 @@ def main():
                'application_rebuilt': False, 'native_ci_repeated': False,
                'run_id': bound['run'], 'artifact_id': bound['artifact'], 'archive_sha256': bound['archive'],
                'sources': bound['sources'], 'original_workflow_conclusion': bound['conclusion']}
+    receipt['file_qualification_bytes'] = args.file_bytes
+    if policy is not None:
+        shutil.copy2(policy, root / 'qualification-policy.json')
+        receipt['qualification_policy_sha256'] = digest(policy)
     invitation = Path(os.environ['RUNNER_TEMP']) / ('gchat-network-' + os.urandom(16).hex())
     try:
         run = package.api(f"repos/IggyGG/gchat/actions/runs/{bound['run']}")
@@ -105,7 +129,7 @@ def main():
         result = installer.run(argparse.Namespace(build_manifest=original / 'build.json',
             native_receipt=original / 'provenance/native-ci.json', publication=ROOT / 'release/publication.json',
             installer=None, output=root / 'execution', temp_parent=None, timeout=30,
-            network_invitation=invitation))
+            network_invitation=invitation, file_bytes=args.file_bytes))
         require(result == 0, 'native installer/network qualification failed')
         receipt['passed'] = True
     except Exception as error:
@@ -119,6 +143,8 @@ def main():
         public = root / 'evidence'
         public.mkdir()
         shutil.copy2(root / 'summary.json', public / 'summary.json')
+        if policy is not None:
+            shutil.copy2(root / 'qualification-policy.json', public / 'qualification-policy.json')
         execution = root / 'execution'
         if execution.exists():
             for path in execution.rglob('*'):

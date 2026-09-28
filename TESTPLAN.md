@@ -1,3 +1,14 @@
+## Release admission and approved Windows size
+
+Run release_inputs_test.py, release_prepare_test.py and the existing release
+coordinator/ledger/config tests. Require controller-only changes to preserve the
+artifact reservation and original manifest; unknown/runtime/build inputs and
+executable modes must invalidate it. A pending qualification observation is not
+a pass. Run native_network_test.py and windows_installer_test.py: reject 4 MiB
+outside Windows, wrong retained binary/source/candidate, changed deadlines, and
+all existing authentication/hash/reopen/cleanup failures. The actual signed
+Windows 36 installer must separately pass its fresh 4 MiB interrupted journey.
+
 ## Windows 36 retained diagnostic inputs
 
 Run `native_network_test.py` and `windows_installer_test.py`. The additional

@@ -331,11 +331,15 @@ def run(args):
             network_script = ROOT / "scripts/test-native-network.py"
             report["network_harness"] = smoke.reference(network_script)
             network_output = output / "network"
+            file_bytes = getattr(args, "file_bytes", 16777216)
+            require(type(file_bytes) is int and file_bytes in (4194304, 16777216),
+                    "unsupported Windows file qualification size")
+            report["file_qualification_bytes"] = file_bytes
             children_stopped = False
             code, _ = commands.run("network", [sys.executable, str(network_script),
                 "--binary", str(binary), "--build-manifest", str(manifest),
                 "--native-receipt", str(native), "--invitation", str(invitation.resolve(strict=True)),
-                "--output", str(network_output)], timeout=660, allow_failure=True)
+                "--output", str(network_output), "--bytes", str(file_bytes)], timeout=660, allow_failure=True)
             network_path = network_output / "report.json"
             require(network_path.is_file(), "installed network journey produced no receipt")
             network = read_json(network_path)
@@ -395,6 +399,8 @@ def main():
                         help="explicit private fixture invitation for the additional 16 MiB network journey")
     parser.add_argument("--network-invitation-env", action="store_true",
                         help="consume protected GCHAT_NETWORK_INVITATION and remove the temporary file")
+    parser.add_argument("--file-bytes", type=int, choices=(4194304, 16777216), default=16777216,
+                        help="explicit bounded network check; original 16 MiB default is retained")
     parser.add_argument("--timeout", type=float, default=60)
     args = parser.parse_args()
     require(0 < args.timeout <= 300, "timeout must be between 0 and 300 seconds")

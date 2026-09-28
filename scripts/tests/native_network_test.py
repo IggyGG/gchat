@@ -16,6 +16,15 @@ network = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(network)
 
 class DeadlineTests(unittest.TestCase):
+    def test_small_file_permission_is_windows_only_and_sizes_stay_bounded(self):
+        for platform in ('nt', 'posix'):
+            network.validate_file_bytes(16777216, platform)
+        network.validate_file_bytes(4194304, 'nt')
+        for size, platform in [(4194304, 'posix'), (1, 'nt'), (True, 'nt'),
+                               (4194304.0, 'nt'), (1073741824, 'nt')]:
+            with self.subTest(size=size, platform=platform), self.assertRaises(ValueError):
+                network.validate_file_bytes(size, platform)
+
     def setUp(self):
         self.journey = network.Journey.__new__(network.Journey)
         self.journey.deadline = 100
@@ -40,6 +49,24 @@ class DeadlineTests(unittest.TestCase):
                 self.journey.timeout()
 
 class DiagnosticTests(unittest.TestCase):
+    def test_retained_small_gate_binds_exact_binary_and_original_deadlines(self):
+        spec = importlib.util.spec_from_file_location('windows_network_policy', ROOT / 'windows-network.py')
+        retained = importlib.util.module_from_spec(spec); spec.loader.exec_module(retained)
+        self.assertIsNone(retained.qualification_policy('windows36', 16777216))
+        path = retained.qualification_policy('windows36', 4194304)
+        original = json.loads(path.read_text())
+        for candidate in ('windows18', 'windows29'):
+            with self.assertRaises(ValueError):retained.qualification_policy(candidate, 4194304)
+        with tempfile.TemporaryDirectory() as directory, patch.object(retained, 'ROOT', Path(directory)):
+            target = Path(directory) / 'release/automation/qualification/windows36-4mib.json'
+            target.parent.mkdir(parents=True)
+            for field, bad in [('binary_sha256', 'a'*64), ('sources', {}),
+                    ('release_id', 'b'*64), ('platform', 'ios'), ('bytes', 1),
+                    ('original_bytes', 4194304), ('completion_seconds', 181), ('total_seconds', 601)]:
+                target.write_text(json.dumps({**original, field: bad}))
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    retained.qualification_policy('windows36', 4194304)
+
     def test_diagnostics_require_explicit_opt_in_and_keep_provider_overrides_stripped(self):
         for enabled in ('0', '1'):
             with self.subTest(enabled=enabled), patch.dict(os.environ, {

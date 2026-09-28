@@ -52,6 +52,23 @@ def discover(config, state, ledger):
             push(previous)
             atomic_json(Path(state) / 'incoming' / (previous['release_id'] + '.json'), previous)
             return previous['release_id']
+    # New qualification/controller bytes do not reserve new application versions.
+    # Keep the original artifact sources and record the new verification revision
+    # separately; this observation is not a successful qualification receipt.
+    from release_inputs import fingerprints
+    repositories = {p: config[p]['mirror'] for p in ('gchat', 'gcoms')}
+    current_inputs = fingerprints(repositories, upstream)
+    latest = ledger.db.execute('SELECT manifest FROM candidates ORDER BY seq DESC LIMIT 1').fetchone()
+    if latest:
+        baseline = json.loads(latest[0])
+        prior_inputs = fingerprints(repositories, baseline.get('upstream', baseline['sources']))
+        if baseline['policy'] == policy and prior_inputs['artifacts'] == current_inputs['artifacts']:
+            atomic_json(Path(state) / 'qualification-needed.json', {
+                'schema': 1, 'artifact_release_id': baseline['release_id'],
+                'sources': upstream, 'inputs': current_inputs,
+                'artifact_inputs_unchanged': True, 'qualification_passed': False,
+                'reason': 'Qualification/controller revision; retain original artifact source bindings'})
+            return baseline['release_id']
     observed_path = Path(state) / 'observed-sources.json'
     observation = {'sources': upstream, 'policy': policy}
     previous_observation = json.loads(observed_path.read_text()) if observed_path.exists() else {}
@@ -76,6 +93,7 @@ def discover(config, state, ledger):
     commit = prepare(root, sources['gchat']['commit'], sources['gcoms']['commit'], versions, branch)
     sources['gchat'] = identity(root, commit)
     candidate = {'schema': 1, 'sources': sources, 'upstream': upstream, 'versions': versions, 'policy': policy,
+                 'input_fingerprints': current_inputs,
                  'refs': {'gchat': branch, 'gcoms': branch}}
     candidate['release_id'] = hashlib.sha256(canonical(candidate)).hexdigest()
     validate(candidate)

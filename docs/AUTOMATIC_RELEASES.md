@@ -5,6 +5,25 @@ store review and an available download are recorded as different states. No
 platform can inherit a pass from a different pair. Apple review does not block
 Linux, Windows, macOS, Android or the SDK lane.
 
+Discovery now fingerprints artifact inputs separately from qualification inputs.
+An explicit reviewed list of controller and verification files may change without
+reserving another application version; unknown files, package/signing scripts,
+locks and build workflows remain artifact inputs. Such changes write
+`qualification-needed.json` with `qualification_passed=false`, preserving the
+original source pair. That observation does not qualify or publish an artifact.
+Setting discovery to null pauses new source admission while existing workers,
+receipts and publications continue. Source discovery is temporarily paused during
+the 2026-09-28 stabilization; no frozen worker is cancelled.
+
+The owner approved a Windows-only 4 MiB interrupted-transfer release check on
+2026-09-28, retaining the 180/600-second deadlines and every integrity, admission,
+reopen and cleanup assertion. The retained Windows 36 check accepts it only with
+`release/automation/qualification/windows36-4mib.json`, bound to the original
+source pair and executable hash. Its original 16 MiB failures and build manifest
+remain unchanged. A new passing check still needs publication verification;
+this policy record is not an acceptance receipt. Larger Windows transfers remain
+separate and their speed limitation must be disclosed.
+
 ## Production sequence
 
 1. Land reviewed source in Forgejo `main` and retain the public GitHub mirror.
