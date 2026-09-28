@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -146,8 +147,10 @@ def verify_application_smoke(directory, build, source_archive, harness_archive=N
     harness_archive = harness_archive or source_archive
     smoke = directory / 'application-smoke'
     report = json.loads((smoke / 'report.json').read_text())
+    network_requested = report.get('scope') == 'macos_dmg_private_copy_install_service_and_network'
     if (report.get('schema') != 1 or
-        report.get('scope') != 'macos_dmg_private_copy_install_service_lifecycle' or
+        report.get('scope') not in ('macos_dmg_private_copy_install_service_lifecycle',
+                                  'macos_dmg_private_copy_install_service_and_network') or
         report.get('passed') is not True or report.get('inputs_unchanged') is not True or
         report.get('target') != build['target'] or
         report.get('sources') != build['dependency_inputs']['sources']):
@@ -158,7 +161,7 @@ def verify_application_smoke(directory, build, source_archive, harness_archive=N
         raise ValueError('Mac copied-application cleanup is incomplete')
     if any(report.get(name) is not False for name in
            ('gui_tested', 'gatekeeper_tested', 'notarization_tested',
-            'system_applications_modified', 'production_network_requested')):
+            'system_applications_modified')) or report.get('production_network_requested') is not network_requested:
         raise ValueError('Mac copied-application receipt exceeds its qualified scope')
     artifact = build['files'][0]
     inputs = report['inputs']
@@ -264,6 +267,9 @@ def verify_application_smoke(directory, build, source_archive, harness_archive=N
     commands = report.get('commands', [])
     expected_commands = {'dmg-integrity', 'dmg-certificate', 'attach', 'copy',
                          'application-integrity', 'application-certificate', 'service', 'detach'}
+    if network_requested:
+        expected_commands.add('network')
+        verify_network_smoke(smoke, report, application_inputs, harness_archive)
     if len(commands) != len(expected_commands) or {command.get('name') for command in commands} != expected_commands:
         raise ValueError('Mac installation receipt omits required copy/signature/cleanup commands')
     for command in commands:
@@ -273,6 +279,35 @@ def verify_application_smoke(directory, build, source_archive, harness_archive=N
         for stream in ('stdout', 'stderr'):
             verify_reference(smoke / (name + '.' + stream), command.get(stream))
     return report
+
+
+def verify_network_smoke(smoke, report, application_inputs, harness_archive):
+    path = smoke / 'network/report.json'
+    verify_reference(path, report.get('network_receipt'))
+    network = json.loads(path.read_text())
+    if (network.get('schema') != 1 or network.get('inputs') != application_inputs or
+        network.get('binary_sha256') != application_inputs['binary']['sha256'] or
+        any(network.get(name) is not True for name in
+            ('passed', 'inputs_unchanged', 'binary_unchanged', 'children_stopped', 'temporary_profile_removed'))):
+        raise ValueError('Mac network result, cleanup or installed inputs differ')
+    for reference in (report.get('network_harness'), network.get('harness')):
+        verify_archived_file(harness_archive, 'scripts/test-native-network.py', reference)
+    verify_archived_file(harness_archive, 'scripts/test-native-application.py', network.get('ipc_helper'))
+    check = network.get('file_check', {})
+    if (check.get('bytes') != 16777216 or
+        not isinstance(check.get('sha256'), str) or not re.fullmatch('[0-9a-f]{64}', check['sha256']) or
+        any(check.get(name) is not True for name in
+            ('abrupt_stop', 'verified_pieces_retained', 'hash_verified_after_reopen'))):
+        raise ValueError('Mac network file recovery evidence is incomplete')
+    completion = check.get('completion_elapsed_seconds')
+    elapsed = network.get('elapsed_seconds')
+    if (type(completion) not in (int, float) or type(elapsed) not in (int, float) or
+        not math.isfinite(completion) or not math.isfinite(elapsed) or
+        not 0 < completion <= 180 or not completion <= elapsed <= 600):
+        raise ValueError('Mac network recovery exceeds the original deadline')
+    acks = [e for e in network.get('events', []) if e.get('event') == 'authenticated_ack']
+    if len(acks) != 4 or [e.get('sender') for e in acks] != [0, 1, 0, 1]:
+        raise ValueError('Mac network omitted bidirectional pre/post-recovery ACKs')
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)

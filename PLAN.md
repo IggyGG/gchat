@@ -1,3 +1,13 @@
+## Mac installed-network automation (2026-09-28)
+
+R06/R07/R12: both Mac release targets now require the explicit protected network
+fixture after signed copy-install, offline service and GUI startup checks. Drive
+the exact packaged executable through two-way recipient ACKs, a 16 MiB abrupt
+receiver restart, retained pieces, exact export hash and orderly reopen. Keep
+the 180-second file and 600-second journey budgets. Original frozen offline
+receipts retain their scope; installed-network compatibility and rollback remain
+separate publication requirements. No personal profile or runtime changes.
+
 ## Windows 29 retained recovery diagnosis (2026-09-28)
 
 The signed Windows 29 installer passed native/offline installation and two-way

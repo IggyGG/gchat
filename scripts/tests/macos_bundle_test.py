@@ -139,7 +139,7 @@ class ValidationTests(BundleFixture):
 
 
 class WorkflowTests(BundleFixture):
-    def execute(self, mode="normal"):
+    def execute(self, mode="normal", network=False):
         test = self
         class FakeCommands:
             def __init__(self, output, report):
@@ -156,22 +156,26 @@ class WorkflowTests(BundleFixture):
                     return 0, plistlib.dumps({"system-entities": [{"dev-entry": "/dev/disk42s1", "mount-point": str(mountpoint)}]})
                 if label == "copy":
                     shutil.copytree(command[-2], command[-1])
-                if label == "service":
+                if label in ("service", "network"):
                     path = Path(command[command.index("--output") + 1])
                     path.mkdir()
                     binary = Path(command[command.index("--binary") + 1])
                     inputs = bundle.smoke.validate_artifacts(binary, test.manifest, test.native)
-                    if mode == "different_inputs":
+                    if mode == "different_inputs" or (label == "network" and mode == "network_inputs"):
                         inputs["binary"]["sha256"] = "0" * 64
-                    (path / "report.json").write_text(json.dumps({"passed": mode != "service_failed", "children_stopped": True,
+                    failed = mode == "service_failed" or (label == "network" and mode == "network_failed")
+                    (path / "report.json").write_text(json.dumps({"passed": not failed, "children_stopped": True,
                                                                  "temporary_profile_removed": True, "inputs": inputs}))
-                    return (1 if mode == "service_failed" else 0), b""
+                    return (1 if failed else 0), b""
                 if label == "detach" and mode == "detach_failed":
                     return 1, b"busy"
                 return 0, b""
         args = argparse.Namespace(output=self.root / "output", build_manifest=self.manifest,
                                   native_receipt=self.native, publication=self.publication, dmg=None,
                                   temp_parent=self.root, timeout=1)
+        if network:
+            args.network_invitation = self.root / "network.private"
+            args.network_invitation.write_text("fixture invitation")
         readonly = argparse.Namespace(f_flag=1)
         def graphical(binary, output, timeout, temp_parent):
             output.mkdir()
@@ -229,6 +233,44 @@ class WorkflowTests(BundleFixture):
         self.assertFalse(report["gui_startup_passed"])
         self.assertIn("graphical startup failed", report["error"])
         self.assertTrue(report["cleanup"]["passed"])
+
+    def test_network_checks_exact_installed_executable_and_retains_receipt(self):
+        code, report = self.execute(network=True)
+        self.assertEqual(code, 0, report.get("error"))
+        self.assertTrue(report["production_network_requested"])
+        self.assertEqual(bundle.digest(report["network_receipt"]["path"]), report["network_receipt"]["sha256"])
+        network = next(s for s in report["commands"] if s["name"] == "network")["command"]
+        self.assertEqual(network[network.index("--binary") + 1], report["application"]["executable"]["path"])
+
+    def test_failed_network_cannot_be_replaced_by_offline_pass(self):
+        code, report = self.execute("network_failed", network=True)
+        self.assertEqual(code, 1)
+        self.assertIn("network delivery/recovery failed", report["error"])
+        self.assertTrue(report["cleanup"]["passed"])
+
+    def test_network_receipt_cannot_substitute_another_executable(self):
+        code, report = self.execute("network_inputs", network=True)
+        self.assertEqual(code, 1)
+        self.assertIn("different installed inputs", report["error"])
+
+    def test_environment_invitation_removed_even_after_failure(self):
+        retained = []
+        def fail(args):
+            retained.append(args.network_invitation)
+            self.assertEqual(args.network_invitation.read_text(), "private fixture")
+            self.assertNotIn("GCHAT_NETWORK_INVITATION", os.environ)
+            self.assertEqual(args.network_invitation.stat().st_mode & 0o777, 0o600)
+            raise RuntimeError("fixture failed")
+        with patch.dict(os.environ, {"GCHAT_NETWORK_INVITATION": "private fixture"}), patch.object(bundle, "run", side_effect=fail):
+            with self.assertRaisesRegex(RuntimeError, "fixture failed"):
+                bundle.run_with_environment_invitation(argparse.Namespace(network_invitation=None, temp_parent=self.root))
+        self.assertFalse(retained[0].exists())
+
+    def test_missing_environment_invitation_refuses_before_installation(self):
+        with patch.dict(os.environ, {}, clear=True), patch.object(bundle, "run") as run:
+            with self.assertRaisesRegex(ValueError, "missing bounded"):
+                bundle.run_with_environment_invitation(argparse.Namespace(network_invitation=None, temp_parent=self.root))
+            run.assert_not_called()
 
 
 class GraphicalTests(BundleFixture):

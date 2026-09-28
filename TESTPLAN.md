@@ -1,3 +1,12 @@
+## Mac network receipt binding
+
+Run `python3 -m unittest discover -s scripts/tests -p "macos_*test.py"`.
+The Mac wrapper consumes its protected invitation before spawning children and
+removes it on failure. Tests reject failed network execution despite offline
+success, substituted executable/harness receipts, absent post-recovery ACKs and
+completion past the original 180-second deadline. Native real-package execution
+remains separate from these mocked orchestration checks.
+
 ## Retained failed network artifacts
 
 `windows-verify.yml` supports the explicitly pinned Windows 29 artifact after its

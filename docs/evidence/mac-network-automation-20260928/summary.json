@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "scope": "Mac release automation and receipt validation; application runtime unchanged",
+  "checks": {
+    "mac_scripts_passed": 101,
+    "native_network_passed": 6,
+    "final_workflow_check": "passed",
+    "source_check_paths": 591
+  },
+  "files": {
+    ".github/workflows/macos-release.yml": "df2cf29f85a92dc54f436a64fcb72bb5d2928bc3d4cc0f369a92b495156f0ed5",
+    "PLAN.md": "63cfecf0c5ca49183c7966b117f8c7aae9d5da432a79fc5fe41c912ac0ab67ad",
+    "README.md": "94f716936a1b897775633389a1dfc65327e754457fedcd6ddc01342ff99d6ff8",
+    "TESTPLAN.md": "cfee9caeec5db91ca07264f2035e33012753acdf5b17f523501c59a75bb9f96b",
+    "scripts/macos-build.py": "a4d474c9f76dcf3eb15dba0c89678487d237328e72d8705a98ffe4230051e22c",
+    "scripts/test-macos-bundle.py": "1c3c4a34c616d33a11b67726645d00be2849b2621610bec9b12f1c621fe1d993",
+    "scripts/tests/macos_bundle_test.py": "fd265348205ff8ca559e26eb9a28e5551752cb0eacc5ec2828a66e30603b5f5f",
+    "scripts/tests/macos_release_test.py": "94215e107887bf88581d8cda66605d1396c526184fb0a555737c448f826f8011"
+  },
+  "logs": {
+    "checks-complete-inputs.log": "c51e7ae58cd802c66c9aa4ef5febc08107113bd8d164e3bf0df354f0fcf9d3ae",
+    "checks.log": "a7ad562c2b8ada06291108f51b74d823b9b3db5d7d278ddb7c4e2bff9efe9a46",
+    "final-workflow-check.log": "2965e3ec00b239a70fc9ff2bc8d1eb01c03a76717c6431e0234292bb64121064",
+    "qualified-worker.log": "76c06f4f2ba22b2e8dd5e4be5a1b03e25bd28d6ebf6e0f294922a153d3e6b0f7"
+  },
+  "retained_initial_failures": [
+    "incomplete isolated fixture omitted workflows",
+    "Python slim worker lacked git"
+  ],
+  "native_artifact_pass": "Mac ARM29 exact signed artifact separately passed network recovery in146.937s; not new runtime qualification",
+  "codematch": "unreachable",
+  "at": 1790587498.4828594
+}

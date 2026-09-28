@@ -2,7 +2,8 @@
 """Verify a pinned DMG, copy its app, and test the installed service lifecycle.
 
 This covers native macOS drag/copy installation, service lifecycle and window/
-IPC startup; not rendered interaction, Gatekeeper, notarization or networking.
+IPC startup, plus an opt-in bounded network journey; not rendered interaction,
+Gatekeeper or notarization.
 """
 import argparse
 import ctypes
@@ -449,6 +450,28 @@ def run(args):
         report["gui_startup_passed"] = graphical.get("passed") is True
         children_stopped = graphical.get("cleanup", {}).get("children_stopped") is True
         require(report["gui_startup_passed"] and children_stopped, "native graphical startup failed; see gui/report.json")
+        invitation = getattr(args, "network_invitation", None)
+        if invitation is not None:
+            report["production_network_requested"] = True
+            report["scope"] = "macos_dmg_private_copy_install_service_and_network"
+            network_script = ROOT / "scripts/test-native-network.py"
+            report["network_harness"] = smoke.reference(network_script)
+            network_output = output / "network"
+            children_stopped = False
+            code, _ = commands.run("network", [sys.executable, str(network_script),
+                "--binary", str(executable), "--build-manifest", str(manifest),
+                "--native-receipt", str(native), "--invitation", str(invitation.resolve(strict=True)),
+                "--output", str(network_output)], timeout=660, allow_failure=True, process_group=True)
+            network_path = network_output / "report.json"
+            require(network_path.is_file(), "installed network journey produced no receipt")
+            network = read_json(network_path)
+            report["network_receipt"] = smoke.reference(network_path)
+            children_stopped = network.get("children_stopped") is True
+            require(code == 0 and network.get("passed") is True and children_stopped
+                    and network.get("temporary_profile_removed") is True,
+                    "installed network delivery/recovery failed")
+            require(network.get("inputs") == report["application_inputs"],
+                    "network journey tested different installed inputs")
         for key, path in (("dmg", dmg), ("build_manifest", manifest), ("native_receipt", native), ("publication", publication_path)):
             require(smoke.reference(path) == report["inputs"][key], f"{key} changed during DMG smoke")
         report["inputs_unchanged"] = True
@@ -465,6 +488,20 @@ def run(args):
     return 0 if report["passed"] else 1
 
 
+def run_with_environment_invitation(args):
+    require(args.network_invitation is None, "choose one fixture invitation input")
+    code = os.environ.pop("GCHAT_NETWORK_INVITATION", "")
+    require(0 < len(code.encode()) <= 180000, "missing bounded fixture invitation")
+    with tempfile.TemporaryDirectory(prefix="gc-net-", dir=args.temp_parent) as directory:
+        root = Path(directory)
+        smoke.private_directory(root)
+        invitation = root / "network.private"
+        invitation.write_text(code, encoding="utf-8")
+        smoke.private_fixture_path(invitation, directory=False)
+        args.network_invitation = invitation
+        return run(args)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-manifest", type=Path, required=True)
@@ -473,10 +510,14 @@ def main():
     parser.add_argument("--publication", type=Path, default=ROOT / "release/publication.json", help="trusted macOS publisher pin")
     parser.add_argument("--output", type=Path, required=True, help="new retained evidence directory")
     parser.add_argument("--temp-parent", type=Path, help="existing parent for disposable install and profile directories")
+    parser.add_argument("--network-invitation", type=Path,
+                        help="explicit private fixture invitation for the additional 16 MiB network journey")
+    parser.add_argument("--network-invitation-env", action="store_true",
+                        help="consume protected GCHAT_NETWORK_INVITATION and remove the temporary file")
     parser.add_argument("--timeout", type=float, default=60, help="per-operation service timeout in seconds")
     args = parser.parse_args()
     require(0 < args.timeout <= 300, "timeout must be between 0 and 300 seconds")
-    return run(args)
+    return run_with_environment_invitation(args) if args.network_invitation_env else run(args)
 
 
 if __name__ == "__main__":

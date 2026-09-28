@@ -1,3 +1,8 @@
+Mac release CI now includes the same bounded 16 MiB interrupted-file and
+authenticated-message journey as Windows, using disposable profiles and a
+protected fixture invitation. Existing releases retain their original evidence;
+this automation change alone does not qualify or publish a new installer.
+
 Current paired GComs source selects responsive profile 46: messages are eligible
 immediately, with independent randomized interactive cover. Timing/activity privacy
 is unqualified. See [production policy](docs/PRODUCTION_RELEASE.md); this source

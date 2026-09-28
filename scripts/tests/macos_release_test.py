@@ -157,6 +157,8 @@ class DispatchTest(unittest.TestCase):
         self.assertIn('--check native.gchat.${{ matrix.target }}', workflow)
         self.assertIn('--check native.gcoms.${{ matrix.target }}', workflow)
         self.assertIn('scripts/test-macos-bundle.py', workflow)
+        self.assertIn('--network-invitation-env', workflow)
+        self.assertIn('GCHAT_NETWORK_INVITATION: ${{ secrets.GCHAT_NETWORK_INVITATION }}', workflow)
         self.assertIn('numpy==2.3.5', workflow)
         self.assertIn('include-hidden-files: true', workflow)
         self.assertIn('signed/build/*/release/bundle/dmg/*.dmg', workflow)
@@ -221,6 +223,7 @@ class ApplicationCollectorTest(unittest.TestCase):
         publication = json.dumps({'publisher_identities': {'macos': self.publisher}}).encode()
         self.archived = {'scripts/test-macos-bundle.py': b'wrapper source',
                          'scripts/test-native-application.py': b'service source',
+                         'scripts/test-native-network.py': b'network source',
                          'release/publication.json': publication}
         self.archive = self.root / 'gchat.tar'
         with tarfile.open(self.archive, 'w') as archive:
@@ -293,11 +296,57 @@ class ApplicationCollectorTest(unittest.TestCase):
     def verify(self):
         self.report['service_receipt'] = self.write('application-smoke/service/report.json', json.dumps(self.service).encode())
         self.report['gui_startup'] = self.write('application-smoke/gui/report.json', json.dumps(self.gui).encode())
+        if hasattr(self, 'network'):
+            self.report['network_receipt'] = self.write('application-smoke/network/report.json', json.dumps(self.network).encode())
         self.write('application-smoke/report.json', json.dumps(self.report).encode())
         return macos.verify_application_smoke(self.root, self.build, self.archive)
 
     def test_complete_relocated_receipt_is_accepted_without_original_installation(self):
         self.assertTrue(self.verify()['passed'])
+
+    def network_fixture(self):
+        (self.smoke / 'network').mkdir()
+        self.report.update(scope='macos_dmg_private_copy_install_service_and_network', production_network_requested=True)
+        ref = self.ref('/worker/scripts/test-native-network.py', self.archived['scripts/test-native-network.py'])
+        self.report['network_harness'] = ref
+        self.report['commands'].append({'name': 'network', 'exit_code': 0,
+            **{stream: self.write('application-smoke/network.' + stream, b'network log') for stream in ('stdout', 'stderr')}})
+        self.network = {'schema': 1, 'passed': True, 'inputs_unchanged': True, 'binary_unchanged': True,
+            'children_stopped': True, 'temporary_profile_removed': True,
+            'inputs': self.report['application_inputs'], 'harness': ref, 'ipc_helper': self.service['harness'],
+            'binary_sha256': self.report['application']['executable']['sha256'], 'elapsed_seconds': 250,
+            'file_check': {'bytes': 16777216, 'sha256': 'a' * 64, 'completion_elapsed_seconds': 150,
+                'abrupt_stop': True, 'verified_pieces_retained': True, 'hash_verified_after_reopen': True},
+            'events': [{'event': 'authenticated_ack', 'sender': n} for n in (0, 1, 0, 1)]}
+
+    def test_network_receipt_is_bound_to_installed_application_and_original_budgets(self):
+        self.network_fixture()
+        self.assertTrue(self.verify()['passed'])
+        self.network['file_check']['completion_elapsed_seconds'] = 181
+        with self.assertRaisesRegex(ValueError, 'original deadline'):
+            self.verify()
+
+    def test_offline_success_cannot_replace_failed_network(self):
+        self.network_fixture()
+        self.network['passed'] = False
+        with self.assertRaisesRegex(ValueError, 'network result'):
+            self.verify()
+
+    def test_network_requires_post_recovery_authenticated_acks(self):
+        self.network_fixture()
+        self.network['events'].pop()
+        with self.assertRaisesRegex(ValueError, 'ACKs'):
+            self.verify()
+
+    def test_network_rejects_changed_binary_or_harness(self):
+        self.network_fixture()
+        self.network['binary_sha256'] = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'network result'):
+            self.verify()
+        self.network['binary_sha256'] = self.report['application']['executable']['sha256']
+        self.network['harness'] = {**self.network['harness'], 'sha256': '0' * 64}
+        with self.assertRaisesRegex(ValueError, 'frozen source archive'):
+            self.verify()
 
     def test_recovery_controller_harness_is_separate_from_original_application_archive(self):
         controller = self.root / 'controller.tar'
