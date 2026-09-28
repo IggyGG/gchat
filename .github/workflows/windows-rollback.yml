@@ -14,13 +14,23 @@ jobs:
     runs-on: windows-2022
     environment: release-signing
     timeout-minutes: 20
+    defaults:
+      run:
+        shell: powershell
+    env:
+      GCHAT_ISOLATED_SIGNING_WORKER: '1'
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
     steps:
+      - run: git config --global core.autocrlf false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
           python-version: '3.12.10'
+      - name: Verify native private fixture permissions before acquisition
+        run: python -m unittest scripts.tests.native_application_test.PrivateDirectoryTests -v
       - name: Same-profile current to baseline to current with exact artifacts
         env:
           GH_TOKEN: ${{ github.token }}
