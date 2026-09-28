@@ -60,5 +60,18 @@
     "pathsChecked": 630
   },
   "nodeSyntaxCheck": "pass",
-  "diffWhitespaceCheck": "pass"
+  "diffWhitespaceCheck": "pass",
+  "uiSourceParity": {
+    "captureSource": "3d58012b08354181b3d72f30ba9b14060d3b48fe",
+    "method": "git diff --stat returned no changes",
+    "nativeScreenshotCapture": false,
+    "publishedAndroidVersionCode": 1055,
+    "publishedSource": "21ad84ed266fdc237fd745e4b1aca6139b6d6728",
+    "unchangedPaths": [
+      "ui/src",
+      "apps/client/src",
+      "apps/client/public"
+    ]
+  },
+  "googlePlayValidation": "passed before commit"
 }

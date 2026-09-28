@@ -1,0 +1,59 @@
+{
+  "changesSentForReview": true,
+  "commitAccepted": true,
+  "edit": "04765133524082891094",
+  "iconUnchanged": true,
+  "images": [
+    {
+      "file": "feature.png",
+      "imageType": "featureGraphic",
+      "sha256": "d6cc0b075c21b3abd667985770492f9f99e42f76f3f4dece02b0d6551e336072"
+    },
+    {
+      "file": "01-conversation.jpg",
+      "imageType": "phoneScreenshots",
+      "sha256": "fefdba72661fbcd3982fe9c429e8a9d04fadb7120e6822766a08d54224395b21"
+    },
+    {
+      "file": "02-channels.jpg",
+      "imageType": "phoneScreenshots",
+      "sha256": "f99d82f7c9a16fad4f9f74755c25ed246b4c9b1fe7a0f69eaccbc441d646d2fa"
+    },
+    {
+      "file": "03-files.jpg",
+      "imageType": "phoneScreenshots",
+      "sha256": "cebe660f40285dafd0448f06d2f946c205117cbd9290a382655a490cbb52455e"
+    },
+    {
+      "file": "04-invitation.jpg",
+      "imageType": "phoneScreenshots",
+      "sha256": "f7070fea09739aa0b883b6b295f856696837b13e416315d292f2be1fd782c173"
+    }
+  ],
+  "language": "en-GB",
+  "package": "boo.gchat.app",
+  "publicVisibilityVerified": false,
+  "submittedAt": "2026-09-28T23:16:56.385193+00:00",
+  "title": "GChat.boo: Old-School Chat",
+  "tracksUnchanged": true,
+  "uiSourceParity": {
+    "captureSource": "3d58012b08354181b3d72f30ba9b14060d3b48fe",
+    "method": "git diff --stat returned no changes",
+    "nativeScreenshotCapture": false,
+    "publishedAndroidVersionCode": 1055,
+    "publishedSource": "21ad84ed266fdc237fd745e4b1aca6139b6d6728",
+    "unchangedPaths": [
+      "ui/src",
+      "apps/client/src",
+      "apps/client/public"
+    ]
+  },
+  "publicObservation": {
+    "title": "GChat.boo \u2013 Apps on Google Play",
+    "shortDescription": "Encrypted conversations and files. Join by invitation, without a phone number.",
+    "screenshotCount": 2,
+    "newTitleVisible": false
+  },
+  "backupDirectory": "test-evidence/play-store-retro-upload/provider",
+  "remoteBackupDirectory": "/state/marketing/play-store-retro-20260929"
+}

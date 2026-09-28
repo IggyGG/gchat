@@ -2,6 +2,23 @@
 
 GCHAT-STORE-1, 2026-09-29. Review the complete pack in `index.html`.
 
+Submitted to Google Play's default `en-GB` listing on 2026-09-29 under the user's
+explicit upload instruction. Google accepted the edit with changes sent for
+review: one feature graphic, four phone screenshots, title and both descriptions.
+All five uploaded hashes/order matched, and Google validation passed. Icon and
+release tracks were unchanged. The immediate public-page check still showed the
+previous listing; public visibility is not yet confirmed. See `publication.json`.
+
+Production Android build 1055 was confirmed published. Its source
+`21ad84ed266fdc237fd745e4b1aca6139b6d6728` has no differences from capture source
+`3d58012b08354181b3d72f30ba9b14060d3b48fe` in `ui/src`, `apps/client/src` or
+`apps/client/public`. This establishes shared UI/source parity; captures remain
+browser renders with synthetic data, not native Android device screenshots.
+Original listing text, image metadata and image bytes are retained in
+`test-evidence/play-store-retro-upload/provider` and the release service's
+`/state/marketing/play-store-retro-20260929` directory. Credentials stayed in the
+existing release service and are absent from the backup and repository.
+
 The direction is **Old-school chat. Your people.** It leads with the actual
 conversation experience, then channels, shared files and invitations. The pixel
 art, navy background and mint highlights support the existing Fixedsys chat

@@ -1,4 +1,9 @@
-# Proposed English Play Store listing
+# English Play Store listing — submitted 2026-09-29
+
+Google accepted this update for the default English (UK), `en-GB`, listing,
+including all five images below. The immediate public-page check still showed
+the old content. The submission receipt and published-build UI source comparison
+are recorded in `publication.json`.
 
 ## App name
 
@@ -48,7 +53,7 @@ Privacy and support: https://gchat.boo/privacy.html
 
 ## Publishing notes
 
-These are draft listing assets, not a store submission. Screens show the real shared Svelte interface with synthetic data from its browser fixture. Compare all four frames with the current released Android build before uploading; replace any mismatching capture with a native Android screenshot. Native system bars are not fabricated. The two original live setup screenshots are retained in `source/live-*.png` for comparison.
+Screens show the real shared Svelte interface with synthetic data from its browser fixture. Before submission, the UI, application frontend and public assets were confirmed identical to the source of published Android build 1055. Native device screenshot verification was not performed, and native system bars are not fabricated. For future revisions, repeat the released-build comparison and replace any mismatching capture. The two original live setup screenshots are retained in `source/live-*.png` for comparison.
 
 The feature graphic is 1024 × 500 PNG, opaque. The four phone images are 1080 × 1920 JPEG. Each gives approximately 63% of the total image area to the unmodified app capture. Text is outside the capture. The current app icon is retained; no replacement icon is proposed.
 

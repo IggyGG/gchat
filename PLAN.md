@@ -1,13 +1,16 @@
 ## GCHAT-STORE-1 — old-school Play Store creative (2026-09-29)
 
-Codex: draft creative pack complete in `marketing/play-store/retro-v1/`: original
+Codex: creative pack complete in `marketing/play-store/retro-v1/`: original
 pixel artwork, feature graphic, four images of the shared UI with synthetic
 conversations, editable artboards, preview gallery and proposed English listing
 copy. Leads with the conversation experience instead of the live listing's two
 setup screens. Render evidence: `marketing/play-store/retro-v1/validation.json`.
-Check the captures against the released Android build before Play Console upload;
-the browser fixture does not qualify native Android parity. No store submission,
-runtime change or release qualification is claimed.
+Google accepted the user-requested submission to the default `en-GB` listing on
+2026-09-29: feature graphic, four screenshots and listing text. Image hashes/order
+and provider validation passed; icon and tracks were unchanged. Shared UI source
+matches published Android build 1055. Browser captures are not native device
+screenshots. Public visibility remains pending; the immediate public check showed
+the old listing. Receipt: `marketing/play-store/retro-v1/publication.json`.
 
 ## Production stabilization (2026-09-28)
 

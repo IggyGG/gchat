@@ -28,8 +28,9 @@ change is not a claim that installed/store artifacts have been updated.
 
 The [Play Store creative pack](marketing/play-store/retro-v1/README.md) contains
 an old-school chat visual direction, exported graphics, a local preview and
-proposed listing copy. Its sample-data browser captures require comparison with
-the released Android app before store upload.
+listing copy submitted to Google Play. Its sample-data browser captures match
+the shared UI source of published Android build 1055; submission details are
+recorded in the pack's `publication.json`.
 
 Current work follows the [reliability test plan](docs/RELIABILITY_TEST_PLAN.md):
 cluster recovery/concurrency checks, then exact-artifact platform validation.
