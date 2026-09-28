@@ -111,9 +111,7 @@ jobs:
       - name: Preflight the locked WebKit download before native compilation
         timeout-minutes: 12
         working-directory: gchat
-        run: |
-          npm ci --ignore-scripts
-          npm exec --workspace @gchat/ui -- playwright install webkit
+        run: python3 scripts/preflight-webkit.py
       - name: Qualify both native workspaces with retained evidence
         timeout-minutes: 275
         run: |

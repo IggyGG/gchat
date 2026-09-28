@@ -36,6 +36,22 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def release_notes(manifest, platform):
+    notes = 'GChat production update. Joins and reconnects can take over a minute.'
+    if manifest['policy'].get('privacy_qualified') is not True:
+        notes += ' Not privacy-qualified; traffic-analysis protection remains under improvement.'
+    if manifest['policy'].get('file_qualification', {}).get('large_file_blocks_release') is False:
+        notes += ' Large-file (1 GiB) qualification runs separately and remains incomplete.'
+    if platform == 'windows-x86_64':
+        path = Path(__file__).resolve().parents[1] / 'release/automation/qualification/windows36-4mib.json'
+        authorization = json.loads(path.read_text())
+        if (manifest['release_id'] == authorization['release_id'] and
+                {k:v['commit'] for k,v in manifest['sources'].items()} == authorization['sources']):
+            notes += ' ' + authorization['disclosure']
+        notes += ' Native checks use Windows Server 2022; Windows 11 GUI checks remain unqualified.'
+    return notes
+
+
 def minisign_verify(path, signature, public_key):
     # Use the audited minisign implementation, not a second cryptographic parser.
     public = base64.b64decode(public_key, validate=True).decode().splitlines()
@@ -115,9 +131,7 @@ def publish(manifest, platform, artifact, signature, root, url, public_key, sign
             subprocess.run([*signer, str(path)], check=True, stdout=subprocess.DEVNULL)
             binding_signature = path.with_suffix('.json.sig').read_text().strip()
             minisign_verify(path, binding_signature, public_key)
-        notes = 'GChat production update. See the release notes for changes and remaining privacy improvements.'
-        if manifest['policy'].get('file_qualification', {}).get('large_file_blocks_release') is False:
-            notes += ' Large-file (1 GiB) qualification runs separately and remains incomplete.'
+        notes = release_notes(manifest, platform)
         feed = {'version': number, 'notes': notes,
                 'pub_date': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 'url': url.rstrip('/') + '/' + destination.relative_to(root).as_posix(),

@@ -16,6 +16,29 @@ class CoordinatorTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.manifest=candidate()
+    def test_selected_platforms_preserve_other_queued_and_active_work(self):
+        from release_pair import canonical
+        c=Coordinator(self.root,{'workers':{}});self.addCleanup(c.ledger.close)
+        first=c.ledger.add(self.manifest)
+        c.ledger.transition(first,'windows-x86_64','building')
+        second=candidate(2);second['selected_platforms']=['macos-aarch64','macos-x86_64']
+        second['release_id']=hashlib.sha256(canonical({k:v for k,v in second.items() if k!='release_id'})).hexdigest()
+        latest=c.ledger.add(second);c.ledger.coalesce()
+        self.assertEqual(c.ledger.target(first,'android')['state'],'queued')
+        self.assertEqual(c.ledger.target(first,'windows-x86_64')['state'],'building')
+        self.assertEqual(c.ledger.target(first,'macos-aarch64')['state'],'superseded')
+        self.assertEqual(c.ledger.target(latest,'macos-aarch64')['state'],'queued')
+        self.assertEqual(c.ledger.target(latest,'android')['state'],'superseded')
+        self.assertEqual(c.ledger.add(second),latest)
+
+    def test_invalid_target_selection_is_rejected_before_ledger_mutation(self):
+        from release_pair import canonical
+        c=Coordinator(self.root,{'workers':{}});self.addCleanup(c.ledger.close)
+        for selected in ([],['ios','ios'],['unknown'],'ios',[{}]):
+            m=copy.deepcopy(self.manifest);m['selected_platforms']=selected
+            m['release_id']=hashlib.sha256(canonical({k:v for k,v in m.items() if k!='release_id'})).hexdigest()
+            with self.assertRaisesRegex(ValueError,'selected platforms'):c.ledger.add(m)
+        self.assertEqual(c.ledger.db.execute('SELECT COUNT(*) FROM candidates').fetchone()[0],0)
     def receipt(self,folder,stage='build'):
         folder.mkdir(parents=True,exist_ok=True);(folder/'evidence').write_text('checked')
         report={'schema':1,'release_id':self.manifest['release_id'],'sources':self.manifest['sources'],

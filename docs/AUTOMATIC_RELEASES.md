@@ -6,6 +6,11 @@ platform can inherit a pass from a different pair. Apple review does not block
 Linux, Windows, macOS, Android or the SDK lane.
 
 Discovery now fingerprints artifact inputs separately from qualification inputs.
+An immutable candidate may explicitly select platforms. Only those targets queue
+work; other platforms retain their earlier qualified artifacts. Coalescing also
+works per selected platform, so a Mac-only candidate cannot discard queued work
+for Android or interrupt an active Windows check. Version reservations remain
+monotonic and original receipts retain their original source bindings.
 An explicit reviewed list of controller and verification files may change without
 reserving another application version; unknown files, package/signing scripts,
 locks and build workflows remain artifact inputs. Such changes write

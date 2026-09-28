@@ -9,9 +9,21 @@ import sys
 import tempfile
 import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from release_feed import minisign_verify, publish
+from release_feed import minisign_verify, publish, release_notes
 from release_pair import canonical
 from release_automation_test import candidate
+
+class DisclosureTests(unittest.TestCase):
+    def test_windows_exception_is_disclosed_only_for_its_exact_release(self):
+        policy=json.loads((Path(__file__).resolve().parents[2]/'release/automation/qualification/windows36-4mib.json').read_text())
+        manifest=candidate();manifest['release_id']=policy['release_id']
+        manifest['sources']={k:{'commit':v,'tree':'a'*40} for k,v in policy['sources'].items()}
+        notes=release_notes(manifest,'windows-x86_64')
+        self.assertIn('4 MiB',notes)
+        self.assertIn('Not privacy-qualified',notes)
+        self.assertNotIn('4 MiB',release_notes(manifest,'linux-x86_64'))
+        manifest['release_id']='0'*64
+        self.assertNotIn('4 MiB',release_notes(manifest,'windows-x86_64'))
 
 @unittest.skipUnless(os.name == 'posix' and shutil.which('minisign'), 'POSIX publisher and native minisign required for signed-feed qualification')
 class FeedTests(unittest.TestCase):

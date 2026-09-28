@@ -43,6 +43,12 @@ def validate(value):
             raise ValueError('invalid source identity')
     if not isinstance(value.get('versions'), dict) or not isinstance(value.get('policy'), dict):
         raise ValueError('manifest needs explicit platform versions and release policy')
+    if 'selected_platforms' in value:
+        selected = value['selected_platforms']
+        if (not isinstance(selected, list) or not selected or
+                any(not isinstance(p, str) or p not in value['versions'] for p in selected) or
+                len(set(selected)) != len(selected)):
+            raise ValueError('selected platforms must be a nonempty unique subset of versioned targets')
     for target, version in value['versions'].items():
         expression = r'[1-9][0-9]{0,9}' if target == 'android' else r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
         if not isinstance(version, str) or not re.fullmatch(expression, version):

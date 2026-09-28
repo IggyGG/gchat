@@ -97,8 +97,10 @@ class Ledger:
                 if any(order(row[0]) >= order(version) for row in previous):
                     raise ValueError('platform versions must increase monotonically')
                 self.db.execute('INSERT INTO versions VALUES(?,?,?)', (platform, version, release))
-                self.db.execute('INSERT INTO platforms(candidate,platform,state) VALUES(?,?,?)',
-                                (release, platform, 'queued'))
+                selected = platform in manifest.get('selected_platforms', PLATFORMS)
+                self.db.execute('INSERT INTO platforms(candidate,platform,state,reason) VALUES(?,?,?,?)',
+                                (release, platform, 'queued' if selected else 'superseded',
+                                 '' if selected else 'Platform not selected; prior artifacts retained'))
         return release
 
     def coalesce(self):
@@ -106,11 +108,15 @@ class Ledger:
 
         Active builds and store reviews always retain their immutable identity.
         """
-        newest = self.db.execute('SELECT id FROM candidates ORDER BY seq DESC LIMIT 1').fetchone()
-        if newest is None: return
-        rows = self.db.execute("SELECT candidate,platform FROM platforms WHERE state='queued' AND candidate!=?", (newest[0],)).fetchall()
+        newest = {}
+        for row in self.db.execute('SELECT id,manifest FROM candidates ORDER BY seq DESC'):
+            manifest = json.loads(row['manifest'])
+            for platform in manifest.get('selected_platforms', PLATFORMS):
+                newest.setdefault(platform, row['id'])
+        rows = self.db.execute("SELECT candidate,platform FROM platforms WHERE state='queued'").fetchall()
         for row in rows:
-            self.transition(row['candidate'], row['platform'], 'superseded', reason='Newer candidate queued before build started')
+            if newest.get(row['platform']) != row['candidate']:
+                self.transition(row['candidate'], row['platform'], 'superseded', reason='Newer candidate queued before build started')
 
     def manifest(self, release):
         row = self.db.execute('SELECT manifest FROM candidates WHERE id=?', (release,)).fetchone()
