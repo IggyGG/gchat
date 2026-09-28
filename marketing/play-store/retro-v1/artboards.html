@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>GChat — Play Store artwork masters</title>
+<style>
+@font-face{font-family:Fixedsys;src:url('../../../apps/client/public/fonts/fixedsys-excelsior.ttf')}
+*{box-sizing:border-box}body{margin:0;background:#09121c;color:#f0f4ee;font-family:Arial,Helvetica,sans-serif}
+.board{position:relative;overflow:hidden;background:#102132 url('source/pixel-night.webp') center/cover no-repeat;margin:0 0 32px}
+.board:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#101e2bbd,transparent 60%);pointer-events:none}
+.feature{width:1024px;height:500px;padding:64px 74px;background-position:center 53%}
+.feature:before{background:linear-gradient(90deg,#102131ed,#10213180 62%,transparent)}
+.feature .brand{font:28px Fixedsys,monospace;color:#b7cbe4;position:relative;margin-bottom:32px}
+.feature h1{font-size:64px;line-height:1.03;letter-spacing:-3px;margin:0;position:relative;font-weight:700}
+.feature h1 span{color:#a8e4ca}
+.feature p{position:relative;font:18px Fixedsys,monospace;color:#d0dfdf;margin:29px 0 0}
+.portrait{width:1080px;height:1920px;padding:58px 72px 0}
+.kicker{position:relative;display:flex;justify-content:space-between;color:#b8d9c4;font:25px Fixedsys,monospace;letter-spacing:1px}
+.number{color:#a5becd;font:19px Arial,sans-serif;letter-spacing:3px}
+.portrait h2{position:relative;font-size:75px;line-height:1.02;letter-spacing:-3px;margin:31px 0 18px;font-weight:700}
+.portrait h2 em{font-style:normal;color:#a8e4ca}
+.portrait .sub{position:relative;font-size:28px;line-height:1.4;color:#c0d1db;margin:0}
+.screen{position:absolute;top:376px;left:90px;width:900px;height:1460px;display:block;outline:1px solid #5f817d;border-radius:10px;box-shadow:0 22px 75px #020c17a8}
+.caption{position:absolute;bottom:29px;left:90px;right:90px;display:flex;justify-content:space-between;font:20px Fixedsys,monospace;color:#c0d1db}
+.portrait:nth-of-type(3){background-position:30% 50%}.portrait:nth-of-type(4){background-position:70% 50%}.portrait:nth-of-type(5){background-position:10% 50%}
+</style>
+<main>
+<section class="board feature" id="feature" aria-label="GChat feature graphic">
+  <div class="brand">GChat.</div>
+  <h1>Old-school chat.<br><span>Your people.</span></h1>
+  <p>Channels. Nicknames. Encrypted conversations.</p>
+</section>
+<section class="board portrait" id="01-conversation">
+  <div class="kicker">GChat.<span class="number">01 / CONVERSATIONS</span></div>
+  <h2>Feels like<br><em>logging on again.</em></h2>
+  <p class="sub">Nicknames. Timestamps. A place to talk.</p>
+  <img class="screen" src="source/chat.png" alt="GChat channel conversation with sample messages between Ada and Iggy">
+  <div class="caption"><span>#good-to-be-back</span><span>Sample conversation</span></div>
+</section>
+<section class="board portrait" id="02-channels">
+  <div class="kicker">GChat.<span class="number">02 / CHANNELS</span></div>
+  <h2>A channel for<br><em>your kind of people.</em></h2>
+  <p class="sub">Keep your conversations in their own spaces.</p>
+  <img class="screen" src="source/channels.png" alt="GChat channel list with general, design and archive conversations">
+  <div class="caption"><span>#find-your-place</span><span>Sample channels</span></div>
+</section>
+<section class="board portrait" id="03-files">
+  <div class="kicker">GChat.<span class="number">03 / FILES</span></div>
+  <h2>More than<br><em>words in a window.</em></h2>
+  <p class="sub">Share encrypted files in your conversations.</p>
+  <img class="screen" src="source/files.png" alt="GChat files panel showing a shared notes.txt file in a sample channel">
+  <div class="caption"><span>#send-something-good</span><span>Sample file</span></div>
+</section>
+<section class="board portrait" id="04-invitation">
+  <div class="kicker">GChat.<span class="number">04 / INVITATIONS</span></div>
+  <h2>It starts with<br><em>an invitation.</em></h2>
+  <p class="sub">No phone number. No email account.</p>
+  <img class="screen" src="source/invitation.png" alt="GChat invitation entry screen for joining a network and channel">
+  <div class="caption"><span>#bring-your-people</span><span>GChat.</span></div>
+</section>
+</main>
+</html>

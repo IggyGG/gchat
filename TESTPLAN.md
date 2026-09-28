@@ -1,3 +1,15 @@
+## GCHAT-STORE-1 — marketing asset checks
+
+Run `node --check marketing/play-store/retro-v1/export.mjs` and
+`python3 scripts/check-source.py`. Start `node ui/browser/server.mjs`, then run
+`node marketing/play-store/retro-v1/export.mjs` to capture synthetic conversations
+through the real Svelte UI and export the five artboards. Require zero browser
+errors/capture overflow, decodable images, a 1024 × 500 opaque feature graphic,
+and four 1080 × 1920 JPEGs. Review the gallery at desktop and mobile widths for
+readable text and horizontal overflow. Compare every app frame with the released
+Android build before upload; native parity is not established by browser renders.
+Existing native/security/release acceptance requirements remain unchanged.
+
 ## Release admission and approved Windows size
 
 Run release_inputs_test.py, release_prepare_test.py and the existing release

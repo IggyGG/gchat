@@ -1,0 +1,64 @@
+{
+  "fixture": "ui/browser/fixture.ts",
+  "syntheticConversations": true,
+  "nativeAndroidVerified": false,
+  "assets": [
+    {
+      "file": "feature.png",
+      "width": 1024,
+      "height": 500
+    },
+    {
+      "file": "01-conversation.jpg",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "02-channels.jpg",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "03-files.jpg",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "04-invitation.jpg",
+      "width": 1080,
+      "height": 1920
+    }
+  ],
+  "pageErrors": [],
+  "result": "pass",
+  "gallery": [
+    {
+      "width": 1440,
+      "overflow": false,
+      "images": 5
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "images": 5
+    },
+    {
+      "width": 375,
+      "overflow": false,
+      "images": 5
+    }
+  ],
+  "exportChannels": "RGB, opaque",
+  "metadataLengths": {
+    "title": 26,
+    "shortDescription": 75,
+    "fullDescription": 1631
+  },
+  "codeComparison": "codematch=unreachable",
+  "sourceCheck": {
+    "result": "pass",
+    "pathsChecked": 630
+  },
+  "nodeSyntaxCheck": "pass",
+  "diffWhitespaceCheck": "pass"
+}

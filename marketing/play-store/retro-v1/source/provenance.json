@@ -1,0 +1,27 @@
+{
+  "retrieved": "2026-09-29",
+  "listing": "https://play.google.com/store/apps/details?id=boo.gchat.app",
+  "images": [
+    {
+      "file": "live-0.png",
+      "url": "https://play-lh.googleusercontent.com/Su8TuUKwKztgzlifI4mN_U8CEvj6_iQlpQXyXk_JI2NzjHjiHOjrk8LJkFYqYZPp-KPKGV6bUVddcQP_KNaazw=s0"
+    },
+    {
+      "file": "live-1.png",
+      "url": "https://play-lh.googleusercontent.com/qwI15mAjz3jEK3aIvuTdqLxe2Z99hOHLy--Oy6ZCEtDamh2xdPWiHs3Ku7w7W-g1mMjBEqgeTcIk_orLIl_6rg=s0"
+    }
+  ],
+  "sharedUiRevision": "3d58012b08354181b3d72f30ba9b14060d3b48fe",
+  "sharedUiFixture": "ui/browser/fixture.ts",
+  "nativeAndroidVerified": false,
+  "artwork": {
+    "file": "pixel-night.webp",
+    "generator": "built-in imagegen",
+    "dimensions": [
+      1536,
+      1024
+    ],
+    "encoding": "ImageMagick WebP quality 91",
+    "sha256": "5a563f519c50f982e8d381ab0c7e6c234b25c4acdeaf61a69e18689021faadb2"
+  }
+}
