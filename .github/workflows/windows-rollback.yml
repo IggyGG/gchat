@@ -1,0 +1,38 @@
+name: Retained Windows rollback
+run-name: Windows retained rollback ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  rollback:
+    runs-on: windows-2022
+    environment: release-signing
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Same-profile current to baseline to current with exact artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GCHAT_NETWORK_INVITATION: ${{ secrets.GCHAT_NETWORK_INVITATION }}
+        run: python scripts/windows-rollback.py --output rollback
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: windows36-rollback
+          path: |
+            rollback/report.json
+            rollback/*.stdout
+            rollback/*.stderr
+            rollback/journey/*.log
+          retention-days: 30
