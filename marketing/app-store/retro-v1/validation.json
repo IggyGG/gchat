@@ -1,0 +1,91 @@
+{
+  "captureEngine": "WebKit",
+  "nativeDeviceCapture": false,
+  "syntheticData": true,
+  "fixture": "ui/browser/fixture.ts",
+  "assets": [
+    {
+      "file": "iphone-01-conversation.jpg",
+      "width": 1290,
+      "height": 2796,
+      "screenshotDisplayType": "APP_IPHONE_67"
+    },
+    {
+      "file": "iphone-02-channels.jpg",
+      "width": 1290,
+      "height": 2796,
+      "screenshotDisplayType": "APP_IPHONE_67"
+    },
+    {
+      "file": "iphone-03-files.jpg",
+      "width": 1290,
+      "height": 2796,
+      "screenshotDisplayType": "APP_IPHONE_67"
+    },
+    {
+      "file": "iphone-04-invitation.jpg",
+      "width": 1290,
+      "height": 2796,
+      "screenshotDisplayType": "APP_IPHONE_67"
+    },
+    {
+      "file": "ipad-01-conversation.jpg",
+      "width": 2048,
+      "height": 2732,
+      "screenshotDisplayType": "APP_IPAD_PRO_3GEN_129"
+    },
+    {
+      "file": "ipad-02-channels.jpg",
+      "width": 2048,
+      "height": 2732,
+      "screenshotDisplayType": "APP_IPAD_PRO_3GEN_129"
+    },
+    {
+      "file": "ipad-03-files.jpg",
+      "width": 2048,
+      "height": 2732,
+      "screenshotDisplayType": "APP_IPAD_PRO_3GEN_129"
+    },
+    {
+      "file": "ipad-04-invitation.jpg",
+      "width": 2048,
+      "height": 2732,
+      "screenshotDisplayType": "APP_IPAD_PRO_3GEN_129"
+    }
+  ],
+  "pageErrors": [],
+  "result": "pass",
+  "gallery": [
+    {
+      "width": 1440,
+      "overflow": false,
+      "images": 8
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "images": 8
+    },
+    {
+      "width": 375,
+      "overflow": false,
+      "images": 8
+    }
+  ],
+  "encoding": "opaque RGB JPEG",
+  "codeComparison": "codematch=unreachable",
+  "provider": {
+    "metadataVerified": true,
+    "imagesProcessed": 8,
+    "imageOrderVerified": true,
+    "appStoreState": "PREPARE_FOR_SUBMISSION",
+    "submittedForReview": false,
+    "matchingMd5Readbacks": 8
+  },
+  "repositoryChecks": {
+    "exporterSyntax": "pass",
+    "sourcePolicy": "pass: 656 source paths checked",
+    "diffWhitespace": "pass",
+    "receiptArtifactHashes": "8/8 SHA-256 and MD5 match"
+  }
+}

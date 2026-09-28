@@ -1,0 +1,127 @@
+{
+  "appId": "6814308446",
+  "appStoreState": "PREPARE_FOR_SUBMISSION",
+  "attachedBuild": null,
+  "binaryChanged": false,
+  "captureEngine": "WebKit",
+  "captureSource": "3d58012b08354181b3d72f30ba9b14060d3b48fe",
+  "encryptionDeclarationState": "IN_REVIEW",
+  "iconChanged": false,
+  "imageOrderVerified": true,
+  "images": {
+    "ipad-01-conversation.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "0abaeeea3397b0dae652ffaad88c9ab2",
+      "dimensions": [
+        2048,
+        2732
+      ],
+      "id": "f8800019-62a1-885e-8031-86b2935df325",
+      "setId": "42743f9b-2537-4e4a-a0a8-cd259e49e797",
+      "sha256": "470b7da273b98dbefdd534462112a2107f6ef1413a9d2c79f6a42eb9261180ff",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    },
+    "ipad-02-channels.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "4dcbca02c256473fd9e97050448f7640",
+      "dimensions": [
+        2048,
+        2732
+      ],
+      "id": "05400019-62a1-885e-8001-1016cd8f6a05",
+      "setId": "42743f9b-2537-4e4a-a0a8-cd259e49e797",
+      "sha256": "ee0a419838256f83b9030570c563bc75062990cc8cc7eb125d9f05b9bd570b92",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    },
+    "ipad-03-files.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "b55930be04d6254d044a83b3f30a106c",
+      "dimensions": [
+        2048,
+        2732
+      ],
+      "id": "d9c00019-62a1-885e-8019-232051a71164",
+      "setId": "42743f9b-2537-4e4a-a0a8-cd259e49e797",
+      "sha256": "7d36c17db5e0e97e053681deabf0ef7393bd96b9aa23171cea4f27b5a4966d3b",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    },
+    "ipad-04-invitation.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "5d96d5813b29e35258da26e42ef29057",
+      "dimensions": [
+        2048,
+        2732
+      ],
+      "id": "ca000019-62a1-885e-8026-ed73d610c6b2",
+      "setId": "42743f9b-2537-4e4a-a0a8-cd259e49e797",
+      "sha256": "63c7d4872f507207a27e19b99405b5ffe806ab2cf7064da8df51922448b51787",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    },
+    "iphone-01-conversation.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "fdf8c36210eeca0fb459c851204f57df",
+      "dimensions": [
+        1290,
+        2796
+      ],
+      "id": "8dc00019-62a1-885e-802d-9d3ee0725f12",
+      "setId": "32870bf7-3504-450c-87ae-76ae3b68d471",
+      "sha256": "90f110652bb414afb0406f1939d4593558325d555abc4086c0555facd2f430b0",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    },
+    "iphone-02-channels.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "5e25adcfd1e3777725792a87eb05b09d",
+      "dimensions": [
+        1290,
+        2796
+      ],
+      "id": "1b400019-62a1-885e-803b-79b162bc2767",
+      "setId": "32870bf7-3504-450c-87ae-76ae3b68d471",
+      "sha256": "a28196ef1a79f1f5f0b928bea484d611a1f02043f9e16251e8a279faa5470866",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    },
+    "iphone-03-files.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "9bc3b5baab439ca2d71d915268fd4bff",
+      "dimensions": [
+        1290,
+        2796
+      ],
+      "id": "60c00019-62a1-885e-8037-60f51eaceac4",
+      "setId": "32870bf7-3504-450c-87ae-76ae3b68d471",
+      "sha256": "b79a198922fd7ecaf331b81e0941ef45d28d35c250e966c9973e4235bbb3cf81",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    },
+    "iphone-04-invitation.jpg": {
+      "checksumReadbackAvailable": true,
+      "committedMd5": "bc9fc7ea7c9928cad52a65681b173a49",
+      "dimensions": [
+        1290,
+        2796
+      ],
+      "id": "41800019-62a1-885e-803e-623d38cb9ba6",
+      "setId": "32870bf7-3504-450c-87ae-76ae3b68d471",
+      "sha256": "679c91aac954d5d4f7b460f1d2497239811f720718a0e6aa4b8d2ff9cfb31c0c",
+      "state": "COMPLETE",
+      "uploadCommitted": true
+    }
+  },
+  "imagesProcessed": 8,
+  "locale": "en-US",
+  "metadataVerified": true,
+  "nativeDeviceCapture": false,
+  "platform": "IOS",
+  "publiclyAvailable": false,
+  "submittedForReview": false,
+  "updatedAt": "2026-09-28T23:34:54.526892+00:00",
+  "version": "1.0",
+  "versionId": "479d862d-3b69-4778-b5e9-19b939e67232"
+}

@@ -26,6 +26,11 @@ change is not a claim that installed/store artifacts have been updated.
 
 # GChat
 
+The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
+adds four iPhone and four iPad screenshots plus English listing metadata to the
+iOS draft. App Store publication still requires the qualified build and Apple's
+encryption approval; the pack records its upload receipt and current status.
+
 The [Play Store creative pack](marketing/play-store/retro-v1/README.md) contains
 an old-school chat visual direction, exported graphics, a local preview and
 listing copy submitted to Google Play. Its sample-data browser captures match

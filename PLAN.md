@@ -1,3 +1,14 @@
+## GCHAT-STORE-2 — Apple listing creative (2026-09-29)
+
+Codex: the matching iPhone/iPad pack is in `marketing/app-store/retro-v1/`:
+four 1290 × 2796 iPhone images, four 2048 × 2732 iPad images, WebKit captures of
+the shared UI with synthetic content, editable artboards and English metadata.
+App Store Connect target is iOS 1.0, `en-US`; receipt: `publication.json` in the
+pack. Apple asset processing, dimensions/order and metadata readback are checked.
+The original images and listing are backed up in retained evidence. This changes
+the draft listing only: its iOS build is absent and encryption is still in review.
+The existing binary qualification and release workflow remains authoritative.
+
 ## GCHAT-STORE-1 — old-school Play Store creative (2026-09-29)
 
 Codex: creative pack complete in `marketing/play-store/retro-v1/`: original

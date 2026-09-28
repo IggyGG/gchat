@@ -1,3 +1,15 @@
+## GCHAT-STORE-2 — Apple marketing asset checks
+
+Run `node --check marketing/app-store/retro-v1/export.mjs`, the exporter with the
+existing fixture server, and `python3 scripts/check-source.py`. Require four
+1290 × 2796 and four 2048 × 2732 opaque JPEGs, zero capture overflow/browser
+errors, no text/frame overlaps and a fitting gallery at 1440/768/375 pixels.
+Apple must process every upload as `COMPLETE`; verify dimensions, file sizes,
+ordered screenshot IDs and exact metadata readback. MD5 is supplied at upload
+commit; do not claim checksum readback when Apple returns null. Preserve the old
+assets before replacing them. The iOS draft's missing build and pending encryption
+review remain separate release gates, not failures of the asset upload.
+
 ## GCHAT-STORE-1 — marketing asset checks
 
 Run `node --check marketing/play-store/retro-v1/export.mjs` and
