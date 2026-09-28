@@ -261,6 +261,7 @@ def downloads(data):
             links += (f'<p>{escape(labels)}: updates for the current network are being qualified. '
                       'Earlier installers remain archived, but are not offered as current downloads.</p>')
         links += '<p>Known limitation: joining or reconnecting can take over a minute, especially when several people join together. Keep the app open while it connects. Latency improvements are in progress.</p>'
+        links += '<p>Android: a first join can time out with “inbox routing is recovering.” Check whether the channel appeared before trying again; an unconfirmed operation is not proof that it failed. Keep your existing profile. This intermittent recovery issue is still being improved.</p>'
         links += '<p>Timing and activity privacy remain unqualified. iOS store availability is pending Apple’s encryption review.</p>'
     elif data['version'] is None:
         links = '<p>Desktop and mobile apps are being prepared. Downloads will appear here after installation and signing checks pass.</p>'

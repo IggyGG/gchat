@@ -17,6 +17,13 @@ signatures and rollback remain mandatory. Local acceptance is not a delivery
 confirmation. Failures, timeouts and incomplete operations retain their recorded
 outcomes; this decision does not turn them into passes.
 
+On 2026-09-28 the owner additionally approved Android publication with an
+intermittent first-join timeout disclosed: “inbox routing is recovering.”
+Successful fresh attempts and failed attempts remain separate evidence. Users
+should check whether the channel appeared before retrying and retain their
+existing profile; an unconfirmed operation is not proof of non-admission.
+Delivery, authentication, persistence, signatures and rollback remain mandatory.
+
 ## Large-file qualification
 
 As of 2026-09-25, releases require a bounded 16 MiB interrupted-transfer,
