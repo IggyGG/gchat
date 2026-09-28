@@ -50,6 +50,9 @@ def validate_runs(manifest, target, original, followup):
 
 
 def collect(manifest, target, work, original):
+    if target == 'ios':
+        from release_ios_recovery import collect as collect_ios
+        return collect_ios(manifest, work, original)
     from release_jobs import gh, extract
     rule = WINDOWS36
     if target != 'windows-x86_64' or manifest['release_id'] != rule['release_id']:

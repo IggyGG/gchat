@@ -4,6 +4,27 @@ On 2026-09-20 the owner selected production rollout and removed statistical priv
 
 Current downloads and platform availability are listed at [gchat.boo](https://gchat.boo/#downloads). Each platform is published independently after its exact artifact checks pass; archived installers are not automatically compatible with the current network. Historical Mac 0.1.4 `.2` notarization and other earlier receipts remain bound to those artifacts. See CROSS_PLATFORM.md and each platform's signed manifest for exact scope.
 
+## Release closeout
+
+The 2026-09-28 closeout freezes application scope. Linux, Windows and Android
+downloads can be shared while Mac qualification and Apple review proceed
+independently. Do not restart a completed platform for documentation, controller
+changes or a problem confined to another platform. Retain the exact successful
+artifact until a qualified replacement is available.
+
+Only authentication, actual delivery, persistence, signature, safe rollback,
+unusable installation and mandatory store requirements block the affected
+platform. The limitations explicitly accepted below remain next-release work.
+Record each platform as available, awaiting store approval, or blocked by a
+named failure; a pending external approval is not ongoing application testing.
+
+To invite someone, share the download page and create a fresh channel invitation
+from your connected conversation. The combined invitation carries the network
+and channel access. Share it privately and follow its expiry and usage limits.
+The recipient creates their own passphrase-protected identity, opens the
+invitation, reviews it and joins. Keep the app open during a slow first join;
+check the channel list before repeating an unconfirmed operation.
+
 ## Join and reconnect latency
 
 On 2026-09-27 the owner approved production publication with slow joins and

@@ -17,8 +17,17 @@ locks and build workflows remain artifact inputs. Such changes write
 `qualification-needed.json` with `qualification_passed=false`, preserving the
 original source pair. That observation does not qualify or publish an artifact.
 Setting discovery to null pauses new source admission while existing workers,
-receipts and publications continue. Source discovery is temporarily paused during
-the 2026-09-28 stabilization; no frozen worker is cancelled.
+receipts and publications continue. The closeout resumes discovery only after
+the deployed classifier recognizes the reviewed controller-only changes; no
+frozen worker is cancelled or restarted.
+
+The registered iOS 1.0.59 recovery preserves its original failed workflow and
+admits only the separately verified, unchanged IPA and original simulator binary.
+Source, workflow, archive and publisher bindings must match the retained proof.
+It does not rebuild or re-sign the app. Upload remains gated on France-inclusive
+Apple encryption approval. An uncertain upload dispatch is reconciled rather
+than automatically sent again. App Store availability still requires Apple's
+actual published state; successful simulator tests or upload are insufficient.
 
 The owner approved a Windows-only 4 MiB interrupted-transfer release check on
 2026-09-28, retaining the 180/600-second deadlines and every integrity, admission,

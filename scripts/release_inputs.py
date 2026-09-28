@@ -18,6 +18,7 @@ CONTROL_FILES = frozenset({
     'scripts/release_ledger.py', 'scripts/release_maintenance.py',
     'scripts/release_pair.py', 'release/automation/Dockerfile',
     'scripts/release_jobs.py', 'scripts/release_verify.py', 'scripts/release_recovery.py',
+    'scripts/release_ios_recovery.py',
     'scripts/release_compatibility.py', 'scripts/release_stores.py',
     'scripts/release_store_worker.py', 'scripts/release_publish.py',
     'scripts/release_feed.py', 'scripts/release_apt.py',

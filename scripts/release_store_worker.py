@@ -26,23 +26,42 @@ def ios_build(api,config,manifest,build_job,work):
     builds=api.request('GET','/v1/builds',params={'filter[app]':config['app_id'],'filter[version]':number,'include':'app','limit':10})['data']
     if len(builds)>1:raise ValueError('multiple Apple builds use the reserved build number')
     marker=work/'upload-dispatch.json';request=hashlib.sha256(canonical([manifest['release_id'],'ios','upload'])).hexdigest()
-    runs=gh('actions/workflows/ios-upload.yml/runs?event=workflow_dispatch&per_page=100')['workflow_runs']
-    matches=[r for r in runs if r.get('display_title')=='GChat iOS upload '+request]
+    proof,_=read_receipt(build_job/'receipt.json',manifest,'ios','build')
+    recovered=proof.get('retained_ios_followup') is True
+    workflow='ios-upload.yml';title='GChat iOS upload ';controller=manifest['sources']['gchat']['commit']
+    if recovered:
+        from release_ios_recovery import RULE, INPUTS
+        if manifest['release_id']!=RULE['release_id']:raise ValueError('unregistered retained iOS upload')
+        workflow='ios-verify.yml';title='iOS retained verification ';controller=RULE['controller']
+    runs=gh('actions/workflows/'+workflow+'/runs?event=workflow_dispatch&per_page=100')['workflow_runs']
+    matches=[r for r in runs if r.get('display_title')==title+request]
     if len(matches)>1:raise ValueError('duplicate Apple upload workers require reconciliation')
     if not matches:
         if not marker.exists():
             if builds:raise ValueError('Apple build number is already used without this source-bound upload')
-            proof,_=read_receipt(build_job/'receipt.json',manifest,'ios','build')
             archive=next(e['sha256'] for e in proof['evidence'] if e['path']=='native.zip')
+            if recovered:
+                if archive!=RULE['sha256']:raise ValueError('retained iOS archive differs before upload')
+                inputs={'request_id':request,'original_run_id':str(INPUTS['run_id']),
+                    'artifact_id':str(INPUTS['artifact_id']),'artifact_sha256':INPUTS['artifact_sha256'],
+                    'simulator_input':json.dumps(INPUTS['simulator']),
+                    'gchat_commit':INPUTS['gchat_commit'],'gcoms_commit':INPUTS['gcoms_commit'],
+                    'build_number':INPUTS['build_number'],'upload_testflight':True}
+                ref='release/gchat-'+controller[:16]
+            else:
+                inputs={'request_id':request,'release_manifest':base64.b64encode(canonical(manifest)).decode(),
+                        'artifact_id':str(proof['worker']['artifact_id']),'artifact_sha256':archive}
+                ref=manifest['refs']['gchat'].removeprefix('refs/heads/')
             atomic_json(marker,{'at':int(time.time()),'request':request})
-            gh('actions/workflows/ios-upload.yml/dispatches',method='POST',body={'ref':manifest['refs']['gchat'].removeprefix('refs/heads/'),
-                'inputs':{'request_id':request,'release_manifest':base64.b64encode(canonical(manifest)).decode(),
-                          'artifact_id':str(proof['worker']['artifact_id']),'artifact_sha256':archive}})
+            gh('actions/workflows/'+workflow+'/dispatches',method='POST',body={'ref':ref,'inputs':inputs})
         elif time.time()-json.loads(marker.read_text())['at']>1800:
             raise ValueError('Apple upload dispatch outcome unknown; no automatic duplicate upload')
         return None,'Waiting for the native Apple upload worker'
     run=matches[0]
-    if run['head_sha']!=manifest['sources']['gchat']['commit'] or run['path']!='.github/workflows/ios-upload.yml':raise ValueError('Apple upload workflow source mismatch')
+    if (run['head_sha']!=controller or run['path']!='.github/workflows/'+workflow
+        or run.get('event')!='workflow_dispatch'
+        or run.get('head_repository',{}).get('full_name')!='IggyGG/gchat'):
+        raise ValueError('Apple upload workflow source mismatch')
     if run['status']!='completed':return None,'Uploading the exact qualified IPA'
     if run['conclusion']!='success':raise ValueError('Apple upload worker failed: '+str(run['id']))
     if not builds or builds[0]['attributes']['processingState']=='PROCESSING':return None,'Apple is processing the uploaded build'

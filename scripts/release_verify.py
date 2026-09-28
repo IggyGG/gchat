@@ -32,6 +32,9 @@ def source_pair(value, expected):
 
 def verify(manifest, platform, directory, output, tools=None):
     validate(manifest); directory = Path(directory).resolve(); output = Path(output).resolve()
+    if platform == 'ios' and (directory.parent / 'ios-recovery.json').is_file():
+        from release_ios_recovery import verify as verify_ios
+        return verify_ios(manifest, directory, output)
     expected = {p: v['commit'] for p, v in manifest['sources'].items()}
     reports = list(directory.rglob('build.json'))
     reports = [p for p in reports if not any(part in ('inputs', 'build', 'native-tests') for part in p.relative_to(directory).parts[:-1])]

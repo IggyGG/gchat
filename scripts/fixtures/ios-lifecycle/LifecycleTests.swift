@@ -114,12 +114,17 @@ final class GChatLifecycleTests: XCTestCase {
 
     func finishKeyboardInput() {
         // WKWebView's native input accessory can cover the form button even
-        // when XCTest reports that button as hittable. Use the same Done
-        // control as a person, then require the keyboard to leave before tapping.
+        // when XCTest reports that button as hittable. iPad exposes its native
+        // Hide keyboard control instead of the iPhone accessory's Done button.
         let done = app.toolbars.buttons["Done"].firstMatch
+        let hide = app.keyboards.buttons["Hide keyboard"].firstMatch
         if app.keyboards.firstMatch.exists || done.exists {
-            XCTAssertTrue(done.waitForExistence(timeout: 10))
-            done.tap()
+            let dismissible = NSPredicate { _, _ in
+                (done.exists && done.isHittable) || (hide.exists && hide.isHittable)
+            }
+            expectation(for: dismissible, evaluatedWith: nil)
+            waitForExpectations(timeout: 10)
+            if done.exists && done.isHittable { done.tap() } else { hide.tap() }
         }
         let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
         var previousFrame: CGRect?
