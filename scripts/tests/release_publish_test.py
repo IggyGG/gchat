@@ -77,6 +77,42 @@ class PublishSelectionTests(unittest.TestCase):
                 release_publish.main()
             publish.assert_not_called()
 
+    @unittest.skipUnless(os.name == 'posix', 'POSIX publication host')
+    def test_installer_page_requires_current_feed_and_exact_receipt(self):
+        for platform, target, suffix in (('windows-x86_64', 'windows/x86_64', '.exe'),
+                                         ('macos-aarch64', 'darwin/aarch64', '.dmg')):
+            with self.subTest(platform=platform):
+                manifest=candidate(); artifact=self.artifact('GChat'+suffix,platform.encode())
+                sha=hashlib.sha256(artifact.read_bytes()).hexdigest()
+                receipt=self.root/'verified.json'
+                atomic_json(receipt,{'schema':1,'release_id':manifest['release_id'],'sources':manifest['sources'],
+                    'platform':platform,'stage':'verify','passed':True,'source_unchanged':True,
+                    'evidence':[{'path':artifact.name,'sha256':sha}]})
+                feed={'version':manifest['versions'][platform],'notes':'Limitations <retained>',
+                      'binding':json.dumps({'release_id':manifest['release_id'],'version':manifest['versions'][platform],
+                                           'target':target.replace('/','-')})}
+                latest=self.root/'desktop'/target/'latest.json';atomic_json(latest,feed)
+                args=(manifest,platform,feed,artifact,receipt,self.root,'https://gchat.boo/updates')
+                result=release_publish.installer_download_page(*args)
+                page=self.root/'downloads'/platform/'latest.html'
+                self.assertIn('Limitations &lt;retained&gt;',page.read_text())
+                self.assertIn(result['installer']['url'],page.read_text())
+                self.assertEqual(release_publish.installer_download_page(*args),result)
+                public=self.root/'artifacts'/manifest['release_id']/(sha+suffix)
+                self.assertEqual(public.read_bytes(),artifact.read_bytes())
+                public.write_bytes(b'corrupt')
+                with self.assertRaisesRegex(ValueError,'public installer changed'):
+                    release_publish.installer_download_page(*args)
+                public.write_bytes(artifact.read_bytes())
+                atomic_json(latest,{'version':'99.0.0'})
+                before=page.read_bytes()
+                with self.assertRaisesRegex(ValueError,'do not regress'):
+                    release_publish.installer_download_page(*args)
+                self.assertEqual(page.read_bytes(),before)
+                artifact.write_bytes(b'substituted')
+                with self.assertRaisesRegex(ValueError,'evidence changed'):
+                    release_publish.installer_download_page(*args)
+
 
 # The publication service runs on Linux, just like FeedTests and APT tests.
 # Native Windows still runs the portable artifact/receipt selection cases above.

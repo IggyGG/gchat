@@ -91,6 +91,69 @@ def job(state, manifest, platform, stage):
     return state/'jobs'/key
 
 
+def installer_download_page(manifest, platform, feed, installer, verified, root, url):
+    """Publish a human download for the same qualified Windows/Mac candidate."""
+    import fcntl
+    import shutil
+    from release_feed import TARGETS
+    validate(manifest)
+    labels = {'windows-x86_64': ('Windows', '.exe', 'Run the installer.'),
+              'macos-aarch64': ('Mac with Apple silicon', '.dmg', 'Open the disk image and drag GChat to Applications.'),
+              'macos-x86_64': ('Mac with Intel processor', '.dmg', 'Open the disk image and drag GChat to Applications.')}
+    label, suffix, instructions = labels[platform]
+    proof, _ = read_receipt(verified, manifest, platform, 'verify')
+    sha = digest(installer); size = installer.stat().st_size
+    if (not installer.name.endswith(suffix) or not 0 < size <= 512 * 1024**2
+            or not any(e['sha256'] == sha for e in proof['evidence'])):
+        raise ValueError('installer is not covered by the qualified platform receipt')
+    binding = json.loads(feed['binding']); release = manifest['release_id']
+    number = manifest['versions'][platform]; os_name, arch = TARGETS[platform]
+    if (binding['release_id'], binding['version'], binding['target'], feed['version']) != (
+            release, number, os_name + '-' + arch, number):
+        raise ValueError('installer page differs from qualified release')
+    root = Path(root); url = url.rstrip('/')
+    relative = f'artifacts/{release}/{sha}{suffix}'
+    artifact = root / relative
+    destination = root / 'downloads' / platform
+    base = f'{url}/downloads/{platform}/{release}'
+    details = {'schema': 1, 'release_id': release, 'sources': manifest['sources'],
+               'version': number, 'updater': feed,
+               'installer': {'url': f'{url}/{relative}', 'sha256': sha, 'size': size}}
+    escape = html.escape
+    page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GChat {escape(number)} for {escape(label)}</title>
+<style>body{{font:1rem/1.6 system-ui,sans-serif;max-width:44rem;margin:3rem auto;padding:0 1rem;background:#191d21;color:#e7edf3}}a{{color:#9ed1ff}}code{{overflow-wrap:anywhere}}</style></head><body>
+<a href="https://gchat.boo/#downloads">← GChat downloads</a>
+<h1>GChat {escape(number)} for {escape(label)}</h1>
+<p><a href="{escape(details['installer']['url'])}">Download signed installer</a></p>
+<p>{escape(instructions)}</p><p>SHA-256: <code>{sha}</code></p>
+<p>{escape(feed['notes'])}</p>
+<p><a href="{escape(base)}/release.json">Exact sources, installer hash and signed update details</a></p>
+</body></html>'''.encode()
+    with (root / '.publish.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if json.loads((root / f'desktop/{os_name}/{arch}/latest.json').read_text()) != feed:
+            raise ValueError('a different release is now public; do not regress downloads')
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        if artifact.exists():
+            if artifact.stat().st_size != size or digest(artifact) != sha:
+                raise ValueError('immutable public installer changed')
+        else:
+            with tempfile.NamedTemporaryFile(dir=artifact.parent, delete=False) as stream:
+                temporary = Path(stream.name)
+                try:
+                    with installer.open('rb') as source: shutil.copyfileobj(source, stream)
+                    stream.flush(); os.fsync(stream.fileno())
+                    if digest(temporary) != sha: raise ValueError('installer changed during copy')
+                    temporary.chmod(0o644); os.replace(temporary, artifact)
+                finally: temporary.unlink(missing_ok=True)
+        write_public(destination / release / 'release.json', canonical(details), immutable=True)
+        write_public(destination / release / 'index.html', page, immutable=True)
+        write_public(destination / 'latest.html', page)
+    return details
+
+
 def select_artifacts(paths, platform):
     # A file may be referenced as both an installer and an updater artifact.
     # read_receipt verifies every reference before selection; deduplicate paths,
@@ -130,6 +193,11 @@ def main():
     proof,_=read_receipt(verified,manifest,platform,'verify');read_receipt(compatibility,manifest,platform,'compatibility')
     paths=[verified.parent/i['path'] for i in proof['evidence']]
     payload, signature, package, package_signature = select_artifacts(paths, platform)
+    installer = None
+    if package is None:
+        installers = {digest(p): p for p in paths if p.name.endswith('.exe' if platform == 'windows-x86_64' else '.dmg')}
+        if len(installers) != 1: raise ValueError('qualified installer missing or ambiguous')
+        installer = next(iter(installers.values()))
     root=Path(config['public_root'])
     feed=publish(manifest,platform,payload,signature.read_text(),root,config['public_url'],
                  manifest['policy']['updater_public_key'],config['signer'],verified,compatibility)
@@ -156,6 +224,18 @@ def main():
         raise ValueError('public artifact bytes differ from signed binding')
     if apt is not None:
         linux_download_page(manifest, public, apt, package_signature, root, config['public_url'])
+    else:
+        details = installer_download_page(manifest, platform, public, installer,
+                                         verified, root, config['public_url'])
+        expected = details['installer']; observed = hashlib.sha256(); size = 0
+        with urllib.request.urlopen(expected['url'], timeout=60) as response:
+            if response.url != expected['url']: raise ValueError('public installer redirected')
+            while chunk := response.read(1024 * 1024):
+                size += len(chunk)
+                if size > expected['size']: raise ValueError('public installer exceeds qualified size')
+                observed.update(chunk)
+        if size != expected['size'] or observed.hexdigest() != expected['sha256']:
+            raise ValueError('public installer differs from qualified bytes')
     result=output.parent/'public-feed.json' ;atomic_json(result,public)
     atomic_json(output,{'schema':1,'release_id':manifest['release_id'],'sources':manifest['sources'],
         'platform':platform,'stage':'publish','passed':True,'source_unchanged':True,

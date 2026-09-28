@@ -130,6 +130,9 @@ def validate_platforms(data):
         raise ValueError('preserve complete Linux downloads and reference each release')
     managed = data.get('managed_downloads', {})
     allowed = {'linux-x86_64': 'https://gchat.boo/updates/downloads/linux-x86_64/latest.html',
+               'windows-x86_64': 'https://gchat.boo/updates/downloads/windows-x86_64/latest.html',
+               'macos-aarch64': 'https://gchat.boo/updates/downloads/macos-aarch64/latest.html',
+               'macos-x86_64': 'https://gchat.boo/updates/downloads/macos-x86_64/latest.html',
                'android-arm64': 'https://play.google.com/store/apps/details?id=boo.gchat.app',
                'android-x86_64': 'https://play.google.com/store/apps/details?id=boo.gchat.app'}
     if not isinstance(managed, dict) or any(key not in allowed or value != allowed[key] for key, value in managed.items()):
@@ -141,6 +144,8 @@ def validate_platforms(data):
             {'macos-aarch64', 'macos-x86_64', 'windows-x86_64'} for key in pending)
             or len(set(pending)) != len(pending)):
         raise ValueError('unexpected pending download target')
+    if set(pending) & set(managed):
+        raise ValueError('a managed download cannot also be pending')
     return data
 
 
@@ -246,6 +251,11 @@ def downloads(data):
         if 'android-arm64' in managed:
             links += (f'<li><a href="{escape(managed["android-arm64"])}">Get Android on Google Play</a>'
                       ' · the store selects your device’s version</li>')
+        for target, label in (('windows-x86_64', 'Windows'), ('macos-aarch64', 'Mac · Apple silicon'),
+                              ('macos-x86_64', 'Mac · Intel')):
+            if target in managed:
+                links += (f'<li><a href="{escape(managed[target])}">Download {escape(label)} · latest qualified release</a>'
+                          ' · signed installer and validation limits included</li>')
         for a in data['artifacts']:
             if a['target'] in managed or a['target'] in data.get('pending_targets', []):
                 continue

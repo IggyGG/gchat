@@ -49,6 +49,18 @@ class WebsiteTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'managed download'):
             site.validate(data)
 
+    def test_managed_windows_download_excludes_old_installer(self):
+        data=json.loads((site.ROOT/'release/downloads.json').read_text())
+        data['managed_downloads']['windows-x86_64']='https://gchat.boo/updates/downloads/windows-x86_64/latest.html'
+        data['pending_targets']=['macos-aarch64','macos-x86_64']
+        page=site.downloads(site.validate(data))
+        self.assertIn('Download Windows · latest qualified release',page)
+        self.assertIn('for Linux, Windows, Android.',site.client_status(data))
+        for item in data['artifacts']:
+            if item['target']=='windows-x86_64':self.assertNotIn(item['url'],page)
+        data['pending_targets'].append('windows-x86_64')
+        with self.assertRaisesRegex(ValueError,'also be pending'):site.validate(data)
+
     def test_source_head_retry_preserves_method(self):
         url = 'https://github.com/IggyGG/gchat'
         with patch.object(site, 'urlopen', side_effect=[HTTPError(url, 504, 'fixture', {}, None), io.BytesIO()]) as fetch:

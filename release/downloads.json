@@ -194,11 +194,11 @@
   "managed_downloads": {
     "linux-x86_64": "https://gchat.boo/updates/downloads/linux-x86_64/latest.html",
     "android-arm64": "https://play.google.com/store/apps/details?id=boo.gchat.app",
-    "android-x86_64": "https://play.google.com/store/apps/details?id=boo.gchat.app"
+    "android-x86_64": "https://play.google.com/store/apps/details?id=boo.gchat.app",
+    "windows-x86_64": "https://gchat.boo/updates/downloads/windows-x86_64/latest.html"
   },
   "pending_targets": [
     "macos-aarch64",
-    "macos-x86_64",
-    "windows-x86_64"
+    "macos-x86_64"
   ]
 }

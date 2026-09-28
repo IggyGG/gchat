@@ -49,9 +49,9 @@ Production status does not mean traffic-analysis resistance is qualified. The fo
 
 The current source selects GC/2 profile 46: real traffic is immediately eligible and padded interactive cover uses independent random 10–10,000 ms opportunities, skipping an opportunity when real data was sent on that outgoing channel since the previous one. This is not equivalent to constant-rate traffic-analysis protection. The authenticated carrier endpoint can distinguish cover records after TLS decryption; link cover does not make real traffic invisible to that endpoint. Existing profile-22 artifacts and receipts retain their original scope. Relays must support 46 before selecting it in clients; older binaries may reject the saved policy, so rollback needs a compatible build or tested state-preserving migration. Start the desktop with `gchat-desktop --gc2-carrier`; use a separate `--home` for an existing legacy installation. Existing legacy profiles are not silently converted, reset or overwritten. Authentication, exact retained outboxes, signed capabilities and expiry checks remain enforced. The production relays retain their identity/TLS keys; current bootstrap credentials are generated from those identities, never converted from legacy authority.
 
-## Receipt scope
+## Historical first-production receipt scope
 
-Production executables are bound to GComs 726172785baacc25781d427c75faada5f8849d6b and GChat 0b599cfaa880828b5b0a04c99467c5616afc5b2c. Later policy/documentation/tooling commits do not relabel the frozen native CI or artifact source. The original signing receipt calls its trust policy `self-signed-preview`; the key and signed bytes are unchanged, while this owner decision changes deployment status to production.
+The first production executables were bound to GComs 726172785baacc25781d427c75faada5f8849d6b and GChat 0b599cfaa880828b5b0a04c99467c5616afc5b2c. These are historical bindings, not the current download versions. Each managed download page supplies its current source pair and artifact hashes. Later policy/documentation/tooling commits do not relabel the frozen native CI or artifact source. The original signing receipt calls its trust policy `self-signed-preview`; the key and signed bytes are unchanged, while this owner decision changes deployment status to production.
 
 ## 0.1.1 desktop startup correction
 
