@@ -31,7 +31,10 @@ Linux, Windows, macOS, Android or the SDK lane.
    build and qualification host. A timeout remains a failure, never a pass.
 4. `release_compatibility.py` consumes the fleet controller's recent, exact-pair
    application/rollback receipt and eight compatible relay observations from
-   `/state/acceptance/<release_id>.json`. It **does not manufacture that receipt**
+   `/state/acceptance/<platform>/<release_id>.json`. Each installed platform has
+   its own directory for both execution and reconciliation; a Linux receipt
+   cannot unlock Android or iOS publication. SDK consumers retain their separate
+   SDK checks. It **does not manufacture that receipt**
    from CI. Missing acceptance keeps publication waiting. Relay deployment uses
    its existing canary/serial process; the release controller does not guess
    topology, migrate profiles, or restart relays itself.

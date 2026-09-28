@@ -1,3 +1,10 @@
+## Platform acceptance isolation (2026-09-28)
+
+R07: generated coordinator configurations now use a distinct installed-acceptance
+directory for each platform in execution and reconciliation. This preserves the
+live configuration correction across regeneration. SDK consumers keep their own
+checks; completed receipts and active builds retain their original bindings.
+
 ## Mac installed-network automation (2026-09-28)
 
 R06/R07/R12: both Mac release targets now require the explicit protected network

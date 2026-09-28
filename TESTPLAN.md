@@ -1,3 +1,10 @@
+## Platform acceptance isolation
+
+Run `python3 -m unittest discover -s scripts/tests -p 'release_config_test.py'`.
+Require unique platform acceptance paths under a custom state directory for both
+execution and reconciliation. SDK compatibility must continue using its own
+consumer verifier. These checks do not qualify an application or installer.
+
 ## Mac network receipt binding
 
 Run `python3 -m unittest discover -s scripts/tests -p "macos_*test.py"`.

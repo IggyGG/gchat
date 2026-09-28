@@ -1,3 +1,8 @@
+Generated release configurations keep installed acceptance receipts in separate
+platform directories. A passing Linux application check cannot authorize a
+mobile release; SDK qualification remains separate. See
+[automatic releases](docs/AUTOMATIC_RELEASES.md).
+
 Mac release CI now includes the same bounded 16 MiB interrupted-file and
 authenticated-message journey as Windows, using disposable profiles and a
 protected fixture invitation. Existing releases retain their original evidence;
