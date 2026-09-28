@@ -294,6 +294,7 @@ class OriginalSimulatorLifecycleTests(unittest.TestCase):
 
     def write(self, name, value):
         path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(value)
         return ios.reference(path)
 
@@ -306,6 +307,45 @@ class OriginalSimulatorLifecycleTests(unittest.TestCase):
         self.validate()
         self.assertEqual(original, self.original)
         self.assertFalse(self.original['passed'])
+
+    def timeout_candidate(self):
+        device = '8DFECF94-FE40-4113-B39C-B38212DE0D36'
+        command = ['xcrun', 'simctl', 'launch', '--terminate-running-process', device, ios.BUNDLE]
+        self.original['error'] = "TimeoutExpired: Command '" + repr(command) + "' timed out after 60 seconds"
+        native = self.ref('original/ios-output/native-tests/report.json', self.native)
+        self.original['native_tests'] = native
+        self.candidate.update(original_build=self.ref('original/ios-output/build.json', self.original),
+                              original_native_tests=native, original_startup_timeout_recovery=True,
+                              original_startup_not_run=False)
+        smoke = {'scope': 'ios_simulator_native_startup_relaunch', 'passed': False,
+            'device': device, 'error': self.original['error'], 'launches': [],
+            'executable': self.original['simulator_executable'], 'owned_device_removed': True,
+            'cleanup_complete': False, 'cleanup_errors': [{'step': 'terminate', 'error_type': 'TimeoutExpired'}]}
+        self.candidate['original_failed_startup'] = self.ref('original/ios-output/simulator-smoke/report.json', smoke)
+        return smoke
+
+    def test_late_startup_timeout_qualifies_only_with_new_native_and_lifecycle_pass(self):
+        self.timeout_candidate()
+        self.validate()
+        self.assertFalse(self.original['passed'])
+        for key, value in (('original_startup_timeout_recovery', False), ('original_startup_not_run', True),
+                           ('cleanup_complete', False), ('passed', False)):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                self.validate(self.candidate | {key: value})
+        changed = self.native | {'passed': False}
+        with self.assertRaises(ValueError):
+            self.validate(self.candidate | {'native_tests': self.ref('bad-native.json', changed)})
+
+    def test_timeout_upload_rejects_missing_substituted_or_changed_original_proof(self):
+        smoke = self.timeout_candidate()
+        with self.assertRaises(ValueError):
+            self.validate(self.candidate | {'original_failed_startup': self.ref('unbound-smoke.json', smoke)})
+        with self.assertRaises(ValueError):
+            self.validate(self.candidate | {'original_native_tests': self.ref('unbound-native.json', self.native)})
+        self.candidate['original_failed_startup'] = self.ref('original/ios-output/simulator-smoke/report.json',
+                                                            smoke | {'owned_device_removed': False})
+        with self.assertRaises(ValueError):
+            self.validate()
 
     def test_failed_cleanup_resigning_wrong_artifact_and_early_success_are_rejected(self):
         for key, value in (('passed', False), ('cleanup_complete', False), ('cleanup_errors', ['leftover']),

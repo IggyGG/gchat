@@ -220,6 +220,52 @@ class FirstLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'startup/cleanup'):
             journey.simulator_evidence(original, self.root, {})
 
+    def timeout_original(self):
+        self.native.update(passed=True, owned_device_removed=True, cleanup_errors=[],
+                           tests={'passed': 3, 'failed': 0, 'skipped': 0})
+        original = self.original()
+        original['native_tests'] = journey.ios.reference(self.root / 'native-tests/report.json')
+        device = '8DFECF94-FE40-4113-B39C-B38212DE0D36'
+        command = ['xcrun', 'simctl', 'launch', '--terminate-running-process', device, journey.ios.BUNDLE]
+        original['error'] = "TimeoutExpired: Command '" + repr(command) + "' timed out after 60 seconds"
+        self.smoke = {'scope': 'ios_simulator_native_startup_relaunch', 'passed': False,
+            'device': device, 'executable': self.exe, 'launches': [], 'error': original['error'],
+            'owned_device_removed': True, 'cleanup_complete': False,
+            'cleanup_errors': [{'step': 'terminate', 'error_type': 'TimeoutExpired'}]}
+        self.item('simulator-smoke/report.json', self.smoke)
+        return original
+
+    def test_late_timeout_requires_fresh_tests_and_preserves_failed_cleanup(self):
+        original = self.timeout_original()
+        before = copy.deepcopy(original)
+        report = {}
+        expected, first = journey.simulator_evidence(original, self.root, report)
+        self.assertTrue(first)
+        self.assertEqual(expected, self.exe)
+        self.assertTrue(report['original_startup_timeout_recovery'])
+        self.assertFalse(report['original_startup_not_run'])
+        self.assertFalse(json.loads(Path(report['original_failed_startup']['path']).read_text())['cleanup_complete'])
+        self.assertEqual(original, before)
+        self.assertNotIn('passed', report)
+
+    def test_timeout_cannot_hide_crash_leaked_device_or_substituted_binary(self):
+        original = self.timeout_original()
+        for key, value in (('error', 'app crashed'), ('scope', 'other'), ('passed', True),
+                           ('owned_device_removed', False), ('launches', [{'passed': True}]),
+                           ('cleanup_errors', [{'step': 'delete', 'error_type': 'TimeoutExpired'}]),
+                           ('executable', self.exe | {'sha256': 'b' * 64})):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                self.item('simulator-smoke/report.json', self.smoke | {key: value})
+                journey.simulator_evidence(original, self.root, {})
+        self.item('simulator-smoke/report.json', self.smoke)
+        self.item('native-tests/report.json', self.native | {'tests': {'passed': 2, 'failed': 0, 'skipped': 1}})
+        original['native_tests'] = journey.ios.reference(self.root / 'native-tests/report.json')
+        with self.assertRaises(ValueError):
+            journey.simulator_evidence(original, self.root, {})
+        (self.root / 'simulator-smoke/report.json').unlink()
+        with self.assertRaises(FileNotFoundError):
+            journey.simulator_evidence(original, self.root, {})
+
     def test_unclean_failed_tests_or_different_executable_are_rejected(self):
         for target, key, value in [(self.native, 'cleanup_complete', False),
                                     (self.native, 'sources_unchanged', False),

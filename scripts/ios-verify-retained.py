@@ -184,10 +184,21 @@ def validate_original_lifecycle(candidate, original, inputs, root):
         require(authority[key] == original_authority[key], 'simulator authority changed')
     native = json.loads(lifecycle_file(candidate['native_tests'], root).read_text())
     failed = json.loads(lifecycle_file(candidate['original_native_tests'], root).read_text())
+    startup_timeout = candidate.get('original_startup_timeout_recovery') is True
+    if startup_timeout:
+        original_root = lifecycle_file(candidate['original_build'], root).parent
+        original_native = journey.relocated(original['native_tests'], original_root)
+        require(original_native == lifecycle_file(candidate['original_native_tests'], root),
+                'original native receipt was substituted')
+        smoke_path = lifecycle_file(candidate['original_failed_startup'], root)
+        require(smoke_path == original_root / 'simulator-smoke/report.json'
+                and candidate.get('original_startup_not_run') is False,
+                'original failed startup receipt was substituted')
+        journey.startup_timeout_evidence(original, failed, json.loads(smoke_path.read_text()))
     require(native.get('scope') == 'ios_app_hosted_native_push_validation_and_keychain_tests'
             and native.get('passed') is True and native.get('sources_unchanged') is True
             and native.get('cleanup_complete') is True and native.get('owned_device_removed') is True
-            and native.get('cleanup_errors') == [] and failed.get('passed') is False
+            and native.get('cleanup_errors') == [] and (failed.get('passed') is False or startup_timeout)
             and failed.get('sources_unchanged') is True and failed.get('cleanup_complete') is True,
             'native test recovery or cleanup did not pass')
     expected = {'Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',

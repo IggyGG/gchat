@@ -1,3 +1,9 @@
+Retained iOS releases can recover from a simulator launch timeout using the
+original signed IPA and unchanged simulator app. The original failure remains
+retained; fresh native tests, profile/reopen lifecycle and complete cleanup must
+pass before verification can authorize upload. No application rebuild or re-signing
+is performed by that recovery path.
+
 Generated release configurations keep installed acceptance receipts in separate
 platform directories. A passing Linux application check cannot authorize a
 mobile release; SDK qualification remains separate. See

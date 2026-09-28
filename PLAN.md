@@ -1,3 +1,10 @@
+## Retained iOS startup recovery (2026-09-28)
+
+R07: support the specific post-native-test simulator launch timeout after verified
+owned-device removal. Keep its failed cleanup record, require fresh native and
+actual profile/reopen lifecycle passes, and verify the original IPA without
+rebuilding or re-signing. Other startup failures remain refused.
+
 ## Platform acceptance isolation (2026-09-28)
 
 R07: generated coordinator configurations now use a distinct installed-acceptance

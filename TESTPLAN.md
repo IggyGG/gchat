@@ -1,3 +1,12 @@
+## Retained iOS startup recovery
+
+Run `ios_lifecycle_test.py` and `ios_retained_test.py` through unittest discovery.
+Require exact original failed startup/native/binary bindings, owned-device removal,
+new native and lifecycle passes, and complete fresh cleanup. Reject crashes, other
+cleanup errors, substituted receipts, changed binaries, skipped native tests and
+any attempt to promote the original failed verdict. Native simulator execution
+remains a separate required gate before upload.
+
 ## Platform acceptance isolation
 
 Run `python3 -m unittest discover -s scripts/tests -p 'release_config_test.py'`.

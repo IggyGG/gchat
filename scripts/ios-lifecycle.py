@@ -65,12 +65,40 @@ def build_binding(report, spec):
         require(report['sources'][name]['commit'] == spec[name + '_commit'], 'original build source mismatch')
 
 
+def startup_timeout_evidence(original, native, smoke):
+    """Accept only a retained launch timeout whose owned device was removed.
+
+    This authorizes a new test, never a passing verdict for the old attempt.
+    The failed terminate timeout stays visible; fresh cleanup must pass later.
+    """
+    device = smoke.get('device', '')
+    require(re.fullmatch('[0-9A-Fa-f-]{36}', device) is not None, 'invalid original simulator device')
+    command = ['xcrun', 'simctl', 'launch', '--terminate-running-process', device, ios.BUNDLE]
+    error = "TimeoutExpired: Command '" + repr(command) + "' timed out after 60 seconds"
+    require(original.get('passed') is False and original.get('error') == smoke.get('error') == error
+            and smoke.get('scope') == 'ios_simulator_native_startup_relaunch'
+            and smoke.get('passed') is False and smoke.get('launches') == []
+            and smoke.get('owned_device_removed') is True
+            and smoke.get('cleanup_errors') in ([], [{'step': 'terminate', 'error_type': 'TimeoutExpired'}]),
+            'only an original launch timeout with removed simulator can be retried')
+    require(all(smoke['executable'][key] == original['simulator_executable'][key]
+                for key in ('sha256', 'size')), 'failed startup executable differs')
+    require(native.get('scope') == 'ios_app_hosted_native_push_validation_and_keychain_tests'
+            and native.get('passed') is True and native.get('sources_unchanged') is True
+            and native.get('cleanup_complete') is True and native.get('owned_device_removed') is True
+            and native.get('cleanup_errors') == []
+            and all(native.get('tests', {}).get(key) == value
+                    for key, value in (('passed', 3), ('failed', 0), ('skipped', 0))),
+            'original native tests must have passed before startup timed out')
+
+
 def simulator_evidence(original, root, report):
     """Permit a first lifecycle run after a later native-test build failure.
 
     A linked artifact is not a startup pass. Its exact binary and authority are
     rechecked below, and both native tests and the real lifecycle must now run.
-    Existing failed smoke/cleanup evidence remains a refusal.
+    A later startup timeout may also be retried after verified device removal;
+    its failure and incomplete terminate cleanup remain retained, not promoted.
     """
     if 'simulator' in original:
         smoke_path = relocated(original['simulator'], root)
@@ -93,8 +121,15 @@ def simulator_evidence(original, root, report):
             and cleanup.get('errors') == [], 'original signing cleanup did not pass')
     native_path = root / 'native-tests/report.json'
     native = json.loads(native_path.read_text())
+    startup_timeout = native.get('passed') is True
+    if startup_timeout:
+        require(relocated(original['native_tests'], root) == native_path, 'original native receipt differs')
+        smoke_path = root / 'simulator-smoke/report.json'
+        startup_timeout_evidence(original, native, json.loads(smoke_path.read_text()))
+        report.update(original_failed_startup=ios.reference(smoke_path),
+                      original_startup_timeout_recovery=True)
     require(native.get('scope') == 'ios_app_hosted_native_push_validation_and_keychain_tests'
-            and native.get('passed') is False and native.get('sources_unchanged') is True
+            and (native.get('passed') is False or startup_timeout) and native.get('sources_unchanged') is True
             and native.get('cleanup_complete') is True,
             'original failed native test sources/cleanup must be retained')
     require(set(native['sources']) == {'Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',
@@ -102,7 +137,7 @@ def simulator_evidence(original, root, report):
             'original native source inventory differs')
     report.update(original_linked_authority=ios.reference(authority_path),
                   original_signing_cleanup=ios.reference(cleanup_path),
-                  original_native_tests=ios.reference(native_path), original_startup_not_run=True)
+                  original_native_tests=ios.reference(native_path), original_startup_not_run=not startup_timeout)
     return original['simulator_executable'], True
 
 
