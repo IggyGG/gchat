@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "scope": "retained exact iOS 1.0.46 simulator app; native profile/background/reopen UI with observed text-field input; no application rebuild or resign",
+  "application_recompiled": false,
+  "application_resigned": false,
+  "sources": {
+    "gchat": {
+      "commit": "bef64ab703ad764dbd514bfa4bd231e233f59375",
+      "tree": "a29f9af9be70fcfd4534dec43f0d154195e886f4"
+    },
+    "gcoms": {
+      "commit": "9a87b9829f8ffeb02532af44528596a2f7b4a0c1",
+      "tree": "37edda76750cc9c475018e71ecc3c797013a7d1d"
+    }
+  },
+  "application_sha256": "30a3408a5815ccaecd811ca96385f591c49c0925e3e3dd30667fcd0b1deaf4e6",
+  "harness_sha256": "cf1f26109436f304770b2ccf2dedcc7a0e79ad37c574ac6a157b56b60ef8d913",
+  "journey": {
+    "path": "/Users/iggy/.cache/gchat-ios23-lifecycle03/result/report.json",
+    "sha256": "d008d9b1b0cc8e6578e38ee86e71458e893b0ff5716ae68d2c2254046b5750e9",
+    "size": 1671
+  },
+  "finished_at": 1790557281
+}

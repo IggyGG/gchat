@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "scope": "ios_installed_simulator_profile_background_reopen",
+  "passed": true,
+  "application_recompiled": false,
+  "application_resigned": false,
+  "application": {
+    "path": "/Users/iggy/.cache/gchat-ios23-lifecycle03/application/GChat.app/GChat",
+    "sha256": "30a3408a5815ccaecd811ca96385f591c49c0925e3e3dd30667fcd0b1deaf4e6",
+    "size": 30150480
+  },
+  "harness": {
+    "path": "/Users/iggy/.cache/gchat-ios23-lifecycle03/scripts/ios-lifecycle.py",
+    "sha256": "e0bd36f6856039dc85c8f354caf7412918ed1165ac751d50d6635a33cdf421c3",
+    "size": 24572
+  },
+  "swift_test": {
+    "path": "/Users/iggy/.cache/gchat-ios23-lifecycle03/scripts/fixtures/ios-lifecycle/LifecycleTests.swift",
+    "sha256": "cf1f26109436f304770b2ccf2dedcc7a0e79ad37c574ac6a157b56b60ef8d913",
+    "size": 10479
+  },
+  "cleanup_complete": true,
+  "network_onboarding_qualified": false,
+  "messaging_qualified": false,
+  "push_qualified": false,
+  "physical_device_qualified": false,
+  "xcode": "Xcode 26.2\nBuild version 17C52",
+  "device": "BCC13285-EE4D-42EC-9160-B97859140A9C",
+  "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+  "device_type": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max",
+  "xctest_exit_code": 0,
+  "xctest_log": {
+    "path": "/Users/iggy/.cache/gchat-ios23-lifecycle03/result/xctest.log",
+    "sha256": "6b5cd8f6788d3c5ef75c4c20bd862962525843cf36356ee37e60d3441cddacb6",
+    "size": 93103
+  },
+  "test_summary": {
+    "path": "/Users/iggy/.cache/gchat-ios23-lifecycle03/result/test-summary.json",
+    "sha256": "e360b53b7b5089a9156039d62516b05f001f8188a0ad79351b0b0773d3f554f0",
+    "size": 958
+  },
+  "cleanup_errors": []
+}

@@ -1,0 +1,709 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj -scheme GChatLifecycle -destination "platform=iOS Simulator,id=BCC13285-EE4D-42EC-9160-B97859140A9C" -derivedDataPath /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived -resultBundlePath /Users/iggy/.cache/gchat-ios23-lifecycle03/result/journey.xcresult -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 "-only-testing:LifecycleTests/GChatLifecycleTests/testProfileBackgroundAndReopen" CODE_SIGNING_ALLOWED=NO
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+
+Writing result bundle at path:
+	/Users/iggy/.cache/gchat-ios23-lifecycle03/result/journey.xcresult
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'LifecycleTests' in project 'GChatLifecycle' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: cd3cf69f22b2975360efad3a5e6662b9
+Build description path: /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/XCBuildData/cd3cf69f22b2975360efad3a5e6662b9.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+
+CreateBuildDirectory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    builtin-create-build-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex
+
+CreateBuildDirectory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    builtin-create-build-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/GChatLifecycle-e118a679742626110cc8ca5f3c1c94ee-VFS-iphonesimulator/all-product-headers.yaml
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/GChatLifecycle-e118a679742626110cc8ca5f3c1c94ee-VFS-iphonesimulator/all-product-headers.yaml
+
+CreateBuildDirectory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    builtin-create-build-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator
+
+CreateBuildDirectory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    builtin-create-build-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    builtin-create-build-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/GChatLifecycle.xcodeproj
+    builtin-create-build-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/ProductTypeInfoPlistAdditions.plist (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/ProductTypeInfoPlistAdditions.plist
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/empty-LifecycleTests.plist (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/empty-LifecycleTests.plist
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.LinkFileList (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.LinkFileList
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftConstValuesFileList (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftFileList (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftFileList
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-OutputFileMap.json (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.hmap (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.hmap
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.DependencyStaticMetadataFileList (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_const_extract_protocols.json (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.DependencyMetadataFileList (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-project-headers.hmap (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-project-headers.hmap
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-own-target-headers.hmap (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-generated-files.hmap (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-generated-files.hmap
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-all-non-framework-target-headers.hmap (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-all-target-headers.hmap (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    write-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-all-target-headers.hmap
+
+MkDir /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    /bin/mkdir -p /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest
+
+ProcessInfoPlistFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Info.plist /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/empty-LifecycleTests.plist (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-infoPlistUtility /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/empty-LifecycleTests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/ProductTypeInfoPlistAdditions.plist -o /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Info.plist
+
+SwiftDriver LifecycleTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LifecycleTests -Onone -enforce-exclusivity\=checked @/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios15.0-simulator -g -module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -sdk-module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-generated-files.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-own-target-headers.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-all-target-headers.hmap -Xcc -iquote -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-project-headers.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources-normal/arm64 -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources/arm64 -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-Swift.h -working-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_stdbool-38G98QBW2I8DKGQV8Q3PRYS23.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_AvailabilityInternal-5KP8E85D9HF5V5TQU0VJF6BJ1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/SwiftShims-2EBZ6VEOAJ3D2VNNMN50KV9KA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_float-DIWXI9U8JB2OQMTBZ7SX2V7ES.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_stddef-5F3JJXK269MSJAYOENN1MA3H7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_SwiftConcurrencyShims-A1FSBHGKYWILPBTE4A4NAIN1W.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_stdarg-4C92QOVW08DJK9DRTLMDZA2XH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/ptrauth-47F2V0TBBBAFNYVOV5YHP3ZJ9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/ptrcheck-NUO6VGYFZFN518OP5INMIKKQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/DeveloperToolsSupport-9MMQNOPBCV2P539GL9PR7KQKH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_DarwinFoundation1-XZX6RM4V9GHVRFZI4F34XRNV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_DarwinFoundation2-FYH3M6FNQU4YWH13AJ3UYT34.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_limits-6F6DUPG9QRVXPQL888WYSHGXB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/sys_types-2SLY3N3XPR6PX4URJKAFQFB6X.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_stdint-77AUKWBQFXJAHEODMXU6VDGYZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_stdatomic-7A5NZDZMMAJG9BG2M6XZTQVWK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_DarwinFoundation3-50OYVYEWPY642HZ3KSC53RBLU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/_Builtin_inttypes-F2IYGHSS2H9GHDNPRV52RQZRZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Darwin-CERW7RQ3ZGPL5V9XA9FPWAO8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/MachO-D5JF71QVYSURN3CP6QGRF55HB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/ObjectiveC-1UP0SCQ6K8FAY64B3T1TG21UO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/os_object-68WPVA2QLEYLYAQ7UK6WVG7JZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/os_workgroup-68XHMS4EFOAXH2GLDS28KNXE8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Dispatch-87LRVWMDR6CUBAX3EI4YJHTHK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/XPC-HUMD4SAVS14O44EYXS9YBCWY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/CoreFoundation-2TCJSWGR4QQQ8ZTNVCI80SYQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/os-DRZE8CQEU20YJTV6Y9KQSANIY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Security-AFWDV18NN035JYN6T8SGMOUJI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/CFNetwork-DVWBW75YJA8MCYP3BAPFYK4E3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/CoreGraphics-3C97GL83LTBSE4YDYXZS0C9YC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Foundation-CF80JQQEDEEYJTWZVQH8K2MEV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/CoreText-345UOWUTGVBKQPH91LQKOYZIM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/ImageIO-25DDUI29M0Z4G49LBZW8N8HS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/CoreTransferable-DZ0Q6GZY3FIFU964JQOWMYGG8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/IOSurface-C6MENPIMMPAMR4GIWH39FKFYH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/UserNotifications-75SWAKSY0OXKN9PCI2QRLACNV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Accessibility-1PLDTWUUZAH8HANWFPW4BACD3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Symbols-5Z46HHCMUVQ9GQUGO908DT05H.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/UIUtilities-7VCFU1DOLZK68S506EMEANJ56.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/OSLog-3DM72VG600N6SZL576PD99CLL.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/DataDetection-9S38IVTY28405DVNAS659SSKH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/UniformTypeIdentifiers-4PMW236VR7DSKYAQFMFALQWTC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/OpenGLES-97M8OHLAD6A1L5H9CS0OSQQ4A.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/FileProvider-8W1NBNG49VMPR869UG7X5RVK6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Metal-UBVFD2LOPT6AE820OJUR954.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/CoreVideo-9V66K912ZYP5EO4GPO8LBGV2V.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/QuartzCore-D8C2THVHHVTPCEHGRXDWQSEWG.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/CoreImage-9FI0DCMEJZ7BVKIP25LM99UJY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/SwiftUICore-1HX0VBKH967Z5CBFZUEMJZD50.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/UIKit-104Q494UBFP607I0AR363UERO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCUIAutomation-3P4G70M45R73GKFMSBUY5MD85.pcm
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCUIAutomation-V34WJC9KRIJ0.swiftmodule
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCTest-31B371DPKRHNN9J40PNUP2VRO.pcm
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCTest-21DW90QQWZHSV.swiftmodule
+
+SwiftCompile normal arm64 Compiling\ LifecycleTests.swift /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/LifecycleTests.swift (in target 'LifecycleTests' from project 'GChatLifecycle')
+
+SwiftCompile normal arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/LifecycleTests.swift (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ LifecycleTests (in target 'LifecycleTests' from project 'GChatLifecycle')
+
+SwiftCompile normal arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner/LifecycleTests.swift (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for LifecycleTests (in target 'LifecycleTests' from project 'GChatLifecycle')
+
+SwiftDriver\ Compilation\ Requirements LifecycleTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LifecycleTests -Onone -enforce-exclusivity\=checked @/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios15.0-simulator -g -module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -sdk-module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-generated-files.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-own-target-headers.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-all-target-headers.hmap -Xcc -iquote -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-project-headers.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources-normal/arm64 -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources/arm64 -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-Swift.h -working-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner -experimental-emit-module-separately -disable-cmo
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.abi.json (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.abi.json /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/arm64-apple-ios-simulator.swiftmodule /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftmodule (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftmodule /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/arm64-apple-ios-simulator.swiftdoc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftdoc (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftdoc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/arm64-apple-ios-simulator.swiftdoc
+
+SwiftMergeGeneratedHeaders /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources/LifecycleTests-Swift.h /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-Swift.h (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-swiftHeaderTool -arch arm64 /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-Swift.h -o /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources/LifecycleTests-Swift.h
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftsourceinfo (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftsourceinfo /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling LifecycleTests.swift (in target 'LifecycleTests' from project 'GChatLifecycle')
+
+SwiftDriver\ Compilation LifecycleTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LifecycleTests -Onone -enforce-exclusivity\=checked @/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios15.0-simulator -g -module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -sdk-module-cache-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-generated-files.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-own-target-headers.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-all-target-headers.hmap -Xcc -iquote -Xcc /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests-project-headers.hmap -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources-normal/arm64 -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources/arm64 -Xcc -I/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-Swift.h -working-directory /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/LifecycleTests normal (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios15.0-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -filelist /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.swiftmodule @/Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -o /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/LifecycleTests
+
+ExtractAppIntentsMetadata (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name LifecycleTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 15.0 --bundle-identifier boo.gchat.lifecycle-tests --output /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest --target-triple arm64-apple-ios15.0-simulator --binary-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/LifecycleTests --dependency-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests_dependency_info.dat --stringsdata-file /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftFileList --metadata-file-list /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.DependencyMetadataFileList --static-metadata-file-list /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.DependencyStaticMetadataFileList --swift-const-vals-list /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/Objects-normal/arm64/LifecycleTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-28 02:59:52.604 appintentsmetadataprocessor[33040:14797180] Starting appintentsmetadataprocessor export
+2026-09-28 02:59:52.608 appintentsmetadataprocessor[33040:14797180] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/LifecycleTests --scan-folder /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Frameworks --scan-folder /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/PlugIns --scan-folder /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/SystemExtensions --scan-folder /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+Ignoring --strip-bitcode because --sign was not passed
+
+AppIntentsSSUTraining (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Info.plist --temp-dir-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/ssu --bundle-id boo.gchat.lifecycle-tests --product-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest --extracted-metadata-path /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Metadata.appintents --metadata-file-list /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Intermediates.noindex/GChatLifecycle.build/Debug-iphonesimulator/LifecycleTests.build/LifecycleTests.DependencyMetadataFileList --archive-ssu-assets
+2026-09-28 02:59:52.633 appintentsnltrainingprocessor[33042:14797189] Parsing options for appintentsnltrainingprocessor
+2026-09-28 02:59:52.634 appintentsnltrainingprocessor[33042:14797189] No AppShortcuts found - Skipping.
+
+CopyPlistFile /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Info.plist /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copyPlist --validate --convert xml1 --macro-expansion WRAPPEDPRODUCTNAME LifecycleTests-Runner --macro-expansion WRAPPEDPRODUCTBUNDLEIDENTIFIER boo.gchat.lifecycle-tests.xctrunner --macro-expansion TESTPRODUCTNAME LifecycleTests --macro-expansion TESTPRODUCTBUNDLEIDENTIFIER boo.gchat.lifecycle-tests --copy-value UIDeviceFamily /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest/Info.plist --outdir /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app -- /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist
+
+MkDir /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    /bin/mkdir -p /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PkgInfo /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/PkgInfo (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/PkgInfo /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app
+
+CopyAndPreserveArchs /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/LifecycleTests-Runner (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/XCTRunner -output /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/LifecycleTests-Runner -extract arm64
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/libXCTestSwiftSupport.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/XCUnit.framework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCUnit.framework (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCUnit.framework /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/XCUIAutomation.framework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCUIAutomation.framework (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCUIAutomation.framework /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/XCTestSupport.framework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/XCTestCore.framework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/XCTest.framework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCTest.framework (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCTest.framework /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/XCTAutomationSupport.framework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+Copy /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks/Testing.framework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/Testing.framework (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/Testing.framework /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/Frameworks
+
+RegisterExecutionPolicyException /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    builtin-RegisterExecutionPolicyException /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest
+
+Touch /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest (in target 'LifecycleTests' from project 'GChatLifecycle')
+    cd /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner
+    /usr/bin/touch -c /Users/iggy/.cache/gchat-ios23-lifecycle03/result/runner-derived/Build/Products/Debug-iphonesimulator/LifecycleTests-Runner.app/PlugIns/LifecycleTests.xctest
+
+2026-09-28 03:00:04.450955+0200 LifecycleTests-Runner[33100:14797877] [Default] Running tests...
+2026-09-28 03:00:04.514291+0200 LifecycleTests-Runner[33100:14798131] [General] Failed to send CA Event for app launch measurements for ca_event_type: 0 event_name: com.apple.app_launch_measurement.FirstFramePresentationMetric
+2026-09-28 03:00:04.555220+0200 LifecycleTests-Runner[33100:14798132] [General] Failed to send CA Event for app launch measurements for ca_event_type: 1 event_name: com.apple.app_launch_measurement.ExtendedLaunchMetrics
+objc[33100]: Class LACUISecureTextField is implemented in both /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/LocalAuthenticationCoreUI.framework/LocalAuthenticationCoreUI (0x30588c4b0) and /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/LocalAuthenticationEmbeddedUI.framework/LocalAuthenticationEmbeddedUI (0x303cb9370). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[33100]: Class AKAlertImageURLProvider is implemented in both /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AuthKit.framework/AuthKit (0x1249a1bd0) and /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AuthKitUI.framework/AuthKitUI (0x307e75948). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[33100]: Class AKBiometricRatchetUtility is implemented in both /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AuthKit.framework/AuthKit (0x1249a3a48) and /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AuthKitUI.framework/AuthKitUI (0x307e759c0). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[33100]: Class UIAccessibilityLoaderWebShared is implemented in both /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x329934310) and /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x16f444398). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'Selected tests' started at 2026-09-28 03:00:15.164.
+Test Suite 'LifecycleTests.xctest' started at 2026-09-28 03:00:15.165.
+Test Suite 'GChatLifecycleTests' started at 2026-09-28 03:00:15.165.
+Test Case '-[LifecycleTests.GChatLifecycleTests testProfileBackgroundAndReopen]' started.
+    t =     0.00s Start Test at 2026-09-28 03:00:15.165
+    t =     0.20s Set Up
+    t =     0.20s Open boo.gchat.app
+    t =     0.20s     Launch boo.gchat.app
+    t =     0.56s         Setting up automation session
+    t =     1.78s         Wait for boo.gchat.app to idle
+    t =     3.21s Waiting 30.0s for StaticText (First Match) to exist
+    t =     4.26s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =     4.26s         Checking existence of `StaticText (First Match)`
+    t =     4.78s         Capturing element debug description
+    t =     5.31s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =     5.31s         Checking existence of `StaticText (First Match)`
+    t =     5.48s Find the Application 'boo.gchat.app'
+    t =     5.62s Added attachment named '01-fresh-profile'
+    t =     5.62s Waiting 15.0s for SecureTextField (First Match) to exist
+    t =     6.68s     Checking `Expect predicate `existsNoRetry == 1` for object SecureTextField (First Match)`
+    t =     6.68s         Checking existence of `SecureTextField (First Match)`
+    t =     6.69s Find the SecureTextField (First Match)
+    t =     6.85s Find the Application 'boo.gchat.app'
+    t =     6.87s Find the Application 'boo.gchat.app'
+    t =     6.88s Tap Application 'boo.gchat.app'[0.00, 0.00] -> (177.0, 450.0)
+    t =     6.88s     Wait for boo.gchat.app to idle
+    t =     6.88s     Find the Application 'boo.gchat.app'
+    t =     6.89s     Check for interrupting elements affecting "GChat" Application
+    t =     6.94s     Synthesize event
+    t =     6.94s         Find the Application 'boo.gchat.app'
+    t =     6.95s         Find the Application 'boo.gchat.app'
+    t =     6.96s         Find the Application 'boo.gchat.app'
+    t =     7.37s     Wait for boo.gchat.app to idle
+    t =     9.02s Checking `Expect predicate `hasKeyboardFocus == 1` for object "Choose a passphrase" SecureTextField`
+    t =     9.02s     Find the "Choose a passphrase" SecureTextField
+    t =     9.07s Type 'simulator lifecycl...' into "Choose a passphrase" SecureTextField
+    t =     9.07s     Wait for boo.gchat.app to idle
+    t =     9.07s     Find the "Choose a passphrase" SecureTextField
+    t =     9.10s     Check for interrupting elements affecting "Choose a passphrase" SecureTextField
+    t =     9.24s     Synthesize event
+    t =    10.06s     Wait for boo.gchat.app to idle
+    t =    11.12s Checking existence of `"Choose a passphrase" SecureTextField`
+    t =    11.15s Find the "Choose a passphrase" SecureTextField
+    t =    11.18s Get number of matches for: Descendants matching type SecureTextField
+    t =    11.20s Waiting 10.0s for SecureTextField (Element at index 1) to exist
+    t =    12.26s     Checking `Expect predicate `existsNoRetry == 1` for object SecureTextField (Element at index 1)`
+    t =    12.26s         Checking existence of `SecureTextField (Element at index 1)`
+    t =    12.28s Checking existence of `Keyboard (First Match)`
+    t =    12.28s Waiting 10.0s for "Done" Button to exist
+    t =    13.34s     Checking `Expect predicate `existsNoRetry == 1` for object "Done" Button`
+    t =    13.34s         Checking existence of `"Done" Button`
+    t =    13.35s Tap "Done" Button
+    t =    13.35s     Wait for boo.gchat.app to idle
+    t =    13.36s     Find the "Done" Button
+    t =    13.36s     Check for interrupting elements affecting "Done" Button
+    t =    13.39s     Synthesize event
+    t =    13.69s     Wait for boo.gchat.app to idle
+    t =    15.01s Checking existence of `Keyboard (First Match)`
+    t =    15.02s Checking existence of `"Done" Button`
+    t =    15.04s Checking existence of `Other (First Match)`
+    t =    15.06s Find the Other (First Match)
+    t =    16.02s Checking existence of `Keyboard (First Match)`
+    t =    16.03s Checking existence of `"Done" Button`
+    t =    16.05s Checking existence of `"main" Other`
+    t =    16.06s Find the "main" Other
+    t =    16.08s Checking existence of `SecureTextField (Element at index 1)`
+    t =    16.09s Find the SecureTextField (Element at index 1)
+    t =    16.11s Find the Other (First Match)
+    t =    16.13s Find the "Confirm passphrase" SecureTextField
+    t =    16.15s Find the "Confirm passphrase" SecureTextField
+    t =    16.16s Find the "main" Other
+    t =    16.18s Find the "Confirm passphrase" SecureTextField
+    t =    16.19s Find the "Confirm passphrase" SecureTextField
+    t =    16.20s Find the Application 'boo.gchat.app'
+    t =    16.21s Find the Application 'boo.gchat.app'
+    t =    16.22s Tap Application 'boo.gchat.app'[0.00, 0.00] -> (220.0, 544.0)
+    t =    16.22s     Wait for boo.gchat.app to idle
+    t =    16.22s     Find the Application 'boo.gchat.app'
+    t =    16.23s     Check for interrupting elements affecting "GChat" Application
+    t =    16.24s     Synthesize event
+    t =    16.24s         Find the Application 'boo.gchat.app'
+    t =    16.25s         Find the Application 'boo.gchat.app'
+    t =    16.26s         Find the Application 'boo.gchat.app'
+    t =    16.55s     Wait for boo.gchat.app to idle
+    t =    17.86s Checking `Expect predicate `hasKeyboardFocus == 1` for object "Confirm passphrase" SecureTextField`
+    t =    17.86s     Find the "Confirm passphrase" SecureTextField
+    t =    17.88s Type 'simulator lifecycl...' into "Confirm passphrase" SecureTextField
+    t =    17.88s     Wait for boo.gchat.app to idle
+    t =    17.88s     Find the "Confirm passphrase" SecureTextField
+    t =    17.90s     Check for interrupting elements affecting "Confirm passphrase" SecureTextField
+    t =    17.92s     Synthesize event
+    t =    18.73s     Wait for boo.gchat.app to idle
+    t =    19.79s Checking existence of `"Confirm passphrase" SecureTextField`
+    t =    19.81s Find the "Confirm passphrase" SecureTextField
+    t =    19.82s Checking existence of `Keyboard (First Match)`
+    t =    19.83s Waiting 10.0s for "Done" Button to exist
+    t =    20.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Done" Button`
+    t =    20.88s         Checking existence of `"Done" Button`
+    t =    20.89s Tap "Done" Button
+    t =    20.89s     Wait for boo.gchat.app to idle
+    t =    20.90s     Find the "Done" Button
+    t =    20.91s     Check for interrupting elements affecting "Done" Button
+    t =    20.93s     Synthesize event
+    t =    21.21s     Wait for boo.gchat.app to idle
+    t =    22.49s Checking existence of `Keyboard (First Match)`
+    t =    22.50s Checking existence of `"Done" Button`
+    t =    22.52s Checking existence of `Other (First Match)`
+    t =    22.53s Find the Other (First Match)
+    t =    23.50s Checking existence of `Keyboard (First Match)`
+    t =    23.51s Checking existence of `"Done" Button`
+    t =    23.53s Checking existence of `"main" Other`
+    t =    23.55s Find the "main" Other
+    t =    24.63s Checking existence of `"Choose a passphrase" SecureTextField`
+    t =    24.65s Find the "Choose a passphrase" SecureTextField
+    t =    25.72s Checking existence of `SecureTextField (Element at index 1)`
+    t =    25.73s Find the SecureTextField (Element at index 1)
+    t =    25.74s Checking existence of `Keyboard (First Match)`
+    t =    25.75s Checking existence of `"Done" Button`
+    t =    25.77s Checking existence of `"Create identity" Button`
+    t =    25.79s Find the "Create identity" Button
+    t =    25.81s Find the Other (First Match)
+    t =    25.82s Find the "Create identity" Button
+    t =    25.84s Checking existence of `"Create identity" Button`
+    t =    25.86s Find the "Create identity" Button
+    t =    25.88s Checking existence of `"main" Other`
+    t =    25.89s Find the "main" Other
+    t =    25.91s Find the "Create identity" Button
+    t =    25.93s Find the "Create identity" Button
+    t =    25.95s Find the SecureTextField (First Match)
+    t =    25.98s Find the "main" Other
+    t =    26.00s Find the "Choose a passphrase" SecureTextField
+    t =    26.02s Added attachment named 'submit-geometry-Create identity'
+    t =    26.02s Find the Application 'boo.gchat.app'
+    t =    26.12s Added attachment named 'submit-before-Create identity'
+    t =    26.12s Find the Application 'boo.gchat.app'
+    t =    26.13s Find the Application 'boo.gchat.app'
+    t =    26.14s Tap Application 'boo.gchat.app'[0.00, 0.00] -> (220.0, 578.0)
+    t =    26.14s     Wait for boo.gchat.app to idle
+    t =    26.14s     Find the Application 'boo.gchat.app'
+    t =    26.15s     Check for interrupting elements affecting "GChat" Application
+    t =    26.16s     Synthesize event
+    t =    26.16s         Find the Application 'boo.gchat.app'
+    t =    26.17s         Find the Application 'boo.gchat.app'
+    t =    26.18s         Find the Application 'boo.gchat.app'
+    t =    26.48s     Wait for boo.gchat.app to idle
+    t =    26.48s Checking existence of `"Choose a passphrase" SecureTextField`
+    t =    26.49s Find the "Choose a passphrase" SecureTextField
+    t =    26.50s Checking existence of `Keyboard (First Match)`
+    t =    26.52s Checking existence of `"Opening…" Button`
+    t =    26.53s Added attachment named 'submit-transition-Create identity'
+    t =    26.53s Find the Application 'boo.gchat.app'
+    t =    26.61s Added attachment named 'submit-after-Create identity'
+    t =    27.66s Checking existence of `StaticText (First Match)`
+    t =    27.67s Checking existence of `StaticText (First Match)`
+    t =    27.69s Checking existence of `StaticText (First Match)`
+    t =    28.66s Checking existence of `StaticText (First Match)`
+    t =    28.67s Checking existence of `StaticText (First Match)`
+    t =    28.69s Checking existence of `StaticText (First Match)`
+    t =    28.71s Checking existence of `StaticText (First Match)`
+    t =    28.72s Find the Application 'boo.gchat.app'
+    t =    28.80s Added attachment named '02-encrypted-profile-created'
+    t =    28.80s Pressing Home button
+    t =    32.30s Open boo.gchat.app
+    t =    32.30s     Activate boo.gchat.app
+    t =    32.37s         Wait for boo.gchat.app to idle
+    t =    32.37s Waiting 30.0s for StaticText (First Match) to exist
+    t =    33.43s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =    33.43s         Checking existence of `StaticText (First Match)`
+    t =    33.45s         Capturing element debug description
+    t =    34.39s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =    34.39s         Checking existence of `StaticText (First Match)`
+    t =    34.41s Find the Application 'boo.gchat.app'
+    t =    34.49s Added attachment named '03-background-requires-passphrase'
+    t =    34.49s Waiting 15.0s for SecureTextField (First Match) to exist
+    t =    35.53s     Checking `Expect predicate `existsNoRetry == 1` for object SecureTextField (First Match)`
+    t =    35.53s         Checking existence of `SecureTextField (First Match)`
+    t =    35.56s Find the SecureTextField (First Match)
+    t =    35.58s Find the Application 'boo.gchat.app'
+    t =    35.59s Find the Application 'boo.gchat.app'
+    t =    35.60s Tap Application 'boo.gchat.app'[0.00, 0.00] -> (177.0, 450.0)
+    t =    35.60s     Wait for boo.gchat.app to idle
+    t =    35.60s     Find the Application 'boo.gchat.app'
+    t =    35.61s     Check for interrupting elements affecting "GChat" Application
+    t =    35.62s     Synthesize event
+    t =    35.62s         Find the Application 'boo.gchat.app'
+    t =    35.63s         Find the Application 'boo.gchat.app'
+    t =    35.64s         Find the Application 'boo.gchat.app'
+    t =    35.94s     Wait for boo.gchat.app to idle
+    t =    37.27s Checking `Expect predicate `hasKeyboardFocus == 1` for object "Identity passphrase" SecureTextField`
+    t =    37.27s     Find the "Identity passphrase" SecureTextField
+    t =    37.30s Type 'simulator lifecycl...' into "Identity passphrase" SecureTextField
+    t =    37.30s     Wait for boo.gchat.app to idle
+    t =    37.31s     Find the "Identity passphrase" SecureTextField
+    t =    37.33s     Check for interrupting elements affecting "Identity passphrase" SecureTextField
+    t =    37.35s     Synthesize event
+    t =    38.17s     Wait for boo.gchat.app to idle
+    t =    39.23s Checking existence of `"Identity passphrase" SecureTextField`
+    t =    39.25s Find the "Identity passphrase" SecureTextField
+    t =    39.27s Checking existence of `Keyboard (First Match)`
+    t =    39.27s Waiting 10.0s for "Done" Button to exist
+    t =    40.32s     Checking `Expect predicate `existsNoRetry == 1` for object "Done" Button`
+    t =    40.32s         Checking existence of `"Done" Button`
+    t =    40.33s Tap "Done" Button
+    t =    40.33s     Wait for boo.gchat.app to idle
+    t =    40.33s     Find the "Done" Button
+    t =    40.34s     Check for interrupting elements affecting "Done" Button
+    t =    40.35s     Synthesize event
+    t =    40.64s     Wait for boo.gchat.app to idle
+    t =    41.93s Checking existence of `Keyboard (First Match)`
+    t =    41.94s Checking existence of `"Done" Button`
+    t =    41.95s Checking existence of `Other (First Match)`
+    t =    41.97s Find the Other (First Match)
+    t =    42.93s Checking existence of `Keyboard (First Match)`
+    t =    42.95s Checking existence of `"Done" Button`
+    t =    42.96s Checking existence of `"main" Other`
+    t =    42.97s Find the "main" Other
+    t =    44.04s Checking existence of `"Identity passphrase" SecureTextField`
+    t =    44.06s Find the "Identity passphrase" SecureTextField
+    t =    44.08s Waiting 10.0s for Switch (First Match) to exist
+    t =    45.14s     Checking `Expect predicate `existsNoRetry == 1` for object Switch (First Match)`
+    t =    45.14s         Checking existence of `Switch (First Match)`
+    t =    45.17s Tap Switch (First Match)
+    t =    45.17s     Wait for boo.gchat.app to idle
+    t =    45.17s     Find the Switch (First Match)
+    t =    45.19s     Check for interrupting elements affecting "Remember on this device" Switch
+    t =    45.20s     Synthesize event
+    t =    45.49s     Wait for boo.gchat.app to idle
+    t =    45.49s Find the "Remember on this device" Switch
+    t =    45.51s Checking existence of `Keyboard (First Match)`
+    t =    45.52s Checking existence of `"Done" Button`
+    t =    45.53s Checking existence of `"Reconnect" Button`
+    t =    45.55s Find the "Reconnect" Button
+    t =    45.56s Find the Other (First Match)
+    t =    45.58s Find the "Reconnect" Button
+    t =    45.60s Checking existence of `"Reconnect" Button`
+    t =    45.61s Find the "Reconnect" Button
+    t =    45.63s Checking existence of `"main" Other`
+    t =    45.64s Find the "main" Other
+    t =    45.66s Find the "Reconnect" Button
+    t =    45.68s Find the "Reconnect" Button
+    t =    45.69s Find the SecureTextField (First Match)
+    t =    45.71s Find the "main" Other
+    t =    45.72s Find the "Identity passphrase" SecureTextField
+    t =    45.74s Added attachment named 'submit-geometry-Reconnect'
+    t =    45.74s Find the Application 'boo.gchat.app'
+    t =    45.81s Added attachment named 'submit-before-Reconnect'
+    t =    45.81s Find the Application 'boo.gchat.app'
+    t =    45.82s Find the Application 'boo.gchat.app'
+    t =    45.83s Tap Application 'boo.gchat.app'[0.00, 0.00] -> (220.0, 665.0)
+    t =    45.83s     Wait for boo.gchat.app to idle
+    t =    45.83s     Find the Application 'boo.gchat.app'
+    t =    45.84s     Check for interrupting elements affecting "GChat" Application
+    t =    45.85s     Synthesize event
+    t =    45.85s         Find the Application 'boo.gchat.app'
+    t =    45.86s         Find the Application 'boo.gchat.app'
+    t =    45.87s         Find the Application 'boo.gchat.app'
+    t =    46.16s     Wait for boo.gchat.app to idle
+    t =    46.16s Checking existence of `"Identity passphrase" SecureTextField`
+    t =    46.17s Find the "Identity passphrase" SecureTextField
+    t =    46.18s Checking existence of `Keyboard (First Match)`
+    t =    46.19s Checking existence of `"Opening…" Button`
+    t =    46.21s Added attachment named 'submit-transition-Reconnect'
+    t =    46.21s Find the Application 'boo.gchat.app'
+    t =    46.28s Added attachment named 'submit-after-Reconnect'
+    t =    47.31s Checking existence of `StaticText (First Match)`
+    t =    47.33s Checking existence of `StaticText (First Match)`
+    t =    47.35s Checking existence of `StaticText (First Match)`
+    t =    48.30s Checking existence of `StaticText (First Match)`
+    t =    48.31s Checking existence of `StaticText (First Match)`
+    t =    48.33s Checking existence of `StaticText (First Match)`
+    t =    49.38s Checking existence of `StaticText (First Match)`
+    t =    49.40s Checking existence of `StaticText (First Match)`
+    t =    49.42s Checking existence of `StaticText (First Match)`
+    t =    49.43s Checking existence of `StaticText (First Match)`
+    t =    49.44s Find the Application 'boo.gchat.app'
+    t =    49.52s Added attachment named '03b-consented-manual-reopen'
+    t =    49.52s Pressing Home button
+    t =    53.03s Open boo.gchat.app
+    t =    53.04s     Activate boo.gchat.app
+    t =    53.06s         Wait for boo.gchat.app to idle
+    t =    54.12s Checking existence of `StaticText (First Match)`
+    t =    54.14s Checking existence of `StaticText (First Match)`
+    t =    54.15s Checking existence of `StaticText (First Match)`
+    t =    55.09s Checking existence of `StaticText (First Match)`
+    t =    55.11s Checking existence of `StaticText (First Match)`
+    t =    55.12s Checking existence of `StaticText (First Match)`
+    t =    56.08s Checking existence of `StaticText (First Match)`
+    t =    56.09s Checking existence of `StaticText (First Match)`
+    t =    56.10s Checking existence of `StaticText (First Match)`
+    t =    56.11s Checking existence of `StaticText (First Match)`
+    t =    56.12s Find the Application 'boo.gchat.app'
+    t =    56.20s Added attachment named '04-consented-keychain-resume'
+    t =    56.20s Terminate boo.gchat.app:33215
+    t =    57.27s Open boo.gchat.app
+    t =    57.27s     Launch boo.gchat.app
+    t =    57.45s         Setting up automation session
+    t =    58.43s         Wait for boo.gchat.app to idle
+    t =    60.80s Checking existence of `StaticText (First Match)`
+    t =    60.87s Checking existence of `StaticText (First Match)`
+    t =    60.89s Checking existence of `StaticText (First Match)`
+    t =    61.84s Checking existence of `StaticText (First Match)`
+    t =    61.85s Checking existence of `StaticText (First Match)`
+    t =    61.87s Checking existence of `StaticText (First Match)`
+    t =    62.82s Checking existence of `StaticText (First Match)`
+    t =    62.83s Checking existence of `StaticText (First Match)`
+    t =    62.84s Checking existence of `StaticText (First Match)`
+    t =    62.85s Checking existence of `StaticText (First Match)`
+    t =    62.86s Find the Application 'boo.gchat.app'
+    t =    62.94s Added attachment named '05-retained-profile-relaunch'
+    t =    62.94s Tear Down
+    t =    62.94s     Requesting snapshot of accessibility hierarchy for app with pid 33606
+    t =    63.03s     Requesting snapshot of accessibility hierarchy for app with pid 33606
+    t =    63.04s     Added attachment named 'final-accessibility-hierarchy'
+    t =    63.04s     Find the Application 'boo.gchat.app'
+    t =    63.11s     Added attachment named '99-final-state'
+Test Case '-[LifecycleTests.GChatLifecycleTests testProfileBackgroundAndReopen]' passed (63.441 seconds).
+Test Suite 'GChatLifecycleTests' passed at 2026-09-28 03:01:18.607.
+	 Executed 1 test, with 0 failures (0 unexpected) in 63.441 (63.442) seconds
+Test Suite 'LifecycleTests.xctest' passed at 2026-09-28 03:01:18.608.
+	 Executed 1 test, with 0 failures (0 unexpected) in 63.441 (63.443) seconds
+Test Suite 'Selected tests' passed at 2026-09-28 03:01:18.608.
+	 Executed 1 test, with 0 failures (0 unexpected) in 63.441 (63.444) seconds
+2026-09-28 03:01:19.103 xcodebuild[32866:14795788] [MT] IDETestOperationsObserverDebug: 86.302 elapsed -- Testing started completed.
+2026-09-28 03:01:19.103 xcodebuild[32866:14795788] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-28 03:01:19.103 xcodebuild[32866:14795788] [MT] IDETestOperationsObserverDebug: 86.302 sec, +86.302 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/iggy/.cache/gchat-ios23-lifecycle03/result/journey.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

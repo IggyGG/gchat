@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "scope": "XCTest driver focus and populated-field observations; actual unchanged iOS 1.0.46 simulator app profile/background/reopen",
+  "application_sources": {
+    "gchat": {
+      "commit": "bef64ab703ad764dbd514bfa4bd231e233f59375",
+      "tree": "a29f9af9be70fcfd4534dec43f0d154195e886f4"
+    },
+    "gcoms": {
+      "commit": "9a87b9829f8ffeb02532af44528596a2f7b4a0c1",
+      "tree": "37edda76750cc9c475018e71ecc3c797013a7d1d"
+    }
+  },
+  "application_sha256": "30a3408a5815ccaecd811ca96385f591c49c0925e3e3dd30667fcd0b1deaf4e6",
+  "application_recompiled": false,
+  "application_resigned": false,
+  "xctest": "1 passed / 0 failed / 0 ignored",
+  "python": "16 passed",
+  "fixture_sha256": "cf1f26109436f304770b2ccf2dedcc7a0e79ad37c574ac6a157b56b60ef8d913",
+  "original_failed_workflow": 36358512264,
+  "original_artifact_sha256": "a637183ffee0194d09c91441c81ed3f29710ab9cc647c87ed1439c154a33ffbf",
+  "retained_failed_followup": "Native Next did not transfer keyboard focus; no typing or application lifecycle pass claimed",
+  "notes": [
+    "the measured intended field must acquire keyboard focus before typing",
+    "both fields must remain populated before submitting; entered values never logged by the new checks",
+    "original 45 second unlock assertions unchanged",
+    "owned simulator cleanup complete",
+    "new recipient-route runtime repair is not included in this retained app; actual updated mobile messaging still pending"
+  ],
+  "files": {
+    "green-report.json": "d008d9b1b0cc8e6578e38ee86e71458e893b0ff5716ae68d2c2254046b5750e9",
+    "green-summary.json": "a8da1fd1f9b0178eadfe6d473fcefa08bde9de8503a6a62cab7025a98e4b4497",
+    "python-tests.log": "15dbe03505bcc696bc21aaf450f7d6692c3aee41cbef16cf1db25819466a9ef8",
+    "green-xctest.log": "6b5cd8f6788d3c5ef75c4c20bd862962525843cf36356ee37e60d3441cddacb6"
+  }
+}

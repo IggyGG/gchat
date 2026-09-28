@@ -54,18 +54,41 @@ final class GChatLifecycleTests: XCTestCase {
         )).firstMatch.exists)
     }
 
+    func waitForPopulated(_ field: XCUIElement) {
+        // WKWebView typing can target a stale focus after scrolling. Observe the
+        // intended native field before submitting; never log the entered value.
+        let populated = NSPredicate { _, _ in
+            field.exists && !((field.value as? String) ?? "").isEmpty
+        }
+        expectation(for: populated, evaluatedWith: nil)
+        waitForExpectations(timeout: 10)
+    }
+
+    func focusField(_ field: XCUIElement) {
+        // Native accessibility activation points can lag a WKWebView scroll.
+        // Tap the observed field centre and verify keyboard focus before typing.
+        for _ in 0..<3 {
+            let frame = field.frame
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+                .withOffset(CGVector(dx: frame.midX - app.frame.minX,
+                                     dy: frame.midY - app.frame.minY)).tap()
+            let focused = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: field)
+            if XCTWaiter.wait(for: [focused], timeout: 2) == .completed { return }
+        }
+        XCTFail("The intended passphrase field did not acquire keyboard focus")
+    }
+
     func enterPassphrase(confirm: Bool = false) {
         let field = app.webViews.secureTextFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 15))
-        field.tap()
+        focusField(field)
         field.typeText(passphrase)
+        waitForPopulated(field)
         if confirm {
             XCTAssertEqual(app.webViews.secureTextFields.count, 2)
             let confirmation = app.webViews.secureTextFields.element(boundBy: 1)
             XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
-            // The keyboard can clip the second field below the WebView's main
-            // viewport even when XCTest considers it hittable. Dismiss through
-            // the native accessory, then reveal it before transferring focus.
             finishKeyboardInput()
             let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
             let deadline = ProcessInfo.processInfo.systemUptime + 10
@@ -74,10 +97,13 @@ final class GChatLifecycleTests: XCTestCase {
                 app.webViews.firstMatch.swipeUp()
             }
             XCTAssertTrue(confirmation.isHittable && main.frame.contains(confirmation.frame))
-            confirmation.tap()
+            focusField(confirmation)
             confirmation.typeText(passphrase)
+            waitForPopulated(confirmation)
         }
         finishKeyboardInput()
+        waitForPopulated(field)
+        if confirm { waitForPopulated(app.webViews.secureTextFields.element(boundBy: 1)) }
     }
 
     func finishKeyboardInput() {
