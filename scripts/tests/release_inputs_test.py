@@ -34,13 +34,21 @@ class InputTests(unittest.TestCase):
             self.assertEqual(first['artifacts'], second['artifacts'])
             self.assertNotEqual(first['qualification'], second['qualification'])
             for path in ('release/downloads.json', 'scripts/website.py',
-                         '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py'):
+                         '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py',
+                         'marketing/play-store/retro-v1/listing.md',
+                         'marketing/play-store/retro-v1/exports/feature.png',
+                         'marketing/app-store/retro-v1/listing.json',
+                         'marketing/app-store/retro-v1/publication.json',
+                         'marketing/app-store/retro-v1/exports/ipad-01-conversation.jpg'):
                 before = fingerprints(roots, sources)
                 commit('gchat', path, 'reviewed non-application change')
                 after = fingerprints(roots, sources)
                 self.assertEqual(before['artifacts'], after['artifacts'])
                 self.assertNotEqual(before['qualification'], after['qualification'])
             for project, path in [('gchat', 'new-unclassified-input'),
+                                  ('gchat', 'marketing/play-store/retro-v1/new-input.js'),
+                                  ('gchat', 'marketing/app-store/retro-v2/listing.json'),
+                                  ('gchat', 'apps/client/src-tauri/icons/icon.png'),
                                   ('gchat', 'scripts/release_prepare.py'),
                                   ('gchat', 'release/publication.json'),
                                   ('gchat', '.github/workflows/windows-release.yml'),

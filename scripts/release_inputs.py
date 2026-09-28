@@ -43,8 +43,61 @@ CONTROL_FILES = frozenset({
 })
 
 
+# Reviewed store-only assets are not referenced by application/build inputs.
+# Enumerate exact files: a new asset or exporter still requires classification.
+STORE_LISTING_FILES = frozenset({
+    'marketing/app-store/retro-v1/README.md',
+    'marketing/app-store/retro-v1/artboards.html',
+    'marketing/app-store/retro-v1/export.mjs',
+    'marketing/app-store/retro-v1/exports/ipad-01-conversation.jpg',
+    'marketing/app-store/retro-v1/exports/ipad-02-channels.jpg',
+    'marketing/app-store/retro-v1/exports/ipad-03-files.jpg',
+    'marketing/app-store/retro-v1/exports/ipad-04-invitation.jpg',
+    'marketing/app-store/retro-v1/exports/iphone-01-conversation.jpg',
+    'marketing/app-store/retro-v1/exports/iphone-02-channels.jpg',
+    'marketing/app-store/retro-v1/exports/iphone-03-files.jpg',
+    'marketing/app-store/retro-v1/exports/iphone-04-invitation.jpg',
+    'marketing/app-store/retro-v1/index.html',
+    'marketing/app-store/retro-v1/listing.json',
+    'marketing/app-store/retro-v1/listing.md',
+    'marketing/app-store/retro-v1/preview.jpg',
+    'marketing/app-store/retro-v1/publication.json',
+    'marketing/app-store/retro-v1/source/ipad-channels.png',
+    'marketing/app-store/retro-v1/source/ipad-chat.png',
+    'marketing/app-store/retro-v1/source/ipad-files.png',
+    'marketing/app-store/retro-v1/source/ipad-invitation.png',
+    'marketing/app-store/retro-v1/source/iphone-channels.png',
+    'marketing/app-store/retro-v1/source/iphone-chat.png',
+    'marketing/app-store/retro-v1/source/iphone-files.png',
+    'marketing/app-store/retro-v1/source/iphone-invitation.png',
+    'marketing/app-store/retro-v1/validation.json',
+    'marketing/play-store/retro-v1/README.md',
+    'marketing/play-store/retro-v1/artboards.html',
+    'marketing/play-store/retro-v1/export.mjs',
+    'marketing/play-store/retro-v1/exports/01-conversation.jpg',
+    'marketing/play-store/retro-v1/exports/02-channels.jpg',
+    'marketing/play-store/retro-v1/exports/03-files.jpg',
+    'marketing/play-store/retro-v1/exports/04-invitation.jpg',
+    'marketing/play-store/retro-v1/exports/feature.png',
+    'marketing/play-store/retro-v1/index.html',
+    'marketing/play-store/retro-v1/listing.md',
+    'marketing/play-store/retro-v1/preview.jpg',
+    'marketing/play-store/retro-v1/prompts.md',
+    'marketing/play-store/retro-v1/publication.json',
+    'marketing/play-store/retro-v1/source/channels.png',
+    'marketing/play-store/retro-v1/source/chat.png',
+    'marketing/play-store/retro-v1/source/files.png',
+    'marketing/play-store/retro-v1/source/invitation.png',
+    'marketing/play-store/retro-v1/source/live-0.png',
+    'marketing/play-store/retro-v1/source/live-1.png',
+    'marketing/play-store/retro-v1/source/pixel-night.webp',
+    'marketing/play-store/retro-v1/source/provenance.json',
+    'marketing/play-store/retro-v1/validation.json',
+})
+
+
 def qualification_only(project, path):
-    return project == 'gchat' and (path in CONTROL_FILES or
+    return project == 'gchat' and (path in CONTROL_FILES or path in STORE_LISTING_FILES or
         (path.startswith('scripts/tests/release_') and path.endswith('_test.py')))
 
 

@@ -16,6 +16,11 @@ reserving another application version; unknown files, package/signing scripts,
 locks and build workflows remain artifact inputs. Such changes write
 `qualification-needed.json` with `qualification_passed=false`, preserving the
 original source pair. That observation does not qualify or publish an artifact.
+The reviewed `marketing/play-store/retro-v1` and `marketing/app-store/retro-v1`
+files are also classified individually as store-only inputs. Editing their copy,
+artwork or publication receipts does not reserve another application version.
+New unclassified files, packaged icons, version metadata and signing inputs still
+invalidate artifacts. Existing running candidates and their receipts are retained.
 Setting discovery to null pauses new source admission while existing workers,
 receipts and publications continue. The closeout resumes discovery only after
 the deployed classifier recognizes the reviewed controller-only changes; no
