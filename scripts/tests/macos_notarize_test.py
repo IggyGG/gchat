@@ -119,6 +119,15 @@ class PolicyAndOriginTests(unittest.TestCase):
         self.artifact['name'] = 'macos-aarch64-notarized'
         tool.validate_origin(self.run, self.artifact, self.args)
 
+    def test_failed_package_has_separate_origin_and_keeps_native_receipt_requirement(self):
+        self.args.kind = 'package'
+        self.run.update(path='.github/workflows/macos-package.yml', conclusion='failure')
+        self.artifact['name'] = 'macos-aarch64-package'
+        tool.validate_origin(self.run, self.artifact, self.args)
+        self.run['status'] = 'in_progress'
+        with self.assertRaises(ValueError):
+            tool.validate_origin(self.run, self.artifact, self.args)
+
     def test_per_mac_policy_keeps_other_platform_self_signed_policy(self):
         identity = {'name': 'Gh0st', 'signing_policy': 'publicly-trusted', 'distribution': 'developer-id',
                     'team_id': 'ABCDEFGHIJ', 'certificate_fingerprint': 'a' * 40, 'certificate_sha256': 'b' * 64}
@@ -177,6 +186,47 @@ class CodeIdentityTests(unittest.TestCase):
 class NotaryStateTests(unittest.TestCase):
     environment = {'APPLE_API_KEY_PATH': '/private/protected/key.p8', 'APPLE_API_KEY': 'KEYID', 'APPLE_API_ISSUER': 'issuer'}
     request_id = '11111111-2222-3333-4444-555555555555'
+
+    def test_native_dmg_requires_accepted_ticket_and_retains_changed_final_bytes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); dmg = root / 'GChat.dmg'; dmg.write_bytes(b'signed image')
+            state = root / 'notary'; calls = []
+            def submit(image, environment, output, report, commands):
+                calls.append('submit')
+                report['notarization'] = {'id': self.request_id, 'status': 'In Progress',
+                                          'submission_dmg_sha256': tool.digest(image)}
+            def run(label, command, **kwargs):
+                calls.append(label)
+                if label == 'staple-dmg':
+                    dmg.write_bytes(b'signed image with Apple ticket')
+                return 0, b''
+            with patch.object(tool, 'gatekeeper_preflight'), patch.object(tool.wrapper, 'verify_signature'), \
+                 patch.object(tool, 'submit_once', side_effect=submit), \
+                 patch.object(tool, 'await_notary', return_value=True), \
+                 patch.object(tool.wrapper, 'Commands', return_value=SimpleNamespace(run=run)):
+                tool.complete_dmg_ticket(dmg, self.environment, state, {})
+            self.assertEqual(calls, ['submit', 'staple-dmg', 'validate-dmg-ticket', 'gatekeeper-dmg'])
+            report = json.loads((state / 'report.json').read_text())
+            self.assertTrue(report['passed'])
+            self.assertEqual(report['post_staple_dmg_sha256'], tool.digest(dmg))
+            self.assertNotEqual(report['post_staple_dmg_sha256'], report['notarization']['submission_dmg_sha256'])
+
+    def test_native_dmg_pending_request_is_not_resubmitted_or_published(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); dmg = root / 'GChat.dmg'; dmg.write_bytes(b'image')
+            state = root / 'notary'; state.mkdir()
+            report = {'commands': [], 'passed': False, 'notarization': {'id': self.request_id,
+                      'status': 'In Progress', 'submission_dmg_sha256': tool.digest(dmg)}}
+            tool.save(state, report)
+            with patch.object(tool, 'gatekeeper_preflight'), patch.object(tool.wrapper, 'verify_signature'), \
+                 patch.object(tool, 'submit_once') as submit, patch.object(tool, 'await_notary', return_value=False):
+                with self.assertRaisesRegex(ValueError, 'pending'):
+                    tool.complete_dmg_ticket(dmg, self.environment, state, {}, 0)
+                submit.assert_not_called()
+            self.assertFalse(json.loads((state / 'report.json').read_text())['passed'])
+            dmg.write_bytes(b'different bytes')
+            with self.assertRaisesRegex(ValueError, 'differs'):
+                tool.complete_dmg_ticket(dmg, self.environment, state, {})
 
     def test_submit_records_request_before_any_poll_and_cannot_resubmit(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -288,7 +338,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('if: always()', workflow)
         self.assertIn('set -o pipefail', workflow)
         self.assertIn('APPLE_DEVELOPER_ID_CERTIFICATE_BASE64', workflow)
-        self.assertIn('options: [native, verified, resume]', workflow)
+        self.assertIn('options: [native, verified, package, resume]', workflow)
         for forbidden in ('cargo ', 'npm ', '--no-verify', '--master-disable', 'notarized/work/**'):
             self.assertNotIn(forbidden, workflow)
         source = (SCRIPTS / 'macos-notarize-retained.py').read_text()

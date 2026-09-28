@@ -57,13 +57,14 @@ def validate_origin(run, artifact, args):
     workflow, name = {
         'native': ('macos-release.yml', args.target),
         'verified': ('macos-verify.yml', args.target + '-verified'),
+        'package': ('macos-package.yml', args.target + '-package'),
         'resume': (WORKFLOW, args.target + '-notarized'),
     }[args.kind]
     require(run.get('id') == args.run_id and run.get('event') == 'workflow_dispatch' and
             run.get('path') == '.github/workflows/' + workflow and
             run.get('repository', {}).get('full_name') == package.REPO and
             run.get('status') == 'completed' and
-            (args.kind == 'resume' or run.get('conclusion') == 'success'),
+            (args.kind in ('resume', 'package') or run.get('conclusion') == 'success'),
             'original run scope or terminal qualification differs')
     require(artifact.get('id') == args.artifact_id and artifact.get('name') == name and
             artifact.get('expired') is False and artifact.get('digest') == 'sha256:' + args.artifact_sha256 and
@@ -251,6 +252,8 @@ def create_dmg(commands, stage, dmg):
 
 
 def prepare_signed(args, output, report, commands, identity):
+    if args.kind == 'package':
+        return prepare_packaged(args, output, report, commands, identity)
     signed, build, original = original_inputs(args, output)
     report.update(original=original, sources=build['dependency_inputs']['sources'])
     work = output / 'work'
@@ -293,6 +296,55 @@ def prepare_signed(args, output, report, commands, identity):
     package.write_json(result / 'build.json', new_build)
     report.update(dmg=reference(output, dmg), build=reference(output, result / 'build.json'))
     shutil.rmtree(work)
+    save(output, report)
+    return dmg
+
+
+def prepare_packaged(args, output, report, commands, identity):
+    """Recover a signed DMG whose wrapper ticket stopped the original build.
+
+    Independently validate its original native/dependency receipts. Neither the
+    application nor the DMG signature is replaced; only Apple's ticket is added.
+    """
+    verifier = package.script('macos-verify')
+    retained = output / 'input'
+    origin = read_json(output / 'input-run.json')
+    sources, inputs, native, image, prepared = verifier.retained_inputs(retained, args, origin)
+    require(publisher(read_json(args.gchat / 'release/publication.json')) == identity,
+            'retained application publisher differs from current signing authority')
+    result = output / 'signed'
+    result.mkdir()
+    shutil.copytree(retained / 'signed/provenance', result / 'provenance')
+    dmg = result / image.name
+    shutil.copyfile(image, dmg)
+    wrapper.verify_signature(commands, dmg, identity, 'retained-developer-id-dmg')
+    work = output / 'work'
+    work.mkdir()
+    with mounted(commands, dmg, work, 'retained') as app:
+        wrapper.verify_signature(commands, app, identity, 'retained-developer-id-application')
+        commands.run('retained-app-gatekeeper', ['spctl', '--assess', '--type', 'execute', '--verbose=2', str(app)])
+        commands.run('retained-app-notarization', ['codesign', '--verify', '--strict', '-R=notarized',
+                                                 '--check-notarization', str(app)])
+        code = bundle_identity(app, commands, 'retained')
+        executable = wrapper.bundle_executable(app)
+        executable_binding = {'name': executable.name, **package.reference(executable)}
+    work.rmdir()
+    build = {'schema': 1, 'target': args.target, 'sources': {name: item['commit'] for name, item in sources.items()},
+             'publisher': identity, 'signing_policy': 'publicly-trusted', 'public_ca_trust': True,
+             'apple_notarization': False, 'dependency_inputs': inputs, 'native_ci': native,
+             'files': [{'name': dmg.name, 'format': 'dmg', 'sha256': digest(dmg), 'signing_verified': True}],
+             'executables': [executable_binding], 'manifest_recovered_from_retained_artifact': True,
+             'original_post_build_source_recheck_performed': False}
+    package.write_json(result / 'build.json', build)
+    report.update(sources=sources, resigned=False,
+                  code_identity={'method': 'codesign_remove_signature_on_private_copies',
+                                 'before': code, 'after': code, 'unchanged': True},
+                  original={'archive': reference(output, output / 'input.zip'),
+                            'failed_packaging': reference(output, retained / 'retry-evidence/packaging-helper.json'),
+                            'native_qualification': prepared['native'],
+                            'limitations': {'original_packaging_passed': False,
+                                            'original_post_build_source_recheck_performed': False}},
+                  dmg=reference(output, dmg), build=reference(output, result / 'build.json'))
     save(output, report)
     return dmg
 
@@ -358,6 +410,36 @@ def gatekeeper_preflight(output, report, commands):
                                     'evidence': [reference(output, commands.output / ('gatekeeper-preflight.' + stream))
                                                  for stream in ('stdout', 'stderr')]}
     save(output, report)
+
+
+def complete_dmg_ticket(dmg, environment, output, identity, poll_seconds=600):
+    """Notarize the actual DMG wrapper, retaining ambiguous/pending submissions."""
+    output.mkdir(parents=True, exist_ok=True)
+    state = output / 'report.json'
+    report = read_json(state) if state.exists() else {
+        'schema': 1, 'scope': 'native_installer_dmg_notarization', 'passed': False, 'commands': []}
+    expected = report.get('post_staple_dmg_sha256', report.get('notarization', {}).get('submission_dmg_sha256'))
+    require(expected is None or digest(dmg) == expected, 'DMG differs from retained notarization input')
+    logs = output / ('attempt-' + str(len(report['commands'])))
+    logs.mkdir()
+    commands = wrapper.Commands(logs, report)
+    try:
+        gatekeeper_preflight(output, report, commands)
+        wrapper.verify_signature(commands, dmg, identity, 'signed-dmg')
+        if 'notarization' not in report:
+            submit_once(dmg, environment, output, report, commands)
+        require(await_notary(environment, output, report, commands, poll_seconds),
+                'DMG notarization remains pending; retain its request ID and do not resubmit')
+        commands.run('staple-dmg', ['xcrun', 'stapler', 'staple', str(dmg)])
+        report['post_staple_dmg_sha256'] = digest(dmg)
+        save(output, report)
+        commands.run('validate-dmg-ticket', ['xcrun', 'stapler', 'validate', str(dmg)])
+        wrapper.verify_signature(commands, dmg, identity, 'stapled-dmg')
+        commands.run('gatekeeper-dmg', ['spctl', '--assess', '--type', 'open', '--verbose=2',
+                                      '--context', 'context:primary-signature', str(dmg)])
+        report.update(passed=True, pending=False)
+    finally:
+        save(output, report)
 
 
 def assess_gatekeeper(dmg, output, report, commands, identity):
@@ -534,7 +616,7 @@ def run(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--kind', choices=('native', 'verified', 'resume'), required=True)
+    parser.add_argument('--kind', choices=('native', 'verified', 'package', 'resume'), required=True)
     parser.add_argument('--target', choices=package.TARGETS, required=True)
     parser.add_argument('--run-id', type=int, required=True)
     parser.add_argument('--artifact-id', type=int, required=True)

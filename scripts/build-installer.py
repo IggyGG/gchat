@@ -319,7 +319,14 @@ def bundle(target, output, environment, identity, policy, checkout):
             if system == 'Windows': verify_windows(path, policy)
             if system == 'Darwin':
                 run(['codesign', '--verify', '--strict', str(path)])
-                if policy == 'publicly-trusted': run(['xcrun', 'stapler', 'validate', str(path)])
+                if policy == 'publicly-trusted':
+                    # Tauri notarizes the application; its DMG wrapper needs its
+                    # own submission and stapled ticket before publication.
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location('installer_dmg_notary', ROOT / 'scripts/macos-notarize-retained.py')
+                    notary = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(notary)
+                    notary.complete_dmg_ticket(path, environment, output / 'notarization' / path.name, identity)
             destination = output / path.name; shutil.copyfile(path, destination)
             if system == 'Linux':
                 run(['gpg', '--batch', '--yes', '--pinentry-mode', 'loopback', '--passphrase-fd', '0', '--local-user', required('GCHAT_RELEASE_KEY'), '--armor', '--detach-sign', str(destination)], input=required('GCHAT_RELEASE_PASSPHRASE').encode(), env=environment)

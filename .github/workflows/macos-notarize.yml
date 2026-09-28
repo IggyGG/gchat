@@ -10,7 +10,7 @@ on:
       kind:
         type: choice
         required: true
-        options: [native, verified, resume]
+        options: [native, verified, package, resume]
       run_id:
         type: string
         required: true

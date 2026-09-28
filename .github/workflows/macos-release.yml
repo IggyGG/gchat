@@ -162,6 +162,7 @@ jobs:
             signed/build.json
             signed/release-binding.json
             signed/provenance/**
+            signed/notarization/**
             signed/evidence/**
             signed/application-smoke/**
           if-no-files-found: error

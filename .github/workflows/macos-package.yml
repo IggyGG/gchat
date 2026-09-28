@@ -166,6 +166,7 @@ jobs:
             signed/updater-artifacts.json
             signed/updater/**
             signed/provenance/**
+            signed/notarization/**
             signed/application-smoke/**
             retry-evidence/**
           if-no-files-found: error

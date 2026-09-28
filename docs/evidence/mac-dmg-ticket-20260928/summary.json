@@ -1,0 +1,20 @@
+{
+  "scope": "Mac DMG notarization controller; no application runtime changes",
+  "original_failure": {
+    "run": 36357438437,
+    "artifact": 10945686645,
+    "archive_sha256": "30aa6c252d804315fb6ae2b7ffbb612fb91a315756f21721945d7b6c04930ac4",
+    "app_gatekeeper": "accepted; Notarized Developer ID",
+    "dmg_ticket": "missing; original packaging remains failed"
+  },
+  "checks": {
+    "macos_notarize": 23,
+    "installer_publisher": 19,
+    "macos_package": 18,
+    "macos_verify": 5,
+    "failures": 0
+  },
+  "execution": "disposable gchat-validation cluster pod on triform-6",
+  "log_sha256": "ce1ff4392dae2db313cfee9382747cc0faf24848c6d7ab41ba9b661afad51039",
+  "native_recovery": "pending exact retained DMG submission/stapling/installed smoke; no pass inferred"
+}
