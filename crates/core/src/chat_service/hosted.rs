@@ -15,6 +15,9 @@ pub(super) struct Archive {
     error: Option<String>,
 }
 impl Archive {
+    pub(super) fn file_channel(&self) -> [u8; 32] {
+        self.channel.id
+    }
     pub(super) fn active(&self) -> bool {
         self.channel.active
     }
@@ -393,6 +396,11 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
                     h::Content::Text(body) => (Some(gchat_api::MessageKind::Text), body),
                     h::Content::Action(body) => (Some(gchat_api::MessageKind::Action), body),
                     h::Content::Notice(body) => (Some(gchat_api::MessageKind::Notice), body),
+                    h::Content::File { content_type, .. }
+                        if content_type == gcoms::sdk::sharing_v2::COMPLETION_TYPE =>
+                    {
+                        (None, String::new())
+                    }
                     content @ h::Content::File { .. } => {
                         room.files.insert(id.clone(), content);
                         (None, String::new())

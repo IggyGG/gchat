@@ -1,7 +1,7 @@
 use super::*;
 use gchat_api::{FileInfo, FileRequest, FileSnapshot, FileState};
-use gcoms::sdk::sharing as api;
 use gcoms::sdk::sharing::CacheConfig;
+use gcoms::sdk::{sharing as api, sharing_v2 as modern};
 
 fn observed_files_candidate(
     state: &UiState,
@@ -47,6 +47,7 @@ fn observed_files_candidate(
 
 pub(super) struct FileRuntime {
     sdk: Arc<dyn gcoms::sdk::GcClient>,
+    contacts: tokio::sync::Mutex<Vec<gcoms::sdk::ContactCard>>,
 }
 impl FileRuntime {
     pub async fn open(
@@ -72,15 +73,50 @@ impl FileRuntime {
         }
         let files = Arc::new(Self {
             sdk: runtime.sdk_client(),
+            contacts: tokio::sync::Mutex::new(Vec::new()),
         });
         files.enabled(true).await?;
+        files
+            .modern(modern::Request::Configure(config.clone()))
+            .await?;
         files.request(api::Request::Configure(config)).await?;
         Ok(files)
     }
     pub async fn enabled(&self, enabled: bool) -> Result<(), String> {
-        self.request(api::Request::SetEnabled(enabled))
+        let modern = self.modern(modern::Request::SetEnabled(enabled)).await;
+        let legacy = self.request(api::Request::SetEnabled(enabled)).await;
+        modern?;
+        legacy.map(|_| ())
+    }
+    pub(super) async fn contacts(&self, book: &contacts::Book) -> Result<(), String> {
+        let cards = book.file_cards();
+        let mut retained = self.contacts.lock().await;
+        if *retained == cards {
+            return Ok(());
+        }
+        match self.modern(modern::Request::Contacts(cards.clone())).await {
+            Ok(_) => {
+                *retained = cards;
+                Ok(())
+            }
+            Err(error) => {
+                // A saved block must never leave old transfer authority running.
+                let _ = self.modern(modern::Request::SetEnabled(false)).await;
+                Err(error)
+            }
+        }
+    }
+    async fn modern(&self, request: modern::Request) -> Result<modern::Reply, String> {
+        self.sdk
+            .sharing_v2(request)
             .await
-            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    async fn modern_snapshot(&self) -> Result<modern::Snapshot, String> {
+        match self.modern(modern::Request::List).await? {
+            modern::Reply::Snapshot(s) => Ok(s),
+            _ => Err("Invalid file service reply".into()),
+        }
     }
     async fn request(&self, request: api::Request) -> Result<api::Reply, String> {
         self.sdk.sharing(request).await.map_err(|e| e.to_string())
@@ -192,6 +228,66 @@ fn snapshot(snapshot: api::Snapshot, archive: &ArchiveData, filter: Option<&str>
         retention_days: (snapshot.config.retention_secs / 86400).min(u16::MAX as u64) as u16,
     }
 }
+fn modern_scope(state: &UiState, conversation: &str) -> Result<Option<modern::Scope>, String> {
+    if contacts::is_conversation(conversation) {
+        return Ok(Some(modern::Scope::Contact {
+            peer: state.contacts.file_peer(conversation)?,
+        }));
+    }
+    if hosted::is_conversation(conversation) {
+        let room = state
+            .hosted
+            .get(conversation)
+            .filter(|r| r.active())
+            .ok_or("Channel is not active")?;
+        return Ok(Some(modern::Scope::Hosted {
+            channel: room.file_channel(),
+        }));
+    }
+    Ok(None)
+}
+fn append_modern(result: &mut FileSnapshot, snapshot: modern::Snapshot, filter: Option<&str>) {
+    let used = result
+        .used_bytes
+        .parse::<u64>()
+        .unwrap_or(0)
+        .saturating_add(snapshot.used_bytes);
+    result.used_bytes = used.to_string();
+    result
+        .files
+        .extend(snapshot.files.into_iter().filter_map(|view| {
+            let conversation = match view.scope {
+                modern::Scope::Hosted { channel } => format!("hosted/{}", hex(&channel)),
+                modern::Scope::Contact { peer } => format!("contact/{}", hex(&peer)),
+            };
+            if filter.is_some_and(|f| f != conversation) {
+                return None;
+            }
+            Some(FileInfo {
+                id: hex(&view.id),
+                aliases: None,
+                publication: None,
+                conversation,
+                name: view.name,
+                size_bytes: view.size_bytes.to_string(),
+                verified_bytes: view.verified_bytes.to_string(),
+                state: match view.status {
+                    api::Status::Offered => FileState::Offered,
+                    api::Status::Importing => FileState::Importing,
+                    api::Status::Downloading => FileState::Downloading,
+                    api::Status::WaitingForPeers => FileState::WaitingForPeers,
+                    api::Status::Paused => FileState::Paused,
+                    api::Status::Complete => FileState::Complete,
+                    api::Status::Failed => FileState::Failed,
+                    api::Status::Cancelled => FileState::Cancelled,
+                },
+                sources: view.sources,
+                verified_sources: view.verified_sources,
+                completed_by: view.completed_by,
+                error: view.error,
+            })
+        }));
+}
 impl ChatService {
     // Both control calls and binary reads/writes can race a successful unlock.
     // Wait without the session lock so startup, history and lock can all progress.
@@ -230,7 +326,72 @@ impl ChatService {
                 .clone()
                 .unwrap_or_else(|| "File cache unavailable".into())
         })?;
+        files.contacts(&unlocked.state.contacts).await?;
         let archive = unlocked.client.file_context();
+        let modern_snapshot = files.modern_snapshot().await?;
+        let modern_operation = match &request {
+            FileRequest::Prepare {
+                id: handle,
+                conversation,
+                name,
+                size_bytes,
+            } => modern_scope(&unlocked.state, conversation)?
+                .map(|scope| {
+                    Ok::<_, String>(modern::Request::Prepare {
+                        id: id(handle)?,
+                        scope,
+                        name: name.clone(),
+                        size_bytes: number(size_bytes)?,
+                    })
+                })
+                .transpose()?,
+            FileRequest::Commit { id: handle }
+            | FileRequest::Accept { id: handle }
+            | FileRequest::Pause { id: handle }
+            | FileRequest::Resume { id: handle }
+            | FileRequest::Cancel { id: handle }
+                if modern_snapshot.files.iter().any(|f| hex(&f.id) == *handle) =>
+            {
+                let id = id(handle)?;
+                Some(match &request {
+                    FileRequest::Commit { .. } => modern::Request::Commit { id },
+                    FileRequest::Accept { .. } => modern::Request::Accept { id },
+                    FileRequest::Pause { .. } => modern::Request::Pause { id },
+                    FileRequest::Resume { .. } => modern::Request::Resume { id },
+                    _ => modern::Request::Cancel { id },
+                })
+            }
+            _ => None,
+        };
+        if let Some(operation) = modern_operation {
+            let api::Reply::Snapshot(legacy) = files.request(api::Request::List).await? else {
+                return Err("Invalid file service reply".into());
+            };
+            let handle = match &operation {
+                modern::Request::Prepare { id, .. }
+                | modern::Request::Commit { id }
+                | modern::Request::Accept { id }
+                | modern::Request::Pause { id }
+                | modern::Request::Resume { id }
+                | modern::Request::Cancel { id } => *id,
+                _ => unreachable!(),
+            };
+            if legacy.files.iter().any(|f| f.id == handle) {
+                return Err("File identity conflicts across profiles".into());
+            }
+            let modern::Reply::Snapshot(value) = files.modern(operation).await? else {
+                return Err("Invalid file service reply".into());
+            };
+            let mut result = snapshot(legacy, &archive, None);
+            append_modern(&mut result, value, None);
+            self.invalidate();
+            return Ok(result);
+        }
+        if let FileRequest::Prepare { id: handle, .. } = &request {
+            if modern_snapshot.files.iter().any(|f| hex(&f.id) == *handle) {
+                return Err("File identity conflicts across profiles".into());
+            }
+        }
         let mut filter = None;
         let operation = match request {
             FileRequest::List { conversation } | FileRequest::Publications { conversation } => {
@@ -272,6 +433,9 @@ impl ChatService {
                 unlocked.store.save(&candidate)?;
                 unlocked.state = candidate;
                 self.invalidate();
+                files
+                    .modern(modern::Request::Configure(config.clone()))
+                    .await?;
                 api::Request::Configure(config)
             }
         };
@@ -342,6 +506,13 @@ impl ChatService {
             _ => Err("Invalid file service reply".into()),
         };
         let mut result = result?;
+        if !publications {
+            append_modern(
+                &mut result,
+                files.modern_snapshot().await?,
+                filter.as_deref(),
+            );
+        }
         if publications {
             result.files = unlocked
                 .state
@@ -402,6 +573,37 @@ impl ChatService {
                 .clone()
                 .unwrap_or_else(|| "File cache unavailable".into())
         })?;
+        files.contacts(&unlocked.state.contacts).await?;
+        if files
+            .modern_snapshot()
+            .await?
+            .files
+            .iter()
+            .any(|f| hex(&f.id) == header.id)
+        {
+            if let api::Reply::Snapshot(legacy) = files.request(api::Request::List).await? {
+                if legacy.files.iter().any(|f| hex(&f.id) == header.id) {
+                    return Err("File identity conflicts across profiles".into());
+                }
+            }
+            let operation = if header.upload {
+                modern::Request::WritePiece {
+                    id: id(&header.id)?,
+                    piece: header.piece,
+                    bytes: bytes.to_vec(),
+                }
+            } else {
+                modern::Request::ReadPiece {
+                    id: id(&header.id)?,
+                    piece: header.piece,
+                }
+            };
+            return match files.modern(operation).await? {
+                modern::Reply::Piece(bytes) => Ok(bytes),
+                modern::Reply::Snapshot(_) if header.upload => Ok(Vec::new()),
+                _ => Err("Invalid file service reply".into()),
+            };
+        }
         let operation = if header.upload {
             api::Request::WritePiece {
                 id: id(&header.id)?,
@@ -437,6 +639,20 @@ impl ChatService {
                 let Some(files) = &unlocked.files else {
                     continue;
                 };
+                if files.contacts(&unlocked.state.contacts).await.is_err() {
+                    continue;
+                }
+                if let Ok(snapshot) = files.modern_snapshot().await {
+                    if let Some(error) = snapshot.error {
+                        unlocked.file_error = Some(format!("File transfer: {error}"));
+                    } else if unlocked
+                        .file_error
+                        .as_deref()
+                        .is_some_and(|e| e.starts_with("File transfer:"))
+                    {
+                        unlocked.file_error = None;
+                    }
+                }
                 let Ok(api::Reply::Snapshot(snapshot)) = files.request(api::Request::List).await
                 else {
                     continue;

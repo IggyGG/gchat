@@ -614,3 +614,13 @@ projection tests and strict workspace Clippy pass in paired GComs
 receipts and opt-in presence renewal in the paired runtime. Global network,
 status/list, create/join and lifecycle commands remain available from hosted
 windows. The full updated suite is being rerun; native/network claims remain open.
+
+## IRC-4 modern file routing — 2026-09-29
+
+The existing file controls and binary I/O now route explicit hosted/contact
+conversations through GComs sharing_v2, retaining separate legacy scopes and
+rejecting cross-profile handle collisions. Contact changes synchronize the
+worker's authorization; failure leaves modern transfers disabled. This checkpoint
+is under qualification and does not claim full file parity or deployment.
+The preceding contacts checkpoint passed the full workspace suite in
+`test-evidence/irc-parity/contacts-full-01.log` (paired GComs4c651a1/GChatd6c0235).

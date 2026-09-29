@@ -495,3 +495,12 @@ unlock/consented Keychain/relaunch after the UI test committed native keyboard
 input before observing the field. No app recompilation or signing change was
 needed. These gates alone do not prove Windows rollback or iOS network recovery,
 store availability, physical devices, live push or privacy qualification.
+
+## IRC hosted/contact files
+
+Qualify the existing FileRequest and binary piece API with hosted and independent
+contact conversation IDs. Verify no legacy scope mapping, whole-file hash,
+resumption, block/unblock and locking, handle-collision rejection and combined
+cache quota accounting. Repeat the actual independent-contact journey and legacy
+file controls after the routing change; the older contacts full-suite receipt
+qualifies only its recorded source pair.

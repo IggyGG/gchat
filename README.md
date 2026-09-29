@@ -1,3 +1,12 @@
+## Hosted and contact files (qualification in progress)
+
+The shared file controls now select the explicit hosted/contact transfer profile
+for those conversations and preserve the legacy channel/PM cache. Piece data uses
+bulk transport; verified download-completion acknowledgments stay covered. Contact
+blocks replace the file worker's authorization set before the command completes.
+The new profile has a separate encrypted `.pieces.v2` cache. End-to-end, capacity
+and native release qualification is still in progress on the IRC parity branch.
+
 ## Independent contacts and local IRC workflows
 
 Use `/contact card` to share your signed card deliberately, then `/contact add

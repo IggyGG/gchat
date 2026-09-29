@@ -24,6 +24,21 @@ impl Default for Book {
     }
 }
 impl Book {
+    pub(super) fn file_cards(&self) -> Vec<ContactCard> {
+        self.contacts
+            .values()
+            .filter(|c| !c.blocked)
+            .map(|c| c.card.clone())
+            .collect()
+    }
+    pub(super) fn file_peer(&self, conversation: &str) -> Result<[u8; 32], String> {
+        use sha2::{Digest, Sha256};
+        let contact = self.contacts.get(conversation).ok_or("Unknown contact")?;
+        if contact.blocked {
+            return Err("Contact is blocked".into());
+        }
+        Ok(Sha256::digest(&contact.identity).into())
+    }
     pub(super) fn is_empty(&self) -> bool {
         self.contacts.is_empty() && self.outbox.is_empty()
     }
@@ -701,6 +716,9 @@ impl ChatService {
                 }
                 current.store.save(&candidate)?;
                 current.state = candidate;
+                if let Some(files) = &current.files {
+                    files.contacts(&current.state.contacts).await?;
+                }
                 self.invalidate();
                 return Ok(Response::Applied { conversation: Some(id), notice: Some("Contact saved. Share your card with them to enable mutual private messaging; compare fingerprints before marking the identity verified.".into()) });
             }
@@ -776,6 +794,9 @@ impl ChatService {
             }
             current.store.save(&candidate)?;
             current.state = candidate;
+            if let Some(files) = &current.files {
+                files.contacts(&current.state.contacts).await?;
+            }
             self.invalidate();
             return Ok(Response::Applied {
                 conversation: Some(id),
@@ -884,6 +905,9 @@ impl ChatService {
         }
         current.store.save(&candidate)?;
         current.state = candidate;
+        if let Some(files) = &current.files {
+            files.contacts(&current.state.contacts).await?;
+        }
         self.invalidate();
         Ok(Response::Applied {
             conversation: Some(id.into()),
