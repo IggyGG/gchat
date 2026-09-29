@@ -14,14 +14,27 @@ pub(super) struct Archive {
     #[serde(default)]
     error: Option<String>,
 }
+impl Archive {
+    pub(super) fn active(&self) -> bool {
+        self.channel.active
+    }
+}
 pub(super) fn is_conversation(id: &str) -> bool {
     id.starts_with("hosted/")
 }
 fn key(id: [u8; 32]) -> String {
     format!("hosted/{}", hex(&id))
 }
+pub(super) fn global_command(text: &str) -> bool {
+    matches!(
+        text.to_ascii_lowercase().as_str(),
+        "/network" | "/status" | "/list" | "/create" | "/join" | "/lock" | "/quit" | "/disconnect"
+    )
+}
 pub(super) fn handles(conversation: Option<&str>, text: &str) -> bool {
-    conversation.is_some_and(is_conversation) || split_head(text).0.eq_ignore_ascii_case("/hosted")
+    let command = split_head(text).0;
+    command.eq_ignore_ascii_case("/hosted")
+        || (conversation.is_some_and(is_conversation) && !global_command(command))
 }
 pub(super) fn validate(conversation: Option<&str>, text: &str) -> Result<(), String> {
     if text.len() > 8192 {
@@ -743,7 +756,7 @@ impl ChatService {
                 return Ok(Response::Output {
                     conversation: Some(conversation.into()),
                     output: gchat_api::CommandOutput::Help {
-                        commands: commands(),
+                        commands: self.context_commands(Some(conversation)),
                     },
                 })
             }

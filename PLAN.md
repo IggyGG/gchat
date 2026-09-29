@@ -581,3 +581,12 @@ next. R04's 30-second join and R03's 10-second reconnect targets are nonblocking
 authentication, delivery, persistence, signatures and rollback remain mandatory.
 Publish the limitation on the downloads page. Existing frozen candidate checks
 and recorded failures retain their exact source and outcome bindings.
+
+IRC checkpoint update: the initial full workspace run passed 175 tests with three
+explicit existing ignores (`hosted-client-07.log`), plus a separate four-test
+runtime recovery rerun. The newer encrypted sidecar rollback test, two hosted
+projection tests and strict workspace Clippy pass in paired GComs
+`test-evidence/irc-parity/receipt-02.log`. That run also validates covered recipient
+receipts and opt-in presence renewal in the paired runtime. Global network,
+status/list, create/join and lifecycle commands remain available from hosted
+windows. The full updated suite is being rerun; native/network claims remain open.

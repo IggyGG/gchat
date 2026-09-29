@@ -1641,20 +1641,47 @@ impl ChatService {
                 let (room, body) = split_head(args);
                 self.refresh_projection().await;
                 if name == "cmd-list" {
-                    let channels = self.projection.read().expect("projection lock").0.iter().map(|c| gchat_api::DirectoryEntry { name: c.name.clone(), joined: c.active, conversation: Some(c.id.clone()) }).collect();
-                    return Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Directory { channels } });
+                    let channels = self
+                        .projection
+                        .read()
+                        .expect("projection lock")
+                        .0
+                        .iter()
+                        .map(|c| gchat_api::DirectoryEntry {
+                            name: c.name.clone(),
+                            joined: c.active,
+                            conversation: Some(c.id.clone()),
+                        })
+                        .collect();
+                    return Ok(Response::Output {
+                        conversation: conversation.map(str::to_string),
+                        output: gchat_api::CommandOutput::Directory { channels },
+                    });
                 }
                 if name == "cmd-history" {
                     let projection = self.projection.read().expect("projection lock");
-                    let matches = projection.0.iter().filter(|c| c.name.eq_ignore_ascii_case(room) || c.id == room).collect::<Vec<_>>();
-                    let [target] = matches.as_slice() else { return Err("Unknown or ambiguous conversation".into()); };
+                    let matches = projection
+                        .0
+                        .iter()
+                        .filter(|c| c.name.eq_ignore_ascii_case(room) || c.id == room)
+                        .collect::<Vec<_>>();
+                    let [target] = matches.as_slice() else {
+                        return Err("Unknown or ambiguous conversation".into());
+                    };
                     return applied(Some(target.id.clone()), None);
                 }
-                let response = self.extension_request(operation_id, "send", room, body, None, 200).await?;
+                let response = self
+                    .extension_request(operation_id, "send", room, body, None, 200)
+                    .await?;
                 self.refresh_projection().await;
                 Ok(response)
             }
-            "help" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Help { commands: self.context_commands(conversation) } }),
+            "help" => Ok(Response::Output {
+                conversation: conversation.map(str::to_string),
+                output: gchat_api::CommandOutput::Help {
+                    commands: self.context_commands(conversation),
+                },
+            }),
             "status" if args == "--details" => {
                 let text = match self.runtime.embedded() {
                     Some(client) => {
@@ -1669,25 +1696,85 @@ impl ChatService {
                     }
                     None => "Transport details are owned by the attached service.".into(),
                 };
-                Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: "Connection details".into(), text } })
+                Ok(Response::Output {
+                    conversation: conversation.map(str::to_owned),
+                    output: gchat_api::CommandOutput::Text {
+                        title: "Connection details".into(),
+                        text,
+                    },
+                })
             }
-            "status" => Ok(Response::Output { conversation: None, output: gchat_api::CommandOutput::Status { text: format!("{} joined channels. Closing a view keeps receiving; /lock hides the archive in every view; /quit stops this instance.", archive.channels.iter().filter(|c| c.active).count()) } }),
-            "list" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Directory { channels: archive.channels.iter().filter(|c| c.active).map(|c| gchat_api::DirectoryEntry { name: format!("#{}", c.title), joined: true, conversation: Some(channel_key(c.id)) }).chain(archive.public_descriptors.iter().map(|d| gchat_api::DirectoryEntry { name: format!("#{}", d.descriptor.title), joined: false, conversation: None })).chain(self.projection.read().expect("projection lock").0.iter().map(|c| gchat_api::DirectoryEntry { name: c.name.clone(), joined: c.active, conversation: Some(c.id.clone()) })).collect() } }),
-            "close" | "hide" => Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Close { conversation: conversation.ok_or("Select a conversation to close")?.into() } }),
+            "status" => {
+                let session = self.session.lock().await;
+                let hosted = session.as_ref().map_or(0, |s| {
+                    s.state.hosted.values().filter(|r| r.active()).count()
+                });
+                Ok(Response::Output { conversation: None, output: gchat_api::CommandOutput::Status { text: format!("{} joined channels. Closing a view keeps receiving; /lock hides the archive in every view; /quit stops this instance.", archive.channels.iter().filter(|c| c.active).count() + hosted) } })
+            }
+            "list" => {
+                let session = self.session.lock().await;
+                let channels =
+                    self.project(session.as_ref())
+                        .conversations
+                        .into_iter()
+                        .filter(|c| c.kind == gchat_api::ConversationKind::Channel && c.active)
+                        .map(|c| gchat_api::DirectoryEntry {
+                            name: c.name,
+                            joined: true,
+                            conversation: Some(c.id),
+                        })
+                        .chain(archive.public_descriptors.iter().map(|d| {
+                            gchat_api::DirectoryEntry {
+                                name: format!("#{}", d.descriptor.title),
+                                joined: false,
+                                conversation: None,
+                            }
+                        }))
+                        .collect();
+                Ok(Response::Output {
+                    conversation: conversation.map(str::to_owned),
+                    output: gchat_api::CommandOutput::Directory { channels },
+                })
+            }
+            "close" | "hide" => Ok(Response::Output {
+                conversation: conversation.map(str::to_string),
+                output: gchat_api::CommandOutput::Close {
+                    conversation: conversation.ok_or("Select a conversation to close")?.into(),
+                },
+            }),
             "nick" => {
                 let channel = context_channel(&archive, conversation)?;
-                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Nickname(args.into())).await?;
-                applied(conversation.map(str::to_owned), Some("Channel nickname updated. Your identity and history are unchanged.".into()))
+                client
+                    .change_channel(channel.id, gcoms::sdk::ChannelChange::Nickname(args.into()))
+                    .await?;
+                applied(
+                    conversation.map(str::to_owned),
+                    Some(
+                        "Channel nickname updated. Your identity and history are unchanged.".into(),
+                    ),
+                )
             }
             "reconnect" => {
                 self.require(Capability::ChannelMember)?;
                 let channel = context_channel(&archive, conversation)?;
                 let code = Zeroizing::new(args.trim().to_owned());
-                let output = self.runtime.sdk_client().channel_reconnect(
-                    &channel.protocol_name, (!code.is_empty()).then_some(code.as_str())
-                ).await.map_err(|e| e.to_string())?;
+                let output = self
+                    .runtime
+                    .sdk_client()
+                    .channel_reconnect(
+                        &channel.protocol_name,
+                        (!code.is_empty()).then_some(code.as_str()),
+                    )
+                    .await
+                    .map_err(|e| e.to_string())?;
                 if code.is_empty() {
-                    Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: "Reconnect this channel".into(), text: output } })
+                    Ok(Response::Output {
+                        conversation: conversation.map(str::to_owned),
+                        output: gchat_api::CommandOutput::Text {
+                            title: "Reconnect this channel".into(),
+                            text: output,
+                        },
+                    })
                 } else {
                     applied(conversation.map(str::to_owned), Some("Channel addresses refreshed. Saved messages are retrying; delivery still requires the other member's acknowledgment.".into()))
                 }
@@ -1695,48 +1782,110 @@ impl ChatService {
             "topic" => {
                 let channel = context_channel(&archive, conversation)?;
                 if args.is_empty() {
-                    return Ok(Response::Output { conversation: conversation.map(str::to_owned), output: gchat_api::CommandOutput::Text { title: format!("Topic for #{}", channel.title), text: client.channel_topic(channel.id).await? } });
+                    return Ok(Response::Output {
+                        conversation: conversation.map(str::to_owned),
+                        output: gchat_api::CommandOutput::Text {
+                            title: format!("Topic for #{}", channel.title),
+                            text: client.channel_topic(channel.id).await?,
+                        },
+                    });
                 }
-                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Topic(if args == "--clear" { String::new() } else { args.into() })).await?;
+                client
+                    .change_channel(
+                        channel.id,
+                        gcoms::sdk::ChannelChange::Topic(if args == "--clear" {
+                            String::new()
+                        } else {
+                            args.into()
+                        }),
+                    )
+                    .await?;
                 applied(conversation.map(str::to_owned), None)
             }
             "owner" => {
                 let channel = context_channel(&archive, conversation)?;
                 let member = resolve_member(channel, args)?;
-                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Transfer(member.0)).await?;
-                applied(conversation.map(str::to_owned), Some("Ownership transferred; the channel and history are unchanged.".into()))
+                client
+                    .change_channel(channel.id, gcoms::sdk::ChannelChange::Transfer(member.0))
+                    .await?;
+                applied(
+                    conversation.map(str::to_owned),
+                    Some("Ownership transferred; the channel and history are unchanged.".into()),
+                )
             }
             "part" => {
                 let channel = context_channel(&archive, conversation)?;
                 if args == "--close" {
-                    client.change_channel(channel.id, gcoms::sdk::ChannelChange::Close).await?;
-                    let history = client.archive_snapshot().channels.iter().find(|c| c.id == channel.id).map(record_key);
+                    client
+                        .change_channel(channel.id, gcoms::sdk::ChannelChange::Close)
+                        .await?;
+                    let history = client
+                        .archive_snapshot()
+                        .channels
+                        .iter()
+                        .find(|c| c.id == channel.id)
+                        .map(record_key);
                     return applied(history, Some("Channel closed. Offline members receive the closure when they reconnect. History is retained; unconfirmed sends are not marked delivered.".into()));
                 }
                 if channel.role == ChannelRole::Owner {
-                    let member = resolve_member(channel, args.strip_prefix("--transfer ").ok_or("Choose the next owner")?)?;
-                    client.change_channel(channel.id, gcoms::sdk::ChannelChange::Transfer(member.0)).await?;
+                    let member = resolve_member(
+                        channel,
+                        args.strip_prefix("--transfer ")
+                            .ok_or("Choose the next owner")?,
+                    )?;
+                    client
+                        .change_channel(channel.id, gcoms::sdk::ChannelChange::Transfer(member.0))
+                        .await?;
                 }
-                client.change_channel(channel.id, gcoms::sdk::ChannelChange::Leave).await?;
+                client
+                    .change_channel(channel.id, gcoms::sdk::ChannelChange::Leave)
+                    .await?;
                 applied(conversation.map(str::to_owned), Some("Leave request saved. Membership ends when the owner processes it; your history is retained.".into()))
             }
             "me" => {
                 self.require(Capability::ChannelMember)?;
-                if args.is_empty() { return Err("Usage: /me action".into()); }
-                send(client, &archive, conversation.ok_or("open a conversation first")?, &format!("\u{1}ACTION {args}\u{1}"), operation_id).await?;
+                if args.is_empty() {
+                    return Err("Usage: /me action".into());
+                }
+                send(
+                    client,
+                    &archive,
+                    conversation.ok_or("open a conversation first")?,
+                    &format!("\u{1}ACTION {args}\u{1}"),
+                    operation_id,
+                )
+                .await?;
                 applied(conversation.map(str::to_string), None)
             }
             "names" => {
                 let channel = context_channel(&archive, conversation)?;
-                Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Text { title: format!("Nicks in #{}", channel.title), text: channel.members.iter().map(|m| m.display_name.clone()).collect::<Vec<_>>().join("  ") } })
+                Ok(Response::Output {
+                    conversation: conversation.map(str::to_string),
+                    output: gchat_api::CommandOutput::Text {
+                        title: format!("Nicks in #{}", channel.title),
+                        text: channel
+                            .members
+                            .iter()
+                            .map(|m| m.display_name.clone())
+                            .collect::<Vec<_>>()
+                            .join("  "),
+                    },
+                })
             }
             "presence" => {
-                let enabled = match args { "on" => true, "off" => false, _ => return Err("Usage: /presence on|off".into()) };
+                let enabled = match args {
+                    "on" => true,
+                    "off" => false,
+                    _ => return Err("Usage: /presence on|off".into()),
+                };
                 client.configure_presence(enabled).await?;
                 let mut session = self.session.lock().await;
                 let unlocked = session.as_mut().ok_or("Unlock the profile first")?;
-                let mut candidate = unlocked.state.clone(); candidate.presence_enabled = enabled;
-                unlocked.store.save(&candidate)?; unlocked.state = candidate; self.invalidate();
+                let mut candidate = unlocked.state.clone();
+                candidate.presence_enabled = enabled;
+                unlocked.store.save(&candidate)?;
+                unlocked.state = candidate;
+                self.invalidate();
                 applied(None, Some(if enabled { "Recently-active sharing enabled. Signals expire; they do not confirm delivery." } else { "Recently-active sharing disabled." }.into()))
             }
             "publish" => {
@@ -1745,8 +1894,13 @@ impl ChatService {
                 client.publish_channel(channel.id, "", args).await?;
                 let mut session = self.session.lock().await;
                 let unlocked = session.as_mut().ok_or("Unlock the profile first")?;
-                let mut candidate = unlocked.state.clone(); candidate.publications.insert(channel_key(channel.id), args.into());
-                unlocked.store.save(&candidate)?; unlocked.state = candidate; self.invalidate();
+                let mut candidate = unlocked.state.clone();
+                candidate
+                    .publications
+                    .insert(channel_key(channel.id), args.into());
+                unlocked.store.save(&candidate)?;
+                unlocked.state = candidate;
+                self.invalidate();
                 applied(conversation.map(str::to_string), Some("Channel published. You can retry publication without creating another channel.".into()))
             }
             "create" => {
@@ -1762,23 +1916,17 @@ impl ChatService {
                     return Err("Usage: /create [--private|--public] #channel nickname".into());
                 }
                 let id = client
-                    .create_channel(
-                        channel.trim_start_matches('#'),
-                        nick,
-                        64,
-                        visibility,
-                    )
+                    .create_channel(channel.trim_start_matches('#'), nick, 64, visibility)
                     .await?;
-                applied(
-                    Some(channel_key(id)),
-                    None,
-                )
+                applied(Some(channel_key(id)), None)
             }
             "join" => {
                 self.require(Capability::ChannelMember)?;
                 let (destination, nick) = split_head(args);
                 if destination.starts_with("extension/cmd/") {
-                    let response = self.extension_request(operation_id, "join", destination, "", None, 200).await?;
+                    let response = self
+                        .extension_request(operation_id, "join", destination, "", None, 200)
+                        .await?;
                     self.refresh_projection().await;
                     return Ok(response);
                 }
@@ -1811,9 +1959,7 @@ impl ChatService {
                         _ => return Err("public channel name is ambiguous; use an invitation".into()),
                     }
                 } else {
-                    client
-                        .join_with_invite(destination, nick, 120)
-                        .await?;
+                    client.join_with_invite(destination, nick, 120).await?;
                 }
                 let joined = client.archive_snapshot();
                 let channel = joined
@@ -1828,10 +1974,7 @@ impl ChatService {
                                 .any(|old| old.active && old.id == c.id)
                     })
                     .ok_or("join completed; refresh the channel list")?;
-                applied(
-                    Some(channel_key(channel.id)),
-                    None,
-                )
+                applied(Some(channel_key(channel.id)), None)
             }
             "query" | "msg" => {
                 self.require(Capability::ChannelMember)?;
@@ -1856,9 +1999,20 @@ impl ChatService {
                         network: network.shareable_identity()?,
                         network_invitation: None,
                         channel_invitation: Some(link),
-                    }.encode_at(now())?
-                } else { link };
-                Ok(Response::Output { conversation: conversation.map(str::to_string), output: gchat_api::CommandOutput::Invitation { channel: channel.title.clone(), link, expires: invitation.expires_at, local_only } })
+                    }
+                    .encode_at(now())?
+                } else {
+                    link
+                };
+                Ok(Response::Output {
+                    conversation: conversation.map(str::to_string),
+                    output: gchat_api::CommandOutput::Invitation {
+                        channel: channel.title.clone(),
+                        link,
+                        expires: invitation.expires_at,
+                        local_only,
+                    },
+                })
             }
             "kick" => {
                 self.require(Capability::ChannelAdmin)?;
@@ -1881,7 +2035,9 @@ impl ChatService {
                 applied(conversation.map(str::to_string), None)
             }
             "refresh" => {
-                if self.command_extension.is_some() { self.refresh_projection().await; }
+                if self.command_extension.is_some() {
+                    self.refresh_projection().await;
+                }
                 client.reconcile_channels().await?;
                 client.refresh_catalogs().await?;
                 applied(
@@ -2017,7 +2173,13 @@ impl ChatService {
 
     fn context_commands(&self, conversation: Option<&str>) -> Vec<gchat_api::CommandSpec> {
         if conversation.is_some_and(hosted::is_conversation) {
-            return hosted::commands();
+            let mut commands = hosted::commands();
+            commands.extend(
+                self.command_specs()
+                    .into_iter()
+                    .filter(|c| hosted::global_command(&c.name) || c.name == "/hosted"),
+            );
+            return commands;
         }
         let extension = conversation.is_some_and(|id| id.starts_with("extension/cmd/"));
         let mut commands: Vec<_> = self
