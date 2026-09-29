@@ -12,7 +12,7 @@ import os
 import platform
 import re
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import sys
@@ -49,8 +49,9 @@ def validate_inputs(value):
                       and set(item['sources']) == {'gchat', 'gcoms'}
                       and all(re.fullmatch('[0-9a-f]{40}', c) for c in item['sources'].values()),
                       'invalid retained artifact identity')
-        path = Path(item['manifest'])
-        smoke.require(not path.is_absolute() and '..' not in path.parts and path.name == 'build.json',
+        path = PurePosixPath(item['manifest'])
+        smoke.require('\\' not in item['manifest'] and ':' not in item['manifest']
+                      and not path.is_absolute() and '..' not in path.parts and path.name == 'build.json',
                       'invalid retained manifest path')
     return value
 

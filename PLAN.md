@@ -1,3 +1,12 @@
+## Release closeout — Windows tooling portability (2026-09-29)
+
+Run 36507558001 failed before application compilation: host-dependent manifest
+parsing, a path-separator assertion and a POSIX daemon test on Windows. Correct
+the tooling and qualify on both native hosts; retain the original failed archive.
+Focused Mac checks pass: 103 release tests (5 platform exclusions), 3 rollback
+tests. Native Windows/Linux portability checks will bind the committed candidate.
+Mac 36507549220/36507553193 remain frozen and running independently.
+
 ## GCHAT-STORE-2 — Apple listing creative (2026-09-29)
 
 Codex: the matching iPhone/iPad pack is in `marketing/app-store/retro-v1/`:

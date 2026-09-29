@@ -1,3 +1,11 @@
+## Release tooling portability
+
+`release-tools-check.yml` runs release tooling and retained Mac rollback orchestration
+on native Linux and Windows without building applications. Manifest paths use ZIP
+POSIX syntax on both hosts and reject drive, backslash, absolute and parent paths.
+Only the POSIX coordinator daemon/flock test is platform-specific; ledger and
+coordinator state-machine tests run on both. Artifact receipts remain source-bound.
+
 ## GCHAT-STORE-2 — Apple marketing asset checks
 
 Run `node --check marketing/app-store/retro-v1/export.mjs`, the exporter with the

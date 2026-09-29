@@ -27,7 +27,7 @@ CONTROL_FILES = frozenset({
     'scripts/windows-network.py', 'scripts/test-native-network.py',
     'scripts/windows-rollback.py', 'scripts/tests/windows_rollback_test.py',
     'scripts/macos-rollback.py', 'scripts/tests/macos_rollback_test.py',
-    '.github/workflows/macos-rollback.yml',
+    '.github/workflows/macos-rollback.yml', '.github/workflows/release-tools-check.yml',
     '.github/workflows/macos-network-retained.yml', 'scripts/macos-network-retained.py',
     'scripts/tests/macos_network_retained_test.py',
     '.github/workflows/windows-rollback.yml', '.github/workflows/macos-catalog-check.yml',

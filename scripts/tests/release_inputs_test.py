@@ -85,6 +85,7 @@ class InputTests(unittest.TestCase):
             self.assertNotEqual(first['qualification'], second['qualification'])
             for path in ('release/downloads.json', 'scripts/website.py',
                          '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py',
+                         '.github/workflows/release-tools-check.yml',
                          'marketing/play-store/retro-v1/listing.md',
                          'marketing/play-store/retro-v1/exports/feature.png',
                          'marketing/app-store/retro-v1/listing.json',

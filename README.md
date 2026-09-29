@@ -1,3 +1,7 @@
+Release tooling has a separate Linux/Windows portability workflow; it does not
+compile applications or qualify installed releases. Mac artifact paths retain
+POSIX ZIP syntax on all hosts. The coordinator daemon remains POSIX-only.
+
 Windows candidate 36 can be diagnosed with the retained-installer workflow,
 without compiling again. Its interrupted-transfer deadline failure is preserved;
 a later run must meet the same budgets and cleanup checks. iOS retained-verification

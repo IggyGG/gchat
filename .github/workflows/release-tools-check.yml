@@ -1,0 +1,42 @@
+name: Release tooling portability
+run-name: Release tooling portability ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  tools:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 8
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12'
+      - name: Check release tooling on the native host
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir evidence
+          git rev-parse HEAD 'HEAD^{tree}' > evidence/source.txt
+          python -m unittest discover -s scripts/tests -p 'release_*test.py' -v 2>&1 | tee evidence/release.log
+          python -m unittest discover -s scripts/tests -p 'macos_rollback_test.py' -v 2>&1 | tee evidence/rollback.log
+          git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: release-tools-${{ matrix.runner }}
+          path: evidence/
+          if-no-files-found: error

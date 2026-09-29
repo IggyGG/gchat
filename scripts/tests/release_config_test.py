@@ -10,7 +10,7 @@ class ConfigurationTests(unittest.TestCase):
         directories=[]
         for platform,stages in workers.items():
             if platform=='sdk':
-                self.assertTrue(stages['compatibility']['run'][1].endswith('/release_sdk.py'))
+                self.assertEqual(Path(stages['compatibility']['run'][1]).name,'release_sdk.py')
                 continue
             for mode in ('run','reconcile'):
                 argv=stages['compatibility'][mode]

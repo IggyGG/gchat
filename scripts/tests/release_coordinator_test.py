@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -23,6 +24,7 @@ class CoordinatorTests(unittest.TestCase):
                 Coordinator(state,{'poll_interval_seconds':interval})
             self.assertFalse(state.exists())
 
+    @unittest.skipUnless(os.name == 'posix', 'coordinator daemon uses POSIX flock')
     def test_daemon_polling_uses_configured_interval_and_releases_lock(self):
         import release_coordinator
         for interval in (None, 10, 300):

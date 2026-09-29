@@ -26,7 +26,8 @@ class FlowTests(unittest.TestCase):
               'sources':{'gchat':'c'*40,'gcoms':'d'*40},'manifest':'signed/build.json'}
         value={'target':'macos-x86_64','current':item,'baseline':copy.deepcopy(item)}
         self.assertEqual(rollback.validate_inputs(value),value)
-        for bad in ('../build.json','/build.json','signed/not-build.json'):
+        for bad in ('../build.json','/build.json','signed/not-build.json',
+                    'C:/build.json',r'signed\build.json',r'\build.json'):
             candidate=copy.deepcopy(value);candidate['current']['manifest']=bad
             with self.assertRaisesRegex(ValueError,'manifest path'):rollback.validate_inputs(candidate)
         candidate=copy.deepcopy(value);candidate['baseline']['sources']['gcoms']='main'
