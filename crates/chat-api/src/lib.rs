@@ -201,6 +201,16 @@ pub struct DirectoryEntry {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryMember {
+    pub id: String,
+    pub nickname: String,
+    pub is_self: bool,
+    pub missing_commit: bool,
+    pub pending_messages: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum CommandOutput {
     Help {
@@ -226,6 +236,14 @@ pub enum CommandOutput {
     },
     Close {
         conversation: String,
+    },
+    MembershipRecovery {
+        channel: String,
+        expected: String,
+        epoch: String,
+        pending: bool,
+        retained_messages: u32,
+        members: Vec<RecoveryMember>,
     },
 }
 
@@ -486,6 +504,7 @@ pub fn typescript() -> String {
         Delivery::decl(),
         CommandSpec::decl(),
         DirectoryEntry::decl(),
+        RecoveryMember::decl(),
         CommandOutput::decl(),
         InputHistoryEntry::decl(),
         ProviderStatus::decl(),

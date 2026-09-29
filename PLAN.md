@@ -1,3 +1,7 @@
+## Owner-controlled membership recovery (2026-09-29)
+
+Added shared desktop/mobile recovery preview and explicit confirmation, `/recover-membership`, and normal SDK/local IPC support. The disposable GChat test reproduces a pending epoch-2 commit, revokes the selected unavailable leaves, then proves ordinary invitation admission, message ACK, kick and reopen. Exact affected-source and installed-profile results belong to the paired membership-recovery receipt.
+
 ## Remaining native checks completed — transfers still block (2026-09-29)
 
 The preserved Intel run 36507553193 and Windows run 36511023125 both finished.

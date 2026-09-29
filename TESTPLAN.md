@@ -1,3 +1,7 @@
+## Owner-controlled membership recovery
+
+`cargo test -p gchat-core --features gc2-carrier --lib membership_recovery` covers strict preview parsing and the actual encrypted-profile stale-member → recovery → single-use invitation → authenticated message ACK → normal kick → reopen flow. Node tests separately assert exact retained wire/ACK equality, rollback and no future access for removed leaves. Browser `recovery.spec.ts` exercises phone/desktop selection, explicit confirmation/cancel, destination binding and absence of owner controls for members. No personal profile is used by these gates.
+
 ## Release tooling portability
 
 `release-tools-check.yml` runs release tooling and retained Mac rollback orchestration

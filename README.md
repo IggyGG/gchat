@@ -1,3 +1,5 @@
+Channel owners can open **Channel recovery…** from the users panel or channel details, or type `/recover-membership`. Review missing acknowledgements, select members to revoke, and confirm. History and unconfirmed messages stay; removed members need fresh invitations. Recovery never marks those messages delivered.
+
 Release tooling has a separate Linux/Windows portability workflow; it does not
 compile applications or qualify installed releases. Mac artifact paths retain
 POSIX ZIP syntax on all hosts. The coordinator daemon remains POSIX-only.

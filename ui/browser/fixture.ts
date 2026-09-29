@@ -105,6 +105,10 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
         if (presenceOutcome === 'unknown') { savedReply = response; throw new ChatError('outcome_unknown', 'Reply interrupted after admission.'); }
         return response;
       }
+      if (req.text.startsWith('/recover-membership')) {
+        if (parameters.has('recovery-stale') && req.text !== '/recover-membership') throw new ChatError('rejected', 'channel changed; review recovery again');
+        return {kind:'output', conversation:req.conversation, output:{kind:'membership_recovery',channel:'general',expected:'preview-token',epoch:req.text === '/recover-membership'?'2':'3',pending:req.text === '/recover-membership',retained_messages:1,members:[{id:'owner',nickname:'Iggy',isSelf:true,missingCommit:false,pendingMessages:0},...(req.text === '/recover-membership'?[{id:'removed-leaf',nickname:'Ada',isSelf:false,missingCommit:true,pendingMessages:1}]:[])]}};
+      }
       if (req.text === '/reconnect') return { kind: 'output', conversation: req.conversation, output: { kind: 'text', title: 'Reconnect this channel', text: 'gchat-reconnect1:fixture' } };
       if (req.text === '/invite') {
         savedId = req.operation_id;

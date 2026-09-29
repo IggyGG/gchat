@@ -2,8 +2,32 @@
   import InvitationCard from './InvitationCard.svelte';
   import { invitationLink } from './invitation-link';
   import type { CommandOutput, DirectoryEntry } from './api';
-  let { output, choose, saveInvitation, saveInvitationCard, prepareCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
+  let { output, choose, saveInvitation, saveInvitationCard, prepareCommand, executeCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; executeCommand?: (command: string) => Promise<boolean>; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
   let feedback = $state('');
+  let recoverySelection = $state<string[]>([]);
+  let recoveryConfirmed = $state(false);
+  let recoveryPreview = '';
+  $effect(() => {
+    const next = output.kind === 'membership_recovery' ? `${output.expected}:${output.epoch}` : '';
+    if (next === recoveryPreview) return;
+    recoveryPreview = next;
+    recoverySelection = []; recoveryConfirmed = false; feedback = '';
+  });
+  async function refreshRecovery() {
+    if (!executeCommand) return;
+    busy = true; feedback = 'Refreshing membership…';
+    try { feedback = await executeCommand('/recover-membership') ? '' : 'Could not refresh. Check the operation details.'; }
+    catch (error) { feedback = String(error); }
+    finally { busy = false; }
+  }
+  async function recoverMembers() {
+    if (output.kind !== 'membership_recovery' || !executeCommand || !recoverySelection.length) return;
+    busy = true; feedback = 'Saving membership recovery…';
+    const command = `/recover-membership ${output.expected} ${recoverySelection.join(' ')}`;
+    try { const accepted = await executeCommand(command); feedback = accepted ? 'Recovery saved. Removed members need a new invitation.' : 'Recovery was not confirmed. Check the operation details before trying again.'; }
+    catch (error) { feedback = String(error); }
+    finally { busy = false; recoveryConfirmed = false; }
+  }
   async function copy(link: string, reconnect = false) {
     try { await navigator.clipboard.writeText(link); feedback = reconnect ? 'Reconnect command copied. Paste it into this channel on the other device.' : 'Invitation copied'; }
     catch { feedback = reconnect ? 'Select and copy the reconnect command below.' : 'Select and copy the complete invitation below, or save it as a file.'; }
@@ -42,6 +66,22 @@
     <!-- Descriptions wrap naturally, without a separate block per command. -->
     {#if helpHeading}<h2>Commands</h2>{/if}
     <ul class="commands">{#each output.commands as command}<li><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button><span>{' - '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></li>{/each}</ul>
+  {:else if output.kind === 'membership_recovery'}
+    <h2>Channel recovery · {output.channel}</h2>
+    <button disabled={busy || !executeCommand} onclick={() => void refreshRecovery()}>Refresh preview</button>
+    <p>{output.pending ? 'Waiting for members to confirm the last membership change. GChat continues retrying in the background.' : 'No membership change is waiting for confirmation.'}</p>
+    <p>Remove members only when they should no longer belong to this channel. They lose access to future messages and will need a fresh invitation to return. History stays.</p>
+    {#each output.members.filter(member => !member.isSelf) as member (member.id)}
+      <label class="recovery-member"><input type="checkbox" value={member.id} bind:group={recoverySelection} disabled={busy} onchange={() => recoveryConfirmed = false} />{member.nickname}<small>{member.missingCommit ? 'Membership confirmation missing' : 'Current member'}{member.pendingMessages ? ` · ${member.pendingMessages} unconfirmed messages` : ''}</small></label>
+    {/each}
+    {#if output.members.length === 1}<p>You are the only member. You can send messages and create a new invitation.</p>{/if}
+    {#if output.retained_messages}<p>{output.retained_messages} saved messages remain unconfirmed. Removing a member does not mark their messages delivered.</p>{/if}
+    {#if recoverySelection.length}
+      {#if recoveryConfirmed}<p>Remove {recoverySelection.length} selected members from this channel?</p><button disabled={busy || !executeCommand} onclick={() => void recoverMembers()}>Confirm removal</button><button disabled={busy} onclick={() => recoveryConfirmed = false}>Cancel</button>
+      {:else}<button disabled={busy || !executeCommand} onclick={() => recoveryConfirmed = true}>Remove selected members…</button>{/if}
+    {/if}
+    <details><summary>Details</summary><p>Membership version: {output.epoch}</p>{#each output.members as member}<p>{member.nickname}: {member.id}</p>{/each}</details>
+    {#if feedback}<p role="status">{feedback}</p>{/if}
   {:else if output.kind === 'directory'}
     <h2>Channels</h2>
     {#if !output.channels.length}<p>No channels found. Refresh the public directory or paste an invitation.</p>{/if}
@@ -73,6 +113,7 @@
   {/if}
 </section>
 <style>
+  .recovery-member { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 0; min-height:44px; }.recovery-member small { color:var(--muted); }
   .result { padding:8px 0; overflow-wrap:anywhere; }
   h2 { font:inherit; font-weight:600; margin:0 0 8px; } p { margin:8px 0; }
   button { font:inherit; color:var(--ink); background:transparent; border:0; text-decoration:underline; padding:8px; min-height:44px; margin:2px; cursor:pointer; }
