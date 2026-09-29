@@ -33,14 +33,7 @@ pub(super) fn global_command(text: &str) -> bool {
         || text.eq_ignore_ascii_case("/contact")
         || matches!(
             text.to_ascii_lowercase().as_str(),
-            "/network"
-                | "/status"
-                | "/list"
-                | "/create"
-                | "/join"
-                | "/lock"
-                | "/quit"
-                | "/disconnect"
+            "/network" | "/status" | "/create" | "/join" | "/lock" | "/quit" | "/disconnect"
         )
 }
 pub(super) fn handles(conversation: Option<&str>, text: &str) -> bool {
@@ -68,6 +61,8 @@ pub(super) fn validate(conversation: Option<&str>, text: &str) -> Result<(), Str
 pub(super) fn commands() -> Vec<gchat_api::CommandSpec> {
     [
         ("/help", "", "Show hosted channel commands"),
+        ("/list", "[cursor]", "Browse explicitly published hosted channels"),
+        ("/publish", "name|--remove", "Publish a public directory name, or withdraw it; the topic remains encrypted"),
         ("/say", "text", "Send literal text"), ("/me", "text", "Send an action"), ("/notice", "text", "Send a notice; notices never trigger automatic replies"),
         ("/topic", "[text|--clear]", "Read or change this channel's topic"), ("/nick", "nickname", "Change your channel nickname"),
         ("/mode", "[+o|-o|+v|-v|+b|-b|+e|-e|+I|-I member | +m|-m|+i|-i|+t|-t | +k|-k | +l number | private|secret|public]", "Inspect or change channel policy"),
@@ -246,6 +241,17 @@ pub(super) fn mark_read(
     }
     Ok(())
 }
+fn directory_cursor(value: &str) -> Result<[u8; 32], String> {
+    if value.len() != 64 || !value.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err("Use the directory's next-page cursor".into());
+    }
+    let mut id = [0; 32];
+    for (i, byte) in id.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&value[2 * i..2 * i + 2], 16)
+            .map_err(|_| "Invalid directory cursor")?;
+    }
+    Ok(id)
+}
 fn member(channel: &h::Channel, query: &str) -> Result<[u8; 32], String> {
     if let Some(member) = channel.members.iter().find(|m| hex(&m.id) == query) {
         return Ok(member.id);
@@ -310,6 +316,13 @@ fn describe_change(change: &h::Change, name: &impl Fn([u8; 32]) -> String) -> St
                 h::AccessList::InviteException => "invite exception",
             }
         ),
+        h::Change::Listing(name) => {
+            if name.is_empty() {
+                "withdrew public directory publication".into()
+            } else {
+                format!("published the public directory name {name}")
+            }
+        }
         h::Change::Capacity(n) => format!("set capacity to {n}"),
         h::Change::Discovery(value) => format!(
             "made channel discovery {}",
@@ -658,6 +671,69 @@ impl ChatService {
                 notice: None,
             })
         };
+        let browse_args = if command.eq_ignore_ascii_case("list") {
+            Some(args)
+        } else if command.eq_ignore_ascii_case("hosted")
+            && split_head(args).0.eq_ignore_ascii_case("list")
+        {
+            Some(split_head(args).1)
+        } else {
+            None
+        };
+        if let Some(cursor) = browse_args {
+            let target = self
+                .runtime
+                .network_client()
+                .ok_or("Hosted discovery requires an installed network")?
+                .hosted_endpoints()
+                .map_err(|e| e.to_string())?
+                .into_iter()
+                .next()
+                .ok_or("Network has no hosted endpoint")?;
+            let after = if cursor.is_empty() {
+                None
+            } else {
+                Some(directory_cursor(cursor)?)
+            };
+            let h::Reply::Directory { entries, next } = self
+                .hosted_exchange(h::Request::Directory {
+                    endpoint: target,
+                    after,
+                    limit: 16,
+                })
+                .await?
+            else {
+                return Err("Invalid hosted directory reply".into());
+            };
+            let mut lines = entries
+                .into_iter()
+                .map(|entry| match entry.link {
+                    Some(link) => format!(
+                        "{} [{}] · {}/{} members\n/hosted join {} {} nickname",
+                        entry.name,
+                        hex(&entry.channel),
+                        entry.members,
+                        entry.capacity,
+                        link.0,
+                        entry.name
+                    ),
+                    None => format!(
+                        "{} [{}] · {}/{} members · invitation required",
+                        entry.name,
+                        hex(&entry.channel),
+                        entry.members,
+                        entry.capacity
+                    ),
+                })
+                .collect::<Vec<_>>();
+            if lines.is_empty() {
+                lines.push("No public hosted channels on this page.".into());
+            }
+            if let Some(next) = next {
+                lines.push(format!("Next page: /hosted list {}", hex(&next)));
+            }
+            return output("Public hosted channels", lines.join("\n\n"));
+        }
         if command.eq_ignore_ascii_case("hosted") {
             let (verb, args) = split_head(args);
             let request=match verb {
@@ -668,7 +744,7 @@ impl ChatService {
                     h::Request::Create{endpoint:target,alias:parts[0].trim_start_matches('#').into(),nickname:parts[1].into(),capacity:500,admission}
                 }
                 "join"=>{let parts:Vec<_>=args.split_whitespace().collect(); if parts.len()!=3{return Err("Usage: /hosted join link #alias nickname".into())} h::Request::Join{link:h::InviteLink(parts[0].into()),alias:parts[1].trim_start_matches('#').into(),nickname:parts[2].into()} }
-                _=>return Err("Usage: /hosted create #name nickname [private|public|code] | /hosted join link #alias nickname".into()),
+                _=>return Err("Usage: /hosted list [cursor] | /hosted create #name nickname [private|public|code] | /hosted join link #alias nickname".into()),
             };
             let h::Reply::Channel(channel) = self.hosted_exchange(request).await? else {
                 return Err("Invalid hosted admission reply".into());
@@ -895,6 +971,17 @@ impl ChatService {
             "owner" => (h::Change::Transfer(member(&channel, args)?), ""),
             "part" => (h::Change::Leave, args),
             "close-channel" => (h::Change::Close, args),
+            "publish" => (
+                h::Change::Listing(if args == "--remove" {
+                    String::new()
+                } else {
+                    if args.is_empty() {
+                        return Err("Usage: /publish name|--remove".into());
+                    }
+                    args.into()
+                }),
+                "",
+            ),
             "mode" => {
                 if args.is_empty() {
                     return output(
@@ -1165,6 +1252,19 @@ mod tests {
         );
         assert!(!projected[0].policy.as_ref().unwrap().presence_enabled);
     }
+    #[test]
+    fn hosted_directory_commands_are_scoped_and_cursors_are_bounded() {
+        assert!(handles(Some("hosted/room"), "/list"));
+        assert!(!handles(Some("channel/legacy"), "/list"));
+        assert!(handles(None, "/hosted list"));
+        assert!(validate(Some("hosted/room"), "/publish #public").is_ok());
+        assert!(commands().iter().any(|c| c.name == "/publish"));
+        assert_eq!(directory_cursor(&hex(&[17; 32])).unwrap(), [17; 32]);
+        for bad in ["not-a-cursor", &"0".repeat(63), &"é".repeat(32)] {
+            assert!(directory_cursor(bad).is_err());
+        }
+    }
+
     #[test]
     fn admission_secrets_are_not_recalled_and_scoped_bans_can_be_removed_after_departure() {
         assert_eq!(recall_text("/hosted join SECRET #room bob"), "/hosted ");

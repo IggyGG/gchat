@@ -634,3 +634,14 @@ errors. File authorization now follows the conversation capability; the full
 workspace run with no channel permission in the contact journey remains pending.
 The underlying large contact restart failure is being diagnosed in GComs; no
 claim of full file recovery, protected-network capacity or release qualification.
+
+### IRC directory and contact-only permissions — 2026-09-29
+
+GChat browses opt-in public hosted rooms through `/hosted list` (or `/list` in a
+hosted room), with explicit `/publish` and withdrawal. Labels include the pinned
+channel identity; encrypted topics are excluded. The paired IPC contract is 24.
+Contact-only unlock now accepts DirectMessage authority without ChannelMember;
+file and conversation operations retain their individual capability checks.
+`files-contact-only-08.log` passes the real file/chat/persistence journey and
+strict workspace Clippy; `directory-01.log` passes command/cursor checks and
+strict Clippy. The full updated workspace run remains in progress.

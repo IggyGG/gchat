@@ -514,3 +514,11 @@ block. File snapshots and binary I/O enforce the stored conversation's capabilit
 Quota, one-time scoped activity and retryable file errors have separate assertions.
 Large partial-file restart and authenticated completion are also required in the
 paired GComs runtime gate; a small complete file is not recovery qualification.
+
+## Opt-in hosted directory and contact-only unlock
+
+Require `/hosted list` globally and `/list` only in hosted context; preserve legacy
+list behavior. Validate 64-hex pagination cursors and explicit operator `/publish`
+controls against the paired service/runtime/IPC24 tests. Run the independent
+contact file journey with DirectMessage but without ChannelMember authority;
+IdentityRead alone must not unlock a messaging service.

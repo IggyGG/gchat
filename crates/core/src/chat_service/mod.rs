@@ -599,7 +599,16 @@ impl ChatService {
         }
         if let Request::Unlock { passphrase, create } = request {
             let started = Instant::now();
-            self.require(Capability::ChannelMember)?;
+            if ![
+                Capability::ChannelMember,
+                Capability::DirectMessage,
+                Capability::HostedChannels,
+            ]
+            .iter()
+            .any(|capability| self.capabilities.contains(capability))
+            {
+                self.require(Capability::ChannelMember)?;
+            }
             let passphrase = Zeroizing::new(passphrase);
             if passphrase.len() > 4096 {
                 return Err("passphrase exceeds bound".into());
@@ -2160,7 +2169,7 @@ impl ChatService {
             });
         }
         if self.capabilities.contains(&Capability::HostedChannels) {
-            commands.push(Completion { text: "/hosted".into(), description: "Hosted channels: /hosted create #name nickname [private|public|code] or /hosted join link #alias nickname".into() });
+            commands.push(Completion { text: "/hosted".into(), description: "Hosted channels: /hosted list [cursor], create #name nickname [private|public|code], or join link #alias nickname".into() });
         }
         commands.push(Completion {
             text: "/presence".into(),

@@ -39,7 +39,11 @@ Signed-card import commands have a 192 KiB limit; ordinary message limits remain
 The opt-in `/hosted create #name nickname [private|public|code]` and
 `/hosted join invitation #alias nickname` commands use the installed network's
 hosted MLS service. Private creation is the default. `/help` in a hosted channel
-lists moderation, invitations, roles, presence and channel commands. Topic,
+lists moderation, invitations, roles, presence and channel commands. Operators
+can explicitly publish a directory name with `/publish name`, and withdraw it
+with `/publish --remove`. Use `/hosted list [cursor]` anywhere, or `/list` in a
+hosted room, to browse the installed network. Public admission alone does not
+publish a room. Private/secret rooms and encrypted topics stay out of listings. Topic,
 nickname, action, notice and signed activity share the same desktop/TUI API.
 Message status distinguishes queued, service accepted, recipient delivered and
 failed. Service acceptance never proves recipient delivery.
