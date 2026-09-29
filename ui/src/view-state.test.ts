@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_INPUT_BYTES } from './api';
-import { ConversationViews, inputError, shouldComplete } from './view-state';
+import { ConversationViews, commandInputLimit, inputError, shouldComplete } from './view-state';
 
 describe('attachment-local conversation state', () => {
   it('keeps different destinations and attachments separate and clears on lock', () => {
@@ -29,3 +29,11 @@ describe('full input and keyboard escape', () => {
     expect(shouldComplete(tab, '/query', false)).toBe(true);
   });
 });
+
+ it('allows bounded signed contact cards without expanding chat or other commands', () => {
+   const card = '/contact add friend ' + 'x'.repeat(24000);
+   expect(inputError(card, commandInputLimit(card))).toBe('');
+   expect(inputError('/say ' + card, commandInputLimit('/say ' + card))).not.toBe('');
+   expect(commandInputLimit('/CONTACT UPDATE friend card')).toBe(192 * 1024);
+   expect(commandInputLimit('/contact addendum friend')).toBe(MAX_INPUT_BYTES);
+ });

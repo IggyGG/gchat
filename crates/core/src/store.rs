@@ -438,26 +438,48 @@ impl ChatServiceStore {
         &self,
         path: &std::path::Path,
     ) -> Result<(Self, T), String> {
-        const MAGIC: &[u8; 6] = b"GCCHI1";
+        self.companion(path, b"GCCHI1", b"gchat-hosted-archive-v1")
+    }
+
+    pub(crate) fn contact_companion<T: Serialize + DeserializeOwned + Default>(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<(Self, T), String> {
+        self.companion(path, b"GCCTC1", b"gchat-contact-archive-v1")
+    }
+
+    pub(crate) fn preferences_companion<T: Serialize + DeserializeOwned + Default>(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<(Self, T), String> {
+        self.companion(path, b"GCPRF1", b"gchat-preferences-v1")
+    }
+
+    fn companion<T: Serialize + DeserializeOwned + Default>(
+        &self,
+        path: &std::path::Path,
+        magic: &'static [u8; 6],
+        domain: &[u8],
+    ) -> Result<(Self, T), String> {
         let key = |salt: &[u8; 16]| {
             use hmac::Mac;
             let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(&*self.0.key)
                 .map_err(|_| "companion key")?;
-            mac.update(b"gchat-hosted-archive-v1");
+            mac.update(domain);
             mac.update(salt);
             Ok(Zeroizing::new(mac.finalize().into_bytes().into()))
         };
         if path.try_exists().map_err(|e| e.to_string())? {
             let (store, bytes): (_, Vec<u8>) =
-                EncryptedStore::open_with_key(path, MAGIC, "corrupted hosted archive", key)?;
+                EncryptedStore::open_with_key(path, magic, "corrupted application archive", key)?;
             let state = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             Ok((Self(store), state))
         } else {
             Ok((
                 Self(EncryptedStore::create_with_key(
                     path,
-                    MAGIC,
-                    "hosted archive",
+                    magic,
+                    "application archive",
                     key,
                 )?),
                 T::default(),

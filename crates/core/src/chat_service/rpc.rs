@@ -522,7 +522,8 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
         if method == "submit" {
             let args: ChatSubmitArgs = serde_json::from_value(value.clone())
                 .map_err(|e| RpcError::invalid(e.to_string()))?;
-            if args.text.is_empty() || args.text.len() > gchat_api::MAX_INPUT_BYTES {
+            if args.text.is_empty() || args.text.len() > gchat_api::command_input_limit(&args.text)
+            {
                 return Err(RpcError::invalid("submit text exceeds chat input bounds"));
             }
             if matches!(args.text.trim(), "/lock" | "/disconnect" | "/quit") {

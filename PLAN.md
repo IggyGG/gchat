@@ -1,3 +1,22 @@
+## IRC contact and workflow checkpoint (2026-09-29, Codex)
+
+Independent signed-card contacts now deliver through the durable application
+inbox without a shared channel. Exact-content authenticated receipts, stable IDs,
+block persistence, encrypted sidecar rollback isolation and opt-in expiring
+presence have focused and real two-instance coverage. Local mute, scoped ignore,
+highlights and command aliases use the same service API in every attached UI.
+`contacts-09.log` passes four contact-related unit tests, the real two-instance
+contact/presence/preferences/reopen test, and strict workspace Clippy. Earlier
+fixture, input-limit, durable-send and binary-presence-codec failures are retained.
+`contacts-07.log` separately passes the scoped preference/alias unit test.
+
+`contacts-ui-02.log` passes both Svelte checks, 63 UI tests and a production build
+with refreshed generated API/RPC contracts. `contacts-ui-01.log` retains a stale
+generator-output failure; regeneration from the touched source corrected it.
+Full updated workspace,
+independent and hosted files, service deployment and actual 500-member network/
+native qualification remain open. This checkpoint is not a parity release.
+
 ## IRC parity implementation (2026-09-29, Codex)
 
 In progress: the shared application now projects opt-in hosted channels from the

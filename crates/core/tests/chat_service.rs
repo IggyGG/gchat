@@ -2500,3 +2500,193 @@ async fn reconnect_command_exchanges_existing_member_routes_without_rejoining() 
     ar.shutdown().await.unwrap();
     br.shutdown().await.unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn independent_contacts_deliver_without_channels_and_preserve_block_and_history() {
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    let ar = open_runtime(a.path(), true).await;
+    let br = open_runtime(b.path(), true).await;
+    let make = |home: &Path, runtime: ProtocolRuntime| {
+        ChatService::new(
+            home.join("chat.gcarchive"),
+            runtime,
+            vec![
+                Capability::IdentityRead,
+                Capability::DirectMessage,
+                Capability::ChannelMember,
+                Capability::EventRead,
+            ],
+        )
+        .unwrap()
+    };
+    let alice = make(a.path(), ar.clone());
+    let bob = make(b.path(), br.clone());
+    unlock(&alice, true).await;
+    unlock(&bob, true).await;
+    let card = |reply| match reply {
+        Response::Output {
+            output: gchat_api::CommandOutput::Text { text, .. },
+            ..
+        } => text,
+        other => panic!("contact card: {other:?}"),
+    };
+    let ac = card(submit(&alice, "contact-card-alice", None, "/contact card").await);
+    let bc = card(submit(&bob, "contact-card-bob", None, "/contact card").await);
+    let applied = |reply| match reply {
+        Response::Applied {
+            conversation: Some(id),
+            ..
+        } => id,
+        other => panic!("contact admission: {other:?}"),
+    };
+    let ab = applied(
+        submit(
+            &alice,
+            "contact-add-bob-01",
+            None,
+            &format!("/contact add bob {bc}"),
+        )
+        .await,
+    );
+    let ba = applied(
+        submit(
+            &bob,
+            "contact-add-alice",
+            None,
+            &format!("/contact add alice {ac}"),
+        )
+        .await,
+    );
+    assert!(ab.starts_with("contact/") && ba.starts_with("contact/"));
+    for (service, operation, conversation, text) in [
+        (
+            &alice,
+            "contact-alias-add01",
+            &ab,
+            "/alias announce /notice",
+        ),
+        (
+            &bob,
+            "contact-highlight01",
+            &ba,
+            "/highlight add independent",
+        ),
+        (&bob, "contact-mute-on-01", &ba, "/mute on"),
+        (&bob, "contact-away-on-01", &ba, "/away lunch"),
+    ] {
+        assert!(matches!(
+            submit(service, operation, Some(conversation), text).await,
+            Response::Output { .. } | Response::Applied { .. }
+        ));
+    }
+
+    assert!(ar.sdk_client().list_channels().await.unwrap().is_empty());
+    assert!(br.sdk_client().list_channels().await.unwrap().is_empty());
+    assert!(matches!(
+        submit(
+            &alice,
+            "contact-message-1",
+            Some(&ab),
+            "/announce independent hello"
+        )
+        .await,
+        Response::Applied { .. }
+    ));
+    let history = |conversation: String| Request::History {
+        conversation,
+        before: None,
+        limit: 50,
+    };
+    tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            let Response::History { page } = request(&alice, history(ab.clone())).await else {
+                panic!("history");
+            };
+            if page
+                .messages
+                .first()
+                .is_some_and(|m| m.delivery == Some(gchat_api::Delivery::Delivered))
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .unwrap_or_else(|error| panic!("authenticated contact acknowledgment: {error}"));
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if alice.snapshot().await.unwrap().conversations[0].members[0].presence
+                == Some(gchat_api::MemberPresence::Away {
+                    reason: "lunch".into(),
+                })
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("opt-in contact away lease");
+    let Response::History { page } = request(&bob, history(ba.clone())).await else {
+        panic!("history");
+    };
+    assert_eq!(page.messages.len(), 1);
+    assert_eq!(page.messages[0].body, "independent hello");
+    assert_eq!(page.messages[0].highlighted, Some(true));
+    assert_eq!(
+        bob.snapshot().await.unwrap().conversations[0].muted,
+        Some(true)
+    );
+    assert_eq!(bob.snapshot().await.unwrap().conversations[0].unread, 0);
+    assert!(matches!(
+        submit(&bob, "contact-ignore-alice", Some(&ba), "/ignore alice").await,
+        Response::Output { .. }
+    ));
+    let Response::History { page: hidden } = request(&bob, history(ba.clone())).await else {
+        panic!("history");
+    };
+    assert!(hidden.messages.is_empty());
+    assert!(matches!(
+        submit(&bob, "contact-unignore-01", Some(&ba), "/unignore alice").await,
+        Response::Output { .. }
+    ));
+
+    assert_eq!(
+        page.messages[0].message_kind,
+        Some(gchat_api::MessageKind::Notice)
+    );
+    assert!(matches!(
+        submit(&bob, "contact-block-alice", Some(&ba), "/block").await,
+        Response::Applied { .. }
+    ));
+    bob.disconnect().await.unwrap();
+    drop(bob);
+    // Keep the protocol identity active, but reopen the sole archive owner.
+    let bob = make(b.path(), br.clone());
+    unlock(&bob, false).await;
+    let snapshot = bob.snapshot().await.unwrap();
+    assert_eq!(snapshot.conversations[0].id, ba);
+    assert_eq!(snapshot.conversations[0].topic, "Blocked contact");
+    assert_eq!(snapshot.conversations[0].muted, Some(true));
+    let Response::History { page } = request(&bob, history(ba.clone())).await else {
+        panic!("history");
+    };
+    assert_eq!(page.messages.len(), 1);
+    assert!(matches!(
+        submit(&bob, "contact-blocked-send", Some(&ba), "must not send").await,
+        Response::Error { .. }
+    ));
+    let stored = std::fs::read(b.path().join("chat.contacts")).unwrap();
+    assert!(!stored.windows(17).any(|w| w == b"independent hello"));
+    let snapshot = alice.snapshot().await.unwrap();
+    assert!(!snapshot
+        .command_history
+        .iter()
+        .any(|line| line.contains("gchat-contact:v1:")));
+    alice.disconnect().await.unwrap();
+    bob.disconnect().await.unwrap();
+    ar.shutdown().await.unwrap();
+    br.shutdown().await.unwrap();
+}

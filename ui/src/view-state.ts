@@ -1,4 +1,8 @@
-import type { Message } from './api';
+import { MAX_CONTACT_INPUT_BYTES, MAX_INPUT_BYTES, type Message } from './api';
+
+export function commandInputLimit(text: string): number {
+  return /^\/contact\s+(add|update)(?:\s|$)/i.test(text.trimStart()) ? MAX_CONTACT_INPUT_BYTES : MAX_INPUT_BYTES;
+}
 
 export interface ConversationView {
   draft: string;

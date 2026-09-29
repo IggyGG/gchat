@@ -24,7 +24,7 @@
   import MessageResult from './MessageResult.svelte';
   import { chatError, ChatError, type Transport } from './transport';
   import { MAX_INPUT_BYTES, MAX_NETWORK_INVITATION_BYTES } from './api';
-  import { ConversationViews, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
+  import { ConversationViews, commandInputLimit, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
   import { fitVisualViewport, isTouchActivation } from './viewport';
   import { PendingPicker, type PendingPickerView, type PickerTarget } from './pending-picker';
 
@@ -433,7 +433,7 @@
     } catch (error) { pickerNotice = chatError(error).message; }
     finally { continuingPicker = false; }
   }
-  const draftError = $derived(inputError(draft, dialog === 'join' && !joiningPublic ? MAX_NETWORK_INVITATION_BYTES : draft.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES));
+  const draftError = $derived(inputError(draft, dialog === 'join' && !joiningPublic ? MAX_NETWORK_INVITATION_BYTES : draft.startsWith('/') ? commandInputLimit(draft) : active?.inputLimitBytes ?? MAX_INPUT_BYTES));
   function failureTarget(id: string | null) {
     const conversation = snapshot?.conversations.find(c => c.id === id);
     return conversation ? `${conversation.name}${conversation.kind === 'query' ? ` · ${conversation.topic}` : ''}` : id ? 'Original conversation' : 'Status';
@@ -685,7 +685,7 @@
       return;
     }
     if (busy || sendingFull) { notice = 'The outgoing queue is full. Your draft is kept; send it when capacity becomes available.'; return; }
-    const error = inputError(text, text.startsWith('/') ? MAX_INPUT_BYTES : active?.inputLimitBytes ?? MAX_INPUT_BYTES);
+    const error = inputError(text, text.startsWith('/') ? commandInputLimit(text) : active?.inputLimitBytes ?? MAX_INPUT_BYTES);
     if (error) { notice = error; return; }
     if (!text.startsWith('/')) atBottom = true;
     const request: Request = { kind: 'submit', operation_id: crypto.randomUUID(), conversation: selected, text };
@@ -962,7 +962,7 @@
             {@const action = message.messageKind === 'action' || legacyAction}
             {#if !index || new Date(timeline[index - 1].timestamp * 1000).toLocaleDateString() !== date}<div class="date">{date}</div>{/if}
             {#if selected && unreadMarkers[selected] === message.id}<div class="unread-divider">New messages</div>{/if}
-            <div class="message" data-timeline-key={message.operationId ?? message.id} class:mine={message.mine}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : message.messageKind === 'notice' ? `-${message.nickname}-` : `<${message.nickname}>`}</span><span class="body"><MessageText text={legacyAction ? message.body.slice(8, -1) : message.body} members={active?.members ?? []} />{#if message.delivery}<small class="acceptance" title={message.delivery === 'delivered' ? 'Acknowledged by the recipients of this message; not a read receipt' : message.delivery === 'service_accepted' ? 'Stored by the ciphertext service; recipient delivery is not confirmed' : message.delivery === 'failed' ? 'This send was refused; check channel activity' : 'Accepted by this instance; recipient delivery is not confirmed'}> · {message.delivery === 'delivered' ? 'delivered' : message.delivery === 'service_accepted' ? 'stored by service' : message.delivery === 'failed' ? 'failed' : 'accepted locally'}</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
+            <div class="message" data-timeline-key={message.operationId ?? message.id} class:mine={message.mine} class:highlighted={message.highlighted}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : message.messageKind === 'notice' ? `-${message.nickname}-` : `<${message.nickname}>`}</span><span class="body"><MessageText text={legacyAction ? message.body.slice(8, -1) : message.body} members={active?.members ?? []} />{#if message.delivery}<small class="acceptance" title={message.delivery === 'delivered' ? 'Acknowledged by the recipients of this message; not a read receipt' : message.delivery === 'service_accepted' ? 'Stored by the ciphertext service; recipient delivery is not confirmed' : message.delivery === 'failed' ? 'This send was refused; check channel activity' : 'Accepted by this instance; recipient delivery is not confirmed'}> · {message.delivery === 'delivered' ? 'delivered' : message.delivery === 'service_accepted' ? 'stored by service' : message.delivery === 'failed' ? 'failed' : 'accepted locally'}</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
             {:else if item.activity}<div class="activity"><time>[{time(item.timestamp)}]</time> {item.activity.text}</div>
             {:else if item.result}
               {@const result = item.result}
@@ -1208,6 +1208,7 @@
   .date { margin:14px 0; color:var(--muted); text-align:center; border-bottom:1px solid var(--line); }
   .acceptance { font:11px/1.4 ui-sans-serif,system-ui,sans-serif; }
   .older { display:block; margin:0 auto 12px; border-color:var(--line); color:var(--accent); }
+  .message.highlighted { background:color-mix(in srgb, var(--accent) 12%, transparent); border-left:2px solid var(--accent); }
   .unread-divider { color:var(--accent); border-top:1px solid var(--accent); text-align:center; margin:12px 0; }
   .jump { align-self:center; min-height:40px; color:var(--accent); }
   .operation-details dd { overflow-wrap:anywhere; }

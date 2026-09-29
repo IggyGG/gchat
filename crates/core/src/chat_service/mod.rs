@@ -1,4 +1,5 @@
 //! One archive owner and one command implementation for every UI attachment.
+mod contacts;
 mod extensions;
 mod files;
 mod fleet;
@@ -6,6 +7,8 @@ pub mod host;
 mod host_updates;
 mod hosted;
 mod networks;
+mod persistence;
+mod preferences;
 mod presentation;
 #[cfg(test)]
 mod responsiveness_tests;
@@ -48,6 +51,10 @@ struct InstanceMetadata {
 struct UiState {
     #[serde(skip)]
     hosted: BTreeMap<String, hosted::Archive>,
+    #[serde(skip)]
+    contacts: contacts::Book,
+    #[serde(skip)]
+    preferences: preferences::Preferences,
     networks: BTreeMap<String, networks::RetainedNetwork>,
     topics: BTreeMap<String, String>,
     observed_channels: BTreeMap<String, ObservedChannel>,
@@ -136,9 +143,10 @@ struct Unlocked {
     files: Option<Arc<files::FileRuntime>>,
     file_error: Option<String>,
     hosted_error: Option<String>,
+    contact_error: Option<String>,
     ui_locked: bool,
     client: ClientHandle,
-    store: hosted::ServiceStateStore,
+    store: persistence::ServiceStateStore,
     state: UiState,
 }
 
@@ -190,6 +198,7 @@ pub struct ChatService {
     stopped: watch::Sender<bool>,
     file_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     hosted_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    contact_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     fleet: Mutex<Option<fleet::Transport>>,
     catalog_urls: std::sync::RwLock<Vec<String>>,
 }
@@ -313,6 +322,7 @@ impl ChatService {
             stopped: watch::channel(false).0,
             file_worker: std::sync::Mutex::new(None),
             hosted_worker: std::sync::Mutex::new(None),
+            contact_worker: std::sync::Mutex::new(None),
             fleet: Mutex::new(None),
             catalog_urls: std::sync::RwLock::new(Vec::new()),
         });
@@ -351,6 +361,8 @@ impl ChatService {
             .expect("startup worker handle") = Some(Self::spawn_startup_worker(&service));
         *service.hosted_worker.lock().expect("hosted worker") =
             Some(Self::spawn_hosted_worker(&service));
+        *service.contact_worker.lock().expect("contact worker") =
+            Some(Self::spawn_contact_worker(&service));
         Ok(service)
     }
 
@@ -625,7 +637,7 @@ impl ChatService {
                 state.instance_id = self.id.clone();
                 state.safety_number = safety;
                 state.file_key.get_or_insert_with(rand::random);
-                let store = hosted::ServiceStateStore::open(
+                let store = persistence::ServiceStateStore::open(
                     store,
                     &self.archive.with_extension("hosted-history"),
                     &mut state,
@@ -634,6 +646,7 @@ impl ChatService {
                 *session = Some(Unlocked {
                     files: None,
                     hosted_error: None,
+                    contact_error: None,
                     file_error: Some("Preparing encrypted file cache…".into()),
                     ui_locked: false,
                     client,
@@ -747,8 +760,20 @@ impl ChatService {
                     }
                     return Ok(response);
                 }
+                if contacts::is_conversation(&conversation) {
+                    return contacts::history(
+                        &unlocked.state.contacts,
+                        &conversation,
+                        before.as_deref(),
+                        limit,
+                        search.as_deref(),
+                    )
+                    .map(|response| preferences::decorate(&unlocked.state.preferences, response));
+                }
                 if let Some(room) = unlocked.state.hosted.get(&conversation) {
-                    return hosted::history(room, before.as_deref(), limit, search.as_deref());
+                    return hosted::history(room, before.as_deref(), limit, search.as_deref()).map(
+                        |response| preferences::decorate(&unlocked.state.preferences, response),
+                    );
                 }
                 let archive = unlocked.client.archive_snapshot();
                 let mut candidate = unlocked.state.clone();
@@ -785,9 +810,12 @@ impl ChatService {
                 } else {
                     None
                 };
-                Ok(Response::History {
-                    page: HistoryPage { messages, before },
-                })
+                Ok(preferences::decorate(
+                    &unlocked.state.preferences,
+                    Response::History {
+                        page: HistoryPage { messages, before },
+                    },
+                ))
             }
             Request::MarkRead {
                 conversation,
@@ -805,6 +833,17 @@ impl ChatService {
                             200,
                         )
                         .await;
+                }
+                if contacts::is_conversation(&conversation) {
+                    let mut candidate = unlocked.state.clone();
+                    contacts::mark_read(&mut candidate.contacts, &conversation, &message_id)?;
+                    unlocked.store.save(&candidate)?;
+                    unlocked.state = candidate;
+                    self.invalidate();
+                    return Ok(Response::Applied {
+                        conversation: None,
+                        notice: None,
+                    });
                 }
                 if unlocked.state.hosted.contains_key(&conversation) {
                     hosted::mark_read(unlocked, &conversation, &message_id)?;
@@ -835,7 +874,10 @@ impl ChatService {
                 })
             }
             Request::Complete { conversation, text } => {
-                let commands: Vec<Completion> = self
+                if let Some(items) = contacts::completions(&unlocked.state.contacts, &text) {
+                    return Ok(Response::Completed { items });
+                }
+                let mut commands: Vec<Completion> = self
                     .context_commands(conversation.as_deref())
                     .into_iter()
                     .filter(|c| c.available)
@@ -844,6 +886,7 @@ impl ChatService {
                         description: c.description,
                     })
                     .collect();
+                commands.extend(unlocked.state.preferences.completions());
                 if let Some(room) = hosted::conversations(&unlocked.state)
                     .into_iter()
                     .find(|c| Some(c.id.as_str()) == conversation.as_deref())
@@ -904,10 +947,10 @@ impl ChatService {
                 {
                     return Err("invalid operation identifier".into());
                 }
-                if text.is_empty() || text.len() > gchat_api::MAX_INPUT_BYTES {
+                if text.is_empty() || text.len() > gchat_api::command_input_limit(&text) {
                     return Err(format!(
                         "message must contain 1–{} UTF-8 bytes",
-                        gchat_api::MAX_INPUT_BYTES
+                        gchat_api::command_input_limit(&text)
                     ));
                 }
                 let digest = hex(&Sha256::digest(
@@ -976,15 +1019,16 @@ impl ChatService {
                 };
                 self.invalidate();
                 let started = Instant::now();
+                let expanded = unlocked.state.preferences.expand(&text)?;
                 drop(session);
                 let response =
-                    match self.validate_submission(&client, conversation.as_deref(), &text) {
+                    match self.validate_submission(&client, conversation.as_deref(), &expanded) {
                         Err(message) => Response::Error {
                             code: "rejected".into(),
                             message,
                         },
                         Ok(()) => match self
-                            .submit(&client, conversation.as_deref(), &text, &operation_id)
+                            .submit(&client, conversation.as_deref(), &expanded, &operation_id)
                             .await
                         {
                             Ok(response) => response,
@@ -1162,6 +1206,7 @@ impl ChatService {
             for channel in &archive.channels {
                 let id = record_key(channel);
                 conversations.push(Conversation {
+                    muted: None,
                     policy: None,
                     provider: None,
                     input_limit_bytes: gchat_api::MAX_INPUT_BYTES,
@@ -1218,6 +1263,7 @@ impl ChatService {
             for pm in &archive.scoped_pms {
                 let id = query_key(pm.id);
                 conversations.push(Conversation {
+                    muted: None,
                     policy: None,
                     provider: None,
                     input_limit_bytes: gchat_api::MAX_INPUT_BYTES,
@@ -1269,6 +1315,7 @@ impl ChatService {
             }
             for (index, legacy) in archive.legacy.conversations.list.iter().enumerate() {
                 conversations.push(Conversation {
+                    muted: None,
                     policy: None,
                     provider: None,
                     input_limit_bytes: gchat_api::MAX_INPUT_BYTES,
@@ -1288,9 +1335,20 @@ impl ChatService {
                 });
             }
             conversations.extend(hosted::conversations(&session.state));
+            conversations.extend(contacts::conversations(
+                &session.state.contacts,
+                &session.state.preferences,
+            ));
             command_history = session.state.command_history.clone();
             input_history = session.state.input_history.clone();
             conversations.extend(self.projection.read().expect("projection lock").0.clone());
+            for room in &mut conversations {
+                room.muted = Some(session.state.preferences.muted(&room.id));
+                if room.muted == Some(true) {
+                    room.unread = 0;
+                }
+                room.commands = self.context_commands(Some(&room.id));
+            }
         }
         let mut provider_errors: Vec<_> = if instance.locked {
             Vec::new()
@@ -1304,6 +1362,14 @@ impl ChatService {
         };
         if let Some(current) = session.filter(|s| !s.ui_locked) {
             provider_errors.extend(hosted::errors(&current.state));
+            if let Some(error) = &current.contact_error {
+                provider_errors.push(gchat_api::ProviderStatus {
+                    id: "contacts".into(),
+                    code: "contact_recovery".into(),
+                    message: error.clone(),
+                    retryable: true,
+                });
+            }
             if let Some(error) = &current.hosted_error {
                 provider_errors.push(gchat_api::ProviderStatus {
                     id: "hosted-archive".into(),
@@ -1358,6 +1424,9 @@ impl ChatService {
                 &operations,
                 &activity,
                 &delivery_revision,
+                &session
+                    .filter(|s| !s.ui_locked)
+                    .map(|s| &s.state.preferences),
                 &session.is_some_and(|s| !s.ui_locked && s.state.presence_enabled),
                 &self.projection.read().expect("projection lock").1,
             ))
@@ -1384,6 +1453,13 @@ impl ChatService {
         conversation: Option<&str>,
         text: &str,
     ) -> Result<(), String> {
+        if preferences::handles(text) {
+            return Ok(());
+        }
+        if contacts::handles(conversation, text) {
+            self.require(Capability::DirectMessage)?;
+            return contacts::validate(conversation, text);
+        }
         if hosted::handles(conversation, text) {
             self.require(Capability::HostedChannels)?;
             return hosted::validate(conversation, text);
@@ -1538,6 +1614,12 @@ impl ChatService {
         text: &str,
         operation_id: &str,
     ) -> Result<Response, String> {
+        if preferences::handles(text) {
+            return self.submit_preference(conversation, text).await;
+        }
+        if contacts::handles(conversation, text) {
+            return self.submit_contact(conversation, text, operation_id).await;
+        }
         if hosted::handles(conversation, text) {
             return self.submit_hosted(conversation, text, operation_id).await;
         }
@@ -2053,6 +2135,18 @@ impl ChatService {
 
     fn commands(&self) -> Vec<Completion> {
         let mut commands = command_catalogue(&self.capabilities);
+        commands.extend(preferences::commands().into_iter().map(|c| Completion {
+            text: c.name,
+            description: c.description,
+        }));
+        if self.capabilities.contains(&Capability::DirectMessage) {
+            commands.push(Completion {
+                text: "/contact".into(),
+                description:
+                    "Independent contacts: card, add, open, rename, verify, block and unblock"
+                        .into(),
+            });
+        }
         if self.capabilities.contains(&Capability::HostedChannels) {
             commands.push(Completion { text: "/hosted".into(), description: "Hosted channels: /hosted create #name nickname [private|public|code] or /hosted join link #alias nickname".into() });
         }
@@ -2093,6 +2187,7 @@ impl ChatService {
             .into_iter()
             .map(|c| {
                 let capability = match c.text.as_str() {
+                    "/contact" => Some("DirectMessage".into()),
                     "/create" | "/invite" | "/kick" | "/owner" | "/publish" => {
                         Some("ChannelAdmin".into())
                     }
@@ -2102,7 +2197,11 @@ impl ChatService {
                     _ => None,
                 };
                 gchat_api::CommandSpec {
-                    usage: command_usage(&c.text).into(),
+                    usage: preferences::commands()
+                        .into_iter()
+                        .find(|p| p.name == c.text)
+                        .map(|p| p.usage)
+                        .unwrap_or_else(|| command_usage(&c.text).into()),
                     scope: if matches!(
                         c.text.as_str(),
                         "/query"
@@ -2172,6 +2271,15 @@ impl ChatService {
     }
 
     fn context_commands(&self, conversation: Option<&str>) -> Vec<gchat_api::CommandSpec> {
+        if conversation.is_some_and(contacts::is_conversation) {
+            let mut commands = contacts::commands();
+            commands.extend(
+                self.command_specs()
+                    .into_iter()
+                    .filter(|c| hosted::global_command(&c.name) || c.name == "/hosted"),
+            );
+            return commands;
+        }
         if conversation.is_some_and(hosted::is_conversation) {
             let mut commands = hosted::commands();
             commands.extend(
@@ -2289,6 +2397,16 @@ impl ChatService {
 
     pub async fn disconnect(&self) -> Result<(), String> {
         self.stopped.send_replace(true);
+        let contacts = self
+            .contact_worker
+            .lock()
+            .map_err(|_| "Contact worker unavailable")?
+            .take();
+        if let Some(worker) = contacts {
+            worker
+                .await
+                .map_err(|_| "Contact worker stopped unexpectedly")?;
+        }
         let hosted = self
             .hosted_worker
             .lock()
@@ -2500,6 +2618,7 @@ fn message(key: &str, m: &crate::model::Message, state: &UiState) -> Message {
         .then(|| state.message_metadata.get(&hex(&m.id)))
         .flatten();
     Message {
+        highlighted: None,
         message_kind: None,
         id: hex(&m.id),
         conversation_id: key.into(),
@@ -2521,7 +2640,14 @@ fn unread(state: &UiState, key: &str, messages: &[crate::model::Message]) -> u32
         .map_or(0, |i| i + 1);
     messages[start..]
         .iter()
-        .filter(|m| !m.mine)
+        .filter(|m| {
+            !m.mine
+                && !state.preferences.ignores(
+                    key,
+                    m.sender_member_id.map(|id| hex(&id.0)).as_deref(),
+                    m.mine,
+                )
+        })
         .count()
         .min(u32::MAX as usize) as u32
 }
@@ -2606,6 +2732,7 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
 }
 fn command_usage(name: &str) -> &str {
     match name {
+        "/contact" => "/contact card | list | add alias code | open alias | info alias | rename alias new-alias | verify alias fingerprint | block alias | unblock alias | update alias code",
         "/reconnect" => "/reconnect [code]",
         "/presence" => "/presence on|off",
         "/publish" => "/publish https://directory.example/",
@@ -2631,6 +2758,14 @@ fn network_arguments(text: &str) -> Option<&str> {
 }
 fn recall_text(text: &str) -> String {
     let (name, args) = split_head(text);
+    if name.eq_ignore_ascii_case("/contact")
+        && matches!(
+            split_head(args).0.to_ascii_lowercase().as_str(),
+            "add" | "update"
+        )
+    {
+        return "/contact ".into();
+    }
     if name.eq_ignore_ascii_case("/hosted") {
         return "/hosted ".into();
     }

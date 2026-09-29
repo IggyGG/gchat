@@ -26,10 +26,19 @@ fn key(id: [u8; 32]) -> String {
     format!("hosted/{}", hex(&id))
 }
 pub(super) fn global_command(text: &str) -> bool {
-    matches!(
-        text.to_ascii_lowercase().as_str(),
-        "/network" | "/status" | "/list" | "/create" | "/join" | "/lock" | "/quit" | "/disconnect"
-    )
+    preferences::handles(text)
+        || text.eq_ignore_ascii_case("/contact")
+        || matches!(
+            text.to_ascii_lowercase().as_str(),
+            "/network"
+                | "/status"
+                | "/list"
+                | "/create"
+                | "/join"
+                | "/lock"
+                | "/quit"
+                | "/disconnect"
+        )
 }
 pub(super) fn handles(conversation: Option<&str>, text: &str) -> bool {
     let command = split_head(text).0;
@@ -96,6 +105,7 @@ pub(super) fn conversations(state: &UiState) -> Vec<Conversation> {
                 .and_then(|id| archive.messages.iter().position(|m| m.id == *id))
                 .map_or(0, |n| n + 1);
             Conversation {
+                muted: None,
                 policy: Some(gchat_api::ChannelPolicy {
                     profile: "hosted-mls-pq-v1".into(),
                     capacity: channel.capacity,
@@ -113,7 +123,11 @@ pub(super) fn conversations(state: &UiState) -> Vec<Conversation> {
                     ConversationKind::Archive
                 },
                 name: format!("#{}", channel.alias.trim_start_matches('#')),
-                topic: channel.topic.clone(),
+                topic: if channel.topic_pending {
+                    "Topic pending".into()
+                } else {
+                    channel.topic.clone()
+                },
                 active: channel.active,
                 owner: channel
                     .members
@@ -148,7 +162,12 @@ pub(super) fn conversations(state: &UiState) -> Vec<Conversation> {
                     .collect(),
                 unread: archive.messages[read..]
                     .iter()
-                    .filter(|m| !m.mine)
+                    .filter(|m| {
+                        !m.mine
+                            && !state
+                                .preferences
+                                .ignores(id, m.member_id.as_deref(), m.mine)
+                    })
                     .count()
                     .min(u32::MAX as usize) as u32,
                 last_message_id: archive.messages.last().map(|m| m.id.clone()),
@@ -390,11 +409,14 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
                             Some(("nickname", format!("{} is now {name}", nickname(sender))));
                         (None, String::new())
                     }
-                    h::Content::Presence { .. } => (None, String::new()),
+                    h::Content::Presence { .. } | h::Content::TopicState { .. } => {
+                        (None, String::new())
+                    }
                 };
                 if let Some(kind) = kind {
                     if !room.messages.iter().any(|m| m.id == id) {
                         room.messages.push(Message {
+                            highlighted: None,
                             message_kind: Some(kind),
                             id: id.clone(),
                             conversation_id: conversation.clone(),
@@ -475,57 +497,6 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
     }
     Ok(room.cursor)
 }
-// Preserve the hosted event cursor together with its messages and activity in a
-// file that legacy GChat cannot rewrite. Only acknowledge runtime events after
-// both writes succeed; a crash between writes replays the same events safely.
-#[derive(Default, Serialize, Deserialize)]
-struct Retained {
-    channels: BTreeMap<String, Archive>,
-    activity: Vec<gchat_api::Activity>,
-}
-
-pub(super) struct ServiceStateStore {
-    legacy: ChatServiceStore,
-    hosted: ChatServiceStore,
-}
-impl ServiceStateStore {
-    pub(super) fn open(
-        legacy: ChatServiceStore,
-        path: &std::path::Path,
-        state: &mut UiState,
-    ) -> Result<Self, String> {
-        let (hosted, retained): (_, Retained) = legacy.hosted_companion(path)?;
-        state.hosted = retained.channels;
-        state
-            .activity
-            .retain(|a| !a.conversation.starts_with("hosted/"));
-        state.activity.extend(retained.activity);
-        state.activity.sort_by_key(|a| a.timestamp);
-        Ok(Self { legacy, hosted })
-    }
-    pub(super) fn verify_passphrase(&self, secret: &str) -> Result<(), String> {
-        self.legacy.verify_passphrase(secret)
-    }
-    pub(super) fn save(&self, state: &UiState) -> Result<(), String> {
-        if !state.hosted.is_empty() || self.hosted.initialized() {
-            self.hosted.save(&Retained {
-                channels: state.hosted.clone(),
-                activity: state
-                    .activity
-                    .iter()
-                    .filter(|a| a.conversation.starts_with("hosted/"))
-                    .cloned()
-                    .collect(),
-            })?;
-        }
-        let mut legacy = state.clone();
-        legacy
-            .activity
-            .retain(|a| !a.conversation.starts_with("hosted/"));
-        self.legacy.save(&legacy)
-    }
-}
-
 impl ChatService {
     async fn hosted_exchange(&self, request: h::Request) -> Result<h::Reply, String> {
         self.require(Capability::HostedChannels)?;
@@ -613,7 +584,7 @@ impl ChatService {
                             .await
                         {
                             Ok(h::Reply::Channel(channel)) => {
-                                service.archive_hosted(channel, true).await?
+                                service.archive_hosted(*channel, true).await?
                             }
                             Ok(_) => return Err("Invalid hosted sync reply".into()),
                             Err(error) => {
@@ -695,7 +666,7 @@ impl ChatService {
                 return Err("Invalid hosted admission reply".into());
             };
             let id = key(channel.id);
-            self.archive_hosted(channel, false).await?;
+            self.archive_hosted(*channel, false).await?;
             return Ok(Response::Applied {
                 conversation: Some(id),
                 notice: Some(
@@ -785,7 +756,16 @@ impl ChatService {
                     _ => output("Service information", format!("Profiles: {}\nMaximum members: {}\nMaximum page records: {}\nMaximum request bytes: {}\nPublic creation: {}", info.profiles.join(", "), info.max_members, info.max_page_records, info.max_http_bytes, info.public_creation)),
                 };
             }
-            "topic" => return output("Topic", channel.topic),
+            "topic" => {
+                return output(
+                    "Topic",
+                    if channel.topic_pending {
+                        "Topic pending — waiting for an authorized member to provide it.".into()
+                    } else {
+                        channel.topic
+                    },
+                )
+            }
             "names" | "who" => {
                 return output(
                     "Channel members",
@@ -837,7 +817,7 @@ impl ChatService {
                 else {
                     return Err("Invalid hosted sync reply".into());
                 };
-                self.archive_hosted(channel, true).await?;
+                self.archive_hosted(*channel, true).await?;
                 return output(
                     "Channel recovery",
                     format!("Completed in {} ms", start.elapsed().as_millis()),
@@ -1024,6 +1004,7 @@ mod tests {
             revision: 0,
             active: true,
             topic: String::new(),
+            topic_pending: false,
             members: vec![
                 h::Member {
                     id: [2; 32],
@@ -1072,7 +1053,7 @@ mod tests {
         let hosted_path = dir.path().join("hosted-history");
         let (legacy, mut state): (_, UiState) =
             ChatServiceStore::open_or_create(&legacy_path, "password").unwrap();
-        let store = ServiceStateStore::open(legacy, &hosted_path, &mut state).unwrap();
+        let store = persistence::ServiceStateStore::open(legacy, &hosted_path, &mut state).unwrap();
         store.save(&state).unwrap();
         assert!(
             !hosted_path.exists(),
@@ -1103,7 +1084,7 @@ mod tests {
         old.presence_enabled = true;
         legacy.save(&old).unwrap();
         assert_eq!(std::fs::read(&hosted_path).unwrap(), retained);
-        let store = ServiceStateStore::open(legacy, &hosted_path, &mut old).unwrap();
+        let store = persistence::ServiceStateStore::open(legacy, &hosted_path, &mut old).unwrap();
         assert_eq!(old.hosted[&key([1; 32])].cursor, 1);
         assert_eq!(old.hosted[&key([1; 32])].messages[0].body, "retained");
         assert!(old.presence_enabled);
@@ -1113,7 +1094,7 @@ mod tests {
         std::fs::write(&hosted_path, damaged).unwrap();
         let (legacy, mut old): (_, UiState) =
             ChatServiceStore::open_or_create(&legacy_path, "password").unwrap();
-        assert!(ServiceStateStore::open(legacy, &hosted_path, &mut old).is_err());
+        assert!(persistence::ServiceStateStore::open(legacy, &hosted_path, &mut old).is_err());
     }
 
     #[test]
@@ -1150,13 +1131,9 @@ mod tests {
             archive.messages[0].delivery,
             Some(gchat_api::Delivery::ServiceAccepted)
         );
-        let encoded = serde_json::to_vec(&Retained {
-            channels: state.hosted.clone(),
-            activity: state.activity.clone(),
-        })
-        .unwrap();
-        let restored: Retained = serde_json::from_slice(&encoded).unwrap();
-        assert!(restored.channels == state.hosted);
+        let encoded = serde_json::to_vec(&state.hosted).unwrap();
+        let restored: BTreeMap<String, Archive> = serde_json::from_slice(&encoded).unwrap();
+        assert!(restored == state.hosted);
         let legacy = serde_json::to_vec(&state).unwrap();
         assert!(!serde_json::from_slice::<serde_json::Value>(&legacy)
             .unwrap()

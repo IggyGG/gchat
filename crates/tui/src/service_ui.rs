@@ -47,7 +47,7 @@ fn input_limit(text: &str) -> usize {
     if is_network_invitation(text) {
         gchat_api::MAX_NETWORK_INVITATION_BYTES + "/network join ".len()
     } else {
-        gchat_api::MAX_INPUT_BYTES
+        gchat_api::command_input_limit(text)
     }
 }
 
@@ -665,7 +665,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                                 } else {
                                     format!("<{}> ", m.nickname)
                                 },
-                                Style::default().fg(accent),
+                                Style::default().fg(accent).add_modifier(if m.highlighted == Some(true) { Modifier::BOLD } else { Modifier::empty() }),
                             ),
                         ];
                         message_spans.extend(crate::text::irc_spans(legacy_action.unwrap_or(&m.body)));

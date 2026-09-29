@@ -1,3 +1,19 @@
+## Independent contacts, preferences and presence
+
+With the paired GComs checkout, run `cargo test --workspace --all-features contact
+-- --nocapture` and the `chat_service::preferences` filter through the same
+workspace feature set, then strict all-target/all-feature Clippy. The integration
+case creates two real protocol identities without channels, exchanges signed
+cards, verifies recipient delivery and away presence, tests aliases/highlights/
+mute/ignore/unignore, and reopens the encrypted archive to verify block/history/
+preference persistence. Unit cases cover exact-peer receipts, stable-ID dedup,
+notice-loop prevention, presence opt-out/replay/expiry and rollback isolation.
+
+Regenerate `gchat-types` and its `--rpc` export from the tested source, regenerate
+the JavaScript RPC bindings, then run workspace Svelte checks, UI tests and the
+production build. Preserve the normal ordinary-message bound; only explicit
+contact-card import commands receive the larger bounded input envelope.
+
 ## IRC parity and hosted archive isolation
 
 Run paired GComs runtime/service/MLS checks, then `cargo test --workspace

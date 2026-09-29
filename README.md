@@ -1,3 +1,28 @@
+## Independent contacts and local IRC workflows
+
+Use `/contact card` to share your signed card deliberately, then `/contact add
+alias card` to save a peer. Both sides must add each other. `/contact open alias`
+opens a persistent conversation independent of all channels. `/contact update`
+accepts only the same identity; `/contact verify alias fingerprint` records a
+manual comparison. No global directory or automatic scoped-identity linking is
+introduced. `/block` persists across reopen, stops new sends and suppresses new
+inbound replies; it cannot recall packets already admitted to the transport.
+
+Text, `/me` and `/notice` use durable application messages and exact-content,
+peer-authenticated receipts. A notice never triggers an automatic notice reply.
+`/away reason`, `/back` and `/presence on|off` share presence only with the current
+contact, with ten-minute leases and seven-minute renewal. Sharing defaults off;
+unknown or expired presence is not proof that someone is offline.
+
+`/mute on|off` suppresses a conversation's unread indicators while retaining
+history. `/ignore member` and `/unignore member` affect only the current scoped
+identity. `/highlight add text|remove text|list` marks matching incoming messages.
+`/alias name /command arguments` creates a bounded single-command alias; arguments
+are appended literally and aliases cannot replace built-ins or run shell commands.
+`/unalias name` removes it. Contacts and preferences use separate encrypted
+`.contacts` and `.preferences` sidecars that older GChat clients leave untouched.
+Signed-card import commands have a 192 KiB limit; ordinary message limits remain.
+
 ## Hosted channel work in progress
 
 The opt-in `/hosted create #name nickname [private|public|code]` and
@@ -13,8 +38,9 @@ versions cannot rewrite it. Existing channel archives and scoped private message
 retain their identities. Unlock alone does not create hosted history. IRC control
 formatting is rendered with bounded styles, never HTML or terminal escape output.
 This task branch requires its paired GComs IRC-parity branch. No dependency or
-installed-release update is implied. Independent contacts/files, new-member topic
-recovery and full network/native capacity qualification remain in progress.
+installed-release update is implied. Newcomers see `Topic pending` until an authorized member returns to hand off the
+encrypted topic; invitations contain no extra metadata secret. Independent-file
+transfers and full network/native capacity qualification remain in progress.
 
 Release tooling has a separate Linux/Windows portability workflow; it does not
 compile applications or qualify installed releases. Mac artifact paths retain
