@@ -1,3 +1,8 @@
+The follow-up `contacts-10.log` passes the same contact unit/integration checks and
+strict Clippy on paired GComs `4e5df35`. A full receipt outbox now leaves incoming
+messages durable while continuing to process other receipts and drain outbound
+ACKs. `/server-info` also displays service extensions and configured request rates.
+
 ## IRC contact and workflow checkpoint (2026-09-29, Codex)
 
 Independent signed-card contacts now deliver through the durable application

@@ -901,18 +901,29 @@ impl ChatService {
         if incoming.is_empty() {
             *cursor = 0;
         }
+        let mut deferred_error = None;
         for delivery in incoming {
             let consume = {
                 let mut session = self.session.lock().await;
                 let current = session.as_mut().ok_or("Contact archive is closed")?;
                 let mut candidate = current.state.clone();
-                let consume = receive(&mut candidate.contacts, &delivery)?;
-                if candidate.contacts != current.state.contacts {
-                    current.store.save(&candidate)?;
-                    current.state = candidate;
-                    self.invalidate();
+                match receive(&mut candidate.contacts, &delivery) {
+                    Ok(consume) => {
+                        if candidate.contacts != current.state.contacts {
+                            current.store.save(&candidate)?;
+                            current.state = candidate;
+                            self.invalidate();
+                        }
+                        consume
+                    }
+                    Err(error) => {
+                        // Keep this delivery durable and visit it on the next scan.
+                        // Continue to other receipts and drain outgoing ACKs even
+                        // when one contact or the receipt outbox is full.
+                        deferred_error = Some(error);
+                        false
+                    }
                 }
-                consume
             };
             if consume {
                 sdk.commit_application(delivery.sequence, delivery.receipt_digest)
@@ -1027,7 +1038,7 @@ impl ChatService {
                 self.invalidate();
             }
         }
-        Ok(())
+        deferred_error.map_or(Ok(()), Err)
     }
     pub(super) fn spawn_contact_worker(service: &Arc<Self>) -> tokio::task::JoinHandle<()> {
         let weak = Arc::downgrade(service);

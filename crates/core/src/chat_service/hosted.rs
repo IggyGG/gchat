@@ -753,7 +753,7 @@ impl ChatService {
                     "motd" => output("Message of the day", info.motd),
                     "rules" => output("Service rules", info.rules),
                     "admin" => output("Network operator", info.operator_contact),
-                    _ => output("Service information", format!("Profiles: {}\nMaximum members: {}\nMaximum page records: {}\nMaximum request bytes: {}\nPublic creation: {}", info.profiles.join(", "), info.max_members, info.max_page_records, info.max_http_bytes, info.public_creation)),
+                    _ => output("Service information", format!("Profiles: {}\nExtensions: {}\nMaximum members: {}\nMaximum page records: {}\nMaximum request bytes: {}\nPublic creation: {}\nService requests/second: {}\nSource requests/second: {}", info.profiles.join(", "), info.extensions.join(", "), info.max_members, info.max_page_records, info.max_http_bytes, info.public_creation, info.requests_per_second.map_or_else(|| "not advertised".into(), |n| n.to_string()), info.source_requests_per_second.map_or_else(|| "not advertised".into(), |n| n.to_string()))),
                 };
             }
             "topic" => {
