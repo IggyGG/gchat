@@ -72,6 +72,34 @@ pub(super) fn output(channel: &str, status: MembershipRecoveryStatus) -> gchat_a
     }
 }
 
+// Keep saved operations readable by already-installed views and rollback
+// daemons. Only the requesting updated client receives the new typed preview.
+pub(super) fn retained_response(response: &gchat_api::Response) -> gchat_api::Response {
+    use gchat_api::{CommandOutput, Response};
+    let Response::Output {
+        conversation,
+        output:
+            CommandOutput::MembershipRecovery {
+                channel,
+                epoch,
+                pending,
+                retained_messages,
+                members,
+                ..
+            },
+    } = response
+    else {
+        return response.clone();
+    };
+    Response::Output {
+        conversation: conversation.clone(),
+        output: CommandOutput::Text {
+            title: format!("Membership recovery: #{channel}"),
+            text: format!("Observed epoch {epoch}; {} members; membership acknowledgements pending: {pending}; {retained_messages} retained messages. Revocation is not message delivery. Use /recover-membership for a fresh preview.", members.len()),
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,6 +128,41 @@ mod tests {
             vec![hex(&[4; 32]); 129].join(" ")
         ))
         .is_err());
+    }
+
+    #[test]
+    fn retained_recovery_response_uses_the_existing_text_contract() {
+        let response = gchat_api::Response::Output {
+            conversation: Some("channel/test".into()),
+            output: output(
+                "test",
+                MembershipRecoveryStatus {
+                    channel_id: [1; 32],
+                    epoch: 3,
+                    pending_commit: None,
+                    revision: [3; 32],
+                    members: vec![],
+                    retained_messages: 2,
+                },
+            ),
+        };
+        let retained = retained_response(&response);
+        let value = serde_json::to_value(&retained).unwrap();
+        assert_eq!(value["kind"], "output");
+        assert_eq!(value["output"]["kind"], "text");
+        assert!(value["output"].get("expected").is_none());
+        assert_eq!(
+            value,
+            serde_json::to_value(retained_response(&retained)).unwrap()
+        );
+        let error = gchat_api::Response::Error {
+            code: "outcome_unknown".into(),
+            message: "save failed".into(),
+        };
+        assert_eq!(
+            serde_json::to_value(retained_response(&error)).unwrap(),
+            serde_json::to_value(error).unwrap()
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -243,6 +306,21 @@ mod tests {
             submit(&service, Some(&channel), "owner-only after recovery").await,
             Response::Applied { .. }
         ));
+        // Saved responses must remain readable by pre-recovery clients and
+        // daemons. They must not persist the newly added enum discriminator.
+        let snapshot = service.snapshot().await.unwrap();
+        for op in snapshot.operations.unwrap() {
+            if op.action == "/recover-membership" {
+                assert!(matches!(
+                    op.output,
+                    Some(gchat_api::CommandOutput::Text { .. })
+                ));
+            }
+        }
+        let session = service.session.lock().await;
+        let encoded = serde_json::to_string(&session.as_ref().unwrap().state).unwrap();
+        assert!(!encoded.contains("membership_recovery"));
+        drop(session);
         // Use the real single-use invitation API and remote redemption, as a
         // third-party SDK consumer does; the old KeyPackage is never reused.
         let replacement_runtime = runtime(&home.path().join("replacement")).await;

@@ -467,3 +467,5 @@ unlock/consented Keychain/relaunch after the UI test committed native keyboard
 input before observing the field. No app recompilation or signing change was
 needed. These gates alone do not prove Windows rollback or iOS network recovery,
 store availability, physical devices, live push or privacy qualification.
+
+Recovery compatibility: persisted operation results use the existing Text contract so older views and rollback daemons can read the archive; the requesting updated client receives the typed preview. Focused tests check snapshot/journal compatibility and unchanged error results.

@@ -984,7 +984,7 @@ impl ChatService {
                     .operations
                     .get_mut(&operation_id)
                     .unwrap()
-                    .response = Some(response.clone());
+                    .response = Some(membership_recovery::retained_response(&response));
                 // Readers must never observe a terminal outcome whose save failed.
                 unlocked.store.save(&candidate)?;
                 unlocked.state = candidate;
