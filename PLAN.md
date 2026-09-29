@@ -4,7 +4,9 @@ Run 36507558001 failed before application compilation: host-dependent manifest
 parsing, a path-separator assertion and a POSIX daemon test on Windows. Correct
 the tooling and qualify on both native hosts; retain the original failed archive.
 Focused Mac checks pass: 103 release tests (5 platform exclusions), 3 rollback
-tests. Native Windows/Linux portability checks will bind the committed candidate.
+tests. Native Windows/Linux run 36510827112 passed on 19ee71f: 103 tests each
+(11/4 platform exclusions), plus all 3 rollback checks on each host. No new
+Windows application/installer qualification is claimed by these tooling checks.
 Mac 36507549220/36507553193 remain frozen and running independently.
 
 ## GCHAT-STORE-2 — Apple listing creative (2026-09-29)
