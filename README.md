@@ -1,3 +1,21 @@
+## Hosted channel work in progress
+
+The opt-in `/hosted create #name nickname [private|public|code]` and
+`/hosted join invitation #alias nickname` commands use the installed network's
+hosted MLS service. Private creation is the default. `/help` in a hosted channel
+lists moderation, invitations, roles, presence and channel commands. Topic,
+nickname, action, notice and signed activity share the same desktop/TUI API.
+Message status distinguishes queued, service accepted, recipient delivered and
+failed. Service acceptance never proves recipient delivery.
+
+Hosted history uses a separate encrypted `.hosted-history` sidecar; older GChat
+versions cannot rewrite it. Existing channel archives and scoped private messages
+retain their identities. Unlock alone does not create hosted history. IRC control
+formatting is rendered with bounded styles, never HTML or terminal escape output.
+This task branch requires its paired GComs IRC-parity branch. No dependency or
+installed-release update is implied. Independent contacts/files, new-member topic
+recovery and full network/native capacity qualification remain in progress.
+
 Release tooling has a separate Linux/Windows portability workflow; it does not
 compile applications or qualify installed releases. Mac artifact paths retain
 POSIX ZIP syntax on all hosts. The coordinator daemon remains POSIX-only.

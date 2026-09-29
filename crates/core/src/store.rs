@@ -135,6 +135,15 @@ impl EncryptedStore {
         magic: &'static [u8; 6],
         label: &str,
     ) -> Result<Self, String> {
+        Self::create_with_key(path, magic, label, |salt| derive_key(passphrase, salt))
+    }
+
+    fn create_with_key(
+        path: &std::path::Path,
+        magic: &'static [u8; 6],
+        label: &str,
+        key: impl FnOnce(&[u8; 16]) -> Result<Zeroizing<[u8; 32]>, String>,
+    ) -> Result<Self, String> {
         ensure_parent(path)?;
         let profile_lock = acquire_lock(path)?;
         if std::fs::symlink_metadata(path).is_ok() {
@@ -146,7 +155,7 @@ impl EncryptedStore {
             path: path.to_path_buf(),
             magic,
             salt,
-            key: derive_key(passphrase, &salt)?,
+            key: key(&salt)?,
             initialized: AtomicBool::new(false),
             save_lock: Mutex::new(()),
             save_counters: SaveCounters::default(),
@@ -160,6 +169,15 @@ impl EncryptedStore {
         magic: &'static [u8; 6],
         corruption: &str,
     ) -> Result<(Self, T), String> {
+        Self::open_with_key(path, magic, corruption, |salt| derive_key(passphrase, salt))
+    }
+
+    fn open_with_key<T: DeserializeOwned>(
+        path: &std::path::Path,
+        magic: &'static [u8; 6],
+        corruption: &str,
+        key: impl FnOnce(&[u8; 16]) -> Result<Zeroizing<[u8; 32]>, String>,
+    ) -> Result<(Self, T), String> {
         use aes_gcm::aead::Aead;
         use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
 
@@ -168,7 +186,7 @@ impl EncryptedStore {
         let profile_lock = acquire_lock(path)?;
         let raw = std::fs::read(path).map_err(|error| error.to_string())?;
         let (salt, nonce) = parse_header(&raw, magic)?;
-        let key = derive_key(passphrase, &salt)?;
+        let key = key(&salt)?;
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&*key));
         let plain = cipher
             .decrypt(Nonce::from_slice(&nonce), &raw[HEADER_LEN..])
@@ -414,6 +432,43 @@ pub struct ArchiveStore(EncryptedStore);
 pub struct ChatServiceStore(EncryptedStore);
 
 impl ChatServiceStore {
+    /// Separate versioned archive: older clients never open or rewrite this file.
+    /// Prepare lazily, deriving an independent key from the unlocked parent.
+    pub(crate) fn hosted_companion<T: Serialize + DeserializeOwned + Default>(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<(Self, T), String> {
+        const MAGIC: &[u8; 6] = b"GCCHI1";
+        let key = |salt: &[u8; 16]| {
+            use hmac::Mac;
+            let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(&*self.0.key)
+                .map_err(|_| "companion key")?;
+            mac.update(b"gchat-hosted-archive-v1");
+            mac.update(salt);
+            Ok(Zeroizing::new(mac.finalize().into_bytes().into()))
+        };
+        if path.try_exists().map_err(|e| e.to_string())? {
+            let (store, bytes): (_, Vec<u8>) =
+                EncryptedStore::open_with_key(path, MAGIC, "corrupted hosted archive", key)?;
+            let state = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            Ok((Self(store), state))
+        } else {
+            Ok((
+                Self(EncryptedStore::create_with_key(
+                    path,
+                    MAGIC,
+                    "hosted archive",
+                    key,
+                )?),
+                T::default(),
+            ))
+        }
+    }
+
+    pub(crate) fn initialized(&self) -> bool {
+        self.0.initialized.load(Ordering::Acquire)
+    }
+
     pub fn verify_passphrase(&self, passphrase: &str) -> Result<(), String> {
         use hmac::Mac;
         type Check = hmac::Hmac<sha2::Sha256>;

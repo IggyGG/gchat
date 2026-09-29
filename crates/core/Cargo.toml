@@ -9,7 +9,7 @@ version.workspace = true
 publish.workspace = true
 
 [dependencies]
-gcoms = { version = "0.1.0", default-features = false, features = ["rpc", "files"] }
+gcoms = { version = "0.1.0", default-features = false, features = ["rpc", "files", "hosted-channels"] }
 gchat-api = { version = "0.1.0", path = "../chat-api" }
 gcoms-core = { version = "0.1.0" }
 hmac = "0.12"

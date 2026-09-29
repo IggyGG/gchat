@@ -89,6 +89,7 @@ pub struct InstanceHost {
 pub fn capabilities() -> Vec<Capability> {
     vec![
         Capability::FileSharing,
+        Capability::HostedChannels,
         Capability::IdentityRead,
         Capability::DirectMessage,
         Capability::ChannelMember,

@@ -647,29 +647,36 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                             lines.push(Line::from(format!("── {next_date} ──")));
                             date = next_date;
                         }
-                        let action = m
+                        let legacy_action = m
                             .body
                             .strip_prefix("\u{1}ACTION ")
                             .and_then(|s| s.strip_suffix('\u{1}'));
-                        lines.push(Line::from(vec![
+                        let action = m.message_kind == Some(gchat_api::MessageKind::Action) || legacy_action.is_some();
+                        let mut message_spans = vec![
                             Span::styled(
                                 format!("[{}] ", local_datetime(m.timestamp, "%H:%M")),
                                 Style::default().fg(Color::DarkGray),
                             ),
                             Span::styled(
-                                if action.is_some() {
+                                if action {
                                     format!("* {} ", m.nickname)
+                                } else if m.message_kind == Some(gchat_api::MessageKind::Notice) {
+                                    format!("-{}- ", m.nickname)
                                 } else {
                                     format!("<{}> ", m.nickname)
                                 },
                                 Style::default().fg(accent),
                             ),
-                            Span::raw(action.unwrap_or(&m.body).to_string()),
-                            Span::styled(
-                                if m.mine { " · accepted locally" } else { "" },
-                                Style::default().fg(Color::DarkGray),
-                            ),
-                        ]));
+                        ];
+                        message_spans.extend(crate::text::irc_spans(legacy_action.unwrap_or(&m.body)));
+                        message_spans.push(Span::styled(match &m.delivery {
+                            Some(gchat_api::Delivery::Delivered) => " · delivered",
+                            Some(gchat_api::Delivery::ServiceAccepted) => " · stored by service",
+                            Some(gchat_api::Delivery::Failed) => " · failed",
+                            Some(gchat_api::Delivery::LocalAccepted) => " · accepted locally",
+                            None => "",
+                        }, Style::default().fg(Color::DarkGray)));
+                        lines.push(Line::from(message_spans));
                         if let Some(result) = &m.result {
                             lines.push(Line::from(format!(
                                 "  {}{}",
@@ -804,7 +811,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                 );
                 let members = channel_members(&state, active);
                 frame.render_widget(
-                    List::new(members.iter().map(|m| ListItem::new(m.nickname.clone())))
+                    List::new(members.iter().map(|m| ListItem::new(format!("{}{}{}", if m.capabilities.contains(&"channel.owner".into()) { "~" } else if m.capabilities.contains(&"channel.operator".into()) { "@" } else if m.capabilities.contains(&"channel.voice".into()) { "+" } else { "" }, m.nickname, match &m.presence { Some(gchat_api::MemberPresence::Away { reason }) => format!(" · away: {reason}"), Some(gchat_api::MemberPresence::Available) => " · available".into(), Some(gchat_api::MemberPresence::Unknown) => " · unknown".into(), None => String::new() }))))
                         .block(Block::default().borders(Borders::ALL).title("Nicks")),
                     columns[2],
                 );

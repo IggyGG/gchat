@@ -1,3 +1,19 @@
+## IRC parity and hosted archive isolation
+
+Run paired GComs runtime/service/MLS checks, then `cargo test --workspace
+--all-features -- --test-threads=1` and strict workspace Clippy through the normal
+paired-source configuration. Run `python3 scripts/check-source.py`, regenerate
+Rust/TypeScript RPC contracts, and run `npm run check`, `npm test`, `npm run build`.
+Require archive event sequence/dedup checks, separate service acceptance versus
+recipient delivery, and a real encrypted sidecar downgrade/reopen test: an older
+client rewriting `.service` must leave hosted messages and committed event cursor
+intact. Corrupt hosted state must fail closed. Include notices/actions and bounded
+IRC formatting in both TUI and shared UI validation. No notice may auto-reply.
+
+Keep native, installed-network, 500-member churn/offline/files and timing evidence
+separate from component tests. Large-channel recipient receipt completion remains
+on covered transport and is measured separately, per the user's chosen tradeoff.
+
 ## Release tooling portability
 
 `release-tools-check.yml` runs release tooling and retained Mac rollback orchestration

@@ -4,6 +4,7 @@ mod files;
 mod fleet;
 pub mod host;
 mod host_updates;
+mod hosted;
 mod networks;
 mod presentation;
 #[cfg(test)]
@@ -45,6 +46,8 @@ struct InstanceMetadata {
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 struct UiState {
+    #[serde(skip)]
+    hosted: BTreeMap<String, hosted::Archive>,
     networks: BTreeMap<String, networks::RetainedNetwork>,
     topics: BTreeMap<String, String>,
     observed_channels: BTreeMap<String, ObservedChannel>,
@@ -132,9 +135,10 @@ struct OperationRecord {
 struct Unlocked {
     files: Option<Arc<files::FileRuntime>>,
     file_error: Option<String>,
+    hosted_error: Option<String>,
     ui_locked: bool,
     client: ClientHandle,
-    store: ChatServiceStore,
+    store: hosted::ServiceStateStore,
     state: UiState,
 }
 
@@ -185,6 +189,7 @@ pub struct ChatService {
     provider_error: std::sync::RwLock<Option<gchat_api::ProviderStatus>>,
     stopped: watch::Sender<bool>,
     file_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    hosted_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     fleet: Mutex<Option<fleet::Transport>>,
     catalog_urls: std::sync::RwLock<Vec<String>>,
 }
@@ -307,6 +312,7 @@ impl ChatService {
             provider_error: std::sync::RwLock::new(None),
             stopped: watch::channel(false).0,
             file_worker: std::sync::Mutex::new(None),
+            hosted_worker: std::sync::Mutex::new(None),
             fleet: Mutex::new(None),
             catalog_urls: std::sync::RwLock::new(Vec::new()),
         });
@@ -343,6 +349,8 @@ impl ChatService {
             .startup_worker
             .lock()
             .expect("startup worker handle") = Some(Self::spawn_startup_worker(&service));
+        *service.hosted_worker.lock().expect("hosted worker") =
+            Some(Self::spawn_hosted_worker(&service));
         Ok(service)
     }
 
@@ -617,9 +625,15 @@ impl ChatService {
                 state.instance_id = self.id.clone();
                 state.safety_number = safety;
                 state.file_key.get_or_insert_with(rand::random);
+                let store = hosted::ServiceStateStore::open(
+                    store,
+                    &self.archive.with_extension("hosted-history"),
+                    &mut state,
+                )?;
                 store.save(&state)?;
                 *session = Some(Unlocked {
                     files: None,
+                    hosted_error: None,
                     file_error: Some("Preparing encrypted file cache…".into()),
                     ui_locked: false,
                     client,
@@ -733,6 +747,9 @@ impl ChatService {
                     }
                     return Ok(response);
                 }
+                if let Some(room) = unlocked.state.hosted.get(&conversation) {
+                    return hosted::history(room, before.as_deref(), limit, search.as_deref());
+                }
                 let archive = unlocked.client.archive_snapshot();
                 let mut candidate = unlocked.state.clone();
                 observe_messages(&mut candidate, &archive);
@@ -789,6 +806,14 @@ impl ChatService {
                         )
                         .await;
                 }
+                if unlocked.state.hosted.contains_key(&conversation) {
+                    hosted::mark_read(unlocked, &conversation, &message_id)?;
+                    self.invalidate();
+                    return Ok(Response::Applied {
+                        conversation: None,
+                        notice: None,
+                    });
+                }
                 let archive = unlocked.client.archive_snapshot();
                 let messages = conversation_messages(&archive, &conversation)?;
                 let requested = messages
@@ -819,6 +844,18 @@ impl ChatService {
                         description: c.description,
                     })
                     .collect();
+                if let Some(room) = hosted::conversations(&unlocked.state)
+                    .into_iter()
+                    .find(|c| Some(c.id.as_str()) == conversation.as_deref())
+                {
+                    let items = member_completions(&room.members, &text).unwrap_or_else(|| {
+                        commands
+                            .into_iter()
+                            .filter(|c| c.text.starts_with(&text) && c.text != text)
+                            .collect()
+                    });
+                    return Ok(Response::Completed { items });
+                }
                 let projection = self.projection.read().expect("projection lock");
                 let items = if let Some(room) = projection
                     .0
@@ -1125,6 +1162,7 @@ impl ChatService {
             for channel in &archive.channels {
                 let id = record_key(channel);
                 conversations.push(Conversation {
+                    policy: None,
                     provider: None,
                     input_limit_bytes: gchat_api::MAX_INPUT_BYTES,
                     commands: Vec::new(),
@@ -1161,6 +1199,7 @@ impl ChatService {
                         .members
                         .iter()
                         .map(|m| Member {
+                            presence: None,
                             id: hex(&m.id.0),
                             nickname: m.display_name.clone(),
                             is_self: m.is_self,
@@ -1179,6 +1218,7 @@ impl ChatService {
             for pm in &archive.scoped_pms {
                 let id = query_key(pm.id);
                 conversations.push(Conversation {
+                    policy: None,
                     provider: None,
                     input_limit_bytes: gchat_api::MAX_INPUT_BYTES,
                     commands: Vec::new(),
@@ -1209,6 +1249,7 @@ impl ChatService {
                                 .members
                                 .iter()
                                 .map(|m| Member {
+                                    presence: None,
                                     id: hex(&m.id.0),
                                     nickname: m.display_name.clone(),
                                     is_self: m.is_self,
@@ -1228,6 +1269,7 @@ impl ChatService {
             }
             for (index, legacy) in archive.legacy.conversations.list.iter().enumerate() {
                 conversations.push(Conversation {
+                    policy: None,
                     provider: None,
                     input_limit_bytes: gchat_api::MAX_INPUT_BYTES,
                     commands: Vec::new(),
@@ -1245,6 +1287,7 @@ impl ChatService {
                     last_message_id: legacy.messages().last().map(|m| hex(&m.id)),
                 });
             }
+            conversations.extend(hosted::conversations(&session.state));
             command_history = session.state.command_history.clone();
             input_history = session.state.input_history.clone();
             conversations.extend(self.projection.read().expect("projection lock").0.clone());
@@ -1259,6 +1302,17 @@ impl ChatService {
                 .into_iter()
                 .collect()
         };
+        if let Some(current) = session.filter(|s| !s.ui_locked) {
+            provider_errors.extend(hosted::errors(&current.state));
+            if let Some(error) = &current.hosted_error {
+                provider_errors.push(gchat_api::ProviderStatus {
+                    id: "hosted-archive".into(),
+                    code: "hosted_recovery".into(),
+                    message: error.clone(),
+                    retryable: true,
+                });
+            }
+        }
         if session.is_some_and(|s| !s.ui_locked && s.client.archive_waiting_for_storage()) {
             provider_errors.push(gchat_api::ProviderStatus {
                 id: "archive".into(),
@@ -1330,6 +1384,10 @@ impl ChatService {
         conversation: Option<&str>,
         text: &str,
     ) -> Result<(), String> {
+        if hosted::handles(conversation, text) {
+            self.require(Capability::HostedChannels)?;
+            return hosted::validate(conversation, text);
+        }
         let archive = client.archive_snapshot();
         if let Some(args) = network_arguments(text) {
             if args.starts_with("join GCNI1-")
@@ -1480,6 +1538,9 @@ impl ChatService {
         text: &str,
         operation_id: &str,
     ) -> Result<Response, String> {
+        if hosted::handles(conversation, text) {
+            return self.submit_hosted(conversation, text, operation_id).await;
+        }
         let archive = client.archive_snapshot();
         let applied = |conversation, notice| {
             Ok(Response::Applied {
@@ -1836,6 +1897,9 @@ impl ChatService {
 
     fn commands(&self) -> Vec<Completion> {
         let mut commands = command_catalogue(&self.capabilities);
+        if self.capabilities.contains(&Capability::HostedChannels) {
+            commands.push(Completion { text: "/hosted".into(), description: "Hosted channels: /hosted create #name nickname [private|public|code] or /hosted join link #alias nickname".into() });
+        }
         commands.push(Completion {
             text: "/presence".into(),
             description: "Optional recently-active signals: /presence on|off (default off)".into(),
@@ -1952,6 +2016,9 @@ impl ChatService {
     }
 
     fn context_commands(&self, conversation: Option<&str>) -> Vec<gchat_api::CommandSpec> {
+        if conversation.is_some_and(hosted::is_conversation) {
+            return hosted::commands();
+        }
         let extension = conversation.is_some_and(|id| id.starts_with("extension/cmd/"));
         let mut commands: Vec<_> = self
             .command_specs()
@@ -2060,6 +2127,16 @@ impl ChatService {
 
     pub async fn disconnect(&self) -> Result<(), String> {
         self.stopped.send_replace(true);
+        let hosted = self
+            .hosted_worker
+            .lock()
+            .map_err(|_| "Hosted worker unavailable")?
+            .take();
+        if let Some(worker) = hosted {
+            worker
+                .await
+                .map_err(|_| "Hosted worker stopped unexpectedly")?;
+        }
         let startup = self
             .startup_worker
             .lock()
@@ -2261,6 +2338,7 @@ fn message(key: &str, m: &crate::model::Message, state: &UiState) -> Message {
         .then(|| state.message_metadata.get(&hex(&m.id)))
         .flatten();
     Message {
+        message_kind: None,
         id: hex(&m.id),
         conversation_id: key.into(),
         member_id: m.sender_member_id.map(|id| hex(&id.0)),
@@ -2391,6 +2469,9 @@ fn network_arguments(text: &str) -> Option<&str> {
 }
 fn recall_text(text: &str) -> String {
     let (name, args) = split_head(text);
+    if name.eq_ignore_ascii_case("/hosted") {
+        return "/hosted ".into();
+    }
     if name.eq_ignore_ascii_case("/reconnect") {
         return "/reconnect".into();
     }
@@ -2412,7 +2493,23 @@ fn recall_text(text: &str) -> String {
 }
 
 fn member_completions(members: &[gchat_api::Member], text: &str) -> Option<Vec<Completion>> {
-    for prefix in ["/query ", "/msg ", "/kick "] {
+    for prefix in [
+        "/query ",
+        "/msg ",
+        "/kick ",
+        "/owner ",
+        "/whois ",
+        "/mode +o ",
+        "/mode -o ",
+        "/mode +v ",
+        "/mode -v ",
+        "/mode +b ",
+        "/mode -b ",
+        "/mode +e ",
+        "/mode -e ",
+        "/mode +I ",
+        "/mode -I ",
+    ] {
         if text.to_lowercase().starts_with(prefix) {
             let partial = text[prefix.len()..].to_lowercase();
             return Some(
@@ -2474,6 +2571,7 @@ fn completions(
             .members
             .iter()
             .map(|m| gchat_api::Member {
+                presence: None,
                 id: hex(&m.id.0),
                 nickname: m.display_name.clone(),
                 is_self: m.is_self,

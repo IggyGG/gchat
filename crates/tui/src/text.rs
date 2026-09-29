@@ -137,3 +137,119 @@ mod tests {
         assert_eq!(wrap_line("🙂🙂🙂", 4), vec!["🙂🙂", "🙂"]);
     }
 }
+
+/// IRC styles become terminal spans; incoming escape sequences are never emitted.
+pub fn irc_spans(text: &str) -> Vec<ratatui::text::Span<'static>> {
+    use ratatui::{
+        style::{Color, Modifier, Style},
+        text::Span,
+    };
+    const COLORS: [Color; 16] = [
+        Color::White,
+        Color::Black,
+        Color::Blue,
+        Color::Green,
+        Color::LightRed,
+        Color::Red,
+        Color::Magenta,
+        Color::Rgb(252, 127, 0),
+        Color::Yellow,
+        Color::LightGreen,
+        Color::Cyan,
+        Color::LightCyan,
+        Color::LightBlue,
+        Color::LightMagenta,
+        Color::DarkGray,
+        Color::Gray,
+    ];
+    let mut result = Vec::new();
+    let mut style = Style::default();
+    let mut buffer = String::new();
+    let mut chars = text.chars().peekable();
+    fn number(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Option<usize> {
+        let mut value = None;
+        for _ in 0..2 {
+            match chars.peek().and_then(|c| c.to_digit(10)) {
+                Some(n) if chars.peek().is_some_and(char::is_ascii_digit) => {
+                    value = Some(value.unwrap_or(0) * 10 + n as usize);
+                    chars.next();
+                }
+                _ => break,
+            }
+        }
+        value
+    }
+    while let Some(c) = chars.next() {
+        if matches!(
+            c,
+            '\u{2}' | '\u{3}' | '\u{f}' | '\u{16}' | '\u{1d}' | '\u{1f}'
+        ) {
+            if !buffer.is_empty() {
+                result.push(Span::styled(std::mem::take(&mut buffer), style));
+            }
+            match c {
+                '\u{f}' => style = Style::default(),
+                '\u{3}' => match number(&mut chars) {
+                    Some(n) => {
+                        style.fg = COLORS.get(n).copied();
+                        if chars.peek() == Some(&',') {
+                            let mut lookahead = chars.clone();
+                            lookahead.next();
+                            if lookahead.peek().is_some_and(char::is_ascii_digit) {
+                                chars.next();
+                                style.bg = number(&mut chars).and_then(|n| COLORS.get(n).copied());
+                            }
+                        }
+                    }
+                    None => {
+                        style.fg = None;
+                        style.bg = None;
+                    }
+                },
+                c => {
+                    let flag = match c {
+                        '\u{2}' => Modifier::BOLD,
+                        '\u{16}' => Modifier::REVERSED,
+                        '\u{1d}' => Modifier::ITALIC,
+                        _ => Modifier::UNDERLINED,
+                    };
+                    style = if style.add_modifier.contains(flag) {
+                        style.remove_modifier(flag)
+                    } else {
+                        style.add_modifier(flag)
+                    };
+                }
+            }
+        } else if !c.is_control() || matches!(c, '\n' | '\t') {
+            buffer.push(c);
+        }
+    }
+    if !buffer.is_empty() {
+        result.push(Span::styled(buffer, style));
+    }
+    result
+}
+
+#[cfg(test)]
+mod irc_tests {
+    use super::*;
+    #[test]
+    fn styles_are_bounded_and_escapes_removed() {
+        use ratatui::style::{Color, Modifier};
+        let spans = irc_spans("a\u{2}bold\u{3}04,02red\u{f}plain\u{1b}safe");
+        assert_eq!(
+            spans.iter().map(|s| s.content.as_ref()).collect::<String>(),
+            "aboldredplainsafe"
+        );
+        assert!(spans[1].style.add_modifier.contains(Modifier::BOLD));
+        assert_eq!(spans[2].style.fg, Some(Color::LightRed));
+        assert!(spans[3].style.add_modifier.is_empty());
+        assert_eq!(
+            irc_spans("\u{3}99x\u{3},y")
+                .iter()
+                .map(|s| s.content.as_ref())
+                .collect::<String>(),
+            "x,y"
+        );
+    }
+}

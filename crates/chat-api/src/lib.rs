@@ -12,7 +12,7 @@ pub use files::{FileInfo, FileRequest, FileSnapshot, FileState};
 pub use networks::{InvitationPreview, JoinedNetwork, NetworkRequest, NetworkResponse};
 pub use updates::{BuildInfo, PrepareUpdateResult, UpdateRequest};
 
-pub const VERSION: u16 = 2;
+pub const VERSION: u16 = 3;
 pub const MAX_FRAME_BYTES: usize = 16 * 1024 * 1024;
 /// Complete submitted text, including slash-command arguments, measured in UTF-8 bytes.
 pub const MAX_INPUT_BYTES: usize = 12_000;
@@ -86,6 +86,9 @@ pub struct InstanceInfo {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Member {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub presence: Option<MemberPresence>,
     pub id: String,
     pub nickname: String,
     pub is_self: bool,
@@ -99,6 +102,9 @@ pub struct Member {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Conversation {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub policy: Option<ChannelPolicy>,
     #[serde(default)]
     pub provider: Option<String>,
     pub id: String,
@@ -138,6 +144,9 @@ pub enum ConversationKind {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Message {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub message_kind: Option<MessageKind>,
     pub id: String,
     pub conversation_id: String,
     pub member_id: Option<String>,
@@ -179,6 +188,8 @@ pub struct Artifact {
 pub enum Delivery {
     LocalAccepted,
     Delivered,
+    ServiceAccepted,
+    Failed,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
@@ -243,6 +254,33 @@ pub struct ProviderStatus {
     pub code: String,
     pub message: String,
     pub retryable: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum MessageKind {
+    Text,
+    Action,
+    Notice,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum MemberPresence {
+    Available,
+    Away { reason: String },
+    Unknown,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelPolicy {
+    pub profile: String,
+    pub capacity: u32,
+    pub moderated: bool,
+    pub invite_only: bool,
+    pub topic_operators: bool,
+    pub presence_enabled: bool,
 }
 
 /// Authenticated state changes observed by this profile, retained before publication.
@@ -477,6 +515,9 @@ pub fn typescript() -> String {
         UpdateRequest::decl(),
         PrepareUpdateResult::decl(),
         InstanceInfo::decl(),
+        MessageKind::decl(),
+        MemberPresence::decl(),
+        ChannelPolicy::decl(),
         Member::decl(),
         Conversation::decl(),
         ConversationKind::decl(),

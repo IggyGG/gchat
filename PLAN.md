@@ -1,3 +1,22 @@
+## IRC parity implementation (2026-09-29, Codex)
+
+In progress: the shared application now projects opt-in hosted channels from the
+GComs runtime, with durable event consumption, explicit channel moderation,
+single-use invitations, typed actions/notices, role/presence display and generated
+API v3 contracts. Legacy archives remain separate. Hosted history has its own
+versioned encrypted sidecar to survive an older GChat rewriting legacy settings.
+A failed archive save retains runtime events for retry and is visible as an error.
+
+Component evidence is retained under `test-evidence/irc-parity/`: initial UI
+checks, 62 UI tests and production build passed in `hosted-ui-01.log`; the initial
+strict Rust workspace check passed in `hosted-client-05.log`. The fresh full Rust
+suite (`hosted-client-07.log`) and subsequent archive-isolation checks have their
+own source boundary. These are component checks, not installed-network/native
+qualification. The full deliverable ledger remains in paired GComs
+`docs/IRC_PARITY.md`; receipt recovery, independent contacts/files, encrypted topic
+handoff, remaining client workflows and 500-member end-to-end qualification are
+not complete.
+
 ## Remaining native checks completed — transfers still block (2026-09-29)
 
 The preserved Intel run 36507553193 and Windows run 36511023125 both finished.
