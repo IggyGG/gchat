@@ -703,3 +703,14 @@ docs/evidence/irc-hosted-live-20260930/summary.json. GComs is qualifying a combi
 covered poll to reduce the measured sequential-request cost. No 500-member or
 installed-release pass is implied. The harness now reports correctness and
 latency separately, measures join/file budgets and rejects late positive probes.
+
+### IRC-8 combined polling qualification — 2026-09-30
+
+The paired workspace passes 185 tests (three explicit ignores) and strict
+Clippy against GComs8687749; source-bound evidence is in
+`docs/evidence/irc-covered-poll-paired-20260930/summary.json`. The next live
+protected-network journey also passes correctness, including Topic pending and
+verified 16 MiB restart. Feedback is 112ms, offline-owner admission 6.669s,
+small-room receipt 6.146s, resumed verification 285.756s and file workflow
+624.321s. Receipt and file latency targets remain failed. Retained run04 is not
+superseded or relabeled. See `docs/evidence/irc-hosted-live-20260930/poll-05.json`.
