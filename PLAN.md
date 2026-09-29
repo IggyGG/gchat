@@ -665,3 +665,12 @@ the first compile failure (05) remains retained. The preceding paired04 run
 passes five hosted plus 60 TUI tests and strict Clippy; history03 retains 62
 focused/integration passes, with its separate Clippy invocation setup failure.
 Protected-network, installed/native and 500-member release gates remain open.
+
+### IRC-8 protected-network journey — 2026-09-30
+
+The paired release binaries (GComs255f9cd/GChat1248dd9) built successfully and
+were hash-checked after transfer. The live two-client driver now runs on the
+installed network against the HEL ciphertext service, with no messaging transport
+overrides. Creator-offline join/topic, real receipts, moderation, restart and
+16 MiB partial-file recovery are under qualification. Channel creation remains
+operator-provisioned. No passing live or 500-member network result is claimed.

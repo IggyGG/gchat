@@ -540,3 +540,15 @@ and service acceptance without adding another bubble or promoting it to Delivere
 Run the hosted archive cases and strict workspace Clippy against the paired runtime;
 the runtime's stalled-response/retry/reopen test separately proves local admission
 is not blocked by remote I/O.
+
+## Live hosted GChat journey
+
+Run `python3 scripts/hosted-live.py --root NEW_PRIVATE_DIRECTORY --gchat
+SOURCE_BOUND_GCHAT --probe SOURCE_BOUND_FLEET_PROBE`. The operator must add only
+the emitted `channel.json` ID to the service creation allowlist and then create
+`enabled` in the run directory. The harness stops owned daemons on exit and keeps
+encrypted profiles/logs. Require offline-owner admission and Topic pending,
+authenticated topic recovery, exact recipient receipts, unvoiced denial/voice
+grant, offline archive recovery, 16 MiB verified partial resume and unvoiced file
+completion. Record feedback and delivery timings separately; this two-client
+journey cannot substitute for the 500-member protected-network gate.

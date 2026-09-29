@@ -296,3 +296,9 @@ See [automatic releases](docs/AUTOMATIC_RELEASES.md) for conservative source-cha
 classification, paused admission during stabilization, and the owner-approved
 Windows 4 MiB recovery check. A tooling update or policy decision is not a native
 application pass.
+
+The `scripts/hosted-live.py` qualification driver exercises real hosted GChat
+daemons on the installed protected network, with creator-offline admission,
+covered receipts, moderation, restart and a 16 MiB resumed file. It retains
+private profiles/evidence and waits for explicit network-operator provisioning
+of its generated channel ID. Running it is not an installed-release claim.
