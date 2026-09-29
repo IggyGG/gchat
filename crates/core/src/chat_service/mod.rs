@@ -1362,6 +1362,18 @@ impl ChatService {
         };
         if let Some(current) = session.filter(|s| !s.ui_locked) {
             provider_errors.extend(hosted::errors(&current.state));
+            if let Some(error) = current
+                .file_error
+                .as_ref()
+                .filter(|e| !e.starts_with("Preparing encrypted file cache"))
+            {
+                provider_errors.push(gchat_api::ProviderStatus {
+                    id: "files".into(),
+                    code: "file_recovery".into(),
+                    message: error.clone(),
+                    retryable: true,
+                });
+            }
             if let Some(error) = &current.contact_error {
                 provider_errors.push(gchat_api::ProviderStatus {
                     id: "contacts".into(),

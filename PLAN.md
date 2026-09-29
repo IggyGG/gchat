@@ -624,3 +624,13 @@ worker's authorization; failure leaves modern transfers disabled. This checkpoin
 is under qualification and does not claim full file parity or deployment.
 The preceding contacts checkpoint passed the full workspace suite in
 `test-evidence/irc-parity/contacts-full-01.log` (paired GComs4c651a1/GChatd6c0235).
+
+### IRC-4 file recovery follow-up — 2026-09-29
+
+`files-routing-06.log` passes the real independent-contact file journey, three
+quota/activity unit cases and strict workspace Clippy. Files share one admission
+budget across both caches, emit scoped activity once and expose retryable provider
+errors. File authorization now follows the conversation capability; the full
+workspace run with no channel permission in the contact journey remains pending.
+The underlying large contact restart failure is being diagnosed in GComs; no
+claim of full file recovery, protected-network capacity or release qualification.

@@ -504,3 +504,13 @@ resumption, block/unblock and locking, handle-collision rejection and combined
 cache quota accounting. Repeat the actual independent-contact journey and legacy
 file controls after the routing change; the older contacts full-suite receipt
 qualifies only its recorded source pair.
+
+### Contact file authorization and recovery
+
+Run the full workspace suite and strict Clippy. The independent-contact journey
+must share, accept and export a file using DirectMessage permission without
+ChannelMember, retain history across reopen, and reject new file offers after
+block. File snapshots and binary I/O enforce the stored conversation's capability.
+Quota, one-time scoped activity and retryable file errors have separate assertions.
+Large partial-file restart and authenticated completion are also required in the
+paired GComs runtime gate; a small complete file is not recovery qualification.

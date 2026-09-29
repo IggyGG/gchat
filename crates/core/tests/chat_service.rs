@@ -2514,7 +2514,6 @@ async fn independent_contacts_deliver_without_channels_and_preserve_block_and_hi
             vec![
                 Capability::IdentityRead,
                 Capability::DirectMessage,
-                Capability::ChannelMember,
                 Capability::EventRead,
             ],
         )
@@ -2657,6 +2656,153 @@ async fn independent_contacts_deliver_without_channels_and_preserve_block_and_hi
         page.messages[0].message_kind,
         Some(gchat_api::MessageKind::Notice)
     );
+    // The same public file controls must work without inventing a channel scope.
+    use chat_service::ChatEndpoint;
+    use gchat_api::files::{encode_io, FileIo};
+    use gchat_api::{FileRequest, FileState};
+    let file_id = "45454545454545454545454545454545";
+    let file_bytes = vec![0x76; 32 * 1024 + 17];
+    let prepared = request(
+        &alice,
+        Request::Files {
+            request: FileRequest::Prepare {
+                id: file_id.into(),
+                conversation: ab.clone(),
+                name: "contact.bin".into(),
+                size_bytes: file_bytes.len().to_string(),
+            },
+        },
+    )
+    .await;
+    assert!(matches!(prepared, Response::Files { .. }), "{prepared:?}");
+    alice
+        .clone()
+        .file_io(
+            encode_io(
+                &FileIo {
+                    instance: alice.snapshot().await.unwrap().instance.id,
+                    id: file_id.into(),
+                    piece: 0,
+                    upload: true,
+                },
+                &file_bytes,
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        request(
+            &alice,
+            Request::Files {
+                request: FileRequest::Commit { id: file_id.into() }
+            }
+        )
+        .await,
+        Response::Files { .. }
+    ));
+    let offered = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            let response = request(
+                &bob,
+                Request::Files {
+                    request: FileRequest::List {
+                        conversation: Some(ba.clone()),
+                    },
+                },
+            )
+            .await;
+            if let Response::Files { snapshot } = response {
+                if let Some(file) = snapshot.files.iter().find(|f| f.id == file_id) {
+                    assert_eq!(file.conversation, ba);
+                    assert!(matches!(file.state, FileState::Offered));
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await;
+    if offered.is_err() {
+        eprintln!(
+            "sender modern files: {:?}",
+            ar.sdk_client()
+                .sharing_v2(gcoms::sdk::sharing_v2::Request::List)
+                .await
+        );
+        eprintln!(
+            "receiver modern files: {:?}",
+            br.sdk_client()
+                .sharing_v2(gcoms::sdk::sharing_v2::Request::List)
+                .await
+        );
+        eprintln!(
+            "receiver public files: {:?}",
+            request(
+                &bob,
+                Request::Files {
+                    request: FileRequest::List {
+                        conversation: Some(ba.clone())
+                    }
+                }
+            )
+            .await
+        );
+    }
+    offered.expect("independent contact file offer");
+    assert!(matches!(
+        request(
+            &bob,
+            Request::Files {
+                request: FileRequest::Accept { id: file_id.into() }
+            }
+        )
+        .await,
+        Response::Files { .. }
+    ));
+    tokio::time::timeout(Duration::from_secs(60), async {
+        loop {
+            if let Response::Files { snapshot } = request(
+                &bob,
+                Request::Files {
+                    request: FileRequest::List {
+                        conversation: Some(ba.clone()),
+                    },
+                },
+            )
+            .await
+            {
+                if snapshot
+                    .files
+                    .iter()
+                    .any(|f| f.id == file_id && matches!(f.state, FileState::Complete))
+                {
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("verified independent contact file");
+    let exported = bob
+        .clone()
+        .file_io(
+            encode_io(
+                &FileIo {
+                    instance: bob.snapshot().await.unwrap().instance.id,
+                    id: file_id.into(),
+                    piece: 0,
+                    upload: false,
+                },
+                &[],
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(exported, file_bytes);
+
     assert!(matches!(
         submit(&bob, "contact-block-alice", Some(&ba), "/block").await,
         Response::Applied { .. }
@@ -2676,6 +2822,21 @@ async fn independent_contacts_deliver_without_channels_and_preserve_block_and_hi
     assert_eq!(page.messages.len(), 1);
     assert!(matches!(
         submit(&bob, "contact-blocked-send", Some(&ba), "must not send").await,
+        Response::Error { .. }
+    ));
+    assert!(matches!(
+        request(
+            &bob,
+            Request::Files {
+                request: FileRequest::Prepare {
+                    id: "46464646464646464646464646464646".into(),
+                    conversation: ba.clone(),
+                    name: "blocked.bin".into(),
+                    size_bytes: "1".into()
+                }
+            }
+        )
+        .await,
         Response::Error { .. }
     ));
     let stored = std::fs::read(b.path().join("chat.contacts")).unwrap();
