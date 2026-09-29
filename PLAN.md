@@ -1,3 +1,13 @@
+## SDK 0.1.49 published (2026-09-29)
+
+The normal coordinator published all 12 Rust/base-mobile/optional-push archives
+from GComs2313cf6, release4bb8ea74. Native matrices36507413858,36507413757
+and36507577440 passed. Publication verified public archive bytes; independent
+public manifest readback matches the publication receipt. Evidence:
+`target/release-closeout-20260929/sdk49/review.json`.
+This updates reusable integrations; it does not qualify the pending Mac apps,
+physical mobile devices or live push delivery. Prior archives remain available.
+
 ## Mac closeout — retained throughput failure (2026-09-29)
 
 Apple silicon run 36507549220 on GChat77223e52/GComs2313cf6 passed
