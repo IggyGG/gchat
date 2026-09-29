@@ -544,7 +544,7 @@ is not blocked by remote I/O.
 ## Live hosted GChat journey
 
 Run `python3 scripts/hosted-live.py --root NEW_PRIVATE_DIRECTORY --gchat
-SOURCE_BOUND_GCHAT --probe SOURCE_BOUND_FLEET_PROBE`. The operator must add only
+SOURCE_BOUND_GCHAT --probe SOURCE_BOUND_FLEET_PROBE --invitation-file PRIVATE_INVITATION`. The operator must add only
 the emitted `channel.json` ID to the service creation allowlist and then create
 `enabled` in the run directory. The harness stops owned daemons on exit and keeps
 encrypted profiles/logs. Require offline-owner admission and Topic pending,

@@ -58,6 +58,13 @@ class Journey:
                                        env=dict(os.environ, TOKIO_WORKER_THREADS='2'))
         self.processes[who] = process
         self.wait(f'{who} daemon ready', lambda: self.ready(who), timeout=180)
+        status = self.request(who, {'kind': 'network_status'})['status']
+        if status['state'] == 'invitation_required':
+            self.request(who, {'kind': 'import_network_invitation',
+                              'code': self.args.invitation_file.read_text().strip()})
+            self.note(f'{who} network invitation imported')
+        self.wait(f'{who} network ready', lambda: self.request(
+            who, {'kind': 'network_status'})['status']['state'] == 'connected', timeout=180)
 
     def ready(self, who):
         process = self.processes[who]
@@ -232,6 +239,7 @@ if __name__ == '__main__':
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--gchat', type=Path, required=True)
     parser.add_argument('--probe', type=Path, required=True)
+    parser.add_argument('--invitation-file', type=Path, required=True)
     args = parser.parse_args()
     args.gchat = args.gchat.resolve()
     args.probe = args.probe.resolve()

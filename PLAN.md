@@ -674,3 +674,10 @@ installed network against the HEL ciphertext service, with no messaging transpor
 overrides. Creator-offline join/topic, real receipts, moderation, restart and
 16 MiB partial-file recovery are under qualification. Channel creation remains
 operator-provisioned. No passing live or 500-member network result is claimed.
+
+Live setup correction: run01 retained the expected invitation-required failure;
+the driver now imports an operator-issued, bootstrap-only, time-limited network
+invitation before starting hosted work. Run02 connected through the installed
+network in 66.3 seconds, then exposed the paired runtime's missing hosted-origin
+authorization. GComs6b8764c fixes that gate; the updated source-bound binaries are
+being built before a fresh live attempt. These failed attempts remain retained.
