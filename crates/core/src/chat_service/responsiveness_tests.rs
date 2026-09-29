@@ -65,6 +65,76 @@ async fn local_unlock_does_not_wait_for_background_restoration() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn pending_membership_does_not_block_local_unlock() {
+    use gcoms::sdk::{ChannelStatus, ChannelVisibility, ClientEvent};
+    let (home, runtime, service) = fixture().await;
+    let member = ProtocolRuntime::create_fixture(
+        &home.path().join("member"),
+        "member-fixture",
+        "127.0.0.1:0".parse().unwrap(),
+        None,
+        None,
+        &[],
+    )
+    .await
+    .unwrap();
+    let owner = runtime.sdk_client();
+    let peer = member.sdk_client();
+    owner
+        .create_channel("unlock-pending", "owner", 8, ChannelVisibility::Private)
+        .await
+        .unwrap();
+    let join = peer.prepare_channel_join("member").await.unwrap();
+    let package = peer.channel_key_package(join).await.unwrap();
+    let mut events = owner.subscribe_events();
+    let welcome = owner
+        .admit_channel("unlock-pending", &package, "member")
+        .await
+        .unwrap();
+    peer.join_channel(join, "unlock-pending", ChannelVisibility::Private, &welcome)
+        .await
+        .unwrap();
+    // The initial metadata snapshot is retained until the newcomer ACKs it.
+    // Wait for that exact phase before taking the original member offline.
+    tokio::time::timeout(Duration::from_secs(25), async {
+        loop {
+            if matches!(events.recv().await.unwrap(), ClientEvent::ChannelDelivered { channel, .. } if channel == "unlock-pending") {
+                break;
+            }
+        }
+    }).await.expect("original member's authenticated bootstrap ACK");
+    let next = peer.prepare_channel_join("next").await.unwrap();
+    let next_package = peer.channel_key_package(next).await.unwrap();
+    drop(peer);
+    member.shutdown().await.unwrap();
+    owner
+        .admit_channel("unlock-pending", &next_package, "next")
+        .await
+        .unwrap();
+    assert_eq!(
+        owner.list_channels().await.unwrap()[0].status,
+        ChannelStatus::MembershipPending
+    );
+    let response = service
+        .handle(Request::Unlock {
+            passphrase: "responsiveness-fixture".into(),
+            create: true,
+        })
+        .await;
+    assert!(
+        matches!(&response, Ok(Response::Snapshot { snapshot }) if !snapshot.instance.locked),
+        "local authentication must not depend on withdrawing optional presence: {response:?}"
+    );
+    assert_eq!(
+        owner.list_channels().await.unwrap()[0].status,
+        ChannelStatus::MembershipPending
+    );
+    service.disconnect().await.unwrap();
+    drop(owner);
+    runtime.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ordinary_send_can_progress_beside_another_send_and_retains_correlation() {
     let (_home, runtime, service) = fixture().await;
     service
