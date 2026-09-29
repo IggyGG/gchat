@@ -1,3 +1,24 @@
+## Remaining native checks completed — transfers still block (2026-09-29)
+
+The preserved Intel run 36507553193 and Windows run 36511023125 both finished.
+Full native qualification and configured installer signing passed; each actual
+installed-network check failed its original 16 MiB / 180-second file deadline.
+Intel 0.1.49 reached 13893632 bytes (13.25 MiB); Windows 0.1.50 reached
+9699328 bytes (9.25 MiB). Both retained pieces across restart, recorded two
+pre-recovery authenticated message ACKs, and passed child/profile/installation
+cleanup with unchanged inputs and binaries. Neither completed file export or
+post-recovery ACK qualification. No Mac rollback was dispatched after failure.
+
+Immutable archives and source-bound reports are retained in coordinator state;
+independent download hashes and report bindings are recorded at
+`target/release-closeout-20260929/mac49-intel-review.json` and
+`target/release-closeout-20260929/windows50-review.json`. The older published
+Windows release and its separate approved 4 MiB receipt remain unchanged.
+SDK 0.1.49 is available; iOS encryption remains IN_REVIEW with France included.
+Further Mac throughput investigation awaits the pending scope decision after
+this plan's one retained-installer diagnostic. No deadline, protocol, API,
+profile format or personal session was changed by this final inspection.
+
 ## SDK 0.1.49 published (2026-09-29)
 
 The normal coordinator published all 12 Rust/base-mobile/optional-push archives
