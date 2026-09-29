@@ -4,9 +4,59 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import copy
+import hashlib
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_inputs import fingerprints
+from release_discovery import coalesce_equivalent_queued
+from release_automation_test import candidate
+from release_ledger import Ledger
+from release_pair import canonical
+
+
+class QueuedInputTests(unittest.TestCase):
+    def test_only_undispatched_equivalent_work_is_coalesced(self):
+        for case in ('equivalent', 'changed-input', 'changed-policy', 'active',
+                     'reserved-effect', 'manual', 'failed-baseline', 'other-platform'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                ledger = Ledger(Path(temporary) / 'ledger.sqlite')
+                try:
+                    before, after = candidate(), candidate(2)
+                    for manifest in (before, after):
+                        manifest['upstream'] = copy.deepcopy(manifest['sources'])
+                    if case == 'manual':
+                        del after['upstream']
+                    if case == 'changed-policy':
+                        after['policy']['profile'] = 99
+                    for manifest in (before, after):
+                        manifest['release_id'] = hashlib.sha256(canonical(
+                            {k:v for k,v in manifest.items() if k != 'release_id'})).hexdigest()
+                    first, second = ledger.add(before), ledger.add(after)
+                    target = 'macos-aarch64'
+                    ledger.transition(first, 'macos-x86_64' if case == 'other-platform' else target,
+                                      'building')
+                    if case == 'failed-baseline':
+                        ledger.transition(first, target, 'failed', reason='retained failure')
+                    if case == 'active':
+                        ledger.transition(second, target, 'building')
+                    if case == 'reserved-effect':
+                        ledger.effect(second, target, 'build')
+                    original_manifests = list(ledger.db.execute('SELECT manifest FROM candidates'))
+                    def classified(roots, sources):
+                        return {'artifacts': sources['gchat']['commit'] if case == 'changed-input' else 'same'}
+                    with patch('release_inputs.fingerprints', side_effect=classified):
+                        coalesce_equivalent_queued({p:{'mirror':p} for p in ('gchat','gcoms')}, ledger)
+                    expected = 'superseded' if case == 'equivalent' else 'building' if case == 'active' else 'queued'
+                    self.assertEqual(ledger.target(second, target)['state'], expected)
+                    self.assertEqual(list(ledger.db.execute('SELECT manifest FROM candidates')), original_manifests)
+                    self.assertEqual(ledger.target(second, target)['evidence'], None)
+                    self.assertEqual(ledger.db.execute('SELECT COUNT(*) FROM latest').fetchone()[0], 0)
+                    self.assertEqual(ledger.target(first, target)['state'],
+                        'failed' if case == 'failed-baseline' else 'queued' if case == 'other-platform' else 'building')
+                finally:
+                    ledger.close()
 
 
 class InputTests(unittest.TestCase):

@@ -195,6 +195,13 @@ class Coordinator:
                 quarantine.mkdir(exist_ok=True)
                 os.replace(source, quarantine / (str(time.time_ns()) + '-' + source.name))
         self.ledger.coalesce()
+        if self.config.get('discovery'):
+            from release_discovery import coalesce_equivalent_queued
+            try:
+                coalesce_equivalent_queued(self.config['discovery'], self.ledger)
+            except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
+                atomic_json(self.state / 'coalescing-blocked.json',
+                            {'reason': type(error).__name__, 'at': int(time.time())})
         rows = self.ledger.db.execute('SELECT candidate,platform FROM platforms ORDER BY rowid').fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])

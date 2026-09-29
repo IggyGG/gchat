@@ -21,6 +21,12 @@ files are also classified individually as store-only inputs. Editing their copy,
 artwork or publication receipts does not reserve another application version.
 New unclassified files, packaged icons, version metadata and signing inputs still
 invalidate artifacts. Existing running candidates and their receipts are retained.
+After an input-classification update, the coordinator also checks previously
+queued work against earlier active or qualified candidates for that platform.
+Equivalent upstream application inputs and identical policy allow only an
+undispatched duplicate to be superseded. Reserved external effects, active
+workers, failed-only baselines and manually frozen sources are not discarded.
+No version, source manifest or qualification receipt is reassigned.
 Setting discovery to null pauses new source admission while existing workers,
 receipts and publications continue. The closeout resumes discovery only after
 the deployed classifier recognizes the reviewed controller-only changes; no

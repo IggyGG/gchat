@@ -14,6 +14,52 @@ from release_pair import canonical, identity, validate
 from release_coordinator import atomic_json
 
 
+def coalesce_equivalent_queued(config, ledger):
+    """Reclassify undispatched work after the reviewed input inventory changes.
+
+    Only upstream inputs are compared; generated version commits stay immutable.
+    A preserved earlier worker/artifact owns its original qualification. This
+    neither moves receipts nor promotes an unqualified candidate.
+    Called only by the coordinator while it holds its exclusive state lock.
+    """
+    from release_inputs import fingerprints
+    repositories = {p: config[p]['mirror'] for p in ('gchat', 'gcoms')}
+    rows = ledger.db.execute('''SELECT c.seq,c.manifest,p.* FROM platforms p
+        JOIN candidates c ON c.id=p.candidate ORDER BY c.seq DESC''').fetchall()
+    cache = {}
+    def inputs(manifest):
+        upstream = manifest.get('upstream')
+        if not upstream:
+            return None  # Manually frozen sources are never inferred equivalent.
+        key = canonical(upstream)
+        if key not in cache:
+            cache[key] = fingerprints(repositories, upstream)['artifacts']
+        return cache[key]
+    retained = {'building', 'verifying', 'verified', 'publishing', 'submitting',
+                'processing', 'in_review', 'available'}
+    for row in rows:
+        if row['state'] != 'queued':
+            continue
+        # Even an anomalous queued row with a reserved effect must reconcile it.
+        if ledger.db.execute('SELECT 1 FROM effects WHERE candidate=? AND platform=?',
+                             (row['candidate'], row['platform'])).fetchone():
+            continue
+        current = json.loads(row['manifest'])
+        current_inputs = inputs(current)
+        if current_inputs is None:
+            continue
+        for previous in rows:
+            if (previous['seq'] >= row['seq'] or previous['platform'] != row['platform']
+                    or previous['state'] not in retained):
+                continue
+            baseline = json.loads(previous['manifest'])
+            if (baseline['policy'] == current['policy']
+                    and inputs(baseline) == current_inputs):
+                ledger.transition(row['candidate'], row['platform'], 'superseded',
+                    reason='Reviewed application inputs unchanged; retain ' + previous['candidate'])
+                break
+
+
 def discover(config, state, ledger):
     """Read contained mirror clones, fetch main, then freeze exact object IDs.
 
