@@ -690,3 +690,16 @@ errors/warnings, all 63 UI tests pass and the production bundle builds (existing
 large-chunk warning retained). Evidence: docs/evidence/irc-ui-20260930/summary.json.
 The missing unpublished-package offline-cache attempt remains recorded as setup
 failure; only the scratch lock's package archive resolutions were replaced.
+
+### IRC-8 live correctness checkpoint — 2026-09-30
+
+The actual two-daemon GChat journey on the installed protected network passed
+offline-owner admission, Topic pending, authorized handoff, messages/receipts,
+moderation/voice/notices, offline recovery and verified 16 MiB partial restart
+with an unvoiced completion receipt. Feedback was 119ms. Small-room delivery/ACK
+was 9.165s and resumed verification about 299s: latency remains failed. Exact
+artifacts, observations and retained report hash are in
+docs/evidence/irc-hosted-live-20260930/summary.json. GComs is qualifying a combined
+covered poll to reduce the measured sequential-request cost. No 500-member or
+installed-release pass is implied. The harness now reports correctness and
+latency separately, measures join/file budgets and rejects late positive probes.

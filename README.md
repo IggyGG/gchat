@@ -302,3 +302,9 @@ daemons on the installed protected network, with creator-offline admission,
 covered receipts, moderation, restart and a 16 MiB resumed file. It retains
 private profiles/evidence and waits for explicit network-operator provisioning
 of its generated channel ID. Running it is not an installed-release claim.
+
+Hosted live qualification reports correctness and latency independently. The
+first completed protected-network two-client journey verified messages, policies,
+offline recovery and a resumed 16 MiB file, but missed small-room receipt and
+file-resume timing targets. See docs/evidence/irc-hosted-live-20260930/summary.json;
+it does not qualify the 500-member or native installed release gates.

@@ -23,7 +23,9 @@ class Journey:
         self.processes = {}
         self.started = time.monotonic()
         self.report = {
-            'schema': 1, 'passed': False, 'transport': 'installed protected network',
+            'schema': 2, 'passed': False, 'latency_passed': False,
+            'scope': 'two-client correctness journey; latency reported separately',
+            'transport': 'installed protected network',
             'artifacts': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in (args.gchat, args.probe)}, 'steps': [],
         }
@@ -124,6 +126,7 @@ class Journey:
         return self.request(who, {'kind': 'files', 'request': {'action': action, 'id': file_id}})
 
     def file_journey(self, channel):
+        workflow_started = time.monotonic()
         # A moderated recipient must still authenticate verified completion.
         self.submit('alice', '/mode -v newcomer', channel)
         self.wait('file recipient unvoiced', lambda: any(
@@ -154,21 +157,29 @@ class Journey:
             f['id'] == receiver_id and f['state'] == 'complete'
             and int(f['verified_bytes']) == generated['size']
             for f in self.files('bob', channel)), 300)
+        verified_ms = round((time.monotonic() - resumed) * 1000)
+        self.note('file resume verification timing', duration_ms=verified_ms,
+                  target_ms=180000, within_target=verified_ms <= 180000)
         exported = self.action('bob', {'action': 'export', 'id': receiver_id,
                                        'name': 'verified.bin', **generated})
         assert exported['verified']
         self.wait('unvoiced authenticated file completion', lambda: any(
             f['name'] == 'hosted.bin' and f['completed_by'] >= 1
             for f in self.files('alice', channel)), 120)
+        workflow_ms = round((time.monotonic() - workflow_started) * 1000)
         self.note('file journey complete', size=generated['size'], sha256=generated['sha256'],
-                  resume_ms=round((time.monotonic() - resumed) * 1000))
+                  resume_ms=round((time.monotonic() - resumed) * 1000),
+                  duration_ms=workflow_ms, target_ms=600000, within_target=workflow_ms <= 600000)
 
     def wait(self, label, predicate, timeout=120):
         started = time.monotonic()
         while time.monotonic() - started < timeout:
             result = predicate()
             if result:
-                self.note(label, duration_ms=round((time.monotonic() - started) * 1000))
+                elapsed = time.monotonic() - started
+                if elapsed >= timeout:
+                    raise TimeoutError(label + " completed after its deadline")
+                self.note(label, duration_ms=round(elapsed * 1000))
                 return result
             time.sleep(1)
         raise TimeoutError(label)
@@ -190,9 +201,13 @@ class Journey:
             self.stop('alice')
             self.note('creator offline')
             self.start('bob')
+            joining = time.monotonic()
             joined = self.submit('bob', f'/hosted join {link} #qualification newcomer')
             assert joined['conversation'] == channel
             self.wait('offline-owner newcomer admitted', lambda: self.room('bob', channel).get('active'))
+            join_ms = round((time.monotonic() - joining) * 1000)
+            self.note('offline-owner admission timing', duration_ms=join_ms,
+                      target_ms=30000, within_target=join_ms <= 30000)
             assert self.room('bob', channel)['topic'] == 'Topic pending'
             self.note('offline newcomer topic pending')
             self.start('alice')
@@ -223,6 +238,9 @@ class Journey:
             self.wait('offline message recovered', lambda: any(m['body'] == 'retained-while-offline' for m in self.history('bob', channel)))
             self.wait('recovered recipient acknowledged', lambda: any(m['body'] == 'retained-while-offline' and m.get('delivery') == 'delivered' for m in self.history('alice', channel)))
             self.file_journey(channel)
+            self.report['latency_passed'] = all(
+                step['within_target'] for step in self.report['steps']
+                if 'within_target' in step)
             self.report['passed'] = True
             self.note('journey passed')
         except Exception as error:

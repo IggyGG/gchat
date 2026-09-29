@@ -552,3 +552,9 @@ authenticated topic recovery, exact recipient receipts, unvoiced denial/voice
 grant, offline archive recovery, 16 MiB verified partial resume and unvoiced file
 completion. Record feedback and delivery timings separately; this two-client
 journey cannot substitute for the 500-member protected-network gate.
+
+The live harness reports `passed` for its bounded correctness journey separately
+from `latency_passed`. Require explicit 30s admission, 200ms feedback, 5s small-room
+message/ACK, 180s resumed verification and 600s file-workflow observations. Keep
+large-channel covered-ACK timing separate. A predicate returning success after
+its fixed wait deadline must still fail; run `hosted_live_test.py` for this guard.
