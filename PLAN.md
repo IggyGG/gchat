@@ -645,3 +645,11 @@ file and conversation operations retain their individual capability checks.
 `files-contact-only-08.log` passes the real file/chat/persistence journey and
 strict workspace Clippy; `directory-01.log` passes command/cursor checks and
 strict Clippy. The full updated workspace run remains in progress.
+
+### IRC-5 historical names — qualification in progress
+
+Added channel-scoped `/whowas` with a bounded encrypted observation history and
+corrected per-event name projection across recovered rename batches. A contact
+window's `/list` again reaches the existing global list handler. All five focused hosted history/archive/command-scope cases pass in
+`history-regression-03.log`; remaining integration capture and strict Clippy are
+still running. Older archives seed names from retained authenticated messages.

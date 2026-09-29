@@ -13,6 +13,79 @@ pub(super) struct Archive {
     operations: BTreeMap<String, String>,
     #[serde(default)]
     error: Option<String>,
+    #[serde(default)]
+    names: Vec<ObservedName>,
+}
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ObservedName {
+    member: [u8; 32],
+    nickname: String,
+    observed_at: u64,
+}
+fn observe_name(room: &mut Archive, member: [u8; 32], nickname: &str, observed_at: u64) {
+    if room
+        .names
+        .iter()
+        .rev()
+        .find(|n| n.member == member)
+        .is_some_and(|n| n.nickname == nickname)
+    {
+        return;
+    }
+    room.names.push(ObservedName {
+        member,
+        nickname: nickname.into(),
+        observed_at,
+    });
+    if room.names.len() > 2048 {
+        room.names.remove(0);
+    }
+}
+fn observed_nickname(room: &Archive, member: [u8; 32]) -> String {
+    room.names
+        .iter()
+        .rev()
+        .find(|n| n.member == member)
+        .map(|n| n.nickname.clone())
+        .or_else(|| {
+            room.channel
+                .members
+                .iter()
+                .find(|m| m.id == member)
+                .map(|m| m.nickname.clone())
+        })
+        .unwrap_or_else(|| format!("member-{}", &hex(&member)[..8]))
+}
+fn whowas(room: &Archive, query: &str) -> Result<String, String> {
+    if query.is_empty() || query.len() > 128 {
+        return Err("Usage: /whowas nickname-or-scoped-id".into());
+    }
+    let rows: Vec<_> = room
+        .names
+        .iter()
+        .rev()
+        .filter(|n| {
+            n.nickname.eq_ignore_ascii_case(query) || hex(&n.member).eq_ignore_ascii_case(query)
+        })
+        .take(64)
+        .map(|n| {
+            format!(
+                "{} · {} · {}",
+                n.nickname,
+                hex(&n.member),
+                if n.observed_at == 0 {
+                    "retained membership snapshot".into()
+                } else {
+                    format!("observed at {} UTC Unix seconds", n.observed_at)
+                }
+            )
+        })
+        .collect();
+    Ok(if rows.is_empty() {
+        "No matching name in this channel's retained observations.".into()
+    } else {
+        rows.join("\n")
+    })
 }
 impl Archive {
     pub(super) fn file_channel(&self) -> [u8; 32] {
@@ -76,6 +149,7 @@ pub(super) fn commands() -> Vec<gchat_api::CommandSpec> {
         ("/part", "[reason]", "Leave and retain history; owners first transfer or close"), ("/close-channel", "[reason]", "Close the channel for every member"),
         ("/away", "[reason]", "Opt in to away presence with an optional reason"), ("/back", "", "Opt in to available presence"), ("/presence", "on|off", "Share presence or become invisible; sharing defaults off"),
         ("/names", "", "List members, roles and channel-scoped identities"), ("/who", "", "List this channel's members"), ("/whois", "member", "Inspect a channel-scoped identity"),
+        ("/whowas", "nickname-or-scoped-id", "Show retained names observed in this channel"),
         ("/ping", "", "Measure an authenticated service recovery round trip"), ("/refresh", "", "Recover accepted channel records"),
         ("/hide", "", "Hide this window and keep receiving"), ("/close", "", "Hide this window and keep receiving"),
     ].into_iter().map(|(name,args,description)| gchat_api::CommandSpec { name: name.into(), usage: format!("{name} {args}").trim().into(), description: description.into(), scope: "conversation".into(), capability: Some("HostedChannels".into()), available: true }).collect()
@@ -374,7 +448,26 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
             files: BTreeMap::new(),
             operations: BTreeMap::new(),
             error: None,
+            names: Vec::new(),
         });
+    if room.names.is_empty() {
+        // Older hosted archives already retain authenticated message authors.
+        // Seed observations without copying message bodies or linking any room.
+        let retained: Vec<_> = room
+            .messages
+            .iter()
+            .filter_map(|message| {
+                let member = directory_cursor(message.member_id.as_deref()?).ok()?;
+                Some((member, message.nickname.clone(), message.timestamp))
+            })
+            .collect();
+        for (member, nickname, at) in retained {
+            observe_name(room, member, &nickname, at);
+        }
+        for member in room.channel.members.clone() {
+            observe_name(room, member.id, &member.nickname, 0);
+        }
+    }
     room.channel = channel;
     for event in events {
         if event.channel != room.channel.id {
@@ -386,16 +479,7 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
         if event.sequence != room.cursor + 1 {
             return Err("Hosted archive event gap; refusing acknowledgement".into());
         }
-        let nickname = |sender: [u8; 32]| {
-            room.channel
-                .members
-                .iter()
-                .find(|m| m.id == sender)
-                .map_or_else(
-                    || format!("member-{}", &hex(&sender)[..8]),
-                    |m| m.nickname.clone(),
-                )
-        };
+        let nickname = |sender: [u8; 32]| observed_nickname(room, sender);
         let mut activity = None;
         match event.kind {
             h::EventKind::Message {
@@ -428,6 +512,7 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
                     h::Content::Nickname(name) => {
                         activity =
                             Some(("nickname", format!("{} is now {name}", nickname(sender))));
+                        observe_name(room, sender, &name, event.accepted_at);
                         (None, String::new())
                     }
                     h::Content::Presence { .. } | h::Content::TopicState { .. } => {
@@ -442,7 +527,7 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
                             id: id.clone(),
                             conversation_id: conversation.clone(),
                             member_id: Some(hex(&sender)),
-                            nickname: nickname(sender),
+                            nickname: observed_nickname(room, sender),
                             body,
                             timestamp: event.accepted_at,
                             mine: sender == room.channel.self_member,
@@ -479,6 +564,7 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
                 ));
             }
             h::EventKind::Joined { member, nickname } => {
+                observe_name(room, member, &nickname, event.accepted_at);
                 activity = Some(("join", format!("{nickname} ({}) joined", hex(&member))));
             }
             h::EventKind::Removed => {
@@ -860,6 +946,15 @@ impl ChatService {
                         .collect::<Vec<_>>()
                         .join("\n"),
                 )
+            }
+            "whowas" => {
+                let session = self.session.lock().await;
+                let room = session
+                    .as_ref()
+                    .filter(|s| !s.ui_locked)
+                    .and_then(|s| s.state.hosted.get(conversation))
+                    .ok_or("Hosted channel is unavailable")?;
+                return output("Names observed in this channel", whowas(room, args)?);
             }
             "whois" => {
                 let id = member(&channel, args)?;
@@ -1253,9 +1348,69 @@ mod tests {
         assert!(!projected[0].policy.as_ref().unwrap().presence_enabled);
     }
     #[test]
+    fn hosted_name_history_preserves_event_order_and_scope_after_departure() {
+        let mut state = UiState::default();
+        let mut current = channel();
+        let sender = current.members[0].id;
+        let before = current.members[0].nickname.clone();
+        apply(&mut state, current.clone(), vec![]).unwrap();
+        current.members[0].nickname = "renamed".into();
+        let message = |id| h::EventKind::Message {
+            id: [id; 32],
+            sender,
+            content: h::Content::Text("retained".into()),
+            delivery: h::Delivery::Pending,
+        };
+        apply(
+            &mut state,
+            current.clone(),
+            vec![
+                event(1, message(11)),
+                event(
+                    2,
+                    h::EventKind::Message {
+                        id: [12; 32],
+                        sender,
+                        content: h::Content::Nickname("renamed".into()),
+                        delivery: h::Delivery::Pending,
+                    },
+                ),
+                event(3, message(13)),
+            ],
+        )
+        .unwrap();
+        current.members.retain(|m| m.id != sender);
+        apply(&mut state, current.clone(), vec![]).unwrap();
+        let room = &state.hosted[&key(current.id)];
+        assert_eq!(room.messages[0].nickname, before);
+        assert_eq!(room.messages[1].nickname, "renamed");
+        assert!(whowas(room, &before).unwrap().contains(&hex(&sender)));
+        assert!(whowas(room, "renamed").unwrap().contains(&hex(&sender)));
+        let encoded = serde_json::to_vec(room).unwrap();
+        let reopened: Archive = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(whowas(&reopened, &hex(&sender)).unwrap().lines().count(), 2);
+        let mut legacy: serde_json::Value = serde_json::from_slice(&encoded).unwrap();
+        legacy.as_object_mut().unwrap().remove("names");
+        state
+            .hosted
+            .insert(key(current.id), serde_json::from_value(legacy).unwrap());
+        apply(&mut state, current.clone(), vec![]).unwrap();
+        assert!(whowas(&state.hosted[&key(current.id)], &before)
+            .unwrap()
+            .contains(&hex(&sender)));
+        let mut other = channel();
+        other.id = [77; 32];
+        other.members.clear();
+        apply(&mut state, other.clone(), vec![]).unwrap();
+        assert!(!whowas(&state.hosted[&key(other.id)], "renamed")
+            .unwrap()
+            .contains(&hex(&sender)));
+    }
+    #[test]
     fn hosted_directory_commands_are_scoped_and_cursors_are_bounded() {
         assert!(handles(Some("hosted/room"), "/list"));
         assert!(!handles(Some("channel/legacy"), "/list"));
+        assert!(!contacts::handles(Some("contact/peer"), "/list"));
         assert!(handles(None, "/hosted list"));
         assert!(validate(Some("hosted/room"), "/publish #public").is_ok());
         assert!(commands().iter().any(|c| c.name == "/publish"));

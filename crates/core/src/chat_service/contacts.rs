@@ -164,6 +164,7 @@ pub(super) fn handles(conversation: Option<&str>, text: &str) -> bool {
     command.eq_ignore_ascii_case("/contact")
         || (conversation.is_some_and(is_conversation)
             && !hosted::global_command(command)
+            && !command.eq_ignore_ascii_case("/list")
             && !command.eq_ignore_ascii_case("/hosted"))
 }
 pub(super) fn validate_book(book: &Book) -> Result<(), String> {

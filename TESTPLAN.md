@@ -522,3 +522,12 @@ list behavior. Validate 64-hex pagination cursors and explicit operator `/publis
 controls against the paired service/runtime/IPC24 tests. Run the independent
 contact file journey with DirectMessage but without ChannelMember authority;
 IdentityRead alone must not unlock a messaging service.
+
+## Scoped historical names
+
+Run `hosted_name_history` and the hosted archive projection/rollback cases.
+Require messages before and after a rename in one recovered batch to retain the
+correct respective names even when the supplied snapshot already has the new
+name. `/whowas` must retain observations after departure and reopen, remain bounded,
+and never search another channel. Existing archives without observations must load.
+The directory command-scope test also preserves global `/list` from a contact.

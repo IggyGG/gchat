@@ -39,7 +39,10 @@ Signed-card import commands have a 192 KiB limit; ordinary message limits remain
 The opt-in `/hosted create #name nickname [private|public|code]` and
 `/hosted join invitation #alias nickname` commands use the installed network's
 hosted MLS service. Private creation is the default. `/help` in a hosted channel
-lists moderation, invitations, roles, presence and channel commands. Operators
+lists moderation, invitations, roles, presence and channel commands. `/whowas
+nickname-or-scoped-id` searches this channel's retained name observations, including
+departed members. It keeps at most 2,048 observations and returns at most 64 matches;
+it does not query other rooms or discover global identities. Operators
 can explicitly publish a directory name with `/publish name`, and withdraw it
 with `/publish --remove`. Use `/hosted list [cursor]` anywhere, or `/list` in a
 hosted room, to browse the installed network. Public admission alone does not
