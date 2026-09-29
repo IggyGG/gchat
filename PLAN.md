@@ -681,3 +681,12 @@ invitation before starting hosted work. Run02 connected through the installed
 network in 66.3 seconds, then exposed the paired runtime's missing hosted-origin
 authorization. GComs6b8764c fixes that gate; the updated source-bound binaries are
 being built before a fresh live attempt. These failed attempts remain retained.
+
+### IRC shared contract and UI checkpoint — 2026-09-30
+
+Current Rust types/RPC schema match the checked-in contracts. The paired source
+RPC packages pass generated-binding checks, both Svelte workspaces report zero
+errors/warnings, all 63 UI tests pass and the production bundle builds (existing
+large-chunk warning retained). Evidence: docs/evidence/irc-ui-20260930/summary.json.
+The missing unpublished-package offline-cache attempt remains recorded as setup
+failure; only the scratch lock's package archive resolutions were replaced.

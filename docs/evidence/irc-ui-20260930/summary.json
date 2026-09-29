@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "gchat_source": "1248dd9",
+  "gcoms_source": "6b8764c",
+  "rust_types_and_rpc_schema": "PASS generated-live-01 (before origin-only runtime change)",
+  "rpc_codegen": "PASS paired source packs",
+  "svelte_check": "PASS both shared UI and client; zero errors/warnings",
+  "ui_tests": "PASS 63 tests / 15 files",
+  "production_ui_build": "PASS with existing large-chunk warning",
+  "scope": "shared contract and browser bundle only; native/live/capacity qualification separate",
+  "logs": [
+    "generated-live-01.log",
+    "ui-current-04.log"
+  ],
+  "retained_setup_failure": "ui-current-03: unpublished paired RPC packages absent from public offline cache; packed paired sources and changed only scratch lock resolved/integrity"
+}
