@@ -1,3 +1,24 @@
+## Mac closeout — retained throughput failure (2026-09-29)
+
+Apple silicon run 36507549220 on GChat77223e52/GComs2313cf6 passed
+full native qualification and signing/notarization, then failed the unchanged
+16 MiB / 180-second interrupted-file gate. It retained 262144 bytes across
+restart, received two authenticated pre-recovery message ACKs and cleaned up
+all children/profiles with unchanged inputs and binary. The last sample was
+13369344 bytes (12.75 MiB), versus 9699328 bytes in the preceding candidate.
+Source rediscovery improved from 57.448 to 15.626 seconds after reopen; this
+measured improvement does not qualify publication or establish the remaining
+throughput cause. No rollback/publication was dispatched for this failed run.
+
+Immutable archive11010657350 SHA256
+`6959afe259514f4d3db185597eada7f4716046b6d6831dbe61a9cb93feb94736`.
+Full archive retained in release coordinator state; local review and report
+hashes: `target/release-closeout-20260929/mac49-arm-review.json`.
+Intel36507553193 remains independently running. Existing public downloads and
+prepared iOS submission awaiting Apple encryption approval are preserved.
+A further installed throughput diagnostic exceeds this closeout plan's single
+diagnostic allowance and awaits user direction; no acceptance limit was changed.
+
 ## Release closeout — Windows tooling portability (2026-09-29)
 
 Run 36507558001 failed before application compilation: host-dependent manifest
