@@ -228,7 +228,11 @@ class Journey:
             row = self.row(1, ident)
             m.require(int(row['verified_bytes']) >= retained, 'verified pieces lost')
             self.event('pieces_retained', bytes=retained)
-            remaining = 180 - (time.monotonic() - started)
+            # Owner accepted slower 16 MiB delivery on 2026-09-29. The
+            # separately authorized, retained Windows 4 MiB gate stays at 180s.
+            completion_budget = 360 if self.args.bytes == 16777216 else 180
+            self.report['completion_budget_seconds'] = completion_budget
+            remaining = completion_budget - (time.monotonic() - started)
             m.require(remaining > 0, 'file completion deadline')
             last_progress = float('-inf')
 
@@ -243,7 +247,7 @@ class Journey:
                 return row['state'] == 'complete'
             self.until(completed, remaining)
             completion = time.monotonic() - started
-            m.require(completion <= 180, 'late file completion')
+            m.require(completion <= completion_budget, 'late file completion')
             m.require(self.export(ident) == expected, 'export hash mismatch')
             self.chat('after')
             before = self.history(1)

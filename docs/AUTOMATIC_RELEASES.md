@@ -49,6 +49,14 @@ remain unchanged. A new passing check still needs publication verification;
 this policy record is not an acceptance receipt. Larger Windows transfers remain
 separate and their speed limitation must be disclosed.
 
+The owner accepted the measured transfer-speed limitation on 2026-09-29.
+New 16 MiB qualification allows 360 seconds from the original accept through
+interruption and completion, within the unchanged 600-second total journey.
+Exact export hashes, retained pieces, authentication, ACKs, reopen, signatures
+and rollback remain mandatory. Original failed receipts remain failures; this
+change does not qualify an existing installer. The artifact-specific Windows 36
+4 MiB authorization above retains its original 180-second limit.
+
 ## Production sequence
 
 1. Land reviewed source in Forgejo `main` and retain the public GitHub mirror.
@@ -70,7 +78,7 @@ separate and their speed limitation must be disclosed.
    The file release check is a 16 MiB interrupted transfer: abrupt receiver stop,
    retained pieces and identity, authenticated chat ACK during resume, verified
    final SHA-256, then orderly reopen and re-export. Its file-completion budget
-   is 180 seconds and the entire isolated journey is capped at 600 seconds.
+   is 360 seconds and the entire isolated journey is capped at 600 seconds.
    Use `gchat-turnover.py --mode file-recovery --release-check` with the frozen
    build and qualification host. A timeout remains a failure, never a pass.
 4. `release_compatibility.py` consumes the fleet controller's recent, exact-pair

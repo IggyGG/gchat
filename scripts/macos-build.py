@@ -303,8 +303,8 @@ def verify_network_smoke(smoke, report, application_inputs, harness_archive):
     elapsed = network.get('elapsed_seconds')
     if (type(completion) not in (int, float) or type(elapsed) not in (int, float) or
         not math.isfinite(completion) or not math.isfinite(elapsed) or
-        not 0 < completion <= 180 or not completion <= elapsed <= 600):
-        raise ValueError('Mac network recovery exceeds the original deadline')
+        not 0 < completion <= 360 or not completion <= elapsed <= 600):
+        raise ValueError('Mac network recovery exceeds the agreed deadline')
     acks = [e for e in network.get('events', []) if e.get('event') == 'authenticated_ack']
     if len(acks) != 4 or [e.get('sender') for e in acks] != [0, 1, 0, 1]:
         raise ValueError('Mac network omitted bidirectional pre/post-recovery ACKs')

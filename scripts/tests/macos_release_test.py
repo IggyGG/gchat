@@ -319,11 +319,18 @@ class ApplicationCollectorTest(unittest.TestCase):
                 'abrupt_stop': True, 'verified_pieces_retained': True, 'hash_verified_after_reopen': True},
             'events': [{'event': 'authenticated_ack', 'sender': n} for n in (0, 1, 0, 1)]}
 
-    def test_network_receipt_is_bound_to_installed_application_and_original_budgets(self):
+    def test_network_receipt_is_bound_to_installed_application_and_agreed_budgets(self):
         self.network_fixture()
         self.assertTrue(self.verify()['passed'])
-        self.network['file_check']['completion_elapsed_seconds'] = 181
-        with self.assertRaisesRegex(ValueError, 'original deadline'):
+        self.network['elapsed_seconds'] = 420
+        self.network['file_check']['completion_elapsed_seconds'] = 360
+        self.assertTrue(self.verify()['passed'])
+        self.network['file_check']['completion_elapsed_seconds'] = 361
+        with self.assertRaisesRegex(ValueError, 'agreed deadline'):
+            self.verify()
+        self.network['file_check']['completion_elapsed_seconds'] = 360
+        self.network['elapsed_seconds'] = 601
+        with self.assertRaisesRegex(ValueError, 'agreed deadline'):
             self.verify()
 
     def test_offline_success_cannot_replace_failed_network(self):

@@ -24,7 +24,7 @@
   "file_qualification": {
     "mode": "file-recovery",
     "bytes": 16777216,
-    "completion_seconds": 180,
+    "completion_seconds": 360,
     "total_seconds": 600,
     "large_file_bytes": 1073741824,
     "large_file_blocks_release": false
