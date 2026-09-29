@@ -531,3 +531,12 @@ correct respective names even when the supplied snapshot already has the new
 name. `/whowas` must retain observations after departure and reopen, remain bounded,
 and never search another channel. Existing archives without observations must load.
 The directory command-scope test also preserves global `/list` from a contact.
+
+## Immediate hosted send feedback
+
+Require a queued text/action/notice to appear as LocalAccepted before any network
+event, with its operation ID retained in the encrypted archive. Replay its message
+and service acceptance without adding another bubble or promoting it to Delivered.
+Run the hosted archive cases and strict workspace Clippy against the paired runtime;
+the runtime's stalled-response/retry/reopen test separately proves local admission
+is not blocked by remote I/O.

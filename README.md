@@ -49,7 +49,8 @@ hosted room, to browse the installed network. Public admission alone does not
 publish a room. Private/secret rooms and encrypted topics stay out of listings. Topic,
 nickname, action, notice and signed activity share the same desktop/TUI API.
 Message status distinguishes queued, service accepted, recipient delivered and
-failed. Service acceptance never proves recipient delivery.
+failed. A durably queued local message appears immediately, even while a service
+request is stalled. Service acceptance never proves recipient delivery.
 
 Hosted history uses a separate encrypted `.hosted-history` sidecar; older GChat
 versions cannot rewrite it. Existing channel archives and scoped private messages

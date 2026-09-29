@@ -653,3 +653,15 @@ corrected per-event name projection across recovered rename batches. A contact
 window's `/list` again reaches the existing global list handler. All five focused hosted history/archive/command-scope cases pass in
 `history-regression-03.log`; remaining integration capture and strict Clippy are
 still running. Older archives seed names from retained authenticated messages.
+
+### IRC-2 immediate hosted feedback — 2026-09-30
+
+GChat now archives and projects a locally queued text/action/notice immediately
+as LocalAccepted, preserving the operation identity before returning to the UI.
+Later service events deduplicate the bubble and cannot imply recipient delivery.
+Historical-name results show readable observation ages. `hosted-feedback-06.log`
+passes all five hosted cases and strict workspace Clippy against GComs 255f9cd;
+the first compile failure (05) remains retained. The preceding paired04 run
+passes five hosted plus 60 TUI tests and strict Clippy; history03 retains 62
+focused/integration passes, with its separate Clippy invocation setup failure.
+Protected-network, installed/native and 500-member release gates remain open.

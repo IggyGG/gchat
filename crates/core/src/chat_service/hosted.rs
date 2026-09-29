@@ -22,6 +22,33 @@ struct ObservedName {
     nickname: String,
     observed_at: u64,
 }
+fn remember_queued(room: &mut Archive, id: [u8; 32], content: &h::Content, operation: &str) {
+    let id = hex(&id);
+    room.operations.insert(id.clone(), operation.into());
+    let (kind, body) = match content {
+        h::Content::Text(body) => (gchat_api::MessageKind::Text, body),
+        h::Content::Action(body) => (gchat_api::MessageKind::Action, body),
+        h::Content::Notice(body) => (gchat_api::MessageKind::Notice, body),
+        _ => return,
+    };
+    if room.messages.iter().any(|message| message.id == id) {
+        return;
+    }
+    room.messages.push(Message {
+        highlighted: None,
+        message_kind: Some(kind),
+        id,
+        conversation_id: key(room.channel.id),
+        member_id: Some(hex(&room.channel.self_member)),
+        nickname: observed_nickname(room, room.channel.self_member),
+        body: body.clone(),
+        timestamp: now(),
+        mine: true,
+        operation_id: Some(operation.into()),
+        delivery: Some(gchat_api::Delivery::LocalAccepted),
+        result: None,
+    });
+}
 fn observe_name(room: &mut Archive, member: [u8; 32], nickname: &str, observed_at: u64) {
     if room
         .names
@@ -76,7 +103,16 @@ fn whowas(room: &Archive, query: &str) -> Result<String, String> {
                 if n.observed_at == 0 {
                     "retained membership snapshot".into()
                 } else {
-                    format!("observed at {} UTC Unix seconds", n.observed_at)
+                    let age = now().saturating_sub(n.observed_at);
+                    if age < 60 {
+                        "observed less than a minute ago".into()
+                    } else if age < 3600 {
+                        format!("observed {} minute(s) ago", age / 60)
+                    } else if age < 86400 {
+                        format!("observed {} hour(s) ago", age / 3600)
+                    } else {
+                        format!("observed {} day(s) ago", age / 86400)
+                    }
                 }
             )
         })
@@ -873,7 +909,7 @@ impl ChatService {
             let h::Reply::Queued(message) = self
                 .hosted_exchange(h::Request::Send {
                     channel: id,
-                    content,
+                    content: content.clone(),
                 })
                 .await?
             else {
@@ -882,12 +918,11 @@ impl ChatService {
             let mut session = self.session.lock().await;
             let current = session.as_mut().ok_or("Archive is closed")?;
             let mut candidate = current.state.clone();
-            candidate
+            let room = candidate
                 .hosted
                 .get_mut(conversation)
-                .ok_or("Unknown channel")?
-                .operations
-                .insert(hex(&message), operation_id.into());
+                .ok_or("Unknown channel")?;
+            remember_queued(room, message, &content, operation_id);
             current.store.save(&candidate)?;
             current.state = candidate;
             return applied();
@@ -1291,6 +1326,23 @@ mod tests {
     fn archive_replay_deduplicates_and_never_promotes_service_acceptance_to_delivery() {
         let mut state = UiState::default();
         let room = channel();
+        apply(&mut state, room.clone(), vec![]).unwrap();
+        remember_queued(
+            state.hosted.get_mut(&key(room.id)).unwrap(),
+            [9; 32],
+            &h::Content::Notice("maintenance".into()),
+            "queued-notice",
+        );
+        let immediate = &state.hosted[&key(room.id)].messages;
+        assert_eq!(
+            immediate.len(),
+            1,
+            "local admission is visible before any network event"
+        );
+        assert_eq!(
+            immediate[0].delivery,
+            Some(gchat_api::Delivery::LocalAccepted)
+        );
         let events = vec![
             event(
                 1,
