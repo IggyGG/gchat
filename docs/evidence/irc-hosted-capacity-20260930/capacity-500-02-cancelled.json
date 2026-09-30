@@ -21,5 +21,7 @@
       "hosted-capacity.py": "94c5fa56f1fa8d950de1567603eead1de7aae2794d9b6b72929b9a3043abcc9e"
     }
   },
-  "note": "User retained the 64-member limit. No 100-member campaign was launched; the larger run stopped before messaging/file/churn phases."
+  "note": "User retained the 64-member limit. No 100-member campaign was launched; the larger run stopped before messaging/file/churn phases.",
+  "maximum_observed_join_ms": 30060,
+  "observed_join_target_misses": 1
 }
