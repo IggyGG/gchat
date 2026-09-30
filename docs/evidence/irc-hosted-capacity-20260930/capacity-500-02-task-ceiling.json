@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "unix": 1790758022,
+  "run": "capacity500-02",
+  "kind": "qualification-host process/thread count ceiling correction",
+  "reason": "An established daemon uses 17 threads. 500 such independent daemons require 8500 tasks before qualification drivers, exceeding the original arbitrary 8192-task launcher cap. Corrected before hitting the cap. No application or harness bytes changed.",
+  "observed_profiles": 104,
+  "threads_per_profile_histogram": {
+    "17": 80,
+    "16": 22,
+    "5": 2
+  },
+  "before": {
+    "RuntimeMaxUSec": "6h",
+    "TasksCurrent": "1725",
+    "CPUQuotaPerSecUSec": "12s",
+    "MemoryMax": "68719476736",
+    "TasksMax": "8192",
+    "ActiveState": "active"
+  },
+  "after": {
+    "RuntimeMaxUSec": "6h",
+    "TasksCurrent": "1725",
+    "CPUQuotaPerSecUSec": "12s",
+    "MemoryMax": "68719476736",
+    "TasksMax": "16384",
+    "ActiveState": "active"
+  },
+  "cpu_memory_deadline_unchanged": true,
+  "timing_and_protocol_targets_unchanged": true,
+  "evidence": {
+    "path": "test-evidence/irc-parity/capacity500-02-host-task-limit-adjustment.json",
+    "sha256": "58f55aad3b358b6601f74bff70ccd441111043549bc0a827689648a2c6dffe6e"
+  },
+  "qualified_500": false
+}

@@ -997,3 +997,12 @@ resource capture, cleanup and grant revocation pass. Evidence:
 `docs/evidence/irc-hosted-capacity-20260930/smoke-12-07-pass.json`.
 The protected-network 500-member campaign now runs on this same verified pair
 under the original six-hour, 64 GiB and 12-CPU limits; it has no result yet.
+
+During the fresh 500-member run, 104 running profiles show 80 daemons with
+17 threads, 22 with 16 and two still starting with five. Five hundred established
+17-thread daemons alone require 8,500 tasks, exceeding the launcher's arbitrary
+8,192-task ceiling. Before reaching it, the qualification-host ceiling was
+corrected to 16,384. The 12-CPU, 64 GiB and six-hour limits, original timing
+targets, application/harness hashes and protocol checks are unchanged. This is
+an explicitly retained environment correction, not a 500-member acceptance:
+`docs/evidence/irc-hosted-capacity-20260930/capacity-500-02-task-ceiling.json`.
