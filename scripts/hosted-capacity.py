@@ -31,6 +31,8 @@ def qualifies(report):
     observed = report.get('observations', {})
     return (report.get('requested_members') == 500 and report.get('passed') is True
             and report.get('latency_passed') is True and report.get('cleanup_passed') is True
+            and report.get('resources_complete') is True
+            and report.get('peak_active_profiles', 0) >= 500
             and observed.get('independent_members') == 500
             and all(observed.get(case) is True for case in
                     ('offline_recovery', 'verified_file_resume', 'churn_and_exclusion'))
@@ -49,6 +51,9 @@ class Capacity(live.Journey):
                            receipt_deadline_seconds=600, observations={})
         self.sampler_stop = threading.Event()
         self.file_resumed = threading.Event()
+        self.sampled_profiles = set()
+        self.resource_error = None
+        self.peak_active_profiles = 0
         self.sampler = threading.Thread(target=self.sample, daemon=True)
 
     def note(self, step, **details):
@@ -56,6 +61,12 @@ class Capacity(live.Journey):
             super().note(step, **details)
 
     def sample(self):
+        try:
+            self.sample_resources()
+        except Exception as error:
+            self.resource_error = str(error)
+
+    def sample_resources(self):
         with (self.root / 'resources.jsonl').open('w') as stream:
             while not self.sampler_stop.is_set():
                 rows = []
@@ -65,11 +76,16 @@ class Capacity(live.Journey):
                         status = dict(line.split(':', 1) for line in (root / 'status').read_text().splitlines())
                         io = dict((key, int(value)) for key, value in
                                   (line.split(':', 1) for line in (root / 'io').read_text().splitlines()))
-                        rows.append({'client': who, 'rss_kib': int(status['VmRSS'].split()[0]),
-                                     'io': io})
+                        stat = (root / 'stat').read_text().rpartition(')')[2].split()
+                        rows.append({'client': who, 'pid': process.pid,
+                                     'rss_kib': int(status['VmRSS'].split()[0]), 'io': io,
+                                     'cpu_ticks': int(stat[11]) + int(stat[12])})
+                        self.sampled_profiles.add(who)
                     except (FileNotFoundError, ProcessLookupError, KeyError):
                         continue
+                self.peak_active_profiles = max(self.peak_active_profiles, len(rows))
                 stream.write(json.dumps({'elapsed_seconds': time.monotonic() - self.started,
+                                         'clock_ticks_per_second': os.sysconf('SC_CLK_TCK'),
                                          'clients': rows}) + '\n')
                 stream.flush()
                 self.sampler_stop.wait(10)
@@ -85,8 +101,8 @@ class Capacity(live.Journey):
         return result
 
     def timed(self, step, started, target_ms, **details):
-        elapsed = round((time.monotonic() - started) * 1000)
-        self.note(step, duration_ms=elapsed, target_ms=target_ms,
+        elapsed = (time.monotonic() - started) * 1000
+        self.note(step, duration_ms=round(elapsed), target_ms=target_ms,
                   within_target=elapsed <= target_ms, **details)
 
     def join(self, who, channel, link):
@@ -219,6 +235,10 @@ class Capacity(live.Journey):
         finally:
             self.sampler_stop.set()
             self.sampler.join(timeout=15)
+            self.report['resources_complete'] = (not self.sampler.is_alive()
+                and self.resource_error is None and set(self.names) <= self.sampled_profiles)
+            self.report['resource_error'] = self.resource_error
+            self.report['peak_active_profiles'] = self.peak_active_profiles
             cleanup_errors = []
             for who in list(self.processes):
                 try:

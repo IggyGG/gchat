@@ -600,3 +600,9 @@ Capacity defaults to sequential cold bootstrap. `--startup-concurrency 4` starts
 at most four independent profiles together, then submits their membership joins
 sequentially. The report records that scheduling; profile/identity checks and
 all deadlines are unchanged. Preserve results from the original sequential smoke.
+
+Capacity qualification also requires process resource samples covering every
+original profile and the full concurrent profile count. Retain per-process CPU
+ticks, RSS and I/O with PIDs and clock frequency. A missing/failed sampler cannot
+qualify 500 members. Compare timing targets before rounding display values; the
+regression rejects a 200.4ms result against the 200ms feedback limit.

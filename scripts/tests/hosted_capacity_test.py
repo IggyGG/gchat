@@ -3,6 +3,7 @@ import copy
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import Mock, patch
 
 spec = importlib.util.spec_from_file_location(
     'hosted_capacity', Path(__file__).resolve().parents[1] / 'hosted-capacity.py')
@@ -11,6 +12,14 @@ spec.loader.exec_module(module)
 
 
 class CapacityEvidenceTest(unittest.TestCase):
+    def test_rounding_does_not_relax_the_feedback_deadline(self):
+        journey = object.__new__(module.Capacity)
+        journey.note = Mock()
+        with patch.object(module.time, 'monotonic', return_value=0.2004):
+            journey.timed('feedback', 0, 200)
+        journey.note.assert_called_once_with('feedback', duration_ms=200,
+                                            target_ms=200, within_target=False)
+
     def test_duplicate_identity_or_missing_self_is_not_a_roster(self):
         room = {'active': True, 'members': [{'id': 'a', 'isSelf': True}, {'id': 'b'}]}
         self.assertTrue(module.verify_roster(room, 2))
@@ -22,7 +31,8 @@ class CapacityEvidenceTest(unittest.TestCase):
 
     def test_smoke_and_missing_or_failed_observations_never_qualify_500(self):
         report = {'requested_members': 500, 'passed': True, 'latency_passed': True,
-                  'cleanup_passed': True, 'observations': {
+                  'cleanup_passed': True, 'resources_complete': True,
+                  'peak_active_profiles': 500, 'observations': {
                       'independent_members': 500, 'baseline': {'senders': 10, 'recipients_per_sender': 499},
                       'mixed_file': {'senders': 10, 'recipients_per_sender': 499},
                       'offline_recovery': True, 'verified_file_resume': True,
@@ -36,7 +46,7 @@ class CapacityEvidenceTest(unittest.TestCase):
             missing = copy.deepcopy(report)
             del missing['observations'][key]
             self.assertFalse(module.qualifies(missing), key)
-        for key in ('passed', 'latency_passed', 'cleanup_passed'):
+        for key in ('passed', 'latency_passed', 'cleanup_passed', 'resources_complete'):
             failed = copy.deepcopy(report)
             failed[key] = False
             self.assertFalse(module.qualifies(failed), key)
