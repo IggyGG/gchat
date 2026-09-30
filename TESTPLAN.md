@@ -595,3 +595,8 @@ completion is measured separately with a 600s observation bound. Existing 180s
 file-resume and 600s full-workflow targets remain unchanged. Cleanup and every
 required observation must pass. `hosted_capacity_test.py` rejects missing evidence,
 duplicate identities, failed timing/cleanup and promotion of a smoke to 500 members.
+
+Capacity defaults to sequential cold bootstrap. `--startup-concurrency 4` starts
+at most four independent profiles together, then submits their membership joins
+sequentially. The report records that scheduling; profile/identity checks and
+all deadlines are unchanged. Preserve results from the original sequential smoke.

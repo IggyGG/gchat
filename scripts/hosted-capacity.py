@@ -45,6 +45,7 @@ class Capacity(live.Journey):
         self.names = ['alice', 'bob'] + [f'member-{i}' for i in range(2, args.members)]
         self.report.update(scope='independent GChat protected-network capacity',
                            requested_members=args.members, qualified_500=False,
+                           startup_concurrency=args.startup_concurrency,
                            receipt_deadline_seconds=600, observations={})
         self.sampler_stop = threading.Event()
         self.file_resumed = threading.Event()
@@ -150,9 +151,14 @@ class Capacity(live.Journey):
             link = next(word for word in links.split() if word.startswith('gcoms-hosted:'))
             self.stop('alice')
             self.note('owner offline for all admissions')
-            for who in self.names[1:]:
-                self.start(who)
-                self.join(who, channel, link)
+            # Bootstrap independent profiles in bounded batches. Membership
+            # writes remain sequential, with the same admission deadlines.
+            for offset in range(1, len(self.names), self.args.startup_concurrency):
+                batch = self.names[offset:offset + self.args.startup_concurrency]
+                with ThreadPoolExecutor(max_workers=self.args.startup_concurrency) as pool:
+                    list(pool.map(self.start, batch))
+                for who in batch:
+                    self.join(who, channel, link)
             self.start('alice')
             recovered = time.monotonic()
             self.wait('owner recovered complete roster', lambda:
@@ -233,6 +239,7 @@ if __name__ == '__main__':
     parser.add_argument('--probe', type=Path, required=True)
     parser.add_argument('--invitation-file', type=Path, required=True)
     parser.add_argument('--members', type=int, choices=(12, 500), required=True)
+    parser.add_argument('--startup-concurrency', type=int, choices=(1, 4), default=1)
     args = parser.parse_args()
     args.gchat = args.gchat.resolve()
     args.probe = args.probe.resolve()
