@@ -231,7 +231,7 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                             if matches!(&original, Request::Complete { conversation, text } if conversation == &selected && text == &draft.value) { candidates = items; candidate_index = 0; }
                         }
                         Ok(Response::Output { conversation, output }) if !state.instance.locked => {
-                            if let CommandOutput::Invitation { link, .. } = &output { invitations.insert(conversation.clone(), link.clone()); }
+                            if let CommandOutput::Invitation { link, .. } | CommandOutput::ReusableInvitation { link, .. } = &output { invitations.insert(conversation.clone(), link.clone()); }
                             match output {
                                 CommandOutput::Close { conversation } => { hidden.insert(conversation.clone()); if selected.as_ref() == Some(&conversation) { selected = None; } }
                                 CommandOutput::Status { text } => { outputs.entry(None).or_default().push(text); selected = None; }
@@ -908,6 +908,11 @@ fn format_output(output: &CommandOutput) -> String {
             })
             .collect::<Vec<_>>()
             .join("\n"),
+        CommandOutput::InvitationOptions { channel } => format!("Invite to #{channel}: /invite person (1h/1), /invite friends (7d/25), /invite devices (90d/100), /invite custom days|never count|unlimited. /invites manages saved invitations."),
+        CommandOutput::Invitations { records, .. } => records.iter().map(|r|format!("{}: {} admissions; {} pending; {}",r.id,r.admitted,r.pending,if r.revoked {"revoked"} else {"active"})).collect::<Vec<_>>().join("\n"),
+        CommandOutput::ReusableInvitation { channel, link, limit, expires, .. } => format!("Invite to #{channel} · limit {limit:?} · expiry {expires:?}\n{link}"),
+        CommandOutput::Enrollment { id, phase, message, .. } => format!("Join {id}: {phase}\n{}",message.as_deref().unwrap_or("Use /enrollments for saved joins.")),
+        CommandOutput::Enrollments { entries } => entries.iter().map(format_output).collect::<Vec<_>>().join("\n"),
         CommandOutput::Invitation {
             channel,
             link,

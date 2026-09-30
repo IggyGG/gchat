@@ -16,6 +16,9 @@ mod responsiveness_tests;
 pub mod rpc;
 mod update_gate;
 
+#[cfg(test)]
+mod invitation_journey_tests;
+mod invitations;
 mod membership_recovery;
 use crate::client::ClientHandle;
 use crate::model::{ChannelRecord, MemberId, ScopedPmId};
@@ -541,6 +544,9 @@ impl ChatService {
         };
         if matches!(request, Request::Update { .. }) {
             return Err("This endpoint does not manage desktop updates".into());
+        }
+        if let Request::Enrollment { id, action } = request {
+            return self.enrollment_request(&id, &action).await;
         }
         if let Request::Networks { request } = request {
             return Box::pin(self.networks_request(request))
@@ -1079,7 +1085,7 @@ impl ChatService {
                     .operations
                     .get_mut(&operation_id)
                     .unwrap()
-                    .response = Some(membership_recovery::retained_response(&response));
+                    .response = Some(invitations::retained_response(&response));
                 // Readers must never observe a terminal outcome whose save failed.
                 unlocked.store.save(&candidate)?;
                 unlocked.state = candidate;
@@ -1631,7 +1637,11 @@ impl ChatService {
                     if target.is_empty() || nickname.trim().is_empty() {
                         return Err(format!("Usage: {}", spec.usage));
                     }
-                    if name == "/join" && !target.starts_with('#') {
+                    if name == "/join"
+                        && gcoms_network::channel_invitation::Reference::is_reference(target)
+                    {
+                        gcoms_network::channel_invitation::Reference::decode(target)?;
+                    } else if name == "/join" && !target.starts_with('#') {
                         let invite = gcoms::runtime::contacts::inspect_channel_invitation(target)
                             .map_err(|_| "Invalid invitation. Paste the complete link.")?;
                         if invite.expires_at <= now() {
@@ -2081,6 +2091,25 @@ impl ChatService {
                         [] => return Err("no public channel with that name; /refresh then /list, or use an invitation".into()),
                         _ => return Err("public channel name is ambiguous; use an invitation".into()),
                     }
+                } else if gcoms_network::channel_invitation::Reference::is_reference(destination)
+                    || gcoms::runtime::contacts::is_reusable_channel_invitation(destination)
+                {
+                    let reply = self
+                        .runtime
+                        .sdk_client()
+                        .invitations(gcoms::sdk::InvitationRequest::StartEnrollment {
+                            link: destination.into(),
+                            display: nick.into(),
+                        })
+                        .await
+                        .map_err(|e| e.to_string())?;
+                    let gcoms::sdk::InvitationReply::Enrollment(status) = reply else {
+                        return Err("Unexpected enrollment response".into());
+                    };
+                    return Ok(Response::Output {
+                        conversation: None,
+                        output: invitations::enrollment(status),
+                    });
                 } else {
                     client.join_with_invite(destination, nick, 120).await?;
                 }
@@ -2110,30 +2139,26 @@ impl ChatService {
                 }
                 applied(Some(query_key(id)), None)
             }
-            "invite" => {
-                self.require(Capability::ChannelAdmin)?;
+            "invite" | "invites" | "share-invite" | "revoke-invite" | "retire-invite" => {
                 let channel = context_channel(&archive, conversation)?;
-                let link = client.create_invite(channel.id, 3600).await?;
-                let invitation = gcoms::runtime::contacts::inspect_channel_invitation(&link)?;
-                let local_only = invitation.local_only;
-                let link = if let Some(network) = self.runtime.network_client() {
-                    gcoms_network::JoinInvitation {
-                        version: 1,
-                        network: network.shareable_identity()?,
-                        network_invitation: None,
-                        channel_invitation: Some(link),
-                    }
-                    .encode_at(now())?
-                } else {
-                    link
+                self.invitation_command(channel, name, args, conversation)
+                    .await
+            }
+            "enrollments" => {
+                self.require(Capability::ChannelMember)?;
+                let gcoms::sdk::InvitationReply::Enrollments(entries) = self
+                    .runtime
+                    .sdk_client()
+                    .invitations(gcoms::sdk::InvitationRequest::ListEnrollments)
+                    .await
+                    .map_err(|e| e.to_string())?
+                else {
+                    return Err("Unexpected enrollment response".into());
                 };
                 Ok(Response::Output {
-                    conversation: conversation.map(str::to_string),
-                    output: gchat_api::CommandOutput::Invitation {
-                        channel: channel.title.clone(),
-                        link,
-                        expires: invitation.expires_at,
-                        local_only,
+                    conversation: None,
+                    output: gchat_api::CommandOutput::Enrollments {
+                        entries: entries.into_iter().map(invitations::enrollment).collect(),
                     },
                 })
             }
@@ -2253,6 +2278,10 @@ impl ChatService {
                     "/contact" => Some("DirectMessage".into()),
                     "/create"
                     | "/invite"
+                    | "/invites"
+                    | "/share-invite"
+                    | "/revoke-invite"
+                    | "/retire-invite"
                     | "/kick"
                     | "/owner"
                     | "/publish"
@@ -2274,6 +2303,10 @@ impl ChatService {
                             | "/msg"
                             | "/names"
                             | "/invite"
+                            | "/invites"
+                            | "/share-invite"
+                            | "/revoke-invite"
+                            | "/retire-invite"
                             | "/reconnect"
                             | "/recover-membership"
                             | "/kick"
@@ -2370,7 +2403,15 @@ impl ChatService {
                 if extension
                     && matches!(
                         command.name.as_str(),
-                        "/invite" | "/kick" | "/publish" | "/reconnect" | "/recover-membership"
+                        "/invite"
+                            | "/invites"
+                            | "/share-invite"
+                            | "/revoke-invite"
+                            | "/retire-invite"
+                            | "/kick"
+                            | "/publish"
+                            | "/reconnect"
+                            | "/recover-membership"
                     )
                 {
                     command.available = false;
@@ -2742,6 +2783,7 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
             "Disconnect this instance (standalone service)",
         ),
         ("/list", "List channels"),
+        ("/enrollments", "View and resume saved channel joins"),
         ("/names", "List this channel's members"),
         (
             "/reconnect",
@@ -2781,7 +2823,20 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
                 "/create",
                 "Create an encrypted channel: /create [--private|--public] #channel nickname",
             ),
-            ("/invite", "Create a single-use invitation"),
+            (
+                "/invite",
+                "Choose an invitation for a person, friends or devices",
+            ),
+            ("/invites", "Manage invitations and see admission counts"),
+            ("/share-invite", "Share an existing invitation by ID"),
+            (
+                "/revoke-invite",
+                "Stop new admissions through an invitation",
+            ),
+            (
+                "/retire-invite",
+                "Remove a revoked invitation after all joins finish",
+            ),
             ("/kick", "Remove a channel member"),
             (
                 "/recover-membership",
@@ -2804,6 +2859,10 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
 fn command_usage(name: &str) -> &str {
     match name {
         "/contact" => "/contact card | list | add alias code | open alias | info alias | rename alias new-alias | verify alias fingerprint | block alias | unblock alias | update alias code",
+        "/invite" => "/invite [person|friends|devices|custom days|never count|unlimited]",
+        "/share-invite" => "/share-invite id",
+        "/revoke-invite" => "/revoke-invite id",
+        "/retire-invite" => "/retire-invite id",
         "/reconnect" => "/reconnect [code]",
         "/presence" => "/presence on|off",
         "/publish" => "/publish https://directory.example/",

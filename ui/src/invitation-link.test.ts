@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { InvitationInbox, invitationLink, validInvitationLink } from './invitation-link';
 describe('app invitations', () => {
   it('preserves the complete signed payload, falls back for large invites and rejects URL ambiguity', () => {
+    expect(invitationLink('GCIR1-test_123')).toBe('gcoms://join#GCIR1-test_123');
+    expect(invitationLink('GCIR1-' + 'a'.repeat(2048))).toBeUndefined();
+    expect(validInvitationLink('gcoms://join#GCIR1-' + 'a'.repeat(2048))).toBe(false);
+    expect(invitationLink('gcoms://join#GCIR1-test_123')).toBe('gcoms://join#GCIR1-test_123');
+    expect(validInvitationLink('gcoms://join?secret=x#GCIR1-a')).toBe(false);
     expect(invitationLink('GCI1-test_123')).toBe('gcoms://join#GCI1-test_123');
     expect(invitationLink('GCI1-' + 'a'.repeat(8192))).toBeUndefined();
     for (const url of ['gcoms://evil#GCI1-a', 'gcoms://join?x=y#GCI1-a', 'gcoms://join#GCI1-%61', 'https://join#GCI1-a', 'gcoms://join#GCI1-']) expect(validInvitationLink(url)).toBe(false);

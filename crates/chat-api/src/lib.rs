@@ -256,8 +256,50 @@ pub struct RecoveryMember {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct InvitationRecord {
+    pub id: String,
+    #[ts(type = "number | null")]
+    pub expires: Option<u64>,
+    #[ts(type = "number | null")]
+    pub limit: Option<u64>,
+    #[ts(type = "number")]
+    pub admitted: u64,
+    pub pending: u32,
+    pub revoked: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum CommandOutput {
+    InvitationOptions {
+        channel: String,
+    },
+    Invitations {
+        channel: String,
+        records: Vec<InvitationRecord>,
+    },
+    ReusableInvitation {
+        channel: String,
+        link: String,
+        id: String,
+        #[ts(type = "number | null")]
+        expires: Option<u64>,
+        #[ts(type = "number | null")]
+        limit: Option<u64>,
+        #[serde(rename = "localOnly")]
+        local_only: bool,
+    },
+    Enrollment {
+        id: String,
+        channel: String,
+        phase: String,
+        attempts: u32,
+        message: Option<String>,
+    },
+    Enrollments {
+        entries: Vec<CommandOutput>,
+    },
     Help {
         commands: Vec<CommandSpec>,
     },
@@ -402,6 +444,10 @@ pub struct Completion {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Request {
+    Enrollment {
+        id: String,
+        action: String,
+    },
     Update {
         request: UpdateRequest,
     },
@@ -581,6 +627,7 @@ pub fn typescript() -> String {
         CommandSpec::decl(),
         DirectoryEntry::decl(),
         RecoveryMember::decl(),
+        InvitationRecord::decl(),
         CommandOutput::decl(),
         InputHistoryEntry::decl(),
         ProviderStatus::decl(),

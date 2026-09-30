@@ -301,7 +301,11 @@
       if (running && !locked && snapshot?.instance.id === instance) {
         if (response.kind === 'error') throw new ChatError(response.code, response.message);
         resultStore.complete(key, response); syncResults();
-        if (selected === origin) await invitationJoined(response);
+        if (selected === origin) {
+          await invitationJoined(response);
+          const inner=response.kind==='networks' && response.response.kind==='result' ? response.response.response : response;
+          if(inner.kind==='output' && inner.output.kind==='enrollment') resultKey=key;
+        }
         else { await refreshInBackground(); notice = 'Invitation completed. The channel is available in Channels.'; }
       }
       return response;
@@ -623,7 +627,7 @@
         hidden = [...hidden, response.output.conversation];
         if (selected === response.output.conversation) await select(snapshot?.conversations.find(c => !hidden.includes(c.id))?.id ?? null);
       } else {
-        if (result && (response.output.kind === 'invitation' || response.output.kind === 'membership_recovery' || (response.output.kind === 'text' && response.output.title === 'Reconnect this channel'))) { utility = null; closeNavigation(); resultKey = result; }
+        if (result && (['invitation', 'invitation_options', 'invitations', 'reusable_invitation', 'enrollment', 'enrollments', 'membership_recovery'].includes(response.output.kind) || (response.output.kind === 'text' && response.output.title === 'Reconnect this channel'))) { utility = null; closeNavigation(); resultKey = result; }
 
       }
     }
@@ -970,7 +974,7 @@
                 {#if result.body}<time>[{time(item.timestamp)}]</time> <strong>You</strong> <span>{result.body}</span>{:else}<small>Only you</small> · {result.action}{/if}
                 <small role="status"> · {result.state === 'pending' ? (result.action === '/join' ? 'Connecting and waiting for channel confirmation…' : result.body ? 'Sending…' : 'Working…') : result.state === 'complete' ? 'Accepted locally' : result.state === 'unknown' ? 'Checking outcome…' : 'Not sent'}</small>
                 <button onclick={() => { utility = null; cancelPrompt(); resultKey = result.key; }}>Details</button>
-                {#if result.output?.kind === 'invitation'}<span>Invitation created · only you</span>{/if}
+                {#if result.output?.kind === 'invitation' || result.output?.kind === 'reusable_invitation'}<span>Invitation created · only you</span>{/if}
               </div>
             {:else if item.transfer}
               {@const transfer = item.transfer}
@@ -1111,10 +1115,10 @@
       {/if}
 
   {#if resultDetails && !locked}
-    <FocusScreen title={resultDetails.output?.kind === 'invitation' ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : resultDetails.output?.kind === 'text' && resultDetails.output.title === 'Reconnect this channel' ? 'Reconnect this channel' : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
+    <FocusScreen title={resultDetails.output && ['invitation', 'reusable_invitation', 'invitation_options'].includes(resultDetails.output.kind) && 'channel' in resultDetails.output ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : resultDetails.output?.kind === 'text' && resultDetails.output.title === 'Reconnect this channel' ? 'Reconnect this channel' : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
 
       <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
-      {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} executeCommand={text => operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation: resultDetails!.conversation, text })} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}
+      {#if resultDetails.output}<CommandResult invitationHeading={false} transport={transport.forNetwork(resultDetails.network || undefined)} changed={() => void refreshInBackground()} output={resultDetails.output} executeCommand={text => operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation: resultDetails!.conversation, text })} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}
       <details><summary>Request details</summary><dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl></details>
       <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
       {#if resultDetails.recordedMessage && resultDetails.recordedMessage !== resultDetails.message}<p>Last recorded result: {resultDetails.recordedMessage}</p>{/if}

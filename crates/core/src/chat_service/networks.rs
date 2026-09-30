@@ -54,16 +54,25 @@ impl ChatService {
         }
     }
 
-    fn decode_invitation(
+    async fn decode_invitation(
         &self,
         code: &str,
-    ) -> Result<(JoinInvitation, Option<String>, u64), String> {
+    ) -> Result<(JoinInvitation, Option<String>, Option<u64>), String> {
         let code = gcoms_network::invitation_code(code)?;
         if code.len() > gchat_api::MAX_NETWORK_INVITATION_BYTES {
             return Err("Invitation exceeds size limit".into());
         }
         let at = now();
-        let invitation = if code.starts_with(JOIN_INVITATION_PREFIX) {
+        let invitation = if gcoms_network::channel_invitation::Reference::is_reference(code) {
+            let resolved =
+                gcoms::runtime::contacts::resolve_channel_invitation_reference(code).await?;
+            JoinInvitation {
+                version: 1,
+                network: resolved.network.clone(),
+                network_invitation: None,
+                channel_invitation: Some(resolved.channel_invitation.clone()),
+            }
+        } else if code.starts_with(JOIN_INVITATION_PREFIX) {
             JoinInvitation::decode_at(code, at)?
         } else {
             let network = self.network_identity()?;
@@ -82,17 +91,28 @@ impl ChatService {
             invitation
         };
         let defaults = invitation.network.verify_at(at, 0)?;
-        let mut expires = defaults.expires_at;
+        let mut expires = Some(defaults.expires_at);
         if let Some(code) = &invitation.network_invitation {
-            expires =
-                expires.min(gcoms_network::NetworkInvitation::decode_at(code, at)?.expires_at);
+            expires = Some(
+                expires
+                    .unwrap_or(u64::MAX)
+                    .min(gcoms_network::NetworkInvitation::decode_at(code, at)?.expires_at),
+            );
         }
         let channel = if let Some(code) = &invitation.channel_invitation {
             let details = gcoms::runtime::contacts::inspect_channel_invitation_details(code)?;
             if details.invitation.expires_at <= at {
                 return Err("Channel invitation has expired".into());
             }
-            expires = expires.min(details.invitation.expires_at);
+            expires = if let Some(policy) = details.policy {
+                policy.expires_at
+            } else {
+                Some(
+                    expires
+                        .unwrap_or(u64::MAX)
+                        .min(details.invitation.expires_at),
+                )
+            };
             // A network label cannot smuggle another network's relay capabilities.
             #[cfg(feature = "gc2-carrier")]
             if let Some(relays) = &details.current_bootstrap_relays {
@@ -167,7 +187,7 @@ impl ChatService {
             }
             NetworkRequest::Inspect { code } => {
                 let code = Zeroizing::new(code);
-                let (invitation, channel, expires) = self.decode_invitation(&code)?;
+                let (invitation, channel, expires) = self.decode_invitation(&code).await?;
                 let id = key(&invitation.network);
                 let primary = invitation.network.same_network(&self.network_identity()?);
                 let known = primary
@@ -233,7 +253,7 @@ impl ChatService {
             } => {
                 let code = Zeroizing::new(code);
                 let _guard = self.network_operations.lock().await;
-                let (invitation, channel, _) = self.decode_invitation(&code)?;
+                let (invitation, channel, _) = self.decode_invitation(&code).await?;
                 let id = key(&invitation.network);
                 if accepted_network != id {
                     return Err("Review and accept this invitation's network first".into());
@@ -299,7 +319,13 @@ impl ChatService {
                 if let Some(code) = &invitation.network_invitation {
                     target.runtime.import_network_invitation(code).await?;
                 }
-                let response = if let Some(code) = &invitation.channel_invitation {
+                let channel_code =
+                    if gcoms_network::channel_invitation::Reference::is_reference(&code) {
+                        Some(code.as_str())
+                    } else {
+                        invitation.channel_invitation.as_deref()
+                    };
+                let response = if let Some(code) = channel_code {
                     Box::pin(target.handle(Request::Submit {
                         operation_id,
                         conversation: None,

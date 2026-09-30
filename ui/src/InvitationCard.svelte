@@ -1,16 +1,19 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import GhostMark from './GhostMark.svelte';
+  import InvitationQr from './InvitationQr.svelte';
+  import { invitationLink } from './invitation-link';
   import { renderInvitationCard } from './invitation-card';
   import './theme.css';
-  let { link, channel, expires, saveCard }: { link: string; channel: string; expires: number; saveCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
+  let { link, channel, expires, saveCard }: { link: string; channel: string; expires: number | null; saveCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
+  let compact = $derived(link.startsWith('gcoms://join#GCIR1-') || link.startsWith('GCIR1-'));
   let artwork: HTMLDivElement;
   let busy = $state(false), feedback = $state('');
   let alive = true;
   onDestroy(() => alive = false);
   async function save(share = false) {
     if (busy) return;
-    if (expires * 1000 <= Date.now()) { feedback = 'This invitation has expired. Create a new one.'; return; }
+    if (expires !== null && expires * 1000 <= Date.now()) { feedback = 'This invitation has expired. Create a new one.'; return; }
     busy = true; feedback = '';
     try {
       const mark = artwork.querySelector('svg'); if (!mark) throw new Error('Card artwork is unavailable.');
@@ -31,20 +34,26 @@
   }
 </script>
 <div class="ghost-entry invitation-card">
-  <div class="face" bind:this={artwork}>
+  <div class="face" class:compact bind:this={artwork}>
     <div class="brand"><span>GChat.</span><GhostMark /></div>
+    {#if compact}
+    <InvitationQr link={invitationLink(link)!} />
+    {:else}
     <h3>You’re invited.</h3><p class="channel">#{channel.replace(/^#/, '')}</p>
     <p class="caption">A place for your people.</p>
     <p class="instructions">Open this original PNG in GChat to review and join.</p>
-    <p class="expiry">Channel invitation expires {new Date(expires * 1000).toLocaleString()}</p>
+    {/if}
+    <p class="expiry">{expires === null ? 'No expiry · revocable by the owner' : `Channel invitation expires ${new Date(expires * 1000).toLocaleString()}`}</p>
   </div>
   <div class="actions"><button class="primary" disabled={busy} onclick={() => void save()}>{busy ? 'Preparing card…' : 'Save invitation card'}</button>{#if typeof navigator !== 'undefined' && typeof navigator.canShare === 'function'}<button disabled={busy} onclick={() => void save(true)}>Share card…</button>{/if}</div>
-  <p class="hint">Share privately as a file. Screenshots and edited copies lose the invitation.</p>
+  <p class="hint">Share privately. For older invitations without a QR, send the original PNG as a file.</p>
   {#if feedback}<p role="status">{feedback}</p>{/if}
 </div>
 <style>
   .invitation-card { max-width:560px; margin:20px 0; }
   .face { background:var(--ghost-bg); border:1px solid var(--ghost-line); padding:28px; border-radius:8px; }
+  .face.compact { padding:16px; }
+  .compact .brand { --ghost-mark-size:28px; margin-bottom:12px; }
   .brand { display:flex; align-items:center; justify-content:space-between; color:var(--ghost-accent); font:18px monospace; --ghost-mark-size:48px; }
   h3 { font:500 30px/1.2 var(--ghost-font); margin:32px 0 12px; letter-spacing:-.03em; }
   .channel { color:var(--ghost-accent); font:21px/1.4 monospace; margin:0; overflow-wrap:anywhere; }

@@ -675,3 +675,46 @@ test('channel reconnect opens a focused explanation and copies an existing-membe
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
 });
+
+for (const width of [390,1100]) test(`reusable invitation presets, QR and revocation fit at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:800});
+  await ready(page,'?reusable'); await command(page,'/invite');
+  let dialog=page.getByRole('dialog');
+  await expect(dialog).toContainText('owner must be online');
+  await expect(dialog.getByLabel('Invitation for')).toHaveValue('friends');
+  await dialog.getByLabel('Invitation for').selectOption('custom');
+  await dialog.getByLabel('No expiry',{exact:true}).check();
+  await dialog.getByLabel('No total admission limit').check();
+  await dialog.getByRole('button',{name:'Create invitation',exact:true}).click();
+  await expect(dialog.getByLabel('Invitation QR code')).toBeVisible();
+  await expect(dialog).toContainText('No expiry');
+  const canvas=dialog.getByLabel('Invitation QR code');
+  await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>c.width)).toBeGreaterThan(100);
+  expect((await canvas.boundingBox())!.width).toBeLessThanOrEqual(width);
+  const qrBounds = (await canvas.boundingBox())!;
+  expect(Math.abs(qrBounds.width - qrBounds.height)).toBeLessThan(1);
+  expect(qrBounds.y).toBeGreaterThanOrEqual(0);
+  expect(qrBounds.y + qrBounds.height).toBeLessThanOrEqual(800);
+  await page.screenshot({path:`../../target/reusable-invitation-${width}.png`,fullPage:true});
+  await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+  await expect(page.locator('.transcript')).not.toContainText('GCIR1');
+  await command(page,'/invites');
+  await expect(dialog).toContainText('2 / 25 joins');
+  await dialog.getByRole('button',{name:'Revoke',exact:true}).click();
+  await expect(dialog).toContainText('Revoked');
+  await expect(dialog.getByRole('button',{name:'Share',exact:true})).toHaveCount(0);
+});
+test('saved enrollment visibly polls, completes and retires without resubmitting join',async({page})=>{
+  await ready(page,'?reusable'); await command(page,'/enrollments');
+  const dialog=page.getByRole('dialog');
+  await expect(dialog).toContainText('Waiting for the channel owner');
+  await expect(dialog.getByRole('progressbar')).toBeVisible();
+  await dialog.getByRole('button',{name:'Retry now'}).click();
+  await page.evaluate(()=>(window as any).fixture.finishEnrollment());
+  await expect(dialog).toContainText('Your channel is available in Channels.');
+  await dialog.getByRole('button',{name:'Remove completed request'}).click();
+  await expect(dialog).toContainText('Completed request removed.');
+  const requests=await page.evaluate(()=>(window as any).fixture.requests);
+  expect(requests.some((r:any)=>r.kind==='submit' && r.text.startsWith('/join '))).toBe(false);
+  expect(requests.some((r:any)=>r.kind==='enrollment' && r.action==='status')).toBe(true);
+});

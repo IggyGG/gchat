@@ -27,13 +27,19 @@ struct Arguments {
 }
 
 fn parse_invitation(value: &str) -> Result<String, String> {
-    if value.len() <= 174800
-        && value.starts_with("gcoms://join#GCI1-")
-        && value["gcoms://join#GCI1-".len()..]
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-        && value.len() > "gcoms://join#GCI1-".len()
-    {
+    let code = value.strip_prefix("gcoms://join#");
+    let bounded = code.and_then(|code| {
+        code.strip_prefix("GCIR1-")
+            .map(|body| (body, 2048))
+            .or_else(|| code.strip_prefix("GCI1-").map(|body| (body, 174800)))
+    });
+    if bounded.is_some_and(|(body, limit)| {
+        value.len() <= limit
+            && !body.is_empty()
+            && body
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+    }) {
         Ok(value.into())
     } else {
         Err("Invalid invitation link".into())
@@ -71,22 +77,27 @@ mod tests {
 
     #[test]
     fn invitation_launch_retains_carrier_and_is_not_provisioning() {
-        let config = configuration([
-            "gchat-desktop",
-            "--no-network-bootstrap",
-            "gcoms://join#GCI1-fixture",
-        ])
-        .unwrap();
-        assert!(!config.network_recovery);
-        assert_eq!(config.gc2_carrier, cfg!(feature = "gc2-carrier"));
+        for link in ["gcoms://join#GCI1-fixture", "gcoms://join#GCIR1-fixture"] {
+            let config = configuration(["gchat-desktop", "--no-network-bootstrap", link]).unwrap();
+            assert!(!config.network_recovery);
+            assert_eq!(config.gc2_carrier, cfg!(feature = "gc2-carrier"));
+        }
         for bad in [
             "gcoms://evil#GCI1-secret",
             "gcoms://join#GCI1-",
             "gcoms://join#GCI1-%61",
+            "gcoms://join#GCIR1-",
+            "gcoms://join?secret=x#GCIR1-a",
+            "gcoms://join#GCIR1-%61",
         ] {
             let error = configuration(["gchat-desktop", bad]).err().unwrap();
             assert!(!error.contains(bad));
         }
+        let oversized = format!("gcoms://join#GCIR1-{}", "a".repeat(2048));
+        assert_eq!(
+            parse_invitation(&oversized).unwrap_err(),
+            "Invalid invitation link"
+        );
     }
 
     #[test]

@@ -19,6 +19,7 @@
     "@gcoms/rpc-codegen": "0.1.0",
     "@playwright/test": "1.63.0",
     "@types/node": "^22",
+    "@types/qrcode": "1.5.5",
     "svelte": "^5.56.1",
     "svelte-check": "^4.6.0",
     "typescript": "^6.0.3",
@@ -31,6 +32,7 @@
     "test:browser": "playwright test --config browser/playwright.config.ts"
   },
   "dependencies": {
-    "@gcoms/rpc": "0.1.0"
+    "@gcoms/rpc": "0.1.0",
+    "qrcode": "1.5.4"
   }
 }

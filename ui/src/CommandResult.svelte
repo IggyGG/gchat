@@ -1,9 +1,18 @@
 <script lang="ts">
   import InvitationCard from './InvitationCard.svelte';
+  import EnrollmentProgress from './EnrollmentProgress.svelte';
+  import type { Transport } from './transport';
   import { invitationLink } from './invitation-link';
   import type { CommandOutput, DirectoryEntry } from './api';
-  let { output, choose, saveInvitation, saveInvitationCard, prepareCommand, executeCommand, helpHeading = true, invitationHeading = true }: { invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; executeCommand?: (command: string) => Promise<boolean>; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
+  let { output, transport, changed, choose, saveInvitation, saveInvitationCard, prepareCommand, executeCommand, helpHeading = true, invitationHeading = true }: { transport?: Transport; changed?: () => void; invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; executeCommand?: (command: string) => Promise<boolean>; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
   let feedback = $state('');
+  let invitationPreset = $state('friends'), days = $state(7), admissionLimit = $state(25);
+  let noExpiry = $state(false), unlimited = $state(false);
+  async function run(command: string) {
+    if(!executeCommand || busy) return; busy=true; feedback='Saving…';
+    try { feedback=await executeCommand(command)?'':'Could not complete this request. Open Details for the error.'; }
+    catch(error){feedback=String(error);}finally{busy=false;}
+  }
   let recoverySelection = $state<string[]>([]);
   let recoveryConfirmed = $state(false);
   let recoveryPreview = '';
@@ -66,6 +75,37 @@
     <!-- Descriptions wrap naturally, without a separate block per command. -->
     {#if helpHeading}<h2>Commands</h2>{/if}
     <ul class="commands">{#each output.commands as command}<li><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button><span>{' - '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></li>{/each}</ul>
+  {:else if output.kind === 'invitation_options'}
+    <h2>Invite to #{output.channel.replace(/^#/, '')}</h2>
+    <p>Choose who this invitation is for. Everyone receives their own identity and membership.</p>
+    <label>Invitation for <select bind:value={invitationPreset} disabled={busy}><option value="person">One person · 1 hour · 1 join</option><option value="friends">Friends · 7 days · 25 joins</option><option value="devices">Devices · 90 days · 100 joins</option><option value="custom">Custom…</option></select></label>
+    {#if invitationPreset === 'custom'}
+      <label><input type="checkbox" bind:checked={noExpiry} disabled={busy} />No expiry</label>
+      {#if !noExpiry}<label>Valid for days <input type="number" min="1" max="36500" bind:value={days} disabled={busy} /></label>{/if}
+      <label><input type="checkbox" bind:checked={unlimited} disabled={busy} />No total admission limit</label>
+      {#if !unlimited}<label>Maximum joins <input type="number" min="1" max="5000000" bind:value={admissionLimit} disabled={busy} /></label>{/if}
+    {/if}
+    <p>The owner must be online to admit people. Anyone with the invitation can join until its limit or expiry. You can revoke it at any time. Device invitations do not grant permission to run commands.</p>
+    <button disabled={busy || !executeCommand} onclick={() => void run(invitationPreset === 'custom' ? `/invite custom ${noExpiry ? 'never' : days} ${unlimited ? 'unlimited' : admissionLimit}` : `/invite ${invitationPreset}`)}>{busy ? 'Creating…' : 'Create invitation'}</button>
+    <button disabled={busy || !executeCommand} onclick={() => void run('/invites')}>Manage invitations</button>
+    {#if feedback}<p role="status">{feedback}</p>{/if}
+  {:else if output.kind === 'invitations'}
+    <h2>Invitations · #{output.channel.replace(/^#/, '')}</h2>
+    {#if !output.records.length}<p>No saved invitations.</p>{/if}
+    {#each output.records as record (record.id)}
+      <article><p><strong>{record.revoked ? 'Revoked' : record.expires !== null && record.expires * 1000 <= Date.now() ? 'Expired' : 'Active'}</strong> · {record.admitted}{record.limit === null ? ' joins · no total limit' : ` / ${record.limit} joins`}{record.pending ? ` · ${record.pending} confirming` : ''}</p>
+      <p>{record.expires === null ? 'No expiry' : `Expires ${new Date(record.expires * 1000).toLocaleString()}`}</p>
+      {#if !record.revoked}<button disabled={busy || !executeCommand} onclick={() => void run(`/share-invite ${record.id}`)}>Share</button><button disabled={busy || !executeCommand} onclick={() => void run(`/revoke-invite ${record.id}`)}>Revoke</button>{:else if !record.pending}<button disabled={busy || !executeCommand} onclick={() => void run(`/retire-invite ${record.id}`)}>Remove from list</button>{/if}
+      <details><summary>Details</summary><code>{record.id}</code><p>Revoking prevents new joins. Current members and already accepted joins keep their access. Removing a member does not refund a join.</p></details></article>
+    {/each}
+    <button disabled={busy || !executeCommand} onclick={() => void run('/invite')}>New invitation</button><button disabled={busy || !executeCommand} onclick={() => void run('/invites')}>Refresh</button>
+    {#if feedback}<p role="status">{feedback}</p>{/if}
+  {:else if output.kind === 'enrollment'}
+    {#key output.id}<EnrollmentProgress initial={output} {transport} {changed} />{/key}
+  {:else if output.kind === 'enrollments'}
+    <h2>Saved channel joins</h2>
+    {#if !output.entries.length}<p>No saved joins.</p>{/if}
+    {#each output.entries as entry}{#if entry.kind === 'enrollment'}{#key entry.id}<EnrollmentProgress initial={entry} {transport} {changed} />{/key}{/if}{/each}
   {:else if output.kind === 'membership_recovery'}
     <h2>Channel recovery · {output.channel}</h2>
     <button disabled={busy || !executeCommand} onclick={() => void refreshRecovery()}>Refresh preview</button>
@@ -86,13 +126,13 @@
     <h2>Channels</h2>
     {#if !output.channels.length}<p>No channels found. Refresh the public directory or paste an invitation.</p>{/if}
     {#each output.channels as channel}<button onclick={() => choose(channel)}>{channel.name} · {channel.joined ? 'Open' : 'Join public channel'}</button>{/each}
-  {:else if output.kind === 'invitation'}
+  {:else if output.kind === 'invitation' || output.kind === 'reusable_invitation'}
     {@const appLink = invitationLink(output.link)}
     {#if invitationHeading}<h2>Invite to #{output.channel.replace(/^#/, '')}</h2>{/if}
-    <p>Send this single-use invitation to the person you want to join. It includes the network and channel.</p>
-    <p>Single use · Expires {new Date(output.expires * 1000).toLocaleString()}</p>
+    <p>{output.kind === 'invitation' ? 'Send this single-use invitation to the person you want to join.' : 'Share this invitation privately with the people or devices you want to join.'} It includes the network and channel.</p>
+    <p>{output.kind === 'invitation' ? 'Single use' : output.limit === null ? 'No total admission limit' : `${output.limit} distinct joins`} · {output.expires === null ? 'No expiry' : `Expires ${new Date(output.expires * 1000).toLocaleString()}`}</p>
     {#if output.localOnly}<p>This invitation is reachable only on this computer. Configure a relay before sharing with another computer.</p>{/if}
-    {#if output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}
+    {#if output.expires !== null && output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}
     <InvitationCard link={output.link} channel={output.channel} expires={output.expires} saveCard={saveInvitationCard} />
     <button disabled={busy} onclick={() => void copy(appLink ?? output.link)}>Copy invitation</button>
     {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(output.link, output.channel)}>Share invitation file…</button>{/if}
@@ -113,6 +153,7 @@
   {/if}
 </section>
 <style>
+  select,input { font:inherit; max-width:100%; color:var(--ink); background:var(--bg); border:1px solid var(--line); padding:8px; } label { display:block; margin:12px 0; } article { border-bottom:1px solid var(--line); padding:12px 0; }
   .recovery-member { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 0; min-height:44px; }.recovery-member small { color:var(--muted); }
   .result { padding:8px 0; overflow-wrap:anywhere; }
   h2 { font:inherit; font-weight:600; margin:0 0 8px; } p { margin:8px 0; }

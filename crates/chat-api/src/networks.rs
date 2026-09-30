@@ -17,8 +17,8 @@ pub struct InvitationPreview {
     pub network: JoinedNetwork,
     pub channel: Option<String>,
     pub new_network: bool,
-    #[ts(type = "number")]
-    pub expires: u64,
+    #[ts(type = "number | null")]
+    pub expires: Option<u64>,
 }
 
 #[derive(Clone, Serialize, Deserialize, JsonSchema, TS)]

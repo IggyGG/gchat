@@ -53,7 +53,9 @@ describe('chat typed attachment', () => {
     expect(handles.list()).toHaveLength(0);
   });
   it('generated contracts validate every error and reject wrong result shapes', () => {
-    expect(Object.keys(methods)).toHaveLength(17);
+    expect(Object.keys(methods)).toHaveLength(18);
+    expect(methods.enrollment.args({id:'ab'.repeat(16),action:'status'})).toBe(true);
+    expect(methods.enrollment.args({id:12,action:'status'})).toBe(false);
     expect(methods.files.args({ request: { action: "list", conversation: null } })).toBe(true);
     expect(methods.files.args({ request: { action: "prepare", id: "share", conversation: "channel", name: "file", size_bytes: "1", path: "/remote/path" } })).toBe(false);
     for (const method of Object.values(methods)) {

@@ -43,6 +43,12 @@ const heldSnapshots: (() => void)[] = [];
 let savedId: string | undefined;
 let savedReply: Response | undefined;
 let checks = 0;
+const reusableLink='gcoms://join#GCIR1-'+'a'.repeat(480);
+let inviteRevoked=false;
+let enrollmentPhase='waiting_owner';
+let enrollmentAttempts=1;
+const enrollment=()=>({kind:'enrollment' as const,id:'ee'.repeat(16),channel:'general',phase:enrollmentPhase,attempts:enrollmentAttempts,message:null});
+const invitations=()=>({kind:'invitations' as const,channel:'general',records:[{id:'aa'.repeat(16),expires:2000000000,limit:25,admitted:2,pending:0,revoked:inviteRevoked}]});
 const recovered: import('../src/api').OperationDetail[] = parameters.has('saved-operation') ? [{ id: 'saved-operation-001', instance: instance.id, conversation: 'channel/general', action: '/create', started: 1789910000, state: 'unknown', output: null, message: 'Interrupted after admission.' }] : [];
 const snapshot = (network = primaryNetwork): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: !instance.locked && archiveBlocked ? [{ id: 'archive', code: 'local_storage_unavailable', message: "Couldn't finish saving received messages. Check free disk space and write access; GChat will retry automatically.", retryable: true }] : [], presenceEnabled: presence.get(network) ?? false, operations: instance.locked ? [] : recovered });
 const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', used_bytes: '4096', retention_days: 7 });
@@ -52,7 +58,7 @@ Object.assign(window, { fixture: {
   setCatchUp(appliedRecords: number | null) { conversations[0].catchUp = appliedRecords === null ? undefined : { appliedRecords }; revision++; },
   setArchiveBlocked(value: boolean) { archiveBlocked = value; revision++; },
   updateRestarts: () => updateRestarts, setUpdate(value: Partial<typeof updateStatus>) { updateStatus = {...updateStatus,...value}; },
-  requests, unlockChoices, recoverInvitation() {
+  requests, unlockChoices, finishEnrollment(){enrollmentPhase='joined';revision++;}, recoverInvitation() {
     const request = requests.filter((r): r is Extract<Request, {kind: 'submit'}> => r.kind === 'submit' && r.text === '/invite').at(-1);
     if (request && savedReply?.kind === 'output') recovered.push({ id: request.operation_id, instance: instance.id, conversation: request.conversation, action: '/invite', started: Math.floor(Date.now()/1000), state: 'complete', output: savedReply.output, message: null });
     revision++;
@@ -103,7 +109,18 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
     case 'history': case 'search': return { kind: 'history', page: { messages: [{ id: `${req.conversation}/m1`, conversationId: req.conversation, memberId: 'peer', nickname: 'Ada', body: 'A clear space for the conversation.', timestamp: 1789910000, mine: false, delivery: null, result: null }, ...sentMessages.filter(m => m.conversationId === req.conversation)], before: null } };
     case 'mark_read': return { kind: 'applied', conversation: req.conversation, notice: null };
     case 'complete': return { kind: 'completed', items: [] };
+    case 'enrollment':
+      if(req.action==='resume') {enrollmentPhase='waiting_owner';enrollmentAttempts++;}
+      if(req.action==='cancel') enrollmentPhase='cancelled';
+      if(req.action==='retire') return {kind:'applied',conversation:null,notice:'Completed request removed.'};
+      return {kind:'output',conversation:null,output:enrollment()};
     case 'submit':
+      if(parameters.has('reusable')) {
+        if(req.text==='/invite') return {kind:'output',conversation:req.conversation,output:{kind:'invitation_options',channel:'general'}};
+        if(req.text.startsWith('/invite ') || req.text.startsWith('/share-invite ')) return {kind:'output',conversation:req.conversation,output:{kind:'reusable_invitation',channel:'general',link:reusableLink,id:'aa'.repeat(16),expires:req.text.includes('never')?null:2000000000,limit:req.text.includes('unlimited')?null:25,localOnly:false}};
+        if(req.text==='/invites' || req.text.startsWith('/revoke-invite ')) {if(req.text.startsWith('/revoke')) inviteRevoked=true;return {kind:'output',conversation:req.conversation,output:invitations()};}
+        if(req.text==='/enrollments') return {kind:'output',conversation:null,output:{kind:'enrollments',entries:[enrollment()]}};
+      }
       if (holdSends && !req.text.startsWith('/')) await new Promise<void>(resolve => heldSends.push(resolve));
       if (req.text.startsWith('/presence ')) {
         if (holdPresence) await new Promise<void>(resolve => releasePresence = resolve);

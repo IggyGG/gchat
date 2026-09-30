@@ -1,3 +1,12 @@
+## IRC/main invitation integration (2026-09-30)
+
+Merged main's reusable invitation sharing, QR rendering and saved enrollment
+progress with hosted channels and contacts. The 64-member maximum is unchanged.
+Generated Rust/TypeScript/RPC artifacts include both features; merged UI checks,
+unit tests and the client build pass. The companion GComs uses IPC26 to preserve
+released IPC23 invitation messages before hosted/file requests. Paired Rust and
+protected-network qualification remain pending for this merged source.
+
 ## IRC parity: retain the 64-member limit (2026-09-30)
 
 The user confirmed **64 members**, including the owner, as the channel limit.

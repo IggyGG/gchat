@@ -4,6 +4,31 @@ Click the active channel name to open its details. Use **Invite someone** to cop
 one invitation containing the network and starting channel. The recipient pastes
 it into **Join** and confirms the displayed network identity.
 
+`/invite` offers **One person** (one join, one hour), **Friends** (25 joins,
+seven days) and **Devices** (100 joins, 90 days). Custom expiry and admission
+limits are independent; unlimited values require an explicit choice. Everyone
+uses their own identity. Retries do not consume a second join, but a fresh
+identity does. A copied invitation can admit its holder, so share it privately.
+
+Use `/invites` to see counts, share again or revoke. Revocation blocks new
+admissions without removing existing members; an already committed join can
+still finish. The owner must be online to admit a member. Device invitations
+grant channel membership, not permission to execute commands or administer
+the channel.
+
+Joining creates one saved enrollment. Its focused screen shows network,
+reply-route and admission progress. Close it freely and use `/enrollments` to
+return; retries resume the same identity and request. Cancellation is available
+before admission may have happened. After that, complete the join and use
+`/part` to leave. Completed requests can be removed from the list without
+leaving their channel.
+
+Reusable members can catch up through a bounded journal of 128 membership
+epochs. Legacy members retain the conservative convergence barrier. Reaching
+a storage or epoch bound reports backpressure instead of dropping unacknowledged
+messages. New archives require the updated client; keep the pre-upgrade encrypted
+backup for rollback rather than opening them with an older writer.
+
 - `/nick Alice` changes your display name in the current channel. Your identity,
   message history and membership stay the same.
 - `/topic` displays the topic. An owner or administrator can use `/topic text`

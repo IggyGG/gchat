@@ -1,4 +1,6 @@
 import { MAX_NETWORK_INVITATION_BYTES } from './api';
+import { toCanvas } from 'qrcode';
+import { invitationLink } from './invitation-link';
 
 export const MAX_CARD_BYTES = 8 * 1024 * 1024;
 const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -95,7 +97,7 @@ export async function readInvitationFile(file: File): Promise<string> {
   return code(decoder.decode(bytes));
 }
 
-export async function renderInvitationCard(invitation: string, channel: string, expires: number, mark: SVGElement): Promise<Uint8Array<ArrayBuffer>> {
+export async function renderInvitationCard(invitation: string, channel: string, expires: number | null, mark: SVGElement): Promise<Uint8Array<ArrayBuffer>> {
   const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 800;
   const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Picture export is unavailable. Save the text invitation instead.');
   ctx.fillStyle = '#1c1e22'; ctx.fillRect(0, 0, 1200, 800);
@@ -109,16 +111,22 @@ export async function renderInvitationCard(invitation: string, channel: string, 
   ctx.fillStyle = '#eef0eb'; ctx.font = '52px sans-serif'; ctx.fillText('You’re invited.', 88, 290);
   ctx.fillStyle = '#b8d9c4'; ctx.font = '36px monospace';
   const name = `#${channel.replace(/^#/, '')}`;
+  const compact = invitation.startsWith('gcoms://join#GCIR1-') || invitation.startsWith('GCIR1-');
   let visible = name;
-  while (ctx.measureText(visible).width > 970 && visible.length > 1) visible = Array.from(visible).slice(0, -1).join('');
+  while (ctx.measureText(visible).width > (compact ? 610 : 970) && visible.length > 1) visible = Array.from(visible).slice(0, -1).join('');
   if (visible !== name) visible = Array.from(visible).slice(0, -1).join('') + '…';
   ctx.fillText(visible, 88, 366);
   ctx.fillStyle = '#aeb7b1'; ctx.font = '24px sans-serif'; ctx.fillText('A place for your people.', 88, 426);
+  if (compact) {
+    const qr=document.createElement('canvas');
+    await toCanvas(qr,invitationLink(invitation)!,{errorCorrectionLevel:'M',margin:4,scale:4});
+    ctx.drawImage(qr,760,210,352,352);
+  }
   ctx.strokeStyle = '#46534d'; ctx.beginPath(); ctx.moveTo(88, 536); ctx.lineTo(1112, 536); ctx.stroke();
   ctx.font = '21px sans-serif'; ctx.fillText('Open this original PNG in GChat to review and join.', 88, 591);
-  ctx.fillText('Share privately as a file. Screenshots lose the invitation.', 88, 630);
+  ctx.fillText(compact ? 'Scan the QR to open GChat, or share the original file privately.' : 'Share privately as a file. Screenshots lose the invitation.', 88, 630);
   ctx.fillStyle = '#b8d9c4'; ctx.font = '19px monospace';
-  ctx.fillText(`Channel invitation expires ${new Date(expires * 1000).toLocaleString()}`, 88, 709);
+  ctx.fillText(expires === null ? 'No expiry · the owner can revoke this invitation' : `Channel invitation expires ${new Date(expires * 1000).toLocaleString()}`, 88, 709);
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not create invitation picture.')), 'image/png'));
   return embedInvitationCard(new Uint8Array(await blob.arrayBuffer()), invitation);
 }
