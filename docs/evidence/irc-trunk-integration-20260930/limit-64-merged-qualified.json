@@ -1,0 +1,62 @@
+{
+  "gcoms_source": "a460d74d672179a7c82d45a4c80ca54409e6cc4a",
+  "gchat_source": "624e8b2b374fd86b5173eefd4d47726bb1554475",
+  "status": "passed",
+  "scope": "Full paired GChat workspace tests and strict all-target/all-feature Clippy; generated API contracts",
+  "passed_tests": 194,
+  "failed_tests": 0,
+  "unchanged_ignored_tests": 3,
+  "suites": 17,
+  "clippy": {
+    "passed": true,
+    "offline": true,
+    "locked": true,
+    "paired_source_paths_verified": true
+  },
+  "generated_contracts": {
+    "passed": true,
+    "gcoms_source": "a460d74d672179a7c82d45a4c80ca54409e6cc4a",
+    "gchat_source": "624e8b2b374fd86b5173eefd4d47726bb1554475",
+    "generated_files": {
+      "ui/src/api.ts": "e0802caa5920e9233a44b39a09f8a964ab9fd5d0dca3ac8e35e74fb3c78504b2",
+      "ui/schemas/chat-rpc.json": "cb0bdf8cf034fea62a5abe109baf4180df64877c2eac46c5e21f8078735527d8",
+      "ui/src/rpc-api.ts": "12054b2fe46eb2f4376c0957b7468e37431589446e3593d5fa3e77faa54d2c21",
+      "ui/src/rpc-validators.js": "3a47256fa22cf938d4ab7150403ec7ab9e2e350af0a8d3797623054b1277d634"
+    }
+  },
+  "retained_failed_attempts": {
+    "final64-paired-01": "Tests passed; Clippy global --config was not forwarded to the external subcommand; --locked refused old vendor dependency resolution.",
+    "final64-paired-clippy-02": "Diagnostic unlocked invocation confirmed selection of older vendored SDK. Not a qualification pass.",
+    "resolution": "Pass --config after clippy; restore test-resolved scratch lock; strict offline locked check passes unchanged application source."
+  },
+  "evidence": {
+    "final64-paired-01.log": {
+      "path": "test-evidence/irc-parity/final64-paired-01.log",
+      "sha256": "6ca146d32bc8973cc71875a5a7d785d33b60a5cc93d8f71797dd74b85ce5a6e4"
+    },
+    "final64-paired-01.exit": {
+      "path": "test-evidence/irc-parity/final64-paired-01.exit",
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "final64-paired-clippy-02.log": {
+      "path": "test-evidence/irc-parity/final64-paired-clippy-02.log",
+      "sha256": "2e3e8ab7abf867eb6656ab9f31ec70bb5ffefa6b7daddcdda934fdc73b4d170c"
+    },
+    "final64-paired-clippy-02.exit": {
+      "path": "test-evidence/irc-parity/final64-paired-clippy-02.exit",
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "final64-paired-clippy-03.log": {
+      "path": "test-evidence/irc-parity/final64-paired-clippy-03.log",
+      "sha256": "147786586d289b08ae989713f31116b25125e78bced402d1a50ae3b8c2485316"
+    },
+    "final64-paired-clippy-03.exit": {
+      "path": "test-evidence/irc-parity/final64-paired-clippy-03.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "final64-generated-contracts.json": {
+      "path": "test-evidence/irc-parity/final64-generated-contracts.json",
+      "sha256": "624c751ada37bd64b739f25e57b2c6a9ce75a06d7271a4f63cdf954cfcd69f51"
+    }
+  }
+}
