@@ -1,0 +1,58 @@
+{
+  "schema": 2,
+  "passed": false,
+  "latency_passed": false,
+  "qualified_500": false,
+  "scope": "independent GChat protected-network capacity",
+  "transport": "installed protected network",
+  "requested_members": 500,
+  "startup_concurrency": 4,
+  "receipt_deadline_seconds": 600,
+  "observations": {},
+  "error": "member-83 network ready",
+  "resources_complete": false,
+  "resource_error": null,
+  "peak_active_profiles": 84,
+  "cleanup_passed": true,
+  "cleanup_errors": [],
+  "source": {
+    "gcoms": "40b440d",
+    "gchat": "c5bbfe8",
+    "sha256": {
+      "gchat": "4464e3f8edcc99b27c59719342d4692e1f32c5eb163b201f254a9de04b02f8f9",
+      "fleet_probe": "b7791b518f79b408581044a3ace1c836a59780d832415f88f330fb21ea235c94"
+    }
+  },
+  "failure": {
+    "stage": "cold network bootstrap before channel join",
+    "client": "member-83",
+    "deadline_seconds": 180,
+    "total_elapsed_ms": 2261871,
+    "daemon_logs": "empty; original cause not yet diagnosed"
+  },
+  "admission": {
+    "additional_members": 80,
+    "total_including_creator": 81,
+    "max_ms": 16354,
+    "all_within_30000_ms": true
+  },
+  "resources": {
+    "samples": 226
+  },
+  "grant_revocation": {
+    "run": "capacity500-01",
+    "revoked": true,
+    "owned_daemons_stopped": true,
+    "time_unix": 1790740036,
+    "store_mode": "0o600"
+  },
+  "evidence": {
+    "capacity500-01-result.json": "2f7355253b612bda71d74b25ae329d48b8e687b9fbe07c2bdd9ad54cb2590855",
+    "capacity500-01.log": "506a9d0dfecd77fd1981f805c07c791c92a0655fea7f0a3a451b134e44261f5d",
+    "capacity500-01-resources.jsonl": "ade7afcd3a4c37ef0bca47753e521c2e6cd561fd9cda9029231fa10f00163624",
+    "capacity500-01-source.json": "0c6736f6e621b8e9719c829594812148e8e13575e014ca052da811dd28e6254d",
+    "capacity500-01-provision.json": "1f4507fa792b25b47c26bafccc7f9770a3e0990e4fde0bdfb391e2a004ef1d7b",
+    "capacity500-01-grant-revocation.json": "80730617ee05fee2ae415d8eba29425a994945024778246770c829746cd456cb"
+  },
+  "limits": "Failed before all 500 profiles started; ten-sender, offline-recovery, file and churn phases were not reached. No capacity qualification. Original profiles retained privately; diagnostic reproduction must preserve them."
+}

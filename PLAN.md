@@ -1,3 +1,15 @@
+## IRC 500-profile network failure — 2026-09-30
+
+The `40b440d` / `c5bbfe8` campaign stopped at the original 180-second cold
+bootstrap deadline for member-83, before that profile joined the hosted channel.
+Eighty additional members were admitted with the owner offline (81 including the
+creator); maximum admission was 16.354s, within 30s. The run never reached its
+ten-sender, offline-recovery, file or churn phases. Cleanup passed and the
+bootstrap grant was revoked. Original private profiles and complete logs are
+retained; the underlying bootstrap failure is under investigation. This is not
+500-member qualification. See
+`docs/evidence/irc-hosted-capacity-20260930/capacity-500-01-failure.json`.
+
 ## Current IRC small-room gate — 2026-09-30
 
 The same `40b440d` / `c5bbfe8` release binary also passes live09: 113ms local
@@ -7,7 +19,7 @@ Topic pending followed by authenticated handoff, moderation/voice/notices,
 offline recovery, retained partial pieces and the exact exported hash pass.
 Owned daemons stopped and the bootstrap grant was revoked. Evidence:
 `docs/evidence/irc-hosted-live-20260930/replay-09.json`. The separate 500-profile
-protected-network campaign has now started; it has no passing result yet.
+protected-network campaign failed during cold bootstrap, as recorded below.
 
 ## Current IRC protected-network smoke — 2026-09-30
 
