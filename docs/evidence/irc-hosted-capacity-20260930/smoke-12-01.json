@@ -1,0 +1,1098 @@
+{
+  "schema": 2,
+  "passed": true,
+  "latency_passed": false,
+  "scope": "independent GChat protected-network capacity",
+  "transport": "installed protected network",
+  "probe_interval_ms": 250,
+  "artifacts": {
+    "gchat": "289b49e7248a4232d8949ec89c6cb702f3f361cdf8db64fbe64f757f40243577",
+    "fleet_probe": "b7791b518f79b408581044a3ace1c836a59780d832415f88f330fb21ea235c94"
+  },
+  "steps": [
+    {
+      "step": "alice daemon ready",
+      "elapsed_ms": 819,
+      "duration_ms": 754
+    },
+    {
+      "step": "alice network invitation imported",
+      "elapsed_ms": 829
+    },
+    {
+      "step": "alice network ready",
+      "elapsed_ms": 37436,
+      "duration_ms": 36606
+    },
+    {
+      "step": "channel awaiting operator provisioning",
+      "elapsed_ms": 37554
+    },
+    {
+      "step": "channel provisioned",
+      "elapsed_ms": 92855,
+      "duration_ms": 55300
+    },
+    {
+      "step": "creator admitted",
+      "elapsed_ms": 98470,
+      "duration_ms": 5615
+    },
+    {
+      "step": "owner offline for all admissions",
+      "elapsed_ms": 100237
+    },
+    {
+      "step": "bob daemon ready",
+      "elapsed_ms": 100994,
+      "duration_ms": 755
+    },
+    {
+      "step": "bob network invitation imported",
+      "elapsed_ms": 101005
+    },
+    {
+      "step": "bob network ready",
+      "elapsed_ms": 140165,
+      "duration_ms": 39159
+    },
+    {
+      "step": "bob admitted",
+      "elapsed_ms": 151644,
+      "duration_ms": 9947
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 151645,
+      "duration_ms": 11479,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "bob"
+    },
+    {
+      "step": "member-2 daemon ready",
+      "elapsed_ms": 152401,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-2 network invitation imported",
+      "elapsed_ms": 152411
+    },
+    {
+      "step": "member-2 network ready",
+      "elapsed_ms": 186731,
+      "duration_ms": 34319
+    },
+    {
+      "step": "member-2 admitted",
+      "elapsed_ms": 189647,
+      "duration_ms": 1790
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 189648,
+      "duration_ms": 2916,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-2"
+    },
+    {
+      "step": "member-3 daemon ready",
+      "elapsed_ms": 190404,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-3 network invitation imported",
+      "elapsed_ms": 190413
+    },
+    {
+      "step": "member-3 network ready",
+      "elapsed_ms": 258272,
+      "duration_ms": 67859
+    },
+    {
+      "step": "member-3 admitted",
+      "elapsed_ms": 263226,
+      "duration_ms": 3319
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 263226,
+      "duration_ms": 4953,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-3"
+    },
+    {
+      "step": "member-4 daemon ready",
+      "elapsed_ms": 263982,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-4 network invitation imported",
+      "elapsed_ms": 263993
+    },
+    {
+      "step": "member-4 network ready",
+      "elapsed_ms": 322978,
+      "duration_ms": 58984
+    },
+    {
+      "step": "member-4 admitted",
+      "elapsed_ms": 329966,
+      "duration_ms": 4849
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 329967,
+      "duration_ms": 6988,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-4"
+    },
+    {
+      "step": "member-5 daemon ready",
+      "elapsed_ms": 330723,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-5 network invitation imported",
+      "elapsed_ms": 330732
+    },
+    {
+      "step": "member-5 network ready",
+      "elapsed_ms": 367578,
+      "duration_ms": 36845
+    },
+    {
+      "step": "member-5 admitted",
+      "elapsed_ms": 374468,
+      "duration_ms": 4850
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 374468,
+      "duration_ms": 6890,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-5"
+    },
+    {
+      "step": "member-6 daemon ready",
+      "elapsed_ms": 375225,
+      "duration_ms": 756
+    },
+    {
+      "step": "member-6 network invitation imported",
+      "elapsed_ms": 375235
+    },
+    {
+      "step": "member-6 network ready",
+      "elapsed_ms": 436499,
+      "duration_ms": 61264
+    },
+    {
+      "step": "member-6 admitted",
+      "elapsed_ms": 440133,
+      "duration_ms": 2809
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 440134,
+      "duration_ms": 3631,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-6"
+    },
+    {
+      "step": "member-7 daemon ready",
+      "elapsed_ms": 440890,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-7 network invitation imported",
+      "elapsed_ms": 440902
+    },
+    {
+      "step": "member-7 network ready",
+      "elapsed_ms": 478527,
+      "duration_ms": 37624
+    },
+    {
+      "step": "member-7 admitted",
+      "elapsed_ms": 483894,
+      "duration_ms": 4341
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 483895,
+      "duration_ms": 5366,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-7"
+    },
+    {
+      "step": "member-8 daemon ready",
+      "elapsed_ms": 484651,
+      "duration_ms": 754
+    },
+    {
+      "step": "member-8 network invitation imported",
+      "elapsed_ms": 484661
+    },
+    {
+      "step": "member-8 network ready",
+      "elapsed_ms": 551005,
+      "duration_ms": 66343
+    },
+    {
+      "step": "member-8 admitted",
+      "elapsed_ms": 555350,
+      "duration_ms": 3322
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 555350,
+      "duration_ms": 4345,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-8"
+    },
+    {
+      "step": "member-9 daemon ready",
+      "elapsed_ms": 556106,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-9 network invitation imported",
+      "elapsed_ms": 556117
+    },
+    {
+      "step": "member-9 network ready",
+      "elapsed_ms": 614326,
+      "duration_ms": 58208
+    },
+    {
+      "step": "member-9 admitted",
+      "elapsed_ms": 619071,
+      "duration_ms": 2810
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 619071,
+      "duration_ms": 4745,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-9"
+    },
+    {
+      "step": "member-10 daemon ready",
+      "elapsed_ms": 619827,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-10 network invitation imported",
+      "elapsed_ms": 619838
+    },
+    {
+      "step": "member-10 network ready",
+      "elapsed_ms": 655934,
+      "duration_ms": 36096
+    },
+    {
+      "step": "member-10 admitted",
+      "elapsed_ms": 663182,
+      "duration_ms": 5615
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 663182,
+      "duration_ms": 7247,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-10"
+    },
+    {
+      "step": "member-11 daemon ready",
+      "elapsed_ms": 663939,
+      "duration_ms": 755
+    },
+    {
+      "step": "member-11 network invitation imported",
+      "elapsed_ms": 663950
+    },
+    {
+      "step": "member-11 network ready",
+      "elapsed_ms": 700825,
+      "duration_ms": 36875
+    },
+    {
+      "step": "member-11 admitted",
+      "elapsed_ms": 707012,
+      "duration_ms": 4857
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 707013,
+      "duration_ms": 6186,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "member-11"
+    },
+    {
+      "step": "alice daemon ready",
+      "elapsed_ms": 707770,
+      "duration_ms": 756
+    },
+    {
+      "step": "alice network ready",
+      "elapsed_ms": 713120,
+      "duration_ms": 5344
+    },
+    {
+      "step": "owner recovered complete roster",
+      "elapsed_ms": 727657,
+      "duration_ms": 14536
+    },
+    {
+      "step": "offline owner recovery after network ready",
+      "elapsed_ms": 727658,
+      "duration_ms": 14537,
+      "target_ms": 10000,
+      "within_target": false
+    },
+    {
+      "step": "bob roster converged",
+      "elapsed_ms": 727666,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-2 roster converged",
+      "elapsed_ms": 727669,
+      "duration_ms": 7
+    },
+    {
+      "step": "alice roster converged",
+      "elapsed_ms": 727671,
+      "duration_ms": 8
+    },
+    {
+      "step": "member-3 roster converged",
+      "elapsed_ms": 727673,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-5 roster converged",
+      "elapsed_ms": 727673,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-6 roster converged",
+      "elapsed_ms": 727674,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-7 roster converged",
+      "elapsed_ms": 727675,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-4 roster converged",
+      "elapsed_ms": 727676,
+      "duration_ms": 9
+    },
+    {
+      "step": "member-8 roster converged",
+      "elapsed_ms": 727677,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-9 roster converged",
+      "elapsed_ms": 727678,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-10 roster converged",
+      "elapsed_ms": 727679,
+      "duration_ms": 5
+    },
+    {
+      "step": "member-11 roster converged",
+      "elapsed_ms": 727679,
+      "duration_ms": 4
+    },
+    {
+      "step": "independent rosters verified",
+      "elapsed_ms": 727731,
+      "members": 12
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727853,
+      "duration_ms": 118,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-6",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727854,
+      "duration_ms": 121,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-11",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727856,
+      "duration_ms": 120,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-10",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727857,
+      "duration_ms": 121,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-4",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727858,
+      "duration_ms": 122,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-8",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727859,
+      "duration_ms": 121,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-3",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727860,
+      "duration_ms": 121,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-7",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727861,
+      "duration_ms": 123,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-5",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727862,
+      "duration_ms": 122,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-2",
+      "phase": "baseline"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 727863,
+      "duration_ms": 123,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-9",
+      "phase": "baseline"
+    },
+    {
+      "step": "baseline plaintext member-2",
+      "elapsed_ms": 729657,
+      "duration_ms": 1792
+    },
+    {
+      "step": "baseline plaintext member-9",
+      "elapsed_ms": 729674,
+      "duration_ms": 1804
+    },
+    {
+      "step": "baseline plaintext bob",
+      "elapsed_ms": 729926,
+      "duration_ms": 2062
+    },
+    {
+      "step": "baseline plaintext member-8",
+      "elapsed_ms": 730184,
+      "duration_ms": 2315
+    },
+    {
+      "step": "baseline plaintext member-6",
+      "elapsed_ms": 730186,
+      "duration_ms": 2318
+    },
+    {
+      "step": "baseline plaintext member-4",
+      "elapsed_ms": 730188,
+      "duration_ms": 2321
+    },
+    {
+      "step": "baseline plaintext member-10",
+      "elapsed_ms": 730424,
+      "duration_ms": 765
+    },
+    {
+      "step": "baseline plaintext member-5",
+      "elapsed_ms": 730437,
+      "duration_ms": 2570
+    },
+    {
+      "step": "baseline plaintext member-7",
+      "elapsed_ms": 730441,
+      "duration_ms": 2573
+    },
+    {
+      "step": "baseline plaintext member-11",
+      "elapsed_ms": 730443,
+      "duration_ms": 767
+    },
+    {
+      "step": "baseline plaintext alice",
+      "elapsed_ms": 730944,
+      "duration_ms": 3079
+    },
+    {
+      "step": "baseline plaintext member-3",
+      "elapsed_ms": 731194,
+      "duration_ms": 3329
+    },
+    {
+      "step": "ten-sender plaintext verified",
+      "elapsed_ms": 731197,
+      "phase": "baseline",
+      "members": 12,
+      "duration_ms": 3465
+    },
+    {
+      "step": "baseline covered delivery member-3",
+      "elapsed_ms": 732223,
+      "duration_ms": 1025
+    },
+    {
+      "step": "baseline covered delivery member-9",
+      "elapsed_ms": 732227,
+      "duration_ms": 1025
+    },
+    {
+      "step": "baseline covered delivery member-7",
+      "elapsed_ms": 732485,
+      "duration_ms": 1284
+    },
+    {
+      "step": "baseline covered delivery member-10",
+      "elapsed_ms": 732741,
+      "duration_ms": 1537
+    },
+    {
+      "step": "baseline covered delivery member-4",
+      "elapsed_ms": 732989,
+      "duration_ms": 1790
+    },
+    {
+      "step": "baseline covered delivery member-8",
+      "elapsed_ms": 732991,
+      "duration_ms": 1790
+    },
+    {
+      "step": "baseline covered delivery member-2",
+      "elapsed_ms": 733496,
+      "duration_ms": 2297
+    },
+    {
+      "step": "baseline covered delivery member-5",
+      "elapsed_ms": 733501,
+      "duration_ms": 2302
+    },
+    {
+      "step": "baseline covered delivery member-11",
+      "elapsed_ms": 733504,
+      "duration_ms": 2300
+    },
+    {
+      "step": "baseline covered delivery member-6",
+      "elapsed_ms": 733760,
+      "duration_ms": 2560
+    },
+    {
+      "step": "ten-sender authenticated delivery",
+      "elapsed_ms": 733763,
+      "phase": "baseline",
+      "duration_ms": 6031,
+      "required_recipient_signatures": 110
+    },
+    {
+      "step": "offline message accepted",
+      "elapsed_ms": 736456,
+      "duration_ms": 2548
+    },
+    {
+      "step": "bob daemon ready",
+      "elapsed_ms": 737220,
+      "duration_ms": 757
+    },
+    {
+      "step": "bob network ready",
+      "elapsed_ms": 740026,
+      "duration_ms": 2801
+    },
+    {
+      "step": "offline plaintext recovered",
+      "elapsed_ms": 740033,
+      "duration_ms": 4
+    },
+    {
+      "step": "offline plaintext recovery after network ready",
+      "elapsed_ms": 740035,
+      "duration_ms": 6,
+      "target_ms": 10000,
+      "within_target": true
+    },
+    {
+      "step": "offline authenticated delivery",
+      "elapsed_ms": 742075,
+      "duration_ms": 2040
+    },
+    {
+      "step": "file recipient unvoiced",
+      "elapsed_ms": 742195,
+      "duration_ms": 6
+    },
+    {
+      "step": "authenticated hosted file offer",
+      "elapsed_ms": 894484,
+      "duration_ms": 151969
+    },
+    {
+      "step": "partial verified file",
+      "elapsed_ms": 899830,
+      "duration_ms": 5339
+    },
+    {
+      "step": "file paused",
+      "elapsed_ms": 899837,
+      "verified_bytes": 524288
+    },
+    {
+      "step": "bob daemon ready",
+      "elapsed_ms": 900611,
+      "duration_ms": 757
+    },
+    {
+      "step": "bob network ready",
+      "elapsed_ms": 905957,
+      "duration_ms": 5341
+    },
+    {
+      "step": "file resumed for mixed traffic",
+      "elapsed_ms": 906140,
+      "duration_ms": 164063
+    },
+    {
+      "step": "mixed traffic partial file",
+      "elapsed_ms": 906145,
+      "verified_bytes": 524288
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906265,
+      "duration_ms": 117,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-11",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906269,
+      "duration_ms": 119,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-2",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906270,
+      "duration_ms": 118,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-10",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906271,
+      "duration_ms": 120,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-8",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906273,
+      "duration_ms": 119,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-5",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906275,
+      "duration_ms": 118,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-4",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906276,
+      "duration_ms": 120,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-6",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906278,
+      "duration_ms": 120,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-3",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906280,
+      "duration_ms": 121,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-7",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "concurrent local feedback",
+      "elapsed_ms": 906281,
+      "duration_ms": 120,
+      "target_ms": 200,
+      "within_target": true,
+      "client": "member-9",
+      "phase": "mixed_file"
+    },
+    {
+      "step": "mixed_file plaintext member-3",
+      "elapsed_ms": 908079,
+      "duration_ms": 1794
+    },
+    {
+      "step": "mixed_file plaintext member-9",
+      "elapsed_ms": 908082,
+      "duration_ms": 1793
+    },
+    {
+      "step": "mixed_file plaintext member-10",
+      "elapsed_ms": 908086,
+      "duration_ms": 5
+    },
+    {
+      "step": "mixed_file plaintext alice",
+      "elapsed_ms": 908327,
+      "duration_ms": 2043
+    },
+    {
+      "step": "mixed_file plaintext member-6",
+      "elapsed_ms": 908336,
+      "duration_ms": 2049
+    },
+    {
+      "step": "mixed_file plaintext member-8",
+      "elapsed_ms": 908339,
+      "duration_ms": 2049
+    },
+    {
+      "step": "mixed_file plaintext member-7",
+      "elapsed_ms": 908341,
+      "duration_ms": 2051
+    },
+    {
+      "step": "mixed_file plaintext member-2",
+      "elapsed_ms": 908591,
+      "duration_ms": 2306
+    },
+    {
+      "step": "mixed_file plaintext member-5",
+      "elapsed_ms": 908843,
+      "duration_ms": 2557
+    },
+    {
+      "step": "mixed_file plaintext member-11",
+      "elapsed_ms": 908852,
+      "duration_ms": 769
+    },
+    {
+      "step": "mixed_file plaintext bob",
+      "elapsed_ms": 909103,
+      "duration_ms": 2819
+    },
+    {
+      "step": "mixed_file plaintext member-4",
+      "elapsed_ms": 909352,
+      "duration_ms": 3066
+    },
+    {
+      "step": "ten-sender plaintext verified",
+      "elapsed_ms": 909355,
+      "phase": "mixed_file",
+      "members": 12,
+      "duration_ms": 3209
+    },
+    {
+      "step": "mixed_file covered delivery member-7",
+      "elapsed_ms": 910897,
+      "duration_ms": 1538
+    },
+    {
+      "step": "mixed_file covered delivery member-3",
+      "elapsed_ms": 910900,
+      "duration_ms": 1542
+    },
+    {
+      "step": "mixed_file covered delivery member-11",
+      "elapsed_ms": 910901,
+      "duration_ms": 1537
+    },
+    {
+      "step": "mixed_file covered delivery member-4",
+      "elapsed_ms": 910903,
+      "duration_ms": 1543
+    },
+    {
+      "step": "mixed_file covered delivery member-2",
+      "elapsed_ms": 911146,
+      "duration_ms": 1789
+    },
+    {
+      "step": "mixed_file covered delivery member-8",
+      "elapsed_ms": 911154,
+      "duration_ms": 1795
+    },
+    {
+      "step": "mixed_file covered delivery member-5",
+      "elapsed_ms": 911404,
+      "duration_ms": 2046
+    },
+    {
+      "step": "mixed_file covered delivery member-6",
+      "elapsed_ms": 911662,
+      "duration_ms": 2303
+    },
+    {
+      "step": "mixed_file covered delivery member-9",
+      "elapsed_ms": 911926,
+      "duration_ms": 2564
+    },
+    {
+      "step": "mixed_file covered delivery member-10",
+      "elapsed_ms": 912678,
+      "duration_ms": 3316
+    },
+    {
+      "step": "ten-sender authenticated delivery",
+      "elapsed_ms": 912681,
+      "phase": "mixed_file",
+      "duration_ms": 6535,
+      "required_recipient_signatures": 110
+    },
+    {
+      "step": "whole file verified after resume",
+      "elapsed_ms": 1048545,
+      "duration_ms": 142577
+    },
+    {
+      "step": "file resume verification timing",
+      "elapsed_ms": 1048548,
+      "duration_ms": 142586,
+      "target_ms": 180000,
+      "within_target": true
+    },
+    {
+      "step": "unvoiced authenticated file completion",
+      "elapsed_ms": 1050556,
+      "duration_ms": 1782
+    },
+    {
+      "step": "file journey complete",
+      "elapsed_ms": 1050557,
+      "size": 16777216,
+      "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+      "resume_ms": 144595,
+      "duration_ms": 308480,
+      "target_ms": 600000,
+      "within_target": true
+    },
+    {
+      "step": "removed member inactive",
+      "elapsed_ms": 1052470,
+      "duration_ms": 1795
+    },
+    {
+      "step": "post-removal recipient delivery",
+      "elapsed_ms": 1064058,
+      "duration_ms": 11476
+    },
+    {
+      "step": "replacement daemon ready",
+      "elapsed_ms": 1064821,
+      "duration_ms": 755
+    },
+    {
+      "step": "replacement network invitation imported",
+      "elapsed_ms": 1064833
+    },
+    {
+      "step": "replacement network ready",
+      "elapsed_ms": 1120510,
+      "duration_ms": 55676
+    },
+    {
+      "step": "replacement admitted",
+      "elapsed_ms": 1126018,
+      "duration_ms": 3067
+    },
+    {
+      "step": "admission",
+      "elapsed_ms": 1126020,
+      "duration_ms": 5508,
+      "target_ms": 30000,
+      "within_target": true,
+      "client": "replacement"
+    },
+    {
+      "step": "member-3 roster converged",
+      "elapsed_ms": 1126030,
+      "duration_ms": 6
+    },
+    {
+      "step": "member-7 roster converged",
+      "elapsed_ms": 1126034,
+      "duration_ms": 7
+    },
+    {
+      "step": "member-9 roster converged",
+      "elapsed_ms": 1126037,
+      "duration_ms": 8
+    },
+    {
+      "step": "member-8 roster converged",
+      "elapsed_ms": 1126038,
+      "duration_ms": 10
+    },
+    {
+      "step": "replacement roster converged",
+      "elapsed_ms": 1126042,
+      "duration_ms": 5
+    },
+    {
+      "step": "member-4 roster converged",
+      "elapsed_ms": 1126289,
+      "duration_ms": 264
+    },
+    {
+      "step": "member-5 roster converged",
+      "elapsed_ms": 1126291,
+      "duration_ms": 265
+    },
+    {
+      "step": "member-10 roster converged",
+      "elapsed_ms": 1126298,
+      "duration_ms": 264
+    },
+    {
+      "step": "alice roster converged",
+      "elapsed_ms": 1126796,
+      "duration_ms": 773
+    },
+    {
+      "step": "member-2 roster converged",
+      "elapsed_ms": 1126798,
+      "duration_ms": 774
+    },
+    {
+      "step": "member-6 roster converged",
+      "elapsed_ms": 1126803,
+      "duration_ms": 777
+    },
+    {
+      "step": "bob roster converged",
+      "elapsed_ms": 1127061,
+      "duration_ms": 1037
+    },
+    {
+      "step": "independent rosters verified",
+      "elapsed_ms": 1127123,
+      "members": 12
+    },
+    {
+      "step": "capacity finished",
+      "elapsed_ms": 1127459,
+      "passed": true,
+      "latency_passed": false,
+      "qualified_500": false
+    }
+  ],
+  "requested_members": 12,
+  "qualified_500": false,
+  "receipt_deadline_seconds": 600,
+  "observations": {
+    "independent_members": 12,
+    "baseline": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "offline_recovery": true,
+    "mixed_file": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "verified_file_resume": true,
+    "churn_and_exclusion": true
+  },
+  "cleanup_passed": true,
+  "cleanup_errors": [],
+  "source": {
+    "gcoms": "0e7db6a",
+    "gchat": "5533b1e",
+    "capacity_harness": "b36e077",
+    "sha256": {
+      "gchat": "289b49e7248a4232d8949ec89c6cb702f3f361cdf8db64fbe64f757f40243577",
+      "fleet_probe": "b7791b518f79b408581044a3ace1c836a59780d832415f88f330fb21ea235c94",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+      "hosted-capacity.py": "10b9f471d6f393e6ab829e3269204c5291e6ea539e0f1b1455c125e6a5adc12f"
+    }
+  },
+  "raw_report_sha256": "31994f25eae76c3cfd8eac263946bbd1fb59c6d3fca08fc376291ad9bfccbe62",
+  "grant_revoked": true
+}

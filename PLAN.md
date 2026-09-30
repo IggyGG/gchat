@@ -798,3 +798,17 @@ and kick/replacement confidentiality. Four harness/deadline checks and the sourc
 audit pass. The actual smoke and campaign remain unqualified. Current full GComs
 workspace validation and the separate durable-runtime 500-client campaigns remain
 running; native installed release and normal trunk publication remain open.
+
+### IRC-8 twelve-profile protected-network smoke — 2026-09-30
+
+The GComs `0e7db6a`/GChat `5533b1e` smoke with harness `b36e077` finished with
+correctness and cleanup passing, but latency failing. Twelve independent MLS
+identities verified all baseline and mixed-file messages and 220 actual recipient
+signatures across ten simultaneous senders per phase. Offline delivery, removal
+confidentiality, replacement admission and a 16MiB interrupted file pass; resumed
+verification took 142.586s and the full file workflow 308.480s. The returning
+owner's eleven-admission catch-up took 14.537s after network readiness, exceeding
+10s. Receipt: `docs/evidence/irc-hosted-capacity-20260930/smoke-12-01.json`.
+All owned daemons stopped and the temporary bootstrap-only grant was revoked.
+This remains a 12-profile smoke, not a 500-member pass. Paired GComs is validating
+a bounded two-request deferred-replay window before a fresh application run.
