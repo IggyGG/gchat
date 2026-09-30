@@ -26,6 +26,7 @@ class Journey:
             'schema': 2, 'passed': False, 'latency_passed': False,
             'scope': 'two-client correctness journey; latency reported separately',
             'transport': 'installed protected network',
+            'probe_interval_ms': 250,
             'artifacts': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in (args.gchat, args.probe)}, 'steps': [],
         }
@@ -181,7 +182,7 @@ class Journey:
                     raise TimeoutError(label + " completed after its deadline")
                 self.note(label, duration_ms=round(elapsed * 1000))
                 return result
-            time.sleep(1)
+            time.sleep(0.25)
         raise TimeoutError(label)
 
     def run(self):

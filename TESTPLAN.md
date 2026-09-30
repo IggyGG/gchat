@@ -558,3 +558,8 @@ from `latency_passed`. Require explicit 30s admission, 200ms feedback, 5s small-
 message/ACK, 180s resumed verification and 600s file-workflow observations. Keep
 large-channel covered-ACK timing separate. A predicate returning success after
 its fixed wait deadline must still fail; run `hosted_live_test.py` for this guard.
+
+Live hosted journey observations poll the local IPC snapshot every 250ms. This
+reduces sampling uncertainty around the five-second small-room target; all
+elapsed times and deadline checks still use the monotonic wall clock. Earlier
+one-second-probe reports retain their original measurements and failed status.
