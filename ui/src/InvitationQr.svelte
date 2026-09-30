@@ -10,4 +10,4 @@
   });
 </script>
 {#if error}<p role="status">{error}</p>{:else}<canvas bind:this={canvas} aria-label="Invitation QR code"></canvas><p>Scan with a camera to open GChat. Anyone with this code can use the invitation.</p>{/if}
-<style>canvas{max-width:100%;height:auto;display:block;background:white}p{font-size:13px;line-height:1.5}</style>
+<style>canvas{max-width:min(100%,340px);height:auto!important;display:block;background:white;image-rendering:pixelated}p{font-size:13px;line-height:1.5}</style>

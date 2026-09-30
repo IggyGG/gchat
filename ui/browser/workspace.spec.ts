@@ -691,6 +691,10 @@ for (const width of [390,1100]) test(`reusable invitation presets, QR and revoca
   const canvas=dialog.getByLabel('Invitation QR code');
   await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>c.width)).toBeGreaterThan(100);
   expect((await canvas.boundingBox())!.width).toBeLessThanOrEqual(width);
+  const qrBounds = (await canvas.boundingBox())!;
+  expect(Math.abs(qrBounds.width - qrBounds.height)).toBeLessThan(1);
+  expect(qrBounds.y).toBeGreaterThanOrEqual(0);
+  expect(qrBounds.y + qrBounds.height).toBeLessThanOrEqual(800);
   await page.screenshot({path:`../../target/reusable-invitation-${width}.png`,fullPage:true});
   await page.getByRole('button',{name:'Close dialog',exact:true}).click();
   await expect(page.locator('.transcript')).not.toContainText('GCIR1');
