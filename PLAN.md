@@ -722,3 +722,14 @@ workspace Clippy: 185 passes, three explicit ignores, no failures. Evidence is
 `docs/evidence/irc-checkpoint-batch-paired-20260930/summary.json`. The release
 executable built and its hash was verified before the new live06 journey. The
 live journey and the separate 500-client capacity test are still running.
+
+### IRC-8 live latency progress — 2026-09-30
+
+Live06 on GComs 3be4455 again passes correctness. Small-room delivery plus its
+recipient ACK is 3.429s and the full 16MiB workflow is 478.544s, within their
+respective 5s and 600s targets. Resumed verification is 234.873s and still misses
+180s. Earlier failed measurements are retained. This run sampled local IPC at
+250ms; artifact hashes and exact observations are in
+`docs/evidence/irc-hosted-live-20260930/batch-06.json`. Both daemons stopped and
+the temporary bootstrap grant was revoked through the ordinary operator tool.
+A bounded two-piece runtime window is now undergoing component qualification.
