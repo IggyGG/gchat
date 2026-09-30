@@ -714,3 +714,11 @@ verified 16 MiB restart. Feedback is 112ms, offline-owner admission 6.669s,
 small-room receipt 6.146s, resumed verification 285.756s and file workflow
 624.321s. Receipt and file latency targets remain failed. Retained run04 is not
 superseded or relabeled. See `docs/evidence/irc-hosted-live-20260930/poll-05.json`.
+
+### IRC-8 bounded replay paired regression — 2026-09-30
+
+The GComs 3be4455 runtime passes the complete paired GChat regression and strict
+workspace Clippy: 185 passes, three explicit ignores, no failures. Evidence is
+`docs/evidence/irc-checkpoint-batch-paired-20260930/summary.json`. The release
+executable built and its hash was verified before the new live06 journey. The
+live journey and the separate 500-client capacity test are still running.
