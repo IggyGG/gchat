@@ -619,3 +619,7 @@ Reports explicitly identify this recovery policy; earlier reports cannot inherit
 Do not convert earlier failed 10-second results into passes. Confirm that locked
 views hide progress, cancellation/errors clear it, and an empty recovery page
 clears it after a complete roster. Progress is not a delivery acknowledgment.
+
+The hosted capacity journey rechecks the removed client after the replacement
+roster converges: it must remain inactive with no channel/archive replay error.
+A transient inactive view between kick and rekey cannot qualify churn recovery.

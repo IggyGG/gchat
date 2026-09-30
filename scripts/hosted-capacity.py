@@ -253,6 +253,14 @@ class Capacity(live.Journey):
             replacement_id = next(m['id'] for m in self.room(replacement, channel)['members'] if m.get('isSelf'))
             assert replacement_id != victim_id
             assert not any(m['body'] == 'after-capacity-removal' for m in self.history(replacement, channel))
+            # Recheck after the replacement converges: seeing the kick before
+            # its rekey is applied must not hide a later poisoned replay owner.
+            removed = self.request(victim, {'kind': 'snapshot'})['snapshot']
+            room = next(c for c in removed['conversations'] if c['id'] == channel)
+            assert room.get('active') is False
+            assert not any(error['id'] in (channel, 'hosted-archive')
+                           for error in removed.get('providerErrors', [])), \
+                'removed member retained a replay error after replacement'
             self.report['observations']['churn_and_exclusion'] = True
             self.report['passed'] = True
             self.report['latency_passed'] = all(s['within_target'] for s in self.report['steps'] if 'within_target' in s)
