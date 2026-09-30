@@ -881,3 +881,15 @@ assumption in the real private-file/chat test. Commit `39848b8` waits up to
 and transcript-isolation assertions. The original failure is retained in
 `docs/evidence/irc-trunk-integration-20260930/catchup-rust-01-failure.json`.
 Full final-source Rust, live backlog and package qualification remain in progress.
+
+### IRC-8 protected-network backlog progress — 2026-09-30
+
+Current GComs `250ece7` / GChat `39848b8` binaries recover the retained
+81-member owner roster in 102.236 seconds, showing confirmed progress at
+0, 32, 64, 83 and 84 applied records and clearing the indicator on completion.
+The original profile is unchanged; the daemon stopped and its temporary grant
+was revoked. This passes the selected large-backlog behavior, with ordinary
+message recovery still separately limited to 10 seconds. Evidence:
+`docs/evidence/irc-trunk-integration-20260930/catchup-live-81.json`.
+The earlier 96.815-second result remains a failure against its original 10-second
+backlog requirement. Full 500-member and installed-native qualification remain open.

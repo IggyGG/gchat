@@ -1,0 +1,54 @@
+{
+  "gcoms_source": "250ece7c7abdb10458e8db72a9c60f110ce4ad08",
+  "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+  "artifacts": {
+    "gchat": "0543744685338cfcb2976964b69d6126265cab6b59ebbabdc2a79524dde59f82",
+    "fleet_probe": "4a767bda14687c8f7d03435c89f77bcc3a31443b67c4a951c0dc382b5f956788",
+    "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+    "hosted-capacity.py": "5cab0679900d992b195a91df9320d37a3e519b85cdabb12ab74a4fad74107209"
+  },
+  "scope": "Actual protected-network replay of 80 missed admissions, using a private clone of the retained 81-member owner profile",
+  "passed": true,
+  "members": 81,
+  "catchup_ms": 102236,
+  "observation_deadline_seconds": 300,
+  "applied_record_progress": [
+    0,
+    32,
+    64,
+    83,
+    84
+  ],
+  "complete_unique_roster": true,
+  "indicator_cleared": true,
+  "ordinary_offline_message_target_ms": 10000,
+  "cleanup_passed": true,
+  "grant_revoked": true,
+  "original_untouched": true,
+  "not_qualified": [
+    "500-member application workflow",
+    "installed native release"
+  ],
+  "evidence": {
+    "bootstrap-owner-02-result.json": {
+      "path": "test-evidence/irc-parity/bootstrap-owner-02-result.json",
+      "sha256": "be941a942f09959e14f69bc2a8f59585fffb7f0364f2cf7dce9c993e8b4a5fe6"
+    },
+    "bootstrap-owner-02-transport.json": {
+      "path": "test-evidence/irc-parity/bootstrap-owner-02-transport.json",
+      "sha256": "f66135cfbaa5e2dfc54e1259b5a030b15242c3d369c1095dd84cc90bc7b19d94"
+    },
+    "bootstrap-owner-02.log": {
+      "path": "test-evidence/irc-parity/bootstrap-owner-02.log",
+      "sha256": "252809dbeb8b85f36e2fa01e48566b08716b86a7eac16b0baa2b3f9a6b8f3d37"
+    },
+    "catchup-build-02.log": {
+      "path": "test-evidence/irc-parity/catchup-build-02.log",
+      "sha256": "8d80a90c40c3280621a706ef6ec032e282d2a1af60fdf6bca4bbc84ab1279bc2"
+    },
+    "catchup-build-02.exit": {
+      "path": "test-evidence/irc-parity/catchup-build-02.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  }
+}
