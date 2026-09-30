@@ -1,3 +1,21 @@
+## Current IRC protected-network smoke — 2026-09-30
+
+GComs `40b440d` / GChat `c5bbfe8` passes the actual 12-profile correctness and
+latency campaign. Returning-owner recovery is 6.130s against the unchanged 10s
+target; ordinary offline plaintext recovery is 6ms. Ten simultaneous senders
+produce 110 verified covered recipient signatures in each of the baseline and
+mixed-file phases. Resumed 16MiB verification takes 106.008s, with the full file
+workflow at 257.472s and the exact expected export hash. Removal confidentiality,
+independent replacement/no old ciphertext, resource sampling and cleanup pass.
+All owned daemons stopped and the bootstrap-only grant was revoked. The original
+14.537s recovery miss remains retained. See
+`docs/evidence/irc-hosted-capacity-20260930/smoke-12-02.json`.
+
+Cold startup used four independent profiles at a time, with sequential joins;
+whole-run elapsed improvement is not a production-code-only comparison. The
+current small-room live09, full workspace/paired archive gates and separate
+500-member runtime/application/native qualifications remain open.
+
 The follow-up `contacts-10.log` passes the same contact unit/integration checks and
 strict Clippy on paired GComs `4e5df35`. A full receipt outbox now leaves incoming
 messages durable while continuing to process other receipts and drain outbound

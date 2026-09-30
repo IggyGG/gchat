@@ -1,0 +1,140 @@
+{
+  "schema": 2,
+  "passed": true,
+  "latency_passed": true,
+  "qualified_500": false,
+  "scope": "independent GChat protected-network capacity",
+  "transport": "installed protected network",
+  "requested_members": 12,
+  "startup_concurrency": 4,
+  "receipt_deadline_seconds": 600,
+  "observations": {
+    "independent_members": 12,
+    "baseline": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "offline_recovery": true,
+    "mixed_file": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "verified_file_resume": true,
+    "churn_and_exclusion": true
+  },
+  "cleanup_passed": true,
+  "cleanup_errors": [],
+  "resources_complete": true,
+  "resource_error": null,
+  "peak_active_profiles": 13,
+  "source": {
+    "gcoms": "40b440d",
+    "gchat": "c5bbfe8",
+    "capacity_harness": "c5bbfe8",
+    "sha256": {
+      "gchat": "4464e3f8edcc99b27c59719342d4692e1f32c5eb163b201f254a9de04b02f8f9",
+      "fleet_probe": "b7791b518f79b408581044a3ace1c836a59780d832415f88f330fb21ea235c94",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+      "hosted-capacity.py": "5ccc47abfa5d96d44786e61aba7191cb6cc234933af769b925d8aa53e975d34c"
+    }
+  },
+  "raw_report_sha256": "471d62c7350c1952e598cd7838949a8c8aab4ec2bd03563457f12e3e508fb732",
+  "measured_steps": [
+    {
+      "step": "offline owner recovery after network ready",
+      "elapsed_ms": 407283,
+      "duration_ms": 6130,
+      "target_ms": 10000,
+      "within_target": true
+    },
+    {
+      "step": "ten-sender plaintext verified",
+      "elapsed_ms": 410819,
+      "phase": "baseline",
+      "members": 12,
+      "duration_ms": 3458
+    },
+    {
+      "step": "ten-sender authenticated delivery",
+      "elapsed_ms": 414139,
+      "phase": "baseline",
+      "duration_ms": 6778,
+      "required_recipient_signatures": 110
+    },
+    {
+      "step": "offline plaintext recovery after network ready",
+      "elapsed_ms": 419649,
+      "duration_ms": 6,
+      "target_ms": 10000,
+      "within_target": true
+    },
+    {
+      "step": "ten-sender plaintext verified",
+      "elapsed_ms": 573449,
+      "phase": "mixed_file",
+      "members": 12,
+      "duration_ms": 2962
+    },
+    {
+      "step": "ten-sender authenticated delivery",
+      "elapsed_ms": 576523,
+      "phase": "mixed_file",
+      "duration_ms": 6036,
+      "required_recipient_signatures": 110
+    },
+    {
+      "step": "file resume verification timing",
+      "elapsed_ms": 676361,
+      "duration_ms": 106008,
+      "target_ms": 180000,
+      "within_target": true
+    },
+    {
+      "step": "file journey complete",
+      "elapsed_ms": 678144,
+      "size": 16777216,
+      "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+      "resume_ms": 107792,
+      "duration_ms": 257472,
+      "target_ms": 600000,
+      "within_target": true
+    },
+    {
+      "step": "capacity finished",
+      "elapsed_ms": 764579,
+      "passed": true,
+      "latency_passed": true,
+      "qualified_500": false
+    }
+  ],
+  "admission": {
+    "count": 12,
+    "max_ms": 8364,
+    "all_within_target": true
+  },
+  "concurrent local feedback": {
+    "count": 20,
+    "max_ms": 121,
+    "all_within_target": true
+  },
+  "resources": {
+    "samples": 77,
+    "peak_total_rss_kib": 457788,
+    "cpu_clock_ticks_per_second": 100
+  },
+  "grant_revocation": {
+    "run": "capacity12-02",
+    "revoked": true,
+    "owned_daemons_stopped": true,
+    "time_unix": 1790736991,
+    "store_mode": "0o600"
+  },
+  "evidence": {
+    "capacity12-02-result.json": "471d62c7350c1952e598cd7838949a8c8aab4ec2bd03563457f12e3e508fb732",
+    "capacity12-02.log": "67d1b98b5460fe196352405145db60240837a0ead38b6bda716dd7e12200b9c6",
+    "capacity12-02-resources.jsonl": "d6e7e8a89ce2097c0de6413cbd3ecd61c7c75244fa2133a7d903407e59047d5d",
+    "capacity12-02-source.json": "3de531daada6a9a4a181a5bcf4768a0460aa01a08999cd212c6d4711bf7b75a0",
+    "capacity12-02-provision.json": "4183aeca4b7f694f298c3861b3f06fc4c97d5f6e036c35febf774c056d95db62"
+  },
+  "limits": "12-profile protected-network smoke, not 500-member or installed native qualification. Startup scheduling changed from one to four independent profiles; do not attribute whole-run elapsed improvement solely to replay code."
+}
