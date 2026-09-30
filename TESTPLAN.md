@@ -623,3 +623,10 @@ clears it after a complete roster. Progress is not a delivery acknowledgment.
 The hosted capacity journey rechecks the removed client after the replacement
 roster converges: it must remain inactive with no channel/archive replay error.
 A transient inactive view between kick and rekey cannot qualify churn recovery.
+
+### IRC-8 hosted worker scheduling
+
+Durable hosted admissions must wake the consumer without an idle timer tick.
+Multiple queued admissions coalesce; reads and refused mutations must not cause
+extra polling. Keep one-second idle polling, durable consumer commit before ACK,
+covered receipt transport and the unchanged five-second small-room live target.

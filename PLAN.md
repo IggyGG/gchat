@@ -954,3 +954,10 @@ replacement. The victim remains inactive with no replay error after replacement.
 Timing, resource capture, cleanup and grant revocation pass. Evidence:
 `docs/evidence/irc-hosted-capacity-20260930/smoke-12-06-pass.json`.
 The separate two-client journey and full 500-member campaign remain open.
+
+The two-client run10 observes a 5.206-second delivery/receipt result against the
+unchanged five-second target. Newly durable sends and committed receipts can
+wait for the next one-second application tick. A coalesced application wake-up
+now schedules that work promptly; idle reads and refused mutations do not wake
+the worker. This changes no transport profile or acknowledgment requirement.
+Cluster regression and new live timing qualification are pending.

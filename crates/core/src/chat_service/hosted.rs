@@ -644,11 +644,32 @@ fn apply(state: &mut UiState, channel: h::Channel, events: Vec<h::Event>) -> Res
 impl ChatService {
     async fn hosted_exchange(&self, request: h::Request) -> Result<h::Reply, String> {
         self.require(Capability::HostedChannels)?;
-        self.runtime
+        let changed = matches!(
+            &request,
+            h::Request::Create { .. }
+                | h::Request::Join { .. }
+                | h::Request::Send { .. }
+                | h::Request::SendIdentified { .. }
+                | h::Request::Change { .. }
+                | h::Request::Invite { .. }
+                | h::Request::RotateCode { .. }
+                | h::Request::ClearCode { .. }
+                | h::Request::SetPresence { .. }
+                | h::Request::CommitEvents { .. }
+                | h::Request::CommitFileEvents { .. }
+        );
+        let result = self
+            .runtime
             .sdk_client()
             .hosted_channels(request)
             .await
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string());
+        if changed && result.is_ok() {
+            // Coalesce durable work arriving while a poll is in flight. In
+            // particular, archived receipts must not wait for an idle tick.
+            self.hosted_wake.notify_one();
+        }
+        result
     }
     async fn archive_hosted(&self, channel: h::Channel, recovered: bool) -> Result<(), String> {
         let h::Reply::Events(events) = self
@@ -730,12 +751,17 @@ impl ChatService {
     }
     pub(super) fn spawn_hosted_worker(service: &Arc<Self>) -> tokio::task::JoinHandle<()> {
         let weak = Arc::downgrade(service);
+        let wake = service.hosted_wake.clone();
         let mut stopped = service.stopped.subscribe();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
-                tokio::select! {_ = stopped.changed()=>break, _=interval.tick()=>{}}
+                tokio::select! {
+                    _ = stopped.changed() => break,
+                    _ = wake.notified() => interval.reset(),
+                    _ = interval.tick() => {},
+                }
                 let Some(service) = weak.upgrade() else { break };
                 if *stopped.borrow() {
                     break;
@@ -1525,5 +1551,66 @@ mod tests {
         assert_eq!(scoped_identity(&room, &hex(&[7; 32])).unwrap(), [7; 32]);
         assert!(scoped_identity(&room, "unknown person").is_err());
         assert!(commands().iter().any(|c| c.name == "/notice"));
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn durable_hosted_admissions_wake_once_but_reads_and_refusals_stay_idle() {
+        let home = tempfile::tempdir().unwrap();
+        crate::private_fs::make_private(home.path(), true).unwrap();
+        let runtime = ProtocolRuntime::create_fixture(
+            &home.path().join("profile"),
+            "hosted-wake",
+            "127.0.0.1:0".parse().unwrap(),
+            None,
+            None,
+            &[],
+        )
+        .await
+        .unwrap();
+        let service = ChatService::new(
+            home.path().join("archive"),
+            runtime.clone(),
+            vec![Capability::HostedChannels],
+        )
+        .unwrap();
+        // Hold the network consumer so admission remains queued locally and
+        // the test observes whether durable producers actually wake it.
+        let worker = service.hosted_worker.lock().unwrap().take().unwrap();
+        worker.abort();
+        let _ = worker.await;
+        for alias in ["first", "second"] {
+            let reply = service
+                .hosted_exchange(h::Request::Create {
+                    endpoint: "https://example.invalid/v1/hosted".into(),
+                    alias: alias.into(),
+                    nickname: "owner".into(),
+                    capacity: 12,
+                    admission: h::Admission::Public,
+                })
+                .await
+                .unwrap();
+            assert!(matches!(reply, h::Reply::Channel(channel) if channel.pending == 1));
+        }
+        tokio::time::timeout(Duration::from_secs(1), service.hosted_wake.notified())
+            .await
+            .expect("durable work must wake without the idle tick");
+        assert!(
+            matches!(service.hosted_exchange(h::Request::List).await.unwrap(),
+            h::Reply::Channels(channels) if channels.len() == 2)
+        );
+        assert!(service
+            .hosted_exchange(h::Request::Send {
+                channel: [0; 32],
+                content: h::Content::Text("refused".into()),
+            })
+            .await
+            .is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(30), service.hosted_wake.notified())
+                .await
+                .is_err(),
+            "coalesced work, reads and refusals must not cause a busy loop"
+        );
+        service.disconnect().await.unwrap();
+        runtime.shutdown().await.unwrap();
     }
 }

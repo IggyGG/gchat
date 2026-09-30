@@ -1,3 +1,8 @@
+Hosted sends, policy changes and committed consumer receipts wake the application
+worker immediately after durable local acceptance. Wake-ups coalesce while work
+is in flight; idle polling remains once per second and transport stays covered.
+The worker does not wake routing recovery or claim recipient delivery early.
+
 ## Hosted and contact files (qualification in progress)
 
 The shared file controls now select the explicit hosted/contact transfer profile
