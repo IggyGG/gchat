@@ -1,0 +1,81 @@
+{
+  "source": {
+    "gcoms_source": "2c4535d562216340ea54a08e5fc8d419549d73e2",
+    "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+    "harness_source": "c449de7dcda028bd6102ad9402e425dd685c2ddf",
+    "artifacts": {
+      "gchat": "543843bf68841d65ab07a7a80170cc0b63919450017e805826a8929b60482151",
+      "fleet_probe": "30707afe124d53925189ca1c9d5316a2d77a072f1b4fbb58c8c4c96ab8978fcb",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+      "hosted-capacity.py": "94c5fa56f1fa8d950de1567603eead1de7aae2794d9b6b72929b9a3043abcc9e"
+    }
+  },
+  "status": "correctness_passed_timing_failed",
+  "passed": false,
+  "correctness_passed": true,
+  "latency_passed": false,
+  "failures": [
+    {
+      "step": "online delivery and receipt",
+      "elapsed_ms": 134149,
+      "duration_ms": 5206,
+      "target_ms": 5000,
+      "within_target": false
+    },
+    {
+      "step": "file resume verification timing",
+      "elapsed_ms": 494890,
+      "duration_ms": 182527,
+      "target_ms": 180000,
+      "within_target": false
+    }
+  ],
+  "file": {
+    "step": "file journey complete",
+    "elapsed_ms": 496661,
+    "size": 16777216,
+    "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+    "resume_ms": 184298,
+    "duration_ms": 341821,
+    "target_ms": 600000,
+    "within_target": true
+  },
+  "cleanup_passed": true,
+  "grant_revoked": true,
+  "cleanup_source": "separate OS process/unit observation; original two-client report lacked cleanup field",
+  "followup": "GChat coalesces durable producer wake-ups without changing idle cadence, transport profile or existing timing targets. New two-client harness explicitly records complete cleanup. Fresh exact-source qualification required.",
+  "evidence": {
+    "run10-cleanup-observation.json": {
+      "path": "test-evidence/irc-parity/run10-cleanup-observation.json",
+      "sha256": "ff784c49016272ec195ad328c2c4d81c4af0b371713cd60df6a34f98ae3c5684"
+    },
+    "run10-provision.json": {
+      "path": "test-evidence/irc-parity/run10-provision.json",
+      "sha256": "8f09b095387ba33be33c20497f7ff2ca07ab26b563e2484c81f97976fc6804d1"
+    },
+    "run10-source.json": {
+      "path": "test-evidence/irc-parity/run10-source.json",
+      "sha256": "823d8e20c1e68eee1cb81662da15b85f380b1933a51b79c5d67373c84ea4532e"
+    },
+    "run10.log": {
+      "path": "test-evidence/irc-parity/run10.log",
+      "sha256": "f4339575b3ded2a73fe7ee5754a7235f2e8ac6c001493f46144c8ac17229610d"
+    },
+    "run10-alice-daemon.log": {
+      "path": "test-evidence/irc-parity/run10-alice-daemon.log",
+      "sha256": "51f8b951f442f26ebc95ee0329beff0c4b7185bfa43c67f23c36a9c4626fbff8"
+    },
+    "run10-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/run10-grant-revocation.json",
+      "sha256": "89846ab45d24f9f5a4990eebbe6890ffa2ef020d9476c4a8f09c39ce1ffd4580"
+    },
+    "run10-bob-daemon.log": {
+      "path": "test-evidence/irc-parity/run10-bob-daemon.log",
+      "sha256": "e419fde7086f4fbe24f936ac8d65091ac0a291ef14d0dbbd9024696cb9c39380"
+    },
+    "run10-result.json": {
+      "path": "test-evidence/irc-parity/run10-result.json",
+      "sha256": "e618a8589fa354c9eb4467bed38f3bfd52bc67bcc456d52765522f4f986703a6"
+    }
+  }
+}

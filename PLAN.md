@@ -961,3 +961,10 @@ wait for the next one-second application tick. A coalesced application wake-up
 now schedules that work promptly; idle reads and refused mutations do not wake
 the worker. This changes no transport profile or acknowledgment requirement.
 Cluster regression and new live timing qualification are pending.
+
+Completed run10 retains correctness but fails timing: 5.206-second online
+message/receipt and 182.527-second file resume against unchanged 5/180-second
+targets. Full file workflow is 341.821 seconds with the correct 16 MiB hash.
+Independent OS checks confirm no owned clients remain; the temporary grant is
+revoked. See `live-10-original-timing.json` in hosted-capacity evidence. The
+original report is unchanged; the updated harness explicitly records cleanup.
