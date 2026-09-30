@@ -630,3 +630,7 @@ Durable hosted admissions must wake the consumer without an idle timer tick.
 Multiple queued admissions coalesce; reads and refused mutations must not cause
 extra polling. Keep one-second idle polling, durable consumer commit before ACK,
 covered receipt transport and the unchanged five-second small-room live target.
+
+The two-client harness records cleanup independently of correctness and timing.
+An exceptional journey must attempt every owned process; a stop failure remains
+an explicit cleanup failure and nonzero exit, never a successful final receipt.

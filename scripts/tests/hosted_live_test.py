@@ -27,5 +27,37 @@ class HostedLiveDeadlineTest(unittest.TestCase):
         journey.note.assert_called_once_with('recipient', duration_ms=400)
 
 
+class HostedLiveCleanupTest(unittest.TestCase):
+    def journey(self):
+        journey = object.__new__(module.Journey)
+        journey.report = {'passed': False}
+        journey.processes = {'alice': object(), 'bob': object()}
+        journey.start = Mock(side_effect=RuntimeError('injected journey failure'))
+        journey.note = Mock()
+        return journey
+
+    def test_failure_still_stops_every_owned_process_and_records_cleanup(self):
+        journey = self.journey()
+        journey.stop = Mock(side_effect=lambda who: journey.processes.pop(who))
+        with self.assertRaisesRegex(RuntimeError, 'injected journey failure'):
+            journey.run()
+        self.assertTrue(journey.report['cleanup_passed'])
+        self.assertEqual(journey.stop.call_count, 2)
+        self.assertEqual(journey.report['error'], 'injected journey failure')
+
+    def test_one_cleanup_failure_does_not_skip_the_other_owned_process(self):
+        journey = self.journey()
+        def stop(who):
+            if who == 'alice':
+                raise RuntimeError('injected stop failure')
+            journey.processes.pop(who)
+        journey.stop = Mock(side_effect=stop)
+        with self.assertRaisesRegex(RuntimeError, 'owned daemon cleanup failed'):
+            journey.run()
+        self.assertFalse(journey.report['cleanup_passed'])
+        self.assertEqual(journey.stop.call_count, 2)
+        self.assertEqual(journey.report['cleanup_errors'], ['alice: injected stop failure'])
+
+
 if __name__ == '__main__':
     unittest.main()

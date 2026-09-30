@@ -249,8 +249,17 @@ class Journey:
             self.note('journey failed', error=str(error))
             raise
         finally:
+            cleanup_errors = []
             for who in list(self.processes):
-                self.stop(who)
+                try:
+                    self.stop(who)
+                except Exception as error:
+                    cleanup_errors.append(f'{who}: {error}')
+            self.report['cleanup_errors'] = cleanup_errors
+            self.report['cleanup_passed'] = not cleanup_errors and not self.processes
+            self.note('journey finished', cleanup_passed=self.report['cleanup_passed'])
+            if cleanup_errors:
+                raise RuntimeError('owned daemon cleanup failed')
 
 
 if __name__ == '__main__':
