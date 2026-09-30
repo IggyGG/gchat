@@ -946,3 +946,11 @@ without replay errors for ten seconds and reopens inactive. The original
 profile is unchanged; cleanup and grant revocation pass. Evidence:
 `docs/evidence/irc-hosted-capacity-20260930/removal-replay-live-01.json`.
 Fresh smoke06 now exercises the full journey with the stricter final churn check.
+
+Fresh smoke06 (`2c4535d` / `39848b8`, harness `c449de7`) passes twelve
+independent clients, 220 covered recipient signatures, ordinary recovery,
+visible membership replay, mixed file traffic, removal confidentiality and
+replacement. The victim remains inactive with no replay error after replacement.
+Timing, resource capture, cleanup and grant revocation pass. Evidence:
+`docs/evidence/irc-hosted-capacity-20260930/smoke-12-06-pass.json`.
+The separate two-client journey and full 500-member campaign remain open.

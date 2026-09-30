@@ -1,0 +1,98 @@
+{
+  "source": {
+    "gcoms_source": "2c4535d562216340ea54a08e5fc8d419549d73e2",
+    "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+    "harness_source": "c449de7dcda028bd6102ad9402e425dd685c2ddf",
+    "artifacts": {
+      "gchat": "543843bf68841d65ab07a7a80170cc0b63919450017e805826a8929b60482151",
+      "fleet_probe": "30707afe124d53925189ca1c9d5316a2d77a072f1b4fbb58c8c4c96ab8978fcb",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+      "hosted-capacity.py": "94c5fa56f1fa8d950de1567603eead1de7aae2794d9b6b72929b9a3043abcc9e"
+    }
+  },
+  "scope": "independent GChat protected-network capacity",
+  "passed": true,
+  "requested_members": 12,
+  "qualified_500": false,
+  "recovery_policy": "ordinary-message-10s-visible-membership-replay",
+  "observations": {
+    "membership_catchup": true,
+    "independent_members": 12,
+    "baseline": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "offline_recovery": true,
+    "mixed_file": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "verified_file_resume": true,
+    "churn_and_exclusion": true
+  },
+  "timing": {
+    "max_local_feedback_ms": 131,
+    "ordinary_offline_recovery_ms": 6,
+    "membership_replay": {
+      "step": "membership backlog recovered",
+      "elapsed_ms": 319251,
+      "duration_ms": 12517,
+      "observation_deadline_seconds": 300,
+      "progress_required": true,
+      "applied_progress": [
+        0,
+        11,
+        12
+      ]
+    },
+    "file_resume": {
+      "step": "file resume verification timing",
+      "elapsed_ms": 581494,
+      "duration_ms": 96850,
+      "target_ms": 180000,
+      "within_target": true
+    },
+    "file_workflow": {
+      "step": "file journey complete",
+      "elapsed_ms": 584279,
+      "size": 16777216,
+      "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+      "resume_ms": 99635,
+      "duration_ms": 253174,
+      "target_ms": 600000,
+      "within_target": true
+    },
+    "failures": []
+  },
+  "latency_passed": true,
+  "removed_client_healthy_after_replacement": true,
+  "cleanup_passed": true,
+  "resources_complete": true,
+  "grant_revoked": true,
+  "evidence": {
+    "capacity12-06-result.json": {
+      "path": "test-evidence/irc-parity/capacity12-06-result.json",
+      "sha256": "1ec48bf96ff0aed31d201771e29987ba656f599ad67f64ddf62a1cb519846995"
+    },
+    "capacity12-06-resources.jsonl": {
+      "path": "test-evidence/irc-parity/capacity12-06-resources.jsonl",
+      "sha256": "c4d1ad306e0ff719fa5f4d87f28debdfc8e8da10e71c85c74a7effe84f652f83"
+    },
+    "capacity12-06-log": {
+      "path": "test-evidence/irc-parity/capacity12-06-log",
+      "sha256": "dbf5d441bc951cea097d086ffb0949d4cf6914dfb01562bce642112092a1444b"
+    },
+    "capacity12-06-provision.json": {
+      "path": "test-evidence/irc-parity/capacity12-06-provision.json",
+      "sha256": "9f27adcff6a1d25873a9c9ac07ea05852f2ff2b623954c7bd4c1b54d0a9de41e"
+    },
+    "capacity12-06-source.json": {
+      "path": "test-evidence/irc-parity/capacity12-06-source.json",
+      "sha256": "823d8e20c1e68eee1cb81662da15b85f380b1933a51b79c5d67373c84ea4532e"
+    },
+    "capacity12-06-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/capacity12-06-grant-revocation.json",
+      "sha256": "396b0b2fbfceb3413b6053193fd5aada59e61dcbc175706266c4057c4e19b8e6"
+    }
+  }
+}
