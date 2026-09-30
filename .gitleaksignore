@@ -17,3 +17,7 @@ b5614f023f56305a07c64b140facea800b7de764:apps/client/src-tauri/Cargo.lock:generi
 # Exact historical fingerprints only; new findings still block publication.
 d6c02355938c20cce529311ce07cce3d483c83a3:docs/evidence/irc-contacts-20260929/summary.json:generic-api-key:221
 d6c02355938c20cce529311ce07cce3d483c83a3:docs/evidence/irc-contacts-20260929/summary.json:generic-api-key:244
+
+# Same reviewed minisign PUBLIC updater key in retained minified release configs.
+9fe3a61da679fa65a3e84f023a37fa0cb6a08384:apps/client/src-tauri/tauri.conf.json:generic-api-key:1
+80fc0dc4dea4bd6d40a0f1e58ed76eafa7b6e547:apps/client/src-tauri/tauri.conf.json:generic-api-key:1
