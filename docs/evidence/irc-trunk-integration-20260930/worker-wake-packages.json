@@ -1,0 +1,55 @@
+{
+  "gcoms_source": "2c4535d562216340ea54a08e5fc8d419549d73e2",
+  "gchat_source": "556c8f8ae14774ed58ed3d7aa184a2aeb5407032",
+  "status": "passed",
+  "published": false,
+  "scope": "Actual Rust/npm archives, isolated consumers, generated API contracts, UI tests/check/build and Linux desktop compilation",
+  "rust_packages": 20,
+  "npm_packages": 2,
+  "source_unchanged": true,
+  "checks": {
+    "rust_external_alias_consumer": "passed",
+    "npm_archive_consumer": "passed",
+    "gchat_rust": "passed",
+    "gchat_frontend": "passed",
+    "gchat_desktop": "passed"
+  },
+  "archive_sha256": {
+    "gcoms-runtime-0.1.0.crate": "52bcd11896f59accfb0e852ca62aa8e0627ab9111e553f6303c04eddec457986",
+    "gcoms-core-0.1.0.crate": "c6a3dab0804c2ccad8d9b229190b8b0fddc81504f7f51e372d337c44bb8cf017",
+    "gcoms-0.1.0.crate": "9cb257fe15c7fb33032f8706b089cff61dd7663b0d90ce06b0376b5bf99e96b9",
+    "gcoms-network-client-0.1.0.crate": "7c0b976eefa6d61da101d875f6bf41e1e48fa6d53dd9805ccde423493a79e4bd",
+    "gcoms-protocol-0.1.0.crate": "4961deb7928ddea83d130d43a60a82a56d9218960bd90dab376ea4ffbd318e6e",
+    "gcoms-rpc-macros-0.1.0.crate": "85fad499821e50e5ae8dba2e8b01c96c1708a7c2bb7c7aa246030bf1d4e6c110",
+    "gcoms-private-fs-0.1.0.crate": "a747dbb86ab0f30a4bd1833b565ee7ded1c77d0b3b8825d247d9f719414dbbdb",
+    "gcoms-rpc-0.1.0.crate": "8cf714f7ec7f1631bc1fcb6d904e1848314bb148feb65ff0083e1a9359d1c243",
+    "gcoms-gossip-0.1.0.crate": "387085d85bfb1844c0144d7ef7bd7c18727251b7ba3c386c8d37908bc482975a",
+    "gcoms-sdk-0.1.0.crate": "bfc160639d18132fe965363a26262ef8ad4815b30305fa9ff0335f66a1d3bade",
+    "gcoms-network-0.1.0.crate": "8554d3644d40a815a93ba8b20381a5babad272f977c202b38f49d91ec18452eb",
+    "gcoms-channel-service-0.1.0.crate": "440b19b6ba38da05018e4c786e48cbd3c8798978f21901020fa7fb25079e2522",
+    "gcoms-catalog-0.1.0.crate": "fec96ab009e05be1b38add41b7accffa9df1804522b93f0892c6684f49921577",
+    "gcoms-file-transfer-0.1.0.crate": "de51e7f4c10eaeb500d93f99f76e928c5983e93f28088c9af31f4c17f09918fc",
+    "gcoms-transport-0.1.0.crate": "7f36f58b31535d4e907c189133d0a9dc5979f1c125ae8333e8120c658d1cb70b",
+    "gcoms-crypto-0.1.0.crate": "5d550d668c98515f0101f248abd8daf87043c672b882f3fb2a0fe96cb1a94c23",
+    "gcoms-routing-0.1.0.crate": "03b1b4c4688071d785cee9aabdf5edf154c21e6ae495d2c431392a6463d5113f",
+    "gcoms-node-0.1.0.crate": "72d17b1d328205024a3d73a68955b06a7727e7595deaa06dbbcf876d3259c9eb",
+    "gcoms-rpc-contract-0.1.0.crate": "a4df7f6fa532968813bb331d79e15d338bc044ebf2f198069baefd439fde7cdf",
+    "gcoms-mls-0.1.0.crate": "4728223f13eb44d969fcaae431dec9196abb90d7a9e3ef6b126cd374d8a9919b",
+    "gcoms-rpc-codegen-0.1.0.tgz": "f1997a77b6aee2233d0fc675c67257f960d0d4c5a7e376d3514fc4c6cff07940",
+    "gcoms-rpc-0.1.0.tgz": "dc875fec9fbf5e06a86610ef22f5c6c2c1fea7f187930f5e067612d31d5675c3"
+  },
+  "evidence": {
+    "packages-wake-01.log": {
+      "path": "test-evidence/irc-parity/packages-wake-01.log",
+      "sha256": "25a8e83581eb35d0515bafb6347cd3aefb47b339fbc2638c46cfe2ca8618d92e"
+    },
+    "packages-wake-01-summary.json": {
+      "path": "test-evidence/irc-parity/packages-wake-01-summary.json",
+      "sha256": "8c1d477451b0d7c1e9f6313e8ceb68347aa5d7b4809660233bcdd97d71251c09"
+    },
+    "packages-wake-01.exit": {
+      "path": "test-evidence/irc-parity/packages-wake-01.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  }
+}

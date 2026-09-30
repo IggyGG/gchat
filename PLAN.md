@@ -975,3 +975,8 @@ regression verifies coalesced durable wake-up and idle reads/refusals. Eight
 Python harness tests pass, including exceptional cleanup and strict deadlines.
 Evidence: `worker-wake-qualified.json` in trunk-integration evidence.
 Fresh exact-source two-client run11 is active; package qualification follows.
+
+The same `2c4535d` / `556c8f8` pair passes all 20 Rust and two npm archive
+consumers, generated contracts, 63 UI tests, frontend checks/build and Linux
+desktop compilation. Original source checkouts are unchanged; nothing was
+published. Evidence: `worker-wake-packages.json` in trunk-integration evidence.
