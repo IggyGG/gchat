@@ -1,0 +1,68 @@
+{
+  "gcoms_source": "a460d74d672179a7c82d45a4c80ca54409e6cc4a",
+  "gchat_source": "624e8b2b374fd86b5173eefd4d47726bb1554475",
+  "status": "passed",
+  "published": false,
+  "scope": "Actual Rust/npm archives, isolated consumers, generated API contracts, 63 UI tests, Svelte checks/build and Linux desktop compilation",
+  "rust_packages": 20,
+  "npm_packages": 2,
+  "source_unchanged": true,
+  "checks": {
+    "rust_external_alias_consumer": "passed",
+    "npm_archive_consumer": "passed",
+    "gchat_rust": "passed",
+    "gchat_frontend": "passed",
+    "gchat_desktop": "passed"
+  },
+  "archive_sha256": {
+    "gcoms-runtime-0.1.0.crate": "38ad0faa0942859589c8e563a1ee847b564d199723e42758d104119efda688d0",
+    "gcoms-core-0.1.0.crate": "576cfb9e95a0c320241ba74a7185042a702acb243cf099b03a833c28eb4c72b7",
+    "gcoms-0.1.0.crate": "ad64540bb907ea2564993b9e064d9ec42dafa307c7c8383d5bb428b3a12fec1f",
+    "gcoms-network-client-0.1.0.crate": "04f68babec53ffac378dd275c2072d87624823f43eedff0ee145859ef70c46a6",
+    "gcoms-protocol-0.1.0.crate": "8cf97309e81061fa5bb55c10628a8284cfa1d17c529fd580c21459c928b84f42",
+    "gcoms-rpc-macros-0.1.0.crate": "db66933de710a48ece817cb3cd3a2a335ce44d6ac5491ac0bf66e48d901ec6ee",
+    "gcoms-private-fs-0.1.0.crate": "e93b074e734c8a6a5b30f988980096bb5e9b431583ffc034008c59885e2a69ce",
+    "gcoms-rpc-0.1.0.crate": "5ab8f6b075fd4501d0f98173f0c995daf82072d458f567f029dd3a426c1a7d86",
+    "gcoms-gossip-0.1.0.crate": "828ea27c064140d76f961049358dedda86712f4097229f67363b6284873190af",
+    "gcoms-sdk-0.1.0.crate": "d304f0e7346a8f012b3b2c58dd6ee0d3b198d83cf13b5785d5620f12fc2dba82",
+    "gcoms-network-0.1.0.crate": "3706cea60e2c0abccad57da70ea1d74eff340f98f991728d69a3f684f973e858",
+    "gcoms-channel-service-0.1.0.crate": "68781be84aa4b6b13c0b21b6c8e5dc9c01c4ec6ecddb3ed96135b66c1f28d4ac",
+    "gcoms-catalog-0.1.0.crate": "a7afe0af294110d355d1cbeb890e75738188025b7e0a69134a8ffd152462ef06",
+    "gcoms-file-transfer-0.1.0.crate": "9f0aaf044e923b55845a1e204baf0c145f711086f5bebac43c912efd9f343dcf",
+    "gcoms-transport-0.1.0.crate": "115081cd4994958c70c2d92df19dbea348061d4ef5422326d1ce6aa57af8c23b",
+    "gcoms-crypto-0.1.0.crate": "d4616230d9c20c8549e249649589313b29fddd3371fdf0b27a56d1eb3795cb2a",
+    "gcoms-routing-0.1.0.crate": "836a017bddfe51ab7008b4d78e9ef95972e8d43fb698d27e4a89040fa012feb3",
+    "gcoms-node-0.1.0.crate": "9f4ea39f64abd4d9777dac1f6650fe3827d0b6e4c45dae5c4093296566628415",
+    "gcoms-rpc-contract-0.1.0.crate": "2aa90020e64d1f5283f40c0ed42cf79839cfd4d587cdf1ed6cc2f8f4cda8ec72",
+    "gcoms-mls-0.1.0.crate": "3e0699953916a66c64b19ff44d47c84ce3a5b2714a08e3e219ee007e570a926b",
+    "gcoms-rpc-codegen-0.1.0.tgz": "f1997a77b6aee2233d0fc675c67257f960d0d4c5a7e376d3514fc4c6cff07940",
+    "gcoms-rpc-0.1.0.tgz": "dc875fec9fbf5e06a86610ef22f5c6c2c1fea7f187930f5e067612d31d5675c3"
+  },
+  "retained_initial_failure": "Package attempt 01 encountered an older offline gcoms-core cache entry lacking the new serde feature. Attempt 02 uses a source-verified packaged core in an isolated vendor directory; original vendor and sources remain unchanged.",
+  "evidence": {
+    "packages-final64-02.log": {
+      "path": "test-evidence/irc-parity/packages-final64-02.log",
+      "sha256": "f893499899f3b6ce3a015f94dc88c2e18a9a03472bff401a8edd58428480a423"
+    },
+    "packages-final64-02.exit": {
+      "path": "test-evidence/irc-parity/packages-final64-02.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "packages-final64-02-summary.json": {
+      "path": "test-evidence/irc-parity/packages-final64-02-summary.json",
+      "sha256": "cf9541fcfba2f21416cd5c64e9f120b79f74b6caa2f39d3d9e59a20406f54601"
+    },
+    "packages-final64-01.log": {
+      "path": "test-evidence/irc-parity/packages-final64-01.log",
+      "sha256": "8e9e346561b15ffe88ad70e05e1e1993fb32601da5bec478c4d65c1202773e26"
+    },
+    "packages-final64-01.exit": {
+      "path": "test-evidence/irc-parity/packages-final64-01.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "final64-package-vendor-bootstrap.json": {
+      "path": "test-evidence/irc-parity/final64-package-vendor-bootstrap.json",
+      "sha256": "5103f76ee84f5d6b64567bcf9928319c8f71ced84724d85aea25044fe4903a65"
+    }
+  }
+}

@@ -8,8 +8,10 @@ All timing targets, resource capture, cleanup and grant revocation pass. Churn
 replaces one removed member; membership never exceeds 64. No larger campaign is
 required. See [decisive receipt](docs/evidence/irc-hosted-capacity-20260930/capacity-64-01-pass.json).
 Paired Rust passes 194 tests with three retained exclusions and strict Clippy;
-generated contracts match. Package checks and source landing are finishing; native
-installer publication remains separately gated.
+generated contracts match. All 20 Rust and two npm archive consumers, 63 UI tests,
+Svelte checks/build and Linux desktop compilation pass. Source implementation and
+64-member qualification are complete; native installer publication remains
+separately gated. See [package receipt](docs/evidence/irc-trunk-integration-20260930/limit-64-merged-packages.json).
 
 ## IRC/main invitation integration (2026-09-30)
 
@@ -18,8 +20,7 @@ progress with hosted channels and contacts. The 64-member maximum is unchanged.
 Generated Rust/TypeScript/RPC artifacts include both features; merged UI checks,
 unit tests and the client build pass. The companion GComs uses IPC26 to preserve
 released IPC23 invitation messages before hosted/file requests. Paired Rust and
-protected-network qualification pass for this merged source; package checks and
-source landing are finishing.
+protected-network qualification pass for this merged source; archive consumers, frontend and Linux desktop checks also pass.
 
 ## IRC parity: retain the 64-member limit (2026-09-30)
 

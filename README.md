@@ -339,5 +339,9 @@ Ordinary offline-message recovery retains its ten-second qualification target;
 long membership replay is measured separately. Delivery status still requires
 authenticated recipient acknowledgments on the covered channel.
 
+The paired implementation passes 1,142 GComs tests, 194 GChat tests, 63 UI tests,
+all 22 archive consumers and Linux desktop compilation. These source checks and
+the 64-member campaign do not imply publication of a new native installer.
+
 Hosted channels retain the 64-member maximum, including the owner. Operators
 may lower it with `/mode +l` (2–64); clients and the service enforce the ceiling.
