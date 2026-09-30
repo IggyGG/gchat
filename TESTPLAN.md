@@ -569,7 +569,7 @@ one-second-probe reports retain their original measurements and failed status.
 
 Hosted live07 passes the unchanged 200ms feedback, 5s small-room receipt, 30s
 join, 180s resumed verification and 600s file-workflow checks. Bind this result
-to runtime907e54f and the recorded binary hashes; it covers two real clients,
+to runtime `907e54f` and the recorded binary hashes; it covers two real clients,
 not the separate 500-member or native installed campaigns.
 Recovery compatibility: persisted operation results use the existing Text contract so older views and rollback daemons can read the archive; the requesting updated client receives the typed preview. Focused tests check snapshot/journal compatibility and unchanged error results.
 

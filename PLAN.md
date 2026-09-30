@@ -68,7 +68,7 @@ profile format or personal session was changed by this final inspection.
 ## SDK 0.1.49 published (2026-09-29)
 
 The normal coordinator published all 12 Rust/base-mobile/optional-push archives
-from GComs2313cf6, release4bb8ea74. Native matrices36507413858,36507413757
+from GComs `2313cf6`, release4bb8ea74. Native matrices36507413858,36507413757
 and36507577440 passed. Publication verified public archive bytes; independent
 public manifest readback matches the publication receipt. Evidence:
 `target/release-closeout-20260929/sdk49/review.json`.
@@ -77,7 +77,7 @@ physical mobile devices or live push delivery. Prior archives remain available.
 
 ## Mac closeout — retained throughput failure (2026-09-29)
 
-Apple silicon run 36507549220 on GChat77223e52/GComs2313cf6 passed
+Apple silicon run 36507549220 on GChat77223e52/GComs `2313cf6` passed
 full native qualification and signing/notarization, then failed the unchanged
 16 MiB / 180-second interrupted-file gate. It retained 262144 bytes across
 restart, received two authenticated pre-recovery message ACKs and cleaned up
@@ -626,7 +626,7 @@ rejecting cross-profile handle collisions. Contact changes synchronize the
 worker's authorization; failure leaves modern transfers disabled. This checkpoint
 is under qualification and does not claim full file parity or deployment.
 The preceding contacts checkpoint passed the full workspace suite in
-`test-evidence/irc-parity/contacts-full-01.log` (paired GComs4c651a1/GChatd6c0235).
+`test-evidence/irc-parity/contacts-full-01.log` (paired GComs `4c651a1`/GChat `d6c0235`).
 
 ### IRC-4 file recovery follow-up — 2026-09-29
 
@@ -671,7 +671,7 @@ Protected-network, installed/native and 500-member release gates remain open.
 
 ### IRC-8 protected-network journey — 2026-09-30
 
-The paired release binaries (GComs255f9cd/GChat1248dd9) built successfully and
+The paired release binaries (GComs `255f9cd`/GChat `1248dd9`) built successfully and
 were hash-checked after transfer. The live two-client driver now runs on the
 installed network against the HEL ciphertext service, with no messaging transport
 overrides. Creator-offline join/topic, real receipts, moderation, restart and
@@ -682,7 +682,7 @@ Live setup correction: run01 retained the expected invitation-required failure;
 the driver now imports an operator-issued, bootstrap-only, time-limited network
 invitation before starting hosted work. Run02 connected through the installed
 network in 66.3 seconds, then exposed the paired runtime's missing hosted-origin
-authorization. GComs6b8764c fixes that gate; the updated source-bound binaries are
+authorization. GComs `6b8764c` fixes that gate; the updated source-bound binaries are
 being built before a fresh live attempt. These failed attempts remain retained.
 
 ### IRC shared contract and UI checkpoint — 2026-09-30
@@ -710,7 +710,7 @@ latency separately, measures join/file budgets and rejects late positive probes.
 ### IRC-8 combined polling qualification — 2026-09-30
 
 The paired workspace passes 185 tests (three explicit ignores) and strict
-Clippy against GComs8687749; source-bound evidence is in
+Clippy against GComs `8687749`; source-bound evidence is in
 `docs/evidence/irc-covered-poll-paired-20260930/summary.json`. The next live
 protected-network journey also passes correctness, including Topic pending and
 verified 16 MiB restart. Feedback is 112ms, offline-owner admission 6.669s,
@@ -749,7 +749,7 @@ and workflow deadlines remain under measurement. No installed release or
 ### IRC-8 live file-window qualification — 2026-09-30
 
 Live07 passes the fixed two-client protected-network correctness and latency
-gates on GComs907e54f/GChat1775a40: 110ms feedback, 2.409s delivery plus covered
+gates on GComs `907e54f`/GChat `1775a40`: 110ms feedback, 2.409s delivery plus covered
 ACK, 3.328s offline-owner admission after network readiness, 170.050s resumed
 16MiB verification and 297.114s complete file workflow. Topic pending/handoff,
 moderation, offline recovery and unvoiced authenticated file completion pass.
@@ -757,11 +757,11 @@ moderation, offline recovery and unvoiced authenticated file completion pass.
 raw report and timings. The temporary bootstrap grant was revoked after shutdown.
 Earlier failures remain retained. Full 500-member and installed/native release
 qualification remain open. The paired package/API/frontend/Linux desktop compile
-gate also passes on current GComs65b54c7/GChatd4ff03d; GComs retains its receipt.
+gate also passes on current GComs `65b54c7`/GChat `d4ff03d`; GComs retains its receipt.
 
 ### IRC-8 current trunk integration — 2026-09-30
 
-Merge current trunk8df1805 with the hosted/contact work, preserving explicit owner
+Merge current trunk `8df1805` with the hosted/contact work, preserving explicit owner
 membership recovery and its rollback-compatible journal projection. Shared UI
 contracts are regenerated from Rust. Legacy owner recovery is shown only for
 legacy channels; hosted channels retain their signed removal/rekey controls.
@@ -770,8 +770,14 @@ requires IPC25 for new hosted/file operations. Merged Rust/UI/package validation
 is in progress; previous evidence remains bound to its original source pair.
 
 Merged qualification passes: 188 GChat Rust tests (three explicit
-ignores), strict paired Clippy, all63 UI tests, both workspace Svelte checks,
-production build and six browser checks at390/1100px. The released-recovery
+ignores), strict paired Clippy, all 63 UI tests, both workspace Svelte checks,
+production build and six browser checks at 390/1100px. The released-recovery
 SDK tests also pass. Evidence: `docs/evidence/irc-trunk-integration-20260930/summary.json`.
 Current archive, full workspace and installed/capacity qualification remain
 separate; setup failures are retained alongside their corrected runs.
+
+The full merged browser suite now passes all 80 cases. Current package consumers
+also pass on GComs `0e7db6a` and GChat `5533b1e`, including generated contracts,
+frontend and Linux desktop compilation. The new live binary and the full merged
+GComs workspace are under qualification; large-room and native installed release
+claims remain open.

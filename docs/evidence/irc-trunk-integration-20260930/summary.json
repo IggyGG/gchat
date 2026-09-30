@@ -27,7 +27,8 @@
     "test-evidence/irc-parity/merge-browser-01.log": "c54d530db22d10403f3e8436590c85ffe9da0cd06700700d4148ed0be588e807",
     "test-evidence/irc-parity/merge-browser-02.log": "7709a5448732ade10cddba615939185379d9ad0edc38b2988323ca52087b170c",
     "test-evidence/irc-parity/merge-browser-03.log": "5b5596ae8ee2942a6aa4a9874983aa7986329752bcc6eee7bc671f5b387425c8",
-    "test-evidence/irc-parity/hosted-live-harness-current.log": "e6b80c857e40f2d7ce556dc63fb13c16c631def6cbc0b0ba930a0999c80d2ba6"
+    "test-evidence/irc-parity/hosted-live-harness-current.log": "e6b80c857e40f2d7ce556dc63fb13c16c631def6cbc0b0ba930a0999c80d2ba6",
+    "test-evidence/irc-parity/merge-browser-04.log": "a4da79983ce76031e656eab6bb6ca99c196b1bb5f19fe2574ffdddc1556d1b0e"
   },
   "source_sha256": {
     "crates/chat-api/src/lib.rs": "12d9cc123ba9e7f27f5c21aacedd324751f717f36571344b6f9563ed0c2772ad",
@@ -44,5 +45,6 @@
   "retained_setup_failures": {
     "merge-ui-01": "unit/check passed; runner incorrectly requested nonexistent ui build script; root build corrected in02",
     "merge-browser-01": "browser launch missing NSS/NSPR; signed-APT cached libraries added only to isolated sysroot"
-  }
+  },
+  "full_browser_passed": 80
 }
