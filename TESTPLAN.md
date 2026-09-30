@@ -1,3 +1,14 @@
+## Completed 64-member protected-network gate (2026-09-30)
+
+The `a460d74`/`624e8b2` source pair passes the full `--members 64` campaign.
+Both ten-sender phases require 630 real covered signatures, alongside ordinary
+recovery, visible long-backlog recovery, exact 16 MiB resume/export, removal and
+replacement. Churn admits 65 distinct identities over time, with the old member
+removed before replacement; channel membership stays at 64. All deadlines,
+resource capture, cleanup and temporary grant revocation pass. Retain the raw
+logs/profiles and [source-bound receipt](docs/evidence/irc-hosted-capacity-20260930/capacity-64-01-pass.json).
+Do not require a larger campaign or relabel older 500-member evidence.
+
 ## IRC/main invitation integration (2026-09-30)
 
 Merged main's reusable invitation sharing, QR rendering and saved enrollment

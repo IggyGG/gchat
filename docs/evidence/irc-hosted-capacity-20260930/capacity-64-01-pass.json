@@ -1,0 +1,117 @@
+{
+  "scope": "independent GChat protected-network capacity",
+  "passed": true,
+  "requested_members": 64,
+  "qualified_64": true,
+  "recovery_policy": "ordinary-message-10s-visible-membership-replay",
+  "observations": {
+    "membership_catchup": true,
+    "independent_members": 64,
+    "baseline": {
+      "senders": 10,
+      "recipients_per_sender": 63
+    },
+    "offline_recovery": true,
+    "mixed_file": {
+      "senders": 10,
+      "recipients_per_sender": 63
+    },
+    "verified_file_resume": true,
+    "churn_and_exclusion": true
+  },
+  "latency_passed": true,
+  "cleanup_passed": true,
+  "resources_complete": true,
+  "source": {
+    "gcoms_source": "a460d74d672179a7c82d45a4c80ca54409e6cc4a",
+    "gchat_source": "624e8b2b374fd86b5173eefd4d47726bb1554475",
+    "harness_source": "624e8b2b374fd86b5173eefd4d47726bb1554475",
+    "artifacts": {
+      "gchat": "63ba1f997d971d79989628ab55123fa022e85df57e82ed2aee76c5b53193f372",
+      "fleet_probe": "6d065d133b4b6ef56e9c379d82295a20f85f835d4af1ec81b073a7b8826ef1ec",
+      "hosted-live.py": "e7a35fe164a883e16fd401db947ca68a34b5ee4ba98245012632714013f7fbe2",
+      "hosted-capacity.py": "b32e7b404be0f35957cf6e0c995ff2cfbc0d074be125ae44b08d2f7220d57a2f"
+    }
+  },
+  "grant_revoked": true,
+  "os_cleanup": {
+    "run": "capacity64-01",
+    "remaining_owned_processes": 0,
+    "cleanup_passed": true,
+    "grant_revoked": true,
+    "service_active": true,
+    "checked_unix": 1790764229
+  },
+  "membership_scope": {
+    "maximum_channel_members": 64,
+    "distinct_members_including_replacement": 65,
+    "victim_removed_before_replacement": true,
+    "note": "The progress monitor counts cumulative admissions, including the replacement. Both independently verified full rosters have 64 members; the removed client remains running to verify exclusion."
+  },
+  "timing": {
+    "maximum_admission_ms_including_replacement": 14272,
+    "maximum_concurrent_local_feedback_ms": 137,
+    "baseline_covered_delivery_ms": 7080,
+    "mixed_file_covered_delivery_ms": 7596,
+    "ordinary_offline_recovery_after_network_ready_ms": 7,
+    "membership_catchup": {
+      "step": "membership backlog recovered",
+      "elapsed_ms": 1624857,
+      "duration_ms": 81645,
+      "observation_deadline_seconds": 1800,
+      "progress_required": true,
+      "applied_progress": [
+        0,
+        32,
+        63,
+        64
+      ]
+    },
+    "file_resume_ms": 109077,
+    "full_file_journey_ms": 269355,
+    "missed_targets": 0
+  },
+  "file": {
+    "bytes": 16777216,
+    "export_sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b"
+  },
+  "resources": {
+    "samples": 201,
+    "peak_daemon_count_including_removed_client": 65,
+    "peak_sum_rss_kib": 2927312
+  },
+  "evidence": {
+    "capacity64-01-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/capacity64-01-grant-revocation.json",
+      "sha256": "ab840e0c4daaf1c5a125ffdcdd537b7147cdd2e63b397bea790a16f85463c4f1"
+    },
+    "capacity64-01-launch.json": {
+      "path": "test-evidence/irc-parity/capacity64-01-launch.json",
+      "sha256": "60c624e4556a0c33e0ff1de2ce825322fe903f31890a9dbaa9a63d89b4eab0bb"
+    },
+    "capacity64-01-os-cleanup.json": {
+      "path": "test-evidence/irc-parity/capacity64-01-os-cleanup.json",
+      "sha256": "0a5cf1b382afbee7a00f8826666b3fa6675ab5aa353767912999003fdc177a8f"
+    },
+    "capacity64-01-progress.jsonl": {
+      "path": "test-evidence/irc-parity/capacity64-01-progress.jsonl",
+      "sha256": "09ffe68fc858d76d7dac197cc80703b28d4afa9019991ef6ad87200563212b68"
+    },
+    "capacity64-01-provision.json": {
+      "path": "test-evidence/irc-parity/capacity64-01-provision.json",
+      "sha256": "ac68ff5618855777321a2b8ab40c2894cfd035cb26cfe011a788e824415b50a2"
+    },
+    "capacity64-01-resources.jsonl": {
+      "path": "test-evidence/irc-parity/capacity64-01-resources.jsonl",
+      "sha256": "bef86dc27624f52ff67beea274b7c574831f50da9b061119ed2f907483d5163a"
+    },
+    "capacity64-01-result.json": {
+      "path": "test-evidence/irc-parity/capacity64-01-result.json",
+      "sha256": "9134fd491cd8ebb8bfb86a9f8a47f59e5ce16acf54c5276b8707f67503524cff"
+    },
+    "capacity64-01-source.json": {
+      "path": "test-evidence/irc-parity/capacity64-01-source.json",
+      "sha256": "6d3baecdfd897096818658a55a4f815324b53e583a8cb4c1b0a7043900b36511"
+    }
+  }
+}

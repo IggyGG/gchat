@@ -1,3 +1,15 @@
+## IRC parity: full 64-member network qualification (2026-09-30)
+
+The user retained the 64-member limit. The final `a460d74`/`624e8b2` pair passes
+64 independent members, ten senders and 1,260 covered recipient signatures across
+baseline and mixed file traffic, ordinary recovery, visible membership catch-up,
+16 MiB pause/reopen/resume/export, removal confidentiality and replacement.
+All timing targets, resource capture, cleanup and grant revocation pass. Churn
+replaces one removed member; membership never exceeds 64. No larger campaign is
+required. See [decisive receipt](docs/evidence/irc-hosted-capacity-20260930/capacity-64-01-pass.json).
+Paired Rust/package checks and normal source landing are finishing; native
+installer publication remains separately gated.
+
 ## IRC/main invitation integration (2026-09-30)
 
 Merged main's reusable invitation sharing, QR rendering and saved enrollment
