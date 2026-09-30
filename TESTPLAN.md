@@ -563,3 +563,8 @@ Live hosted journey observations poll the local IPC snapshot every 250ms. This
 reduces sampling uncertainty around the five-second small-room target; all
 elapsed times and deadline checks still use the monotonic wall clock. Earlier
 one-second-probe reports retain their original measurements and failed status.
+
+Hosted live07 passes the unchanged 200ms feedback, 5s small-room receipt, 30s
+join, 180s resumed verification and 600s file-workflow checks. Bind this result
+to runtime907e54f and the recorded binary hashes; it covers two real clients,
+not the separate 500-member or native installed campaigns.

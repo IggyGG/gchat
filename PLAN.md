@@ -742,3 +742,16 @@ GChat passes its full 185-test paired workspace and strict Clippy against GComs
 built and was hash-verified before starting live07; the fixed file verification
 and workflow deadlines remain under measurement. No installed release or
 500-member protected-network pass is implied.
+
+### IRC-8 live file-window qualification — 2026-09-30
+
+Live07 passes the fixed two-client protected-network correctness and latency
+gates on GComs907e54f/GChat1775a40: 110ms feedback, 2.409s delivery plus covered
+ACK, 3.328s offline-owner admission after network readiness, 170.050s resumed
+16MiB verification and 297.114s complete file workflow. Topic pending/handoff,
+moderation, offline recovery and unvoiced authenticated file completion pass.
+`docs/evidence/irc-hosted-live-20260930/window-07.json` binds the real binaries,
+raw report and timings. The temporary bootstrap grant was revoked after shutdown.
+Earlier failures remain retained. Full 500-member and installed/native release
+qualification remain open. The paired package/API/frontend/Linux desktop compile
+gate also passes on current GComs65b54c7/GChatd4ff03d; GComs retains its receipt.

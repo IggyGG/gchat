@@ -308,3 +308,8 @@ first completed protected-network two-client journey verified messages, policies
 offline recovery and a resumed 16 MiB file, but missed small-room receipt and
 file-resume timing targets. See docs/evidence/irc-hosted-live-20260930/summary.json;
 it does not qualify the 500-member or native installed release gates.
+
+The later two-piece hosted file window passes the two-client live correctness
+and latency journey, including interrupted 16MiB resume and covered completion.
+See `docs/evidence/irc-hosted-live-20260930/window-07.json`. Large-room capacity
+and native installed release qualification remain separate.
