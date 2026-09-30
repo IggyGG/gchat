@@ -933,3 +933,9 @@ but the victim rejects the accepted update and retains an active view.
 Cleanup, resource sampling and grant revocation pass. The exact source remains
 unqualified pending a removal replay regression and fix. Evidence:
 `docs/evidence/irc-hosted-capacity-20260930/smoke-12-05-removal-failure.json`.
+
+Paired `a715a70` / `39848b8` compilation qualifies 190 Rust tests (three
+unchanged ignores), strict Clippy, all 22 package archives, generated contracts,
+UI checks and Linux desktop compilation. This predates the removal replay fix;
+it does not override smoke05. Evidence: `snapshot-maintenance-paired.json`
+in the trunk-integration evidence directory.

@@ -1,0 +1,68 @@
+{
+  "gcoms_source": "a715a70df1673e18fd730cf2ba9b4faf76f0c231",
+  "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+  "status": "passed",
+  "scope": "Paired full Rust workspace, strict all-target/all-feature Clippy and actual archives/consumers; predates removal replay fix and does not qualify live capacity",
+  "passed_tests": 190,
+  "failed_tests": 0,
+  "unchanged_ignored_tests": 3,
+  "suites": 17,
+  "rust_packages": 20,
+  "npm_packages": 2,
+  "published": false,
+  "evidence": {
+    "paired-maintenance-01.log": {
+      "path": "test-evidence/irc-parity/paired-maintenance-01.log",
+      "sha256": "94145a16a3ba6608e9b1f1e640aee9ec1116a98a0b3a45b5dde276d036d0e43c"
+    },
+    "paired-maintenance-01.exit": {
+      "path": "test-evidence/irc-parity/paired-maintenance-01.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "packages-maintenance-01.log": {
+      "path": "test-evidence/irc-parity/packages-maintenance-01.log",
+      "sha256": "b8f1713a01129510b986898bfd52c87d4cf6a86f2c43405d7f346c02f77a44f2"
+    },
+    "packages-maintenance-01.exit": {
+      "path": "test-evidence/irc-parity/packages-maintenance-01.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "packages-maintenance-01-summary.json": {
+      "path": "test-evidence/irc-parity/packages-maintenance-01-summary.json",
+      "sha256": "234a52d2f2fc4df2d63e970100bfe03822c679bb40299343eb67008b74eece4c"
+    }
+  },
+  "package_checks": {
+    "rust_external_alias_consumer": "passed",
+    "npm_archive_consumer": "passed",
+    "gchat_rust": "passed",
+    "gchat_frontend": "passed",
+    "gchat_desktop": "passed"
+  },
+  "package_status": "passed",
+  "source_unchanged": true,
+  "archive_sha256": {
+    "gcoms-runtime-0.1.0.crate": "da146aa68f75e73bf5e1e75dfdec943a8a563adeffd1630f9aa82ad850e7181b",
+    "gcoms-core-0.1.0.crate": "940c1f359d1810a271b2283f40dae3d5d88f0b0d627f80ad83e75eb3c9125eea",
+    "gcoms-0.1.0.crate": "d4543220c602c8f4fcf3ae5eb32622e53e92094187385a1243f4a9d96188687d",
+    "gcoms-network-client-0.1.0.crate": "3ba1cbf36eace76cb676ef30537f5e1513bf83a39c521a2859d0a90035e3f4b7",
+    "gcoms-protocol-0.1.0.crate": "8b343fe81953d459993079d92317db21ba638c3c55c8b6539071c2d337ef088f",
+    "gcoms-rpc-macros-0.1.0.crate": "a6973e7e37b16de4a59b1061ee5f4762ddacf3d2bcc0e40cdced24a2041e1c9a",
+    "gcoms-private-fs-0.1.0.crate": "c29f92935757b73cc43c63272f08b45e2e82eae1754180e96085e7172919c052",
+    "gcoms-rpc-0.1.0.crate": "10292450bd736135ab06ca4047012e5e8bc2fb3872da49f1da6890c8229e3009",
+    "gcoms-gossip-0.1.0.crate": "b8aeae4d8d276ef539a39defbb05616ef00e4cc8df7c33176b369f134c6c7252",
+    "gcoms-sdk-0.1.0.crate": "8c1ff6b57f077d8cf660dd587d9149d8f7f8737cede33bb6eddf6d873d7fe73f",
+    "gcoms-network-0.1.0.crate": "e4b434e31112a573a5ea7a226817694d774ebb8f1f779a0d4432f0aa6d9e41ea",
+    "gcoms-channel-service-0.1.0.crate": "2d9bdede04915b513ca3b2b352d38ffc0ed0179ada9a58f42a55cd114194e078",
+    "gcoms-catalog-0.1.0.crate": "3ecb03f8d2fdeaf577ae238160df6d02023b269ae5f894f90b821a4ff8ebbe7a",
+    "gcoms-file-transfer-0.1.0.crate": "6610c70d9b105356f601eb767b7c41d2dd7780a66b2e8ca303cbf82ddb27ba0e",
+    "gcoms-transport-0.1.0.crate": "147e74957f3116aa6e102f6223ba2f0ad10c5c5106ec4ffbed46f853c588d9f9",
+    "gcoms-crypto-0.1.0.crate": "4a6ad103b49e7b87a770d98c84a3e090f67bdfc2029a2bb6c48cba622c175f1f",
+    "gcoms-routing-0.1.0.crate": "7bafd0a546cceeeb8f200984e014d81a459da323d5fcdab6bce7b8fafa38ac90",
+    "gcoms-node-0.1.0.crate": "7afefa09cb57e175a1349d65f775e974f01c67fba37053430827d81abebdff41",
+    "gcoms-rpc-contract-0.1.0.crate": "01133b064af8838b5e110d041eb68314c180aa888313aabfe6e320228a8a134c",
+    "gcoms-mls-0.1.0.crate": "d819710b9073e367c269225f02fef469aea8e4073334e9a21f7bd891a36dbaec",
+    "gcoms-rpc-codegen-0.1.0.tgz": "f1997a77b6aee2233d0fc675c67257f960d0d4c5a7e376d3514fc4c6cff07940",
+    "gcoms-rpc-0.1.0.tgz": "dc875fec9fbf5e06a86610ef22f5c6c2c1fea7f187930f5e067612d31d5675c3"
+  }
+}
