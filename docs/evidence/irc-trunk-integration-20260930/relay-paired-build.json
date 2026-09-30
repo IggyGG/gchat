@@ -1,0 +1,13 @@
+{
+  "gcoms": "250ece7c7abdb10458e8db72a9c60f110ce4ad08",
+  "gchat": "c5bbfe89b3a4156febb5fe05674ccf42bb1c8077",
+  "scope": "release GChat CLI and fleet probe build with paired operator-capacity source",
+  "passed": true,
+  "features": "workspace all features; gchat-core fleet_probe all features",
+  "sha256": {
+    "gchat-live-250ece7": "96917ec247ffc6fc40141d8987642ffcd8c875bb6ee75e2b752cd267f1216eca",
+    "fleet_probe-live-250ece7": "28394998f1ec0e8ff68b55cf377839adeff03fc9abace0b4c2b434f36f03f9bd",
+    "live-build-09.log": "64f3275b03067ccaa27acbd3c997d9c218bb1d063a1f421a97c30f486bb7c679"
+  },
+  "limits": "Build and verified transfer only; no new network or native qualification."
+}
