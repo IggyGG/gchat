@@ -21,3 +21,7 @@ d6c02355938c20cce529311ce07cce3d483c83a3:docs/evidence/irc-contacts-20260929/sum
 # Same reviewed minisign PUBLIC updater key in retained minified release configs.
 9fe3a61da679fa65a3e84f023a37fa0cb6a08384:apps/client/src-tauri/tauri.conf.json:generic-api-key:1
 80fc0dc4dea4bd6d40a0f1e58ed76eafa7b6e547:apps/client/src-tauri/tauri.conf.json:generic-api-key:1
+
+# Exact reviewed generated-public-source SHA-256 fingerprints (not API keys).
+95d5227ae3732bd0951655475af0f0b37c3ecc4e:docs/evidence/irc-trunk-integration-20260930/limit-64-merged-qualified.json:generic-api-key:21
+95d5227ae3732bd0951655475af0f0b37c3ecc4e:docs/evidence/irc-trunk-integration-20260930/limit-64-merged-qualified.json:generic-api-key:23
