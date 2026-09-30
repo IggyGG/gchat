@@ -1,0 +1,63 @@
+{
+  "source": {
+    "gcoms_source": "a715a70df1673e18fd730cf2ba9b4faf76f0c231",
+    "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+    "artifacts": {
+      "gchat": "499130e487908e566f26328d6dd11ac5662864e796ae9361bd2f56e67d58cf1b",
+      "fleet_probe": "4e1407bc0e62c33fc5ad9d08daa88b466fdcf9d144711b7ccec44a5a7a05a9b0",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+      "hosted-capacity.py": "3029e1841bf9cef4560ea942ddcc8328809d1a7e84e81d589277a00046a5fa49"
+    },
+    "harness_source": "61ee9a3a8795ad68b010f829a3e074ff282376e5"
+  },
+  "status": "failed_removal_recovery",
+  "passed": false,
+  "requested_members": 12,
+  "qualified_500": false,
+  "recovery_policy": "ordinary-message-10s-visible-membership-replay",
+  "observations": {
+    "membership_catchup": true,
+    "independent_members": 12,
+    "baseline": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "offline_recovery": true,
+    "mixed_file": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "verified_file_resume": true
+  },
+  "cleanup_passed": true,
+  "resources_complete": true,
+  "error": "removed member inactive",
+  "grant_revoked": true,
+  "diagnosis": "Owner completed kick and showed 11 members. Removed client retained active 12-member view and reported commit from a leaf without that privilege, then reopen hosted profile after storage failure. Investigating authenticated removal replay; no timing target changed.",
+  "evidence": {
+    "capacity12-05-resources.jsonl": {
+      "path": "test-evidence/irc-parity/capacity12-05-resources.jsonl",
+      "sha256": "ce1c64e011b452a32cce59d2c86fe31e0db27a433361de637ff92df93d28c320"
+    },
+    "capacity12-05-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/capacity12-05-grant-revocation.json",
+      "sha256": "4dc2207134ec2c9c986355faf9b1ce720d8df6ca6caedfa2fc973c59f4f150c6"
+    },
+    "capacity12-05-provision.json": {
+      "path": "test-evidence/irc-parity/capacity12-05-provision.json",
+      "sha256": "c392672349daf60a074b2113e1fceadc41c3950e08428a3fc4686788bbbf29ea"
+    },
+    "capacity12-05-source.json": {
+      "path": "test-evidence/irc-parity/capacity12-05-source.json",
+      "sha256": "66b5a700c73b803c140ae02e8ad4db153d1e9d4db40f43e361892454140a5f10"
+    },
+    "capacity12-05-log": {
+      "path": "test-evidence/irc-parity/capacity12-05-log",
+      "sha256": "81ac4d760fded190944b94293e5ba658c893b0e3a538a28d85b48d4be11af30a"
+    },
+    "capacity12-05-result.json": {
+      "path": "test-evidence/irc-parity/capacity12-05-result.json",
+      "sha256": "ff7a159bf35de9fbbed886224fba48f2744cf675cae6191936aaddfe152be6f4"
+    }
+  }
+}

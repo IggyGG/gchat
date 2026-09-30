@@ -925,3 +925,11 @@ confirmed visible progress whenever replay exceeds ten seconds. Existing
 completion remain mandatory. Ordinary offline messages still have the unchanged
 ten-second target. New reports name this policy; old failures are not relabeled.
 A fresh smoke is required before the protected-network 500-member campaign.
+
+Fresh smoke05 passes messaging, 220 covered recipient signatures, ordinary
+recovery (6 ms), visible membership replay (14.811 s) and verified 16 MiB
+resume (104.546 s). It fails removal recovery: the owner completes the kick,
+but the victim rejects the accepted update and retains an active view.
+Cleanup, resource sampling and grant revocation pass. The exact source remains
+unqualified pending a removal replay regression and fix. Evidence:
+`docs/evidence/irc-hosted-capacity-20260930/smoke-12-05-removal-failure.json`.
