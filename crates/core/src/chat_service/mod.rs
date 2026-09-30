@@ -15,6 +15,7 @@ mod responsiveness_tests;
 pub mod rpc;
 mod update_gate;
 
+mod membership_recovery;
 use crate::client::ClientHandle;
 use crate::model::{ChannelRecord, MemberId, ScopedPmId};
 use crate::runtime::ProtocolRuntime;
@@ -1073,7 +1074,7 @@ impl ChatService {
                     .operations
                     .get_mut(&operation_id)
                     .unwrap()
-                    .response = Some(response.clone());
+                    .response = Some(membership_recovery::retained_response(&response));
                 // Readers must never observe a terminal outcome whose save failed.
                 unlocked.store.save(&candidate)?;
                 unlocked.state = candidate;
@@ -1552,6 +1553,15 @@ impl ChatService {
                     || (!args.is_empty() && !args.starts_with("gchat-reconnect1:")) =>
             {
                 return Err("Paste the complete reconnect command from an existing member, or use /reconnect to create one.".into());
+            }
+            "/recover-membership" => {
+                self.require(Capability::ChannelAdmin)?;
+                if context_channel(&archive, conversation)?.role != ChannelRole::Owner {
+                    return Err("Only the channel owner can recover membership".into());
+                }
+                if !args.is_empty() {
+                    membership_recovery::parse(args)?;
+                }
             }
             "/owner" => {
                 self.require(Capability::ChannelAdmin)?;
@@ -2117,6 +2127,28 @@ impl ChatService {
                     },
                 })
             }
+            "recover-membership" => {
+                self.require(Capability::ChannelAdmin)?;
+                let channel = context_channel(&archive, conversation)?;
+                let request = if args.is_empty() {
+                    None
+                } else {
+                    Some(membership_recovery::parse(args)?)
+                };
+                let status = self
+                    .runtime
+                    .sdk_client()
+                    .channel_recovery(&channel.protocol_name, request.as_ref())
+                    .await
+                    .map_err(|e| e.to_string())?;
+                if request.is_some() {
+                    client.reconcile_channels().await?;
+                }
+                Ok(Response::Output {
+                    conversation: conversation.map(str::to_owned),
+                    output: membership_recovery::output(&channel.title, status),
+                })
+            }
             "kick" => {
                 self.require(Capability::ChannelAdmin)?;
                 let channel = context_channel(&archive, conversation)?;
@@ -2209,9 +2241,12 @@ impl ChatService {
             .map(|c| {
                 let capability = match c.text.as_str() {
                     "/contact" => Some("DirectMessage".into()),
-                    "/create" | "/invite" | "/kick" | "/owner" | "/publish" => {
-                        Some("ChannelAdmin".into())
-                    }
+                    "/create"
+                    | "/invite"
+                    | "/kick"
+                    | "/owner"
+                    | "/publish"
+                    | "/recover-membership" => Some("ChannelAdmin".into()),
                     "/join" | "/query" | "/msg" | "/say" | "/me" | "/nick" | "/reconnect" => {
                         Some("ChannelMember".into())
                     }
@@ -2230,6 +2265,7 @@ impl ChatService {
                             | "/names"
                             | "/invite"
                             | "/reconnect"
+                            | "/recover-membership"
                             | "/kick"
                             | "/say"
                             | "/me"
@@ -2324,7 +2360,7 @@ impl ChatService {
                 if extension
                     && matches!(
                         command.name.as_str(),
-                        "/invite" | "/kick" | "/publish" | "/reconnect"
+                        "/invite" | "/kick" | "/publish" | "/reconnect" | "/recover-membership"
                     )
                 {
                     command.available = false;
@@ -2737,6 +2773,10 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
             ),
             ("/invite", "Create a single-use invitation"),
             ("/kick", "Remove a channel member"),
+            (
+                "/recover-membership",
+                "Review stalled membership and explicitly remove unavailable members",
+            ),
             (
                 "/owner",
                 "Transfer ownership to another member without changing the channel",

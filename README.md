@@ -60,6 +60,7 @@ This task branch requires its paired GComs IRC-parity branch. No dependency or
 installed-release update is implied. Newcomers see `Topic pending` until an authorized member returns to hand off the
 encrypted topic; invitations contain no extra metadata secret. Independent-file
 transfers and full network/native capacity qualification remain in progress.
+Channel owners can open **Channel recovery…** from the users panel or channel details, or type `/recover-membership`. Review missing acknowledgements, select members to revoke, and confirm. History and unconfirmed messages stay; removed members need fresh invitations. Recovery never marks those messages delivered.
 
 Release tooling has a separate Linux/Windows portability workflow; it does not
 compile applications or qualify installed releases. Mac artifact paths retain
@@ -313,3 +314,8 @@ The later two-piece hosted file window passes the two-client live correctness
 and latency journey, including interrupted 16MiB resume and covered completion.
 See `docs/evidence/irc-hosted-live-20260930/window-07.json`. Large-room capacity
 and native installed release qualification remain separate.
+
+The integrated client uses IPC25 for hosted channels and modern files while
+preserving released legacy owner recovery. Update the paired daemon and client
+together; unpublished task IPC23/24 dialects are refused. Legacy Channel recovery
+remains an explicit owner action; hosted policy uses its own verified controls.

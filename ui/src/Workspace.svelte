@@ -623,7 +623,7 @@
         hidden = [...hidden, response.output.conversation];
         if (selected === response.output.conversation) await select(snapshot?.conversations.find(c => !hidden.includes(c.id))?.id ?? null);
       } else {
-        if (result && (response.output.kind === 'invitation' || (response.output.kind === 'text' && response.output.title === 'Reconnect this channel'))) { utility = null; closeNavigation(); resultKey = result; }
+        if (result && (response.output.kind === 'invitation' || response.output.kind === 'membership_recovery' || (response.output.kind === 'text' && response.output.title === 'Reconnect this channel'))) { utility = null; closeNavigation(); resultKey = result; }
 
       }
     }
@@ -1009,7 +1009,7 @@
           event.preventDefault(); panel = event.key === 'Home' ? 'users' : event.key === 'End' ? 'files' : panel === 'users' ? 'files' : 'users';
           void tick().then(() => document.getElementById(`${panel}-tab`)?.focus());
         }}><button role="tab" id="users-tab" tabindex={panel === 'users' ? 0 : -1} aria-selected={panel === 'users'} aria-controls="users-panel" onclick={() => panel = 'users'}>Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex="-1" aria-selected="false" aria-controls="files-panel" onclick={() => panel = 'files'}>Files <small>{fileCount}</small></button>{/if}</div></div>
-        {#if panel === 'users'}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`${active.policy ? '/whois' : '/query'} ${member.id}`)} title={member.isSelf ? 'Your channel identity' : active.policy ? 'Show channel member details' : 'Open private chat'}>{member.capabilities.includes('channel.owner') ? '~' : member.capabilities.includes('channel.operator') ? '@' : member.capabilities.includes('channel.voice') ? '+' : ''}{member.nickname}{#if member.presence?.state === 'away'}<small title={member.presence.reason}>Away{member.presence.reason ? `: ${member.presence.reason}` : ''}</small>{:else if member.presence?.state === 'available'}<small>Available</small>{:else if member.presence}<small>Unknown</small>{/if}{#if !member.isSelf && member.recentlyActive}<small>Recently active</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}</div>
+        {#if panel === 'users'}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`${active.policy ? '/whois' : '/query'} ${member.id}`)} title={member.isSelf ? 'Your channel identity' : active.policy ? 'Show channel member details' : 'Open private chat'}>{member.capabilities.includes('channel.owner') ? '~' : member.capabilities.includes('channel.operator') ? '@' : member.capabilities.includes('channel.voice') ? '+' : ''}{member.nickname}{#if member.presence?.state === 'away'}<small title={member.presence.reason}>Away{member.presence.reason ? `: ${member.presence.reason}` : ''}</small>{:else if member.presence?.state === 'available'}<small>Available</small>{:else if member.presence}<small>Unknown</small>{/if}{#if !member.isSelf && member.recentlyActive}<small>Recently active</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}{#if active.owner && !active.policy}<button disabled={busy} onclick={() => void send('/recover-membership')}>Channel recovery…</button>{/if}</div>
         {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
       </aside>
     {/if}
@@ -1078,6 +1078,7 @@
         <p class="muted">{details?.members.length ?? 0} users</p>
         {#if details?.kind === 'channel' && details.active}
           <section class="leave-actions">
+            {#if details.owner}<button disabled={busy} onclick={() => channelCommand('/recover-membership')}>Channel recovery…</button>{/if}
             {#if !leavingChannel}<button onclick={() => leavingChannel = true}>Leave channel…</button>
             {:else if details.owner}
               <p>You own this channel. Transfer it to another member or close it for everyone. History stays on each device.</p>
@@ -1113,7 +1114,7 @@
     <FocusScreen title={resultDetails.output?.kind === 'invitation' ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : resultDetails.output?.kind === 'text' && resultDetails.output.title === 'Reconnect this channel' ? 'Reconnect this channel' : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
 
       <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
-      {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}
+      {#if resultDetails.output}<CommandResult invitationHeading={false} output={resultDetails.output} executeCommand={text => operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation: resultDetails!.conversation, text })} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}
       <details><summary>Request details</summary><dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl></details>
       <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
       {#if resultDetails.recordedMessage && resultDetails.recordedMessage !== resultDetails.message}<p>Last recorded result: {resultDetails.recordedMessage}</p>{/if}

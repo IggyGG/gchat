@@ -21,6 +21,13 @@ const unlockChoices: boolean[] = [];
 if (parameters.has('networks')) instance.capabilities.push('networks.v1');
 const members = [{ id: 'self', nickname: 'Iggy', isSelf: true, capabilities: [] }, { id: 'peer', nickname: 'Ada', isSelf: false, capabilities: [] }];
 const conversations: Conversation[] = ['general', 'design', 'archive'].map((name, index) => ({ provider: null, id: `channel/${name}`, channelId: name, kind: index === 2 ? 'archive' : 'channel', name: `#${name}`, topic: index === 0 ? 'A little more room to talk.' : '', active: true, owner: !parameters.has('member'), members, unread: index === 1 ? 2 : 0, lastMessageId: null, inputLimitBytes: 12000, commands: [] }));
+if (parameters.has('hosted')) {
+  conversations[0].policy = { profile: 'hosted-mls-pq-v1', capacity: 500, moderated: true, inviteOnly: true, topicOperators: true, presenceEnabled: false };
+  conversations[0].members = [
+    { id: 'self', nickname: 'Iggy', isSelf: true, capabilities: ['channel.owner'] },
+    { id: 'peer', nickname: 'Ada', isSelf: false, capabilities: ['channel.operator'], presence: { state: 'away', reason: 'Back later' } },
+  ];
+}
 const commands: CommandSpec[] = ['help', 'lock', 'disconnect', 'quit', 'join', 'create', 'query'].map(name => ({ name: `/${name}`, usage: `/${name}`, description: `Fixture ${name}`, scope: 'instance', capability: null, available: true }));
 let state: NetworkState = parameters.has('fresh') ? 'invitation_required' : 'connected';
 let revision = 1;
@@ -104,6 +111,10 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
         const response: Response = { kind: 'applied', conversation: null, notice: req.text.endsWith('on') ? 'Recently-active sharing enabled.' : 'Recently-active sharing disabled.' };
         if (presenceOutcome === 'unknown') { savedReply = response; throw new ChatError('outcome_unknown', 'Reply interrupted after admission.'); }
         return response;
+      }
+      if (req.text.startsWith('/recover-membership')) {
+        if (parameters.has('recovery-stale') && req.text !== '/recover-membership') throw new ChatError('rejected', 'channel changed; review recovery again');
+        return {kind:'output', conversation:req.conversation, output:{kind:'membership_recovery',channel:'general',expected:'preview-token',epoch:req.text === '/recover-membership'?'2':'3',pending:req.text === '/recover-membership',retained_messages:1,members:[{id:'owner',nickname:'Iggy',isSelf:true,missingCommit:false,pendingMessages:0},...(req.text === '/recover-membership'?[{id:'removed-leaf',nickname:'Ada',isSelf:false,missingCommit:true,pendingMessages:1}]:[])]}};
       }
       if (req.text === '/reconnect') return { kind: 'output', conversation: req.conversation, output: { kind: 'text', title: 'Reconnect this channel', text: 'gchat-reconnect1:fixture' } };
       if (req.text === '/invite') {

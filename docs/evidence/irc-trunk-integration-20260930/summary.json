@@ -1,0 +1,48 @@
+{
+  "scope": "merged SDK and paired GChat Rust, strict checks, generated UI and targeted browser integration",
+  "gcoms_parent": "0c7a6ba",
+  "gcoms_trunk": "eef71ea",
+  "gchat_parent": "d552cf6",
+  "gchat_trunk": "8df1805",
+  "sdk_passed": 61,
+  "gchat_passed": 188,
+  "gchat_ignored": 3,
+  "strict_sdk_runtime": "passed",
+  "strict_gchat": "passed",
+  "ui_unit_passed": 63,
+  "ui_unit_files": 15,
+  "svelte_errors": 0,
+  "svelte_warnings": 0,
+  "frontend_build": "passed; retained existing chunk-size warning",
+  "targeted_browser_passed": 6,
+  "browser_widths": [
+    390,
+    1100
+  ],
+  "browser_scope": "roles, away, scoped whois, no legacy recovery action in hosted rooms; legacy owner confirmation and stale refusal",
+  "logs": {
+    "test-evidence/irc-parity/merge-paired-01.log": "36b815a5fc72b9723c98ddefe56d2673c9925469efaf4d2be97697bcb1eaa6a0",
+    "test-evidence/irc-parity/merge-ui-01.log": "daeafec3db3ca80d521cfd32b2ea8a89bebf6e24668540233b58ef6be7a77f32",
+    "test-evidence/irc-parity/merge-ui-02.log": "4a422f837bab39aff7866800297bd7b5ce94d7ad62c196cd12edce3164c024ba",
+    "test-evidence/irc-parity/merge-browser-01.log": "c54d530db22d10403f3e8436590c85ffe9da0cd06700700d4148ed0be588e807",
+    "test-evidence/irc-parity/merge-browser-02.log": "7709a5448732ade10cddba615939185379d9ad0edc38b2988323ca52087b170c",
+    "test-evidence/irc-parity/merge-browser-03.log": "5b5596ae8ee2942a6aa4a9874983aa7986329752bcc6eee7bc671f5b387425c8",
+    "test-evidence/irc-parity/hosted-live-harness-current.log": "e6b80c857e40f2d7ce556dc63fb13c16c631def6cbc0b0ba930a0999c80d2ba6"
+  },
+  "source_sha256": {
+    "crates/chat-api/src/lib.rs": "12d9cc123ba9e7f27f5c21aacedd324751f717f36571344b6f9563ed0c2772ad",
+    "crates/core/src/chat_service/mod.rs": "ea385b656c6bf0943e1f7a956d44b7ab7b3ccd04fcd270218e8fab88cc0aae4b",
+    "crates/core/src/chat_service/membership_recovery.rs": "54a6c84af41e1dced481d3e73e131c78ddb753ae3e65520be033818316fa9027",
+    "ui/src/Workspace.svelte": "f3041075d7f10bed35a1917b41753fde8b33367eafaaa7106277741b0917ea6e",
+    "ui/src/api.ts": "39bc6203cbcd924b932af1ec17e0c383b7c81ecd974d3d8f5a764b814920c65c",
+    "ui/schemas/chat-rpc.json": "513db111b046e8da4f97a6f724c28fb334f93f284b6b778c7ecfb76be7196b0f",
+    "ui/src/rpc-api.ts": "bd2e205072160be8407fd2e2a523fb0c415b834cbd9df4ca628fcca2ffc53f51",
+    "ui/src/rpc-validators.js": "19d8481ade8ace76805c2ed9b563bce2d54b06b922090643f1fb93b30987675f",
+    "ui/browser/fixture.ts": "130170ec819bc0ab215c117d4f01f05b03af146de099a6f6e8ebf1c5fa5dd289",
+    "ui/browser/irc-members.spec.ts": "7b1d62dddbd53caa47c25e01923ef4758587ecc3ce12c742269f1d210c9430ee"
+  },
+  "retained_setup_failures": {
+    "merge-ui-01": "unit/check passed; runner incorrectly requested nonexistent ui build script; root build corrected in02",
+    "merge-browser-01": "browser launch missing NSS/NSPR; signed-APT cached libraries added only to isolated sysroot"
+  }
+}

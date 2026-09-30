@@ -874,6 +874,10 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
 }
 fn format_output(output: &CommandOutput) -> String {
     match output {
+        CommandOutput::MembershipRecovery { channel, expected, epoch, retained_messages, members, .. } => format!(
+            "Recovery for #{channel}, epoch {epoch}. {retained_messages} retained messages stay unconfirmed.\nRemoving a member revokes future access; they need a fresh invitation to return.\n{}\nTo confirm selected member IDs: /recover-membership {expected} MEMBER_ID [MEMBER_ID ...]",
+            members.iter().map(|m| format!("{} {}{}{}", m.id, m.nickname, if m.is_self { " (owner; cannot remove)" } else { "" }, if m.missing_commit { " — membership ACK missing" } else { "" })).collect::<Vec<_>>().join("\n")
+        ),
         CommandOutput::Help { commands } => commands
             .iter()
             .map(|c| {

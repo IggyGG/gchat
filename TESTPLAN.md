@@ -29,6 +29,9 @@ IRC formatting in both TUI and shared UI validation. No notice may auto-reply.
 Keep native, installed-network, 500-member churn/offline/files and timing evidence
 separate from component tests. Large-channel recipient receipt completion remains
 on covered transport and is measured separately, per the user's chosen tradeoff.
+## Owner-controlled membership recovery
+
+`cargo test -p gchat-core --features gc2-carrier --lib membership_recovery` covers strict preview parsing and the actual encrypted-profile stale-member → recovery → single-use invitation → authenticated message ACK → normal kick → reopen flow. Node tests separately assert exact retained wire/ACK equality, rollback and no future access for removed leaves. Browser `recovery.spec.ts` exercises phone/desktop selection, explicit confirmation/cancel, destination binding and absence of owner controls for members. No personal profile is used by these gates.
 
 ## Release tooling portability
 
@@ -568,3 +571,9 @@ Hosted live07 passes the unchanged 200ms feedback, 5s small-room receipt, 30s
 join, 180s resumed verification and 600s file-workflow checks. Bind this result
 to runtime907e54f and the recorded binary hashes; it covers two real clients,
 not the separate 500-member or native installed campaigns.
+Recovery compatibility: persisted operation results use the existing Text contract so older views and rollback daemons can read the archive; the requesting updated client receives the typed preview. Focused tests check snapshot/journal compatibility and unchanged error results.
+
+After current-trunk integration, repeat actual membership recovery mint/join/
+redeem/ACK/kick/reopen alongside hosted/contact regressions. Regenerate the
+combined Rust UI/RPC contract, run both workspace Svelte checks and UI tests/build,
+and retain the owner-confirmation browser tests for the merged members panel.

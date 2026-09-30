@@ -40,6 +40,9 @@ qualification. The full deliverable ledger remains in paired GComs
 `docs/IRC_PARITY.md`; receipt recovery, independent contacts/files, encrypted topic
 handoff, remaining client workflows and 500-member end-to-end qualification are
 not complete.
+## Owner-controlled membership recovery (2026-09-29)
+
+Added shared desktop/mobile recovery preview and explicit confirmation, `/recover-membership`, and normal SDK/local IPC support. The disposable GChat test reproduces a pending epoch-2 commit, revokes the selected unavailable leaves, then proves ordinary invitation admission, message ACK, kick and reopen. Exact affected-source and installed-profile results belong to the paired membership-recovery receipt.
 
 ## Remaining native checks completed — transfers still block (2026-09-29)
 
@@ -755,3 +758,20 @@ raw report and timings. The temporary bootstrap grant was revoked after shutdown
 Earlier failures remain retained. Full 500-member and installed/native release
 qualification remain open. The paired package/API/frontend/Linux desktop compile
 gate also passes on current GComs65b54c7/GChatd4ff03d; GComs retains its receipt.
+
+### IRC-8 current trunk integration — 2026-09-30
+
+Merge current trunk8df1805 with the hosted/contact work, preserving explicit owner
+membership recovery and its rollback-compatible journal projection. Shared UI
+contracts are regenerated from Rust. Legacy owner recovery is shown only for
+legacy channels; hosted channels retain their signed removal/rekey controls.
+The paired GComs integration preserves released IPC22 recovery encodings and
+requires IPC25 for new hosted/file operations. Merged Rust/UI/package validation
+is in progress; previous evidence remains bound to its original source pair.
+
+Merged qualification passes: 188 GChat Rust tests (three explicit
+ignores), strict paired Clippy, all63 UI tests, both workspace Svelte checks,
+production build and six browser checks at390/1100px. The released-recovery
+SDK tests also pass. Evidence: `docs/evidence/irc-trunk-integration-20260930/summary.json`.
+Current archive, full workspace and installed/capacity qualification remain
+separate; setup failures are retained alongside their corrected runs.
