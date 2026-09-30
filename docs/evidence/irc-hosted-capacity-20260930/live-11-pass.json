@@ -1,0 +1,90 @@
+{
+  "source": {
+    "gcoms_source": "2c4535d562216340ea54a08e5fc8d419549d73e2",
+    "gchat_source": "556c8f8ae14774ed58ed3d7aa184a2aeb5407032",
+    "harness_source": "556c8f8ae14774ed58ed3d7aa184a2aeb5407032",
+    "artifacts": {
+      "gchat": "da89d447ec2f9345b9a74fbe96247891774f5e0a6ba571dec25e4e914fe6cdb9",
+      "fleet_probe": "30707afe124d53925189ca1c9d5316a2d77a072f1b4fbb58c8c4c96ab8978fcb",
+      "hosted-live.py": "e7a35fe164a883e16fd401db947ca68a34b5ee4ba98245012632714013f7fbe2",
+      "hosted-capacity.py": "94c5fa56f1fa8d950de1567603eead1de7aae2794d9b6b72929b9a3043abcc9e"
+    }
+  },
+  "passed": true,
+  "latency_passed": true,
+  "cleanup_passed": true,
+  "grant_revoked": true,
+  "scope": "Fresh protected-network two-client journey on the exact worker-wake build; existing deadlines unchanged. Does not qualify 500 members.",
+  "timings": [
+    {
+      "step": "offline-owner admission timing",
+      "elapsed_ms": 110954,
+      "duration_ms": 6739,
+      "target_ms": 30000,
+      "within_target": true
+    },
+    {
+      "step": "local message feedback",
+      "elapsed_ms": 116175,
+      "duration_ms": 111,
+      "target_ms": 200,
+      "within_target": true
+    },
+    {
+      "step": "online delivery and receipt",
+      "elapsed_ms": 120503,
+      "duration_ms": 4439,
+      "target_ms": 5000,
+      "within_target": true
+    },
+    {
+      "step": "file resume verification timing",
+      "elapsed_ms": 367642,
+      "duration_ms": 156586,
+      "target_ms": 180000,
+      "within_target": true
+    },
+    {
+      "step": "file journey complete",
+      "elapsed_ms": 369123,
+      "size": 16777216,
+      "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+      "resume_ms": 158066,
+      "duration_ms": 231017,
+      "target_ms": 600000,
+      "within_target": true
+    }
+  ],
+  "checks": [
+    "offline-owner admission",
+    "Topic pending without extra metadata key",
+    "authenticated encrypted topic handoff",
+    "moderation and voice",
+    "notice",
+    "ordinary offline-message recovery",
+    "authenticated covered receipts",
+    "16 MiB pause, restart, resume and whole-file hash"
+  ],
+  "evidence": {
+    "run11-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/run11-grant-revocation.json",
+      "sha256": "39dee7d4c89c5dc9fe1a1e071471fb436e36e9fc55b0d64b389df0b6261a0e6b"
+    },
+    "run11-provision.json": {
+      "path": "test-evidence/irc-parity/run11-provision.json",
+      "sha256": "79d96a115ab9c42aee5d1865afb9ab3a8d25d6c013b399a5748e84feaaf00f27"
+    },
+    "run11-result.json": {
+      "path": "test-evidence/irc-parity/run11-result.json",
+      "sha256": "17bdad97db5e80bdf104abd8fbe4e054713c9e52fae27590fedeef99dbce3157"
+    },
+    "run11-source.json": {
+      "path": "test-evidence/irc-parity/run11-source.json",
+      "sha256": "be3dd4314407512efa969291b35adb096ee62230fc94a7ed05fc24c3bc17db3b"
+    },
+    "run11.log": {
+      "path": "test-evidence/irc-parity/run11.log",
+      "sha256": "046905fb5eba5defc3812c449d7d841b4080922ae267e43f478f4469cad59e5b"
+    }
+  }
+}

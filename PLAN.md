@@ -980,3 +980,11 @@ The same `2c4535d` / `556c8f8` pair passes all 20 Rust and two npm archive
 consumers, generated contracts, 63 UI tests, frontend checks/build and Linux
 desktop compilation. Original source checkouts are unchanged; nothing was
 published. Evidence: `worker-wake-packages.json` in trunk-integration evidence.
+
+Fresh exact-source run11 passes the two-client protected-network journey: 111 ms
+local feedback, 4.439 s message plus covered receipt, 6.739 s offline-owner
+admission, Topic pending and authenticated handoff, moderation, voice, notice
+and ordinary offline-message recovery. Verified 16 MiB resume takes 156.586 s;
+the whole file workflow takes 231.017 s. Existing timing targets, cleanup and
+grant revocation all pass. Evidence: `live-11-pass.json` in hosted-capacity
+evidence. Fresh exact-source smoke07 is running before the 500-member campaign.
