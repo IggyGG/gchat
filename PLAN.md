@@ -968,3 +968,10 @@ targets. Full file workflow is 341.821 seconds with the correct 16 MiB hash.
 Independent OS checks confirm no owned clients remain; the temporary grant is
 revoked. See `live-10-original-timing.json` in hosted-capacity evidence. The
 original report is unchanged; the updated harness explicitly records cleanup.
+
+GChat `556c8f8` / GComs `2c4535d` passes 191 Rust tests (three unchanged
+ignores) and strict all-target/all-feature Clippy. The real local admission
+regression verifies coalesced durable wake-up and idle reads/refusals. Eight
+Python harness tests pass, including exceptional cleanup and strict deadlines.
+Evidence: `worker-wake-qualified.json` in trunk-integration evidence.
+Fresh exact-source two-client run11 is active; package qualification follows.
