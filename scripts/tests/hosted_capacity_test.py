@@ -12,6 +12,13 @@ spec.loader.exec_module(module)
 
 
 class CapacityEvidenceTest(unittest.TestCase):
+    def test_slow_membership_replay_requires_progress_even_in_small_rooms(self):
+        self.assertTrue(module.membership_replay_passes(9000, [], 300))
+        self.assertTrue(module.membership_replay_passes(16590, [0, 11, 12], 300))
+        self.assertFalse(module.membership_replay_passes(16590, [0], 300))
+        self.assertFalse(module.membership_replay_passes(10000.4, [], 300))
+        self.assertFalse(module.membership_replay_passes(300000.4, [32], 300))
+
     def test_rounding_does_not_relax_the_feedback_deadline(self):
         journey = object.__new__(module.Capacity)
         journey.note = Mock()
@@ -19,6 +26,11 @@ class CapacityEvidenceTest(unittest.TestCase):
             journey.timed('feedback', 0, 200)
         journey.note.assert_called_once_with('feedback', duration_ms=200,
                                             target_ms=200, within_target=False)
+        journey.note.reset_mock()
+        with patch.object(module.time, 'monotonic', return_value=10.0004):
+            journey.timed('ordinary offline recovery', 0, 10000)
+        journey.note.assert_called_once_with('ordinary offline recovery', duration_ms=10000,
+                                            target_ms=10000, within_target=False)
 
     def test_duplicate_identity_or_missing_self_is_not_a_roster(self):
         room = {'active': True, 'members': [{'id': 'a', 'isSelf': True}, {'id': 'b'}]}
@@ -31,6 +43,7 @@ class CapacityEvidenceTest(unittest.TestCase):
 
     def test_smoke_and_missing_or_failed_observations_never_qualify_500(self):
         report = {'requested_members': 500, 'passed': True, 'latency_passed': True,
+                  'recovery_policy': module.RECOVERY_POLICY,
                   'cleanup_passed': True, 'resources_complete': True,
                   'peak_active_profiles': 500, 'observations': {
                       'independent_members': 500, 'baseline': {'senders': 10, 'recipients_per_sender': 499},

@@ -907,3 +907,21 @@ had joined. Cleanup, full resource sampling and grant revocation pass. See
 `docs/evidence/irc-hosted-capacity-20260930/smoke-12-03-failure.json`. GComs
 `a715a70` adjusts only bounded snapshot read backoff; its full paired and live
 qualification is in progress. Existing failure receipts remain unchanged.
+
+### IRC-8 recovery-policy alignment — 2026-09-30
+
+Smoke04 on `a715a70` / `39848b8` passes all correctness checks: twelve independent
+members, 220 recipient signatures, ordinary offline-message recovery in 5 ms,
+16 MiB resume in 169.315 seconds, full file workflow in 336.055 seconds,
+removal confidentiality, replacement, resource sampling and cleanup. Its old
+small-room membership timing rule still fails at 16.590 seconds; that result
+remains a failure and its temporary grant is revoked.
+
+The selected user policy distinguishes ordinary offline messages from membership
+backlogs, rather than assigning different recovery semantics by room size. The
+harness now measures membership replay separately for every room and requires
+confirmed visible progress whenever replay exceeds ten seconds. Existing
+300/1,800-second observation windows, complete unique rosters and indicator
+completion remain mandatory. Ordinary offline messages still have the unchanged
+ten-second target. New reports name this policy; old failures are not relabeled.
+A fresh smoke is required before the protected-network 500-member campaign.

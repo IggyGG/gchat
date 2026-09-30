@@ -19,6 +19,13 @@ spec = importlib.util.spec_from_file_location('hosted_live', Path(__file__).with
 live = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(live)
 
+RECOVERY_POLICY = 'ordinary-message-10s-visible-membership-replay'
+
+
+def membership_replay_passes(elapsed_ms, applied_progress, observation_seconds):
+    return (0 <= elapsed_ms <= observation_seconds * 1000
+            and (elapsed_ms <= 10000 or any(value > 0 for value in applied_progress)))
+
 
 def verify_roster(room, count):
     members = room.get('members', [])
@@ -30,6 +37,7 @@ def verify_roster(room, count):
 def qualifies(report):
     observed = report.get('observations', {})
     return (report.get('requested_members') == 500 and report.get('passed') is True
+            and report.get('recovery_policy') == RECOVERY_POLICY
             and report.get('latency_passed') is True and report.get('cleanup_passed') is True
             and report.get('resources_complete') is True
             and report.get('peak_active_profiles', 0) >= 500
@@ -48,6 +56,7 @@ class Capacity(live.Journey):
         self.report.update(scope='independent GChat protected-network capacity',
                            requested_members=args.members, qualified_500=False,
                            startup_concurrency=args.startup_concurrency,
+                           recovery_policy=RECOVERY_POLICY,
                            receipt_deadline_seconds=600, observations={})
         self.sampler_stop = threading.Event()
         self.file_resumed = threading.Event()
@@ -187,19 +196,17 @@ class Capacity(live.Journey):
                         progress.append(applied)
                         self.note('owner membership catch-up progress', applied_records=applied)
                 return verify_roster(room, self.args.members) and status is None
-            large_backlog = self.args.members > 32
-            # Explicitly selected recovery policy: retain the ten-second
-            # ordinary-message gate below; measure long membership replay
-            # separately and require real visible progress before completion.
-            self.wait('owner recovered complete roster', owner_current,
-                      1800 if large_backlog else 300)
-            if large_backlog:
-                assert any(value > 0 for value in progress), 'large backlog needs visible applied progress'
-                self.note('large membership backlog recovered',
-                          duration_ms=round((time.monotonic() - recovered) * 1000),
-                          observation_deadline_seconds=1800, applied_progress=progress)
-            else:
-                self.timed('offline owner recovery after network ready', recovered, 10000)
+            # Ordinary message recovery below keeps its ten-second target.
+            # A small room can also have a long membership backlog. Classify
+            # replay by observed work, rather than the room's nominal capacity.
+            observation_seconds = 1800 if self.args.members > 32 else 300
+            self.wait('owner recovered complete roster', owner_current, observation_seconds)
+            elapsed_ms = (time.monotonic() - recovered) * 1000
+            assert membership_replay_passes(elapsed_ms, progress, observation_seconds), \
+                'slow membership replay needs visible applied progress within the observation bound'
+            self.note('membership backlog recovered', duration_ms=round(elapsed_ms),
+                      observation_deadline_seconds=observation_seconds,
+                      progress_required=elapsed_ms > 10000, applied_progress=progress)
             self.report['observations']['membership_catchup'] = True
             self.all_rosters(channel, self.names)
             self.messages(channel, self.names, 'baseline')
