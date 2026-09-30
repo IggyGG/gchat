@@ -988,3 +988,12 @@ and ordinary offline-message recovery. Verified 16 MiB resume takes 156.586 s;
 the whole file workflow takes 231.017 s. Existing timing targets, cleanup and
 grant revocation all pass. Evidence: `live-11-pass.json` in hosted-capacity
 evidence. Fresh exact-source smoke07 is running before the 500-member campaign.
+
+Fresh exact-source smoke07 passes all twelve independent members and both
+ten-sender phases (220 covered recipient signatures), ordinary offline recovery
+(5 ms), confirmed membership progress (17.102 s), 16 MiB resume (97.373 s),
+full file workflow (254.144 s), removal exclusion and replacement. Timing,
+resource capture, cleanup and grant revocation pass. Evidence:
+`docs/evidence/irc-hosted-capacity-20260930/smoke-12-07-pass.json`.
+The protected-network 500-member campaign now runs on this same verified pair
+under the original six-hour, 64 GiB and 12-CPU limits; it has no result yet.

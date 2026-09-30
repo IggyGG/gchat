@@ -1,0 +1,380 @@
+{
+  "scope": "independent GChat protected-network capacity",
+  "passed": true,
+  "requested_members": 12,
+  "qualified_500": false,
+  "recovery_policy": "ordinary-message-10s-visible-membership-replay",
+  "observations": {
+    "membership_catchup": true,
+    "independent_members": 12,
+    "baseline": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "offline_recovery": true,
+    "mixed_file": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "verified_file_resume": true,
+    "churn_and_exclusion": true
+  },
+  "latency_passed": true,
+  "cleanup_passed": true,
+  "resources_complete": true,
+  "source": {
+    "gcoms_source": "2c4535d562216340ea54a08e5fc8d419549d73e2",
+    "gchat_source": "556c8f8ae14774ed58ed3d7aa184a2aeb5407032",
+    "harness_source": "556c8f8ae14774ed58ed3d7aa184a2aeb5407032",
+    "artifacts": {
+      "gchat": "da89d447ec2f9345b9a74fbe96247891774f5e0a6ba571dec25e4e914fe6cdb9",
+      "fleet_probe": "30707afe124d53925189ca1c9d5316a2d77a072f1b4fbb58c8c4c96ab8978fcb",
+      "hosted-live.py": "e7a35fe164a883e16fd401db947ca68a34b5ee4ba98245012632714013f7fbe2",
+      "hosted-capacity.py": "94c5fa56f1fa8d950de1567603eead1de7aae2794d9b6b72929b9a3043abcc9e"
+    }
+  },
+  "grant_revoked": true,
+  "timing": {
+    "measurements": [
+      {
+        "step": "admission",
+        "elapsed_ms": 87682,
+        "duration_ms": 4496,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "bob"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 91113,
+        "duration_ms": 3430,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-2"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 97953,
+        "duration_ms": 6840,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-3"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 103981,
+        "duration_ms": 6028,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-4"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 172670,
+        "duration_ms": 4602,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-5"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 178286,
+        "duration_ms": 5615,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-6"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 182269,
+        "duration_ms": 3983,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-7"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 187683,
+        "duration_ms": 5414,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-8"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 230699,
+        "duration_ms": 4851,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-9"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 234941,
+        "duration_ms": 4241,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-10"
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 238780,
+        "duration_ms": 3838,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "member-11"
+      },
+      {
+        "step": "membership backlog recovered",
+        "elapsed_ms": 258428,
+        "duration_ms": 17102,
+        "observation_deadline_seconds": 300,
+        "progress_required": true,
+        "applied_progress": [
+          0,
+          11,
+          12
+        ]
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258616,
+        "duration_ms": 114,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-2",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258617,
+        "duration_ms": 114,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-6",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258618,
+        "duration_ms": 116,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-7",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258619,
+        "duration_ms": 116,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-9",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258621,
+        "duration_ms": 115,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-5",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258622,
+        "duration_ms": 117,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-11",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258627,
+        "duration_ms": 124,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-4",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258629,
+        "duration_ms": 126,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-10",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258630,
+        "duration_ms": 125,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-8",
+        "phase": "baseline"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 258631,
+        "duration_ms": 127,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-3",
+        "phase": "baseline"
+      },
+      {
+        "step": "offline plaintext recovery after network ready",
+        "elapsed_ms": 270032,
+        "duration_ms": 5,
+        "target_ms": 10000,
+        "within_target": true
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425489,
+        "duration_ms": 116,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-8",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425492,
+        "duration_ms": 118,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-5",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425493,
+        "duration_ms": 118,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-3",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425494,
+        "duration_ms": 118,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-2",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425496,
+        "duration_ms": 119,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-6",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425498,
+        "duration_ms": 118,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-10",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425499,
+        "duration_ms": 119,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-7",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425500,
+        "duration_ms": 121,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-4",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425501,
+        "duration_ms": 121,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-11",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "concurrent local feedback",
+        "elapsed_ms": 425502,
+        "duration_ms": 121,
+        "target_ms": 200,
+        "within_target": true,
+        "client": "member-9",
+        "phase": "mixed_file"
+      },
+      {
+        "step": "file resume verification timing",
+        "elapsed_ms": 522701,
+        "duration_ms": 97373,
+        "target_ms": 180000,
+        "within_target": true
+      },
+      {
+        "step": "file journey complete",
+        "elapsed_ms": 524950,
+        "size": 16777216,
+        "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+        "resume_ms": 99622,
+        "duration_ms": 254144,
+        "target_ms": 600000,
+        "within_target": true
+      },
+      {
+        "step": "admission",
+        "elapsed_ms": 609975,
+        "duration_ms": 5872,
+        "target_ms": 30000,
+        "within_target": true,
+        "client": "replacement"
+      }
+    ],
+    "failures": []
+  },
+  "evidence": {
+    "capacity12-07-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/capacity12-07-grant-revocation.json",
+      "sha256": "d3f4685d83b0066a8218168bb17b90c4b0825c299f2c2d9e83b33eaa782a4620"
+    },
+    "capacity12-07-log": {
+      "path": "test-evidence/irc-parity/capacity12-07-log",
+      "sha256": "1bb451b4700bbff2a8f5510c76d44f8119a5d450a9617e35c747ff66032ee80e"
+    },
+    "capacity12-07-provision.json": {
+      "path": "test-evidence/irc-parity/capacity12-07-provision.json",
+      "sha256": "7ca280037034857b63e7659e6d2a8ef89bd151dccc1c992719cc972da9ef2840"
+    },
+    "capacity12-07-resources.jsonl": {
+      "path": "test-evidence/irc-parity/capacity12-07-resources.jsonl",
+      "sha256": "1436f4f805cbb134cb58bc6918dabddd7e79ebe7cf7125f0292e63cb1f202df2"
+    },
+    "capacity12-07-result.json": {
+      "path": "test-evidence/irc-parity/capacity12-07-result.json",
+      "sha256": "026cf98ce424e93b7aff411a55d992d5c282f904f6d976081a8344ae69c8ddbe"
+    },
+    "capacity12-07-source.json": {
+      "path": "test-evidence/irc-parity/capacity12-07-source.json",
+      "sha256": "be3dd4314407512efa969291b35adb096ee62230fc94a7ed05fc24c3bc17db3b"
+    }
+  }
+}
