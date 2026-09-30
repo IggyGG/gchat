@@ -319,3 +319,9 @@ The integrated client uses IPC25 for hosted channels and modern files while
 preserving released legacy owner recovery. Update the paired daemon and client
 together; unpublished task IPC23/24 dialects are refused. Legacy Channel recovery
 remains an explicit owner action; hosted policy uses its own verified controls.
+
+The current merged hosted implementation passes its two-client protected-network
+journey, including covered delivery receipts and interrupted 16 MiB verification.
+`scripts/hosted-capacity.py` provides separate 12-member smoke and 500-member
+application campaigns; see TESTPLAN.md for required evidence and retained limits.
+This does not yet qualify a 500-member or native installed release.

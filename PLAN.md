@@ -781,3 +781,20 @@ also pass on GComs `0e7db6a` and GChat `5533b1e`, including generated contracts,
 frontend and Linux desktop compilation. The new live binary and the full merged
 GComs workspace are under qualification; large-room and native installed release
 claims remain open.
+
+### IRC-8 current merged live journey and capacity harness — 2026-09-30
+
+The actual GComs `0e7db6a`/GChat `5533b1e` binary passes live08 correctness and all
+fixed latency targets: 118ms local feedback, 1.905s display plus covered receipt,
+4.044s offline-owner join, 100.142s resumed 16MiB verification and 179.396s file
+workflow. Topic pending/encrypted handoff, moderation, offline recovery, exact
+hash export and unvoiced completion pass. Receipt:
+`docs/evidence/irc-hosted-live-20260930/merged-08.json`. The temporary bootstrap grant
+was revoked after the owned daemons stopped; all retained state is preserved.
+
+A new protected-network capacity harness runs 12-member smoke or 500 independent
+GChat profiles, ten senders, covered receipts, offline recovery, mixed file traffic
+and kick/replacement confidentiality. Four harness/deadline checks and the source
+audit pass. The actual smoke and campaign remain unqualified. Current full GComs
+workspace validation and the separate durable-runtime 500-client campaigns remain
+running; native installed release and normal trunk publication remain open.

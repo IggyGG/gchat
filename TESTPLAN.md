@@ -577,3 +577,21 @@ After current-trunk integration, repeat actual membership recovery mint/join/
 redeem/ACK/kick/reopen alongside hosted/contact regressions. Regenerate the
 combined Rust UI/RPC contract, run both workspace Svelte checks and UI tests/build,
 and retain the owner-confirmation browser tests for the merged members panel.
+
+## Protected-network hosted capacity
+
+`scripts/hosted-capacity.py --members 12|500 --root NEW_PRIVATE_DIRECTORY --gchat
+EXACT_BINARY --probe EXACT_PROBE --invitation-file PRIVATE_INVITATION` runs actual
+independent GChat daemon profiles through the installed protected network. Provision
+only the emitted channel ID, then create `enabled`. Run the 12-member smoke before
+the 500-member campaign; neither component tests nor a smoke pass can set
+`qualified_500`. Retain all profiles, logs, source/binary hashes and ten-second
+process RSS/I/O samples. The owner remains offline throughout admission. Require
+independent verified rosters, ten simultaneous senders and all authenticated
+recipient receipts, offline delivery recovery, real mixed chat/file traffic,
+16 MiB pause/reopen/resume/export, removal confidentiality and replacement admission.
+Keep 200ms feedback, 30s join and 10s recovery targets; covered large-room receipt
+completion is measured separately with a 600s observation bound. Existing 180s
+file-resume and 600s full-workflow targets remain unchanged. Cleanup and every
+required observation must pass. `hosted_capacity_test.py` rejects missing evidence,
+duplicate identities, failed timing/cleanup and promotion of a smoke to 500 members.
