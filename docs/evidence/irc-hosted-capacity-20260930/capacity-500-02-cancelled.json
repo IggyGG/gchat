@@ -1,0 +1,25 @@
+{
+  "run": "capacity500-02",
+  "status": "cancelled_by_user_scope_reduction",
+  "member_limit": 64,
+  "revoked": true,
+  "cleanup_passed": true,
+  "remaining_owned_processes": 0,
+  "finished_unix": 1790760375,
+  "original_evidence_preserved": true,
+  "admitted_members": 166,
+  "capacity_qualified": false,
+  "original_result_sha256": "2e0a4d4a11223a4b101538db746d7453e5f688e946eda5ae8ed11b93f05ff87c",
+  "source": {
+    "gcoms_source": "2c4535d562216340ea54a08e5fc8d419549d73e2",
+    "gchat_source": "556c8f8ae14774ed58ed3d7aa184a2aeb5407032",
+    "harness_source": "556c8f8ae14774ed58ed3d7aa184a2aeb5407032",
+    "artifacts": {
+      "gchat": "da89d447ec2f9345b9a74fbe96247891774f5e0a6ba571dec25e4e914fe6cdb9",
+      "fleet_probe": "30707afe124d53925189ca1c9d5316a2d77a072f1b4fbb58c8c4c96ab8978fcb",
+      "hosted-live.py": "e7a35fe164a883e16fd401db947ca68a34b5ee4ba98245012632714013f7fbe2",
+      "hosted-capacity.py": "94c5fa56f1fa8d950de1567603eead1de7aae2794d9b6b72929b9a3043abcc9e"
+    }
+  },
+  "note": "User retained the 64-member limit. No 100-member campaign was launched; the larger run stopped before messaging/file/churn phases."
+}
