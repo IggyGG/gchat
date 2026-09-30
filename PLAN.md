@@ -1,3 +1,14 @@
+## Current IRC small-room gate — 2026-09-30
+
+The same `40b440d` / `c5bbfe8` release binary also passes live09: 113ms local
+feedback, 3.933s display plus covered recipient receipt, 7.857s offline-owner
+admission, 164.709s resumed 16MiB verification and 329.148s full file workflow.
+Topic pending followed by authenticated handoff, moderation/voice/notices,
+offline recovery, retained partial pieces and the exact exported hash pass.
+Owned daemons stopped and the bootstrap grant was revoked. Evidence:
+`docs/evidence/irc-hosted-live-20260930/replay-09.json`. The separate 500-profile
+protected-network campaign has now started; it has no passing result yet.
+
 ## Current IRC protected-network smoke — 2026-09-30
 
 GComs `40b440d` / GChat `c5bbfe8` passes the actual 12-profile correctness and

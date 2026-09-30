@@ -1,0 +1,238 @@
+{
+  "schema": 2,
+  "passed": true,
+  "latency_passed": true,
+  "scope": "two-client correctness journey; latency reported separately",
+  "transport": "installed protected network",
+  "probe_interval_ms": 250,
+  "artifacts": {
+    "gchat": "4464e3f8edcc99b27c59719342d4692e1f32c5eb163b201f254a9de04b02f8f9",
+    "fleet_probe": "b7791b518f79b408581044a3ace1c836a59780d832415f88f330fb21ea235c94"
+  },
+  "steps": [
+    {
+      "step": "alice daemon ready",
+      "elapsed_ms": 819,
+      "duration_ms": 755
+    },
+    {
+      "step": "alice network invitation imported",
+      "elapsed_ms": 830
+    },
+    {
+      "step": "alice network ready",
+      "elapsed_ms": 63599,
+      "duration_ms": 62769
+    },
+    {
+      "step": "channel awaiting operator provisioning",
+      "elapsed_ms": 63715
+    },
+    {
+      "step": "channel provisioned",
+      "elapsed_ms": 155045,
+      "duration_ms": 91329
+    },
+    {
+      "step": "creator admitted",
+      "elapsed_ms": 155050,
+      "duration_ms": 5
+    },
+    {
+      "step": "topic accepted",
+      "elapsed_ms": 156953,
+      "duration_ms": 1789
+    },
+    {
+      "step": "creator offline",
+      "elapsed_ms": 157908
+    },
+    {
+      "step": "bob daemon ready",
+      "elapsed_ms": 158664,
+      "duration_ms": 755
+    },
+    {
+      "step": "bob network invitation imported",
+      "elapsed_ms": 158676
+    },
+    {
+      "step": "bob network ready",
+      "elapsed_ms": 197572,
+      "duration_ms": 38895
+    },
+    {
+      "step": "offline-owner newcomer admitted",
+      "elapsed_ms": 205429,
+      "duration_ms": 6122
+    },
+    {
+      "step": "offline-owner admission timing",
+      "elapsed_ms": 205430,
+      "duration_ms": 7857,
+      "target_ms": 30000,
+      "within_target": true
+    },
+    {
+      "step": "offline newcomer topic pending",
+      "elapsed_ms": 205435
+    },
+    {
+      "step": "alice daemon ready",
+      "elapsed_ms": 206192,
+      "duration_ms": 756
+    },
+    {
+      "step": "alice network ready",
+      "elapsed_ms": 207215,
+      "duration_ms": 1019
+    },
+    {
+      "step": "authenticated topic handoff",
+      "elapsed_ms": 212071,
+      "duration_ms": 4856
+    },
+    {
+      "step": "local message feedback",
+      "elapsed_ms": 212185,
+      "duration_ms": 113,
+      "target_ms": 200,
+      "within_target": true
+    },
+    {
+      "step": "peer plaintext received",
+      "elapsed_ms": 213713,
+      "duration_ms": 1528
+    },
+    {
+      "step": "authenticated recipient delivery",
+      "elapsed_ms": 216004,
+      "duration_ms": 2290
+    },
+    {
+      "step": "online delivery and receipt",
+      "elapsed_ms": 216005,
+      "duration_ms": 3933,
+      "target_ms": 5000,
+      "within_target": true
+    },
+    {
+      "step": "moderation converged",
+      "elapsed_ms": 218413,
+      "duration_ms": 2297
+    },
+    {
+      "step": "unvoiced send refused",
+      "elapsed_ms": 218523
+    },
+    {
+      "step": "voice converged",
+      "elapsed_ms": 220425,
+      "duration_ms": 1788
+    },
+    {
+      "step": "voiced notice received",
+      "elapsed_ms": 221813,
+      "duration_ms": 1275
+    },
+    {
+      "step": "bob daemon ready",
+      "elapsed_ms": 225719,
+      "duration_ms": 756
+    },
+    {
+      "step": "bob network ready",
+      "elapsed_ms": 228266,
+      "duration_ms": 2543
+    },
+    {
+      "step": "offline message recovered",
+      "elapsed_ms": 228270,
+      "duration_ms": 4
+    },
+    {
+      "step": "recovered recipient acknowledged",
+      "elapsed_ms": 229797,
+      "duration_ms": 1526
+    },
+    {
+      "step": "file recipient unvoiced",
+      "elapsed_ms": 231952,
+      "duration_ms": 2044
+    },
+    {
+      "step": "authenticated hosted file offer",
+      "elapsed_ms": 381708,
+      "duration_ms": 149422
+    },
+    {
+      "step": "partial verified file",
+      "elapsed_ms": 386805,
+      "duration_ms": 5091
+    },
+    {
+      "step": "file paused",
+      "elapsed_ms": 386811,
+      "verified_bytes": 524288
+    },
+    {
+      "step": "bob daemon ready",
+      "elapsed_ms": 387600,
+      "duration_ms": 756
+    },
+    {
+      "step": "bob network ready",
+      "elapsed_ms": 391420,
+      "duration_ms": 3815
+    },
+    {
+      "step": "whole file verified after resume",
+      "elapsed_ms": 556132,
+      "duration_ms": 164702
+    },
+    {
+      "step": "file resume verification timing",
+      "elapsed_ms": 556133,
+      "duration_ms": 164709,
+      "target_ms": 180000,
+      "within_target": true
+    },
+    {
+      "step": "unvoiced authenticated file completion",
+      "elapsed_ms": 558944,
+      "duration_ms": 2547
+    },
+    {
+      "step": "file journey complete",
+      "elapsed_ms": 558945,
+      "size": 16777216,
+      "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+      "resume_ms": 167520,
+      "duration_ms": 329148,
+      "target_ms": 600000,
+      "within_target": true
+    },
+    {
+      "step": "journey passed",
+      "elapsed_ms": 558945
+    }
+  ],
+  "source": {
+    "gcoms": "40b440d",
+    "gchat": "c5bbfe8",
+    "sha256": {
+      "gchat": "4464e3f8edcc99b27c59719342d4692e1f32c5eb163b201f254a9de04b02f8f9",
+      "fleet_probe": "b7791b518f79b408581044a3ace1c836a59780d832415f88f330fb21ea235c94",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3"
+    }
+  },
+  "raw_report_sha256": "227ee5fb86bce4defa6d1924d3b1765a56f703c95b8f6794daa33c0e322acf05",
+  "grant_revocation": {
+    "run": "live09",
+    "revoked": true,
+    "owned_daemons_stopped": true,
+    "time_unix": 1790737586,
+    "store_mode": "0o600"
+  },
+  "limits": "Two-client protected-network correctness and timing; separate from 500-member and native-installed qualification."
+}
