@@ -898,3 +898,12 @@ Final paired catch-up Rust validation now passes 190 tests with
 3 unchanged ignores and strict all-target/all-feature Clippy.
 Source: GComs `250ece7` / GChat `39848b8`; evidence:
 `docs/evidence/irc-trunk-integration-20260930/catchup-rust-02-pass.json`.
+
+Current catch-up pair `250ece7` / `39848b8` passes all 20 Rust and two npm
+archive consumers, generated API contracts, 63 UI tests and Linux desktop
+compilation (`catchup-packages-02.json`). The 12-member live smoke03 nevertheless
+fails a transient route outage while preparing member-11 admission; ten peers
+had joined. Cleanup, full resource sampling and grant revocation pass. See
+`docs/evidence/irc-hosted-capacity-20260930/smoke-12-03-failure.json`. GComs
+`a715a70` adjusts only bounded snapshot read backoff; its full paired and live
+qualification is in progress. Existing failure receipts remain unchanged.

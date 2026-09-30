@@ -1,0 +1,61 @@
+{
+  "gcoms_source": "250ece7c7abdb10458e8db72a9c60f110ce4ad08",
+  "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+  "status": "passed",
+  "published": false,
+  "scope": "Actual package archives, generated contracts, UI and Linux desktop compilation; predates GComs a715a70 snapshot-maintenance correction",
+  "rust_packages": 20,
+  "npm_packages": 2,
+  "source_unchanged": true,
+  "checks": {
+    "rust_external_alias_consumer": "passed",
+    "npm_archive_consumer": "passed",
+    "gchat_rust": "passed",
+    "gchat_frontend": "passed",
+    "gchat_desktop": "passed"
+  },
+  "archive_sha256": {
+    "gcoms-runtime-0.1.0.crate": "6353ddbdcd2ae35582cab8b85e50f81a2e1e2e961a46fd6d774607286a1f06db",
+    "gcoms-core-0.1.0.crate": "96405a4519b1db44ea5365159d9c662cfa88d4c65bebd0a7bab4b11ba1369e1f",
+    "gcoms-0.1.0.crate": "afbd01bd4c8f00fb7910084de9bec9d2847efe1fdff23cacb37b5ace33255550",
+    "gcoms-network-client-0.1.0.crate": "f48f40d2a9a3ea9652cf5131a1338344440f12d29311cc3fc5fe70058e4832b1",
+    "gcoms-protocol-0.1.0.crate": "f0cff318ce7ee8ff8e27aa693333bfbb58faa9d19083eba82e2457bc5c80003e",
+    "gcoms-rpc-macros-0.1.0.crate": "b3a09739a4317c93fc252da4a94edc9f8906e842e80a5b4032202ad4334c4a16",
+    "gcoms-private-fs-0.1.0.crate": "faab562946db658e81b712da723485947afe13e8360e15007f790ed470991da1",
+    "gcoms-rpc-0.1.0.crate": "f7d415d3f4d02abe37cf05c79ce2ecb211cb9789be7578553a81d6ebd1ab0913",
+    "gcoms-gossip-0.1.0.crate": "1b94fba9c0a1e385b3ae801d2e9d3256acff0d4051179a5c7aff0a60767c6f7f",
+    "gcoms-sdk-0.1.0.crate": "b3fb78abf62c497871d315402c8ecbe0031ab290860b467ae177384c1336560d",
+    "gcoms-network-0.1.0.crate": "b1d4c5ab8a402c61f085c957e13cb12906e6d6a6d7d3ca0896b164afd1b71935",
+    "gcoms-channel-service-0.1.0.crate": "ac2d876dee83a01c4b23504db8a6c225fb6a643baac586365f3d5963462a8275",
+    "gcoms-catalog-0.1.0.crate": "cef837695767cabe152af79fb75431c3573beb23f4a3bf1f473f99a8b27f0883",
+    "gcoms-file-transfer-0.1.0.crate": "7ab46007d0442f1099ec5c7f161232d77c45b4d18dcf6c1143d3e0312649bdc1",
+    "gcoms-transport-0.1.0.crate": "ec1c9f9bd91f99458c596f9c4d0a594600358713d26ce8293484bd1b49710435",
+    "gcoms-crypto-0.1.0.crate": "42aa0eda0e39884536fe264a39da8e1b009ec0999e1e3a8c270f2d8da8e398aa",
+    "gcoms-routing-0.1.0.crate": "06593a105d37279ddbf4bde4c9c36d404a81421ae0579563b3b147320df011b1",
+    "gcoms-node-0.1.0.crate": "4f881af912200d399d607fa08eaf62dbf01bb700a3f86781c0b62644c13e826e",
+    "gcoms-rpc-contract-0.1.0.crate": "5b0bb90832efc9e7022ca8700ccf260716262992126dba4b7c5068521db0e90f",
+    "gcoms-mls-0.1.0.crate": "3b920816883cb30db4d47a46616ceb3c96fdb143fc0a570acfc1525051fb464b",
+    "gcoms-rpc-codegen-0.1.0.tgz": "f1997a77b6aee2233d0fc675c67257f960d0d4c5a7e376d3514fc4c6cff07940",
+    "gcoms-rpc-0.1.0.tgz": "dc875fec9fbf5e06a86610ef22f5c6c2c1fea7f187930f5e067612d31d5675c3"
+  },
+  "evidence": {
+    "packages-catchup-02-summary.json": {
+      "path": "test-evidence/irc-parity/packages-catchup-02-summary.json",
+      "sha256": "0a21b861f19536e6d9c5d8c7d8adb0deeb8f20c952da3a0777d91d33607fd1c5"
+    },
+    "packages-catchup-02.log": {
+      "path": "test-evidence/irc-parity/packages-catchup-02.log",
+      "sha256": "0b7672c7f05750ce4ab58193315c928fb4328173f8a3a80a60478a1d14ce82da"
+    },
+    "packages-catchup-02.exit": {
+      "path": "test-evidence/irc-parity/packages-catchup-02.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "earlier_attempt": {
+    "status": "failed",
+    "cause": "fresh offline npm cache lacked ajv registry metadata",
+    "log_sha256": "f63acda98e38cad3d87212842d622c34326fe636c70fe2809779377c463b25aa",
+    "correction": "copied retained npm metadata cache; source and lockfiles unchanged"
+  }
+}

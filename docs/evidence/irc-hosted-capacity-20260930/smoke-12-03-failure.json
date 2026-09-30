@@ -1,0 +1,36 @@
+{
+  "gcoms_source": "250ece7c7abdb10458e8db72a9c60f110ce4ad08",
+  "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+  "status": "failed",
+  "requested_members": 12,
+  "passed": false,
+  "qualified_500": false,
+  "failure": "outcome_unknown: Operation was interrupted after admission; it will not be sent again automatically; retained detail: outcome_unknown: protocol: runtime: no ready independent GC/2 route",
+  "admitted_peers": 10,
+  "cleanup_passed": true,
+  "grant_revoked": true,
+  "resource_coverage_complete": true,
+  "diagnosis": "Snapshot read transport attempts exhausted in about 600ms at a transient route outage. Four-attempt retries now back off 1/2/4 seconds in GComs a715a70; original 30-second bounds and policy checks retained.",
+  "evidence": {
+    "capacity12-03-result.json": {
+      "path": "test-evidence/irc-parity/capacity12-03-result.json",
+      "sha256": "e6d432260f0f56fe02f227cd8386e5c06f502781a3594dc026c6d44924979e3f"
+    },
+    "capacity12-03.log": {
+      "path": "test-evidence/irc-parity/capacity12-03.log",
+      "sha256": "93b8337b96dea65fbd702d5ef4fcb4a0d48d1275c322cfac8ccb401923b8081b"
+    },
+    "capacity12-03-resources.jsonl": {
+      "path": "test-evidence/irc-parity/capacity12-03-resources.jsonl",
+      "sha256": "cc4388de9f6f49e0b29850b3668339d7c8fc57567fb9f69b39a0f94d7e227152"
+    },
+    "capacity12-03-transport.json": {
+      "path": "test-evidence/irc-parity/capacity12-03-transport.json",
+      "sha256": "67dca4e28c6bbcf1135e2276d2632abb64a3d2e5454f11922b9d5c280476ed45"
+    },
+    "capacity12-03-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/capacity12-03-grant-revocation.json",
+      "sha256": "84ee071134ee8abd400b67d8e0ffb1cc58f4e8687733c099384e1d383f83439b"
+    }
+  }
+}
