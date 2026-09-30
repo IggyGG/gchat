@@ -841,3 +841,11 @@ owner's eleven-admission catch-up took 14.537s after network readiness, exceedin
 All owned daemons stopped and the temporary bootstrap-only grant was revoked.
 This remains a 12-profile smoke, not a 500-member pass. Paired GComs is validating
 a bounded two-request deferred-replay window before a fresh application run.
+
+The complete current GChat Rust workspace also passes on `40b440d` / `c5bbfe8`:
+188 tests, three unchanged explicit exclusions and strict all-target/all-feature
+Clippy. See `docs/evidence/irc-trunk-integration-20260930/replay-paired.json`.
+The initial link attempt exhausted a 12GiB scratch PVC before tests; its failure
+is retained. Expanding only the owned build scratch to 32GiB preserved the cache
+and allowed the unchanged source/commands to pass. Runtime capacity limits were
+not changed. The current archive-consumer gate remains active.

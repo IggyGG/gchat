@@ -1,0 +1,23 @@
+{
+  "gcoms": "40b440ddaa1f681c4f76aa49697c155741c8cd37",
+  "gchat": "c5bbfe89b3a4156febb5fe05674ccf42bb1c8077",
+  "passed": 188,
+  "failed": 0,
+  "ignored": 3,
+  "suites": 17,
+  "strict_workspace_all_targets_all_features_clippy": "passed",
+  "runner_exit": 0,
+  "log_sha256": "da7a636b86d018c97c88c3509f9a85f0c86f26031dfd3cb1f3f55ddf84bd8ccc",
+  "earlier_attempt": {
+    "gcoms": "40b440d",
+    "gchat": "c5bbfe8",
+    "passed": false,
+    "exit": 101,
+    "stage": "compile/link before GChat tests",
+    "reason": "No space left on 12GiB scratch PVC",
+    "test_failure": false,
+    "log_sha256": "28968f399dce3717158050360856878fef933ca9126d484648b8cf585ebb250e",
+    "remedy": "Expand owned persistent build scratch to 32GiB, preserve original log/cache and rerun unchanged source/commands. No capacity-test limits changed."
+  },
+  "limits": "Linux source gate; separate from 500-member protected-network and installed native release qualification."
+}
