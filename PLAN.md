@@ -17,6 +17,16 @@ operator inventory/credentials, acceptance producers, controller activation and
 a complete automatically observed release remain required before this task is done.
 The 64-member/covered-receipt/topic-pending/recovery policies are unchanged.
 
+The next checkpoint adds retained infrastructure artifacts to the Linux workflow,
+verification against provider archive bytes, OCI publication, bounded transient
+worker reconciliation, and an input guard during idle activation. An inventory
+revision cannot discard a pending rollback. Component validation passes: 196 Rust
+tests (three retained ignores), strict workspace Clippy, native desktop compilation
+and 25 desktop tests; 66 UI tests, Svelte checks and client build. Full Python
+and evidence fingerprints are retained in
+`docs/evidence/deployment-automation-20260930/automation-checkpoint.json`.
+This checkpoint is not a live infrastructure rollout or completed automation.
+
 ## IRC parity: full 64-member network qualification (2026-09-30)
 
 The user retained the 64-member limit. The final `a460d74`/`624e8b2` pair passes

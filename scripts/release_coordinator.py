@@ -89,6 +89,35 @@ class Coordinator:
                 and report.get('revision') == revision
                 and 0 <= time.time() - report.get('observed_at', 0) <= 300)
 
+    def recovery_path(self, release, platform):
+        return self.state / 'recovery' / release / (platform + '.json')
+
+    def worker_revision(self, platform, stage):
+        return hashlib.sha256(canonical({'controller': self.config.get('controller_revision', os.environ.get('GCHAT_CONTROLLER_REVISION')),
+            'worker': self.config.get('workers', {}).get(platform, {}).get(stage)})).hexdigest()
+
+    def resume_corrected(self, release, platform, target):
+        path = self.recovery_path(release, platform)
+        if not path.exists(): return False
+        recovery = json.loads(path.read_text())
+        changed = recovery['revision'] != self.worker_revision(platform, recovery['stage'])
+        retry = (self.config.get('automatic_recovery', False) and recovery.get('transient')
+                 and recovery['attempts'] <= 5 and time.time() >= recovery['retry_at'])
+        if not changed and not retry: return False
+        self.ledger.transition(release, platform, target['resume_state'], evidence=target['evidence'])
+        # execute() still reconciles the original durable effect ID and marker.
+        # A retry never skips gates or creates a second external submission.
+        return True
+
+    def record_failure(self, release, platform, stage, error):
+        path = self.recovery_path(release, platform)
+        previous = json.loads(path.read_text()) if path.exists() else {}
+        revision = self.worker_revision(platform, stage)
+        attempts = previous.get('attempts', 0) + 1 if previous.get('revision') == revision else 1
+        atomic_json(path, {'stage': stage, 'revision': revision, 'attempts': attempts,
+                          'transient': isinstance(error, (TimeoutError, ConnectionError, subprocess.TimeoutExpired)),
+                          'retry_at': int(time.time()) + min(300, 30 * 2 ** min(attempts - 1, 4))})
+
     def reconcile_deployment(self):
         """Select monotonically; a late old build must never downgrade the fleet."""
         configured = self.config.get('deployment_file')
@@ -115,6 +144,12 @@ class Coordinator:
             return
         atomic_json(desired_path, {'release_id': selected['id'], 'sequence': selected['seq']})
         try:
+            if 'infrastructure' in self.config.get('workers', {}).get('linux-x86_64', {}):
+                if self.execute(manifest, 'linux-x86_64', 'infrastructure') is None:
+                    atomic_json(self.state / 'public/deployment.json', {
+                        'schema': 1, 'release_id': selected['id'], 'state': 'waiting_artifacts',
+                        'reason': 'Waiting for the qualified infrastructure bundle'})
+                    return
             reconcile(self.state, manifest, json.loads(Path(configured).read_text()))
         except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
             atomic_json(self.state / 'public/deployment.json', {
@@ -173,11 +208,15 @@ class Coordinator:
         manifest = self.ledger.manifest(release)
         target = self.ledger.target(release, platform)
         state = target['state']
+        if state == 'blocked' and self.resume_corrected(release, platform, target):
+            target = self.ledger.target(release, platform)
+            state = target['state']
         if state in {'available', 'failed', 'superseded', 'blocked'}:
             return
         if platform not in self.config.get('workers', {}):
             self.ledger.transition(release, platform, 'blocked', reason='platform worker is not configured')
             return
+        stage = None
         try:
             if state in {'verified', 'publishing', 'submitting'} and platform != 'sdk' and not self.deployment_ready(manifest):
                 return
@@ -224,6 +263,8 @@ class Coordinator:
             # Do not emit provider bodies, command arguments or credentials into
             # the public status. Detailed worker logs stay in private state.
             message = str(error) if isinstance(error, ValueError) else type(error).__name__
+            if stage is not None:
+                self.record_failure(release, platform, stage, error)
             self.ledger.transition(release, platform, 'blocked', reason=message[:240])
 
     def tick(self):

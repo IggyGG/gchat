@@ -13,6 +13,13 @@ checkpoint/exit checks. Live completion requires exact running identities for al
 managed targets and a subsequent unattended update; component passes alone do not
 qualify the deployment process.
 
+`release_infrastructure_bundle_test.py` rejects changed source identities,
+provider payload hashes, retained binaries and escaping artifact names before
+promotion. Infrastructure must come from the hash-bound provider ZIP, never
+self-authenticating extracted cache files. Rollout tests must retain and finish
+pending rollback even when a new inventory removes its target. Idle activation
+tests must acquire the input guard before native shutdown and release it on defer.
+
 ## Completed 64-member protected-network gate (2026-09-30)
 
 The `a460d74`/`624e8b2` source pair passes the full `--members 64` campaign.

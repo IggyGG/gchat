@@ -23,6 +23,7 @@ class ConfigurationTests(unittest.TestCase):
         config=configuration();self.assertEqual(set(config['workers']),set(PLATFORMS))
         for platform,stages in config['workers'].items():
             expected={'build','verify','compatibility'}|({'submit','observe'} if platform in {'ios','android'} else {'publish'})
+            if platform=='linux-x86_64':expected.add('infrastructure')
             self.assertEqual(set(stages),expected)
             for recipe in stages.values():
                 self.assertIsInstance(recipe['run'],list);self.assertTrue(recipe['reconcile'])

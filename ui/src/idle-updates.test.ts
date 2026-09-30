@@ -2,6 +2,15 @@ import { describe, it, expect, vi } from 'vitest';
 import { IdleUpdates } from './idle-updates';
 
 describe('automatic activation', () => {
+  it('blocks new input before native maintenance and releases it on deferral', async () => {
+    let now = 0, guarded = false;
+    const idle = new IdleUpdates(() => now, active => { guarded = active; });
+    const updates = { status: vi.fn(async () => ({state: 'ready', downloaded: 0, message: ''})),
+      install: vi.fn(async () => { expect(guarded).toBe(true); throw Error('busy daemon'); }), check: vi.fn() };
+    now = 30_000; await idle.poll(updates, () => false);
+    expect(updates.install).toHaveBeenCalledOnce();
+    expect(guarded).toBe(false);
+  });
   it('waits for both quiet input and cleared drafts/actions', async () => {
     let now = 0, busy = true;
     const idle = new IdleUpdates(() => now);

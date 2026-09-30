@@ -93,6 +93,8 @@ jobs:
           subprocess.run(['gpg','--batch','--import'],input=base64.b64decode(os.environ.pop('GCHAT_RELEASE_PRIVATE_KEY_BASE64'),validate=True),stdout=subprocess.DEVNULL,check=True)
           PY
           python3 gchat/scripts/build-installer.py --target linux-x86_64 --gcoms gcoms --native-ci-report native-evidence/paired-gchat/native-ci.json --output signed
+      - name: Retain qualified infrastructure binaries and image
+        run: python3 gchat/scripts/build-infrastructure.py --gcoms gcoms --output signed/infrastructure
       - name: Verify packaged profile lifecycle
         run: |
           dpkg-deb --extract signed/*.deb extracted
@@ -113,5 +115,6 @@ jobs:
             signed/updater/**
             signed/updater-artifacts.json
             signed/application-smoke/**
+            signed/infrastructure/**
             native-evidence/**
           if-no-files-found: error

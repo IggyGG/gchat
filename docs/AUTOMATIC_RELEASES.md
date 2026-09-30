@@ -87,9 +87,9 @@ change does not qualify an existing installer. The artifact-specific Windows 36
    its own directory for both execution and reconciliation; a Linux receipt
    cannot unlock Android or iOS publication. SDK consumers retain their separate
    SDK checks. It **does not manufacture that receipt**
-   from CI. Missing acceptance keeps publication waiting. Relay deployment uses
-   its existing canary/serial process; the release controller does not guess
-   topology, migrate profiles, or restart relays itself.
+   from CI. Missing acceptance keeps publication waiting. Manifests requiring deployment also wait for the explicit operator inventory
+   to pass serial native/Kubernetes rollout, canaries and fresh running-image
+   observations. The controller never infers topology or discards retained state.
 5. Desktop feeds and the GChat-only APT repository advance after verification.
    Public bytes are read back. Android commits one retained Play edit and polls
    the actual lifecycle API. iOS waits for the France-inclusive encryption
@@ -132,8 +132,10 @@ bounded to 512 MiB. An unavailable update server leaves the installed app usable
 
 An update already staged at launch may activate before the window becomes
 interactive. The startup check has a bounded wait. Updates discovered while a
-window is open stage for the next launch. Restart now is disabled while there
-are drafts or foreground actions; drafts in other conversations count too.
+window is open activate after 30 seconds without input, once drafts and
+foreground actions have cleared. Drafts in other conversations count too. A
+modal input guard prevents new drafts during the awaited native shutdown;
+failed preparation releases the guard and retries after a bounded delay.
 Other profile windows, active RPC admissions, checkpoint failures and an
 unconfirmed service exit defer activation. Preparation uses the existing
 owner-authenticated local IPC. It checkpoints before stopping, then verifies OS
@@ -170,9 +172,10 @@ It retains seven consistent daily SQLite backups; cluster volume backups must
 also retain the immutable job evidence and provider journals.
 
 After an interrupted external action, the request ID is reconciled with the
-provider. Unknown uploads/commits are never blindly repeated. A blocked target
-resumes its previous stage with `release_coordinator.py --resume RELEASE TARGET`;
-it cannot skip verification. New source changes supersede only unstarted work.
+provider. Unknown uploads/commits are never blindly repeated. Transient timeouts use bounded backoff when automatic recovery is enabled.
+The original effect always reconciles before another action. Deterministic
+failures resume only after a corrected worker/controller revision, or explicit
+`release_coordinator.py --resume RELEASE TARGET`; neither path skips verification. New source changes supersede only unstarted work.
 Only one candidate per platform is newly dispatched while an earlier candidate
 is building or verifying. New commits remain queued and coalesce to the latest
 candidate; already-dispatched workers keep running on their frozen inputs.
@@ -199,3 +202,27 @@ cleanup and new network journey. It does not edit the original failed report or
 invent its missing final worker attestation. Compatibility and upgrade/rollback
 remain separate mandatory gates before publication. An unrelated candidate,
 platform, changed artifact or failed follow-up has no recovery entry.
+
+## Deployment worker contract (implementation in progress)
+
+`deployment_file` selects an operator-owned inventory; each target provides argv
+recipes for observe, prepare, activate, rollback and check. Receipts bind the
+release, exact sources, target, stage, observation time and hashed evidence.
+Only one rollout owns shared infrastructure. A lost activation reply is observed
+before retrying. The first pending target is checked before another is changed;
+an already unhealthy target is repaired first, and two unavailable targets defer
+mutation. A failed canary restores the retained artifact and blocks the candidate.
+Kubernetes targets retain PVC definitions and verify relay key hashes; image pull
+checks happen before replacing a replica. StatefulSet ordinals roll from highest
+to lowest through partitions. Deliberately disabled test workloads stay outside
+the inventory. `public/deployment.json` reports actual observations separately
+from package publication.
+
+The Linux native worker retains `infrastructure/` in its verified provider
+archive. `release_infrastructure_bundle.py` validates the original build and
+verification receipts, retains native binaries and OCI blobs, and pushes images
+by immutable digest. The OCI archive provides recovery if registry storage is
+lost. The Docker archive, source-build report and qualification links are retained
+alongside every deployed and rollback version. Production wiring and a complete
+automatic release are still pending; these interfaces alone are not operational
+deployment evidence.

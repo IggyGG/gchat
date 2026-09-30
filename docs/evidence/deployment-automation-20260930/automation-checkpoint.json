@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "observed_at": "2026-09-30T13:01:30.584388+00:00",
+  "scope": "component validation only; production automation remains incomplete",
+  "base_gchat_commit": "a249070253bd183057105fc4b3825a5250d1464e",
+  "gcoms_commit": "a460d74d672179a7c82d45a4c80ca54409e6cc4a",
+  "checks": {
+    "python": {
+      "run": 578,
+      "skipped": 5,
+      "failed": 0
+    },
+    "rust": {
+      "passed": 196,
+      "ignored": 3,
+      "failed": 0
+    },
+    "ui": {
+      "passed": 66,
+      "failed": 0
+    },
+    "svelte_check": true,
+    "client_build": true,
+    "strict_workspace_clippy": true,
+    "linux_desktop_check": true,
+    "linux_desktop_tests": {
+      "passed": 25,
+      "failed": 0
+    }
+  },
+  "evidence": [
+    {
+      "path": "test-evidence/deployment-automation/python-tests-05.log",
+      "sha256": "d7c67d9ae92b4bd7f9bf0164bfcfba22e5a7ba5adf47e65b4e797493d7d23deb"
+    },
+    {
+      "path": "test-evidence/deployment-automation/python-release-tests-04.log",
+      "sha256": "2091d4078c3e25bb76364c92c1a27c3610c4963b9f5f7d16246a6f1e28173c9f"
+    },
+    {
+      "path": "test-evidence/deployment-automation/rust-tests-01.log",
+      "sha256": "59b51febf145c1ce37701f1ffdd0683fa162939ee2d38f5e30e700d15fec4d3f"
+    },
+    {
+      "path": "test-evidence/deployment-automation/ui-checks-02.log",
+      "sha256": "8fc3c712876184827552214108293d88890ae4a528d46e7556efb5f24e120b5c"
+    },
+    {
+      "path": "test-evidence/deployment-automation/automation-clippy-01.log",
+      "sha256": "299a7e05ee71c294b576838e200845cc6d0e8810518eefecc28ee8de6eafbb81"
+    },
+    {
+      "path": "test-evidence/deployment-automation/automation-desktop-01.log",
+      "sha256": "a2ad583fb5e8457a51e74b4b5b43512e5dbb9d855161468ea9a9848ac5bd2bca"
+    },
+    {
+      "path": "test-evidence/deployment-automation/automation-desktop-tests-01.log",
+      "sha256": "0891d4c2cbea55e6d0296cdff67d5ad1020c5d1d56c7d281ab2a56537f7bb755"
+    }
+  ],
+  "deployment_complete": false,
+  "infrastructure_pipeline_live_qualified": false,
+  "local_registration_fix_verified": true,
+  "local_unlock_requires_owner": true,
+  "infrastructure_source_pending_qualification": "ae0103529b8b34b41ba3b7ef11a404568d658c17",
+  "checkpoint_files": {
+    "ui/src/idle-updates.ts": "8fe55b3a559f5c9000a55f21aa8b1c4783a2524d809a620adb54f9772a8e11ac",
+    "ui/src/IdleUpdates.svelte": "fcbffcc3b7da65810750199041764924456f70c1af25d706be79dd1e10476f09",
+    "scripts/release_infrastructure_bundle.py": "2aaaf2dc8a3154732d691bbd054656eedce6bfc9812a024628c470332bbe100e",
+    "scripts/build-infrastructure.py": "90fe898e28f588019e44a87fdcf619cbb7e23cb5b96d276a7e23bd0a37969109",
+    "scripts/release_coordinator.py": "99f7ee92e16101291d771e340af6272c892a5b5646a96ef75f1951cced588239",
+    "scripts/release_deployment.py": "26f6b4bb7f4b7189265549e44fbf97683004aecfe42187a6baea8c95d173d644"
+  }
+}

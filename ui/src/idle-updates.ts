@@ -6,7 +6,8 @@ export class IdleUpdates {
   private quietSince: number;
   private retryAt = 0;
   private checking = false;
-  constructor(private readonly now: () => number = () => performance.now()) {
+  constructor(private readonly now: () => number = () => performance.now(),
+              private readonly activation: (active: boolean) => void = () => {}) {
     this.quietSince = now();
   }
   activity() { this.quietSince = this.now(); }
@@ -20,11 +21,12 @@ export class IdleUpdates {
       if (busy() || this.now() - this.quietSince < 30_000) return;
       if (['ready', 'deferred'].includes(status.state)) {
         this.retryAt = this.now() + 60_000;
+        this.activation(true);
         await updates.install();
       }
     } catch {
       // Native status retains the concrete deferral. Retry after activity clears.
       this.retryAt = this.now() + 60_000;
-    } finally { this.checking = false; }
+    } finally { this.activation(false); this.checking = false; }
   }
 }

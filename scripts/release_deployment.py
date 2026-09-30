@@ -109,13 +109,18 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
         revision = hashlib.sha256(canonical(config)).hexdigest()
         report = json.loads(journal.read_text()) if journal.exists() else {
             'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
-            'revision': revision, 'state': 'deploying', 'targets': {}}
+            'revision': revision, 'inventory': config, 'state': 'deploying', 'targets': {}}
         if report['revision'] != revision:
-            # Preserve the failed revision; a corrected config does not erase it.
-            write(directory / ('revision-' + report['revision'] + '-' + str(time.time_ns()) + '.json'), report)
-            report['revision'] = revision
-            report['state'] = 'deploying'
-        rolling_back = report['state'] == 'blocked' and any(
+            if any(item.get('state') in {'activating', 'rollback_pending', 'rollback_failed'}
+                   for item in report['targets'].values()):
+                # Finish the original external effect before adopting a revised
+                # inventory, which could remove the target needing rollback.
+                targets = inventory(report['inventory'])
+            else:
+                # Preserve the failed revision; a correction does not erase it.
+                write(directory / ('revision-' + report['revision'] + '-' + str(time.time_ns()) + '.json'), report)
+                report.update(revision=revision, inventory=config, state='deploying')
+        rolling_back = any(
             item.get('state') in {'rollback_pending', 'rollback_failed'} for item in report['targets'].values())
         if report['state'] == 'blocked' and not rolling_back:
             if not any(item.get('state') == 'activating' for item in report['targets'].values()):

@@ -99,5 +99,21 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(len(retained), 1)
         self.assertEqual(json.loads(retained[0].read_text())['state'], 'blocked')
 
+    def test_inventory_revision_cannot_abandon_pending_rollback(self):
+        ordinary = self.worker
+        def pending(target, stage, *args):
+            if stage == 'check': raise ValueError('canary failed')
+            if stage == 'rollback': return None
+            return ordinary(target, stage, *args)
+        reconcile(self.root, self.manifest, self.config, pending, now=100)
+        self.config = {'targets': [self.config['targets'][1]], 'revision': 2}
+        self.calls.clear()
+        self.assertFalse(reconcile(self.root, self.manifest, self.config, self.worker, now=200))
+        self.assertEqual(self.calls, [('canary', 'rollback')])
+        self.assertFalse(self.live['canary']['matches'])
+        journal = json.loads((self.root / 'deployment' / self.manifest['release_id'] / 'journal.json').read_text())
+        self.assertEqual(journal['state'], 'blocked')
+        self.assertEqual(journal['targets']['canary']['state'], 'rolled_back')
+
 
 if __name__ == '__main__': unittest.main()

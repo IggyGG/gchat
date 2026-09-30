@@ -6,6 +6,11 @@ and preserve service configuration and relay identities. The operator inventory,
 artifact producer and real installed-network acceptance must be configured before
 this is operational; see [current work](PLAN.md).
 
+The Linux release workflow also builds a retained native-service/OCI bundle.
+The release controller uses `skopeo` to publish digest-pinned images from the
+verified provider archive; the build worker requires Docker. These infrastructure
+steps remain subject to live deployment and installed-network qualification.
+
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer
 activation. A Linux fleet service can explicitly opt in with

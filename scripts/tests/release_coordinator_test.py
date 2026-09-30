@@ -127,6 +127,35 @@ class CoordinatorTests(unittest.TestCase):
             self.assertEqual(c.ledger.target(release,'android')['state'],'blocked')
             c.ledger.transition(release,'android','building');c.step(release,'android')
         self.assertEqual(seen,[['first'],['recover']])
+
+    def test_transient_recovery_backs_off_and_only_reconciles(self):
+        c=Coordinator(self.root,{'minimum_free_bytes':0,'automatic_recovery':True,
+            'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})
+        self.addCleanup(c.ledger.close);release=c.ledger.add(self.manifest);seen=[]
+        def launch(argv,**kwargs):
+            seen.append(argv)
+            if len(seen)==1:raise TimeoutError('lost external reply')
+            return type('Result',(),{'returncode':75})()
+        with patch('release_coordinator.subprocess.run',side_effect=launch):
+            c.step(release,'android');c.step(release,'android')
+            self.assertEqual(seen,[['first']])
+            recovery=json.loads(c.recovery_path(release,'android').read_text())
+            with patch('release_coordinator.time.time',return_value=recovery['retry_at']):
+                c.step(release,'android')
+        self.assertEqual(seen,[['first'],['recover']])
+        self.assertEqual(c.ledger.target(release,'android')['state'],'building')
+
+    def test_deterministic_failure_only_resumes_after_worker_revision_changes(self):
+        c=Coordinator(self.root,{'minimum_free_bytes':0,'automatic_recovery':True,
+            'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})
+        self.addCleanup(c.ledger.close);release=c.ledger.add(self.manifest)
+        with patch('release_coordinator.subprocess.run',return_value=type('Result',(),{'returncode':1})()) as worker:
+            c.step(release,'android');c.step(release,'android')
+            self.assertEqual(worker.call_count,1)
+            c.config['controller_revision']='corrected-worker'
+            c.step(release,'android')
+            self.assertEqual(worker.call_count,2)
+            self.assertEqual(worker.call_args.args[0],['recover'])
     def test_archive_traversal_and_symlink_rejected(self):
         import zipfile
         for name in ('../escape','/absolute','C:/windows','back\\slash','file:stream','file\0hidden'):
