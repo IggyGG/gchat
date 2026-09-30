@@ -297,6 +297,9 @@ macro_rules! expect_response {
 }
 #[async_trait::async_trait]
 impl<S: ChatEndpoint> Chat for Handlers<S> {
+    async fn enrollment(&self, id: String, action: String) -> Result<SubmitOutcome, ChatError> {
+        SubmitOutcome::try_from(self.request(Request::Enrollment { id, action }).await?)
+    }
     async fn files(
         &self,
         request: gchat_api::FileRequest,

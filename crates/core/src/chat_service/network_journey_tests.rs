@@ -144,21 +144,19 @@ async fn journey() {
     )
     .await;
     let channel = sender.snapshot().await.unwrap().conversations[0].id.clone();
-    let Response::Output {
-        output: gchat_api::CommandOutput::Invitation { link, .. },
-        ..
-    } = request(
-        &sender,
-        Request::Submit {
-            operation_id: random_id(),
-            conversation: Some(channel.clone()),
-            text: "/invite".into(),
-        },
-    )
-    .await
-    else {
-        panic!("combined invitation expected")
-    };
+    let legacy = sender_runtime
+        .sdk_client()
+        .create_channel_invitation("welcome", 3600)
+        .await
+        .unwrap();
+    let link = JoinInvitation {
+        version: 1,
+        network: identity.clone(),
+        network_invitation: None,
+        channel_invitation: Some(legacy.link),
+    }
+    .encode_at(now())
+    .unwrap();
     assert!(link.starts_with(JOIN_INVITATION_PREFIX));
     assert!(JoinInvitation::decode_at(&link, now())
         .unwrap()

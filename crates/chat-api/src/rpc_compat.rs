@@ -31,6 +31,9 @@ pub(super) async fn request<T: gcoms::rpc::Transport>(
 ) -> Result<Response, ChatError> {
     let client = rpc::ChatClient::new(client);
     Ok(match request {
+        Request::Enrollment { id, action } => {
+            client.enrollment(id, action).await.map_err(error)?.into()
+        }
         Request::Update { .. } => {
             return Err(ChatError {
                 code: "unsupported".into(),

@@ -15,10 +15,20 @@ root or identity.
 
 ## One invitation for a network and a channel
 
-Use **Invite someone** in channel details (or `/invite`) to copy a combined
-`GCI1-` invitation. It includes the network's signed public configuration and relay
-addresses plus access to that channel. It does not copy your personal provisioning
-grant. A separately issued network grant can also be included by an operator.
+Use **Invite someone** in channel details (or `/invite`) to choose an invitation
+for one person, friends or devices. A reusable `gcoms://join#GCIR1-…` link pins
+the network, owner and channel and resolves their current authenticated routing
+information. Its QR opens the same app link; the original invitation PNG also
+retains the complete link. Existing combined `GCI1-` and channel-only invitations
+remain accepted. An invitation does not copy your personal provisioning grant.
+A separately issued network grant can also be included by an operator.
+
+Reusable sharing requires the network provider's `invitations` publication scope.
+Bootstrap-only grants retain their existing permissions. The online owner
+publishes an encrypted signed descriptor with a lifetime of at most five minutes;
+the invitation's longer lifetime never extends a relay credential. Providers see
+lookup and publication timing, but do not receive the bearer secret or admit
+channel members.
 
 The recipient uses **Join**, pastes the invitation, checks the network identity
 and starting channel, and confirms. An unfamiliar network opens as a separate

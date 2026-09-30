@@ -86,7 +86,7 @@
     <p>{preview.channel ? `Join #${preview.channel.replace(/^#/, '')} on ${preview.network.name}` : `Connect to ${preview.network.name}`}</p>
     {#if preview.newNetwork}<p>This adds a new network. Your existing networks stay connected.</p><details><summary>Network identity</summary><code>{preview.network.fingerprint}</code></details>{/if}
     {#if preview.channel}<label for="invitation-nickname">Your nickname in this channel</label><input id="invitation-nickname" bind:value={nickname} required maxlength="256" autocomplete="nickname" disabled={busy} />{/if}
-    <p>Expires {new Date(preview.expires * 1000).toLocaleString()}</p>
+    <p>{preview.expires === null ? 'No expiry · the owner can revoke this invitation' : `Expires ${new Date(preview.expires * 1000).toLocaleString()}`}</p>
     <div><button class="primary" type="submit" disabled={busy || (!!preview.channel && !nickname.trim())}>{busy ? 'Joining…' : preview.channel ? 'Join' : 'Connect'}</button><button type="button" disabled={busy} onclick={() => { preview = undefined; pendingCode = ''; error = ''; }}>Cancel</button></div>
   </form>
   {:else}
@@ -100,7 +100,7 @@
     <button class="primary" type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
   </form>
   {/if}
-  {#if busy && joiningAt}<p role="status">Connecting and waiting for channel confirmation · {elapsed}s. You can continue using other conversations. This request will not be repeated.</p>{/if}
+  {#if busy && joiningAt}<p role="status">Connecting and waiting for channel confirmation · {elapsed}s. You can continue using other conversations. Your saved join retries safely while GChat is running.</p>{/if}
   {#if error}<p role="alert">{error}</p>{/if}
 </section>
 <style>

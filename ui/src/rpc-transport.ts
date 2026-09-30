@@ -66,6 +66,7 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
   const request = async (request: Request): Promise<Response> => {
     try {
       switch (request.kind) {
+        case 'enrollment': return await client.enrollment({ id: request.id, action: request.action });
         case 'update': throw new ChatError('unsupported', 'Application updates require the local desktop owner.');
         case 'networks': {
           const inner = request.request;

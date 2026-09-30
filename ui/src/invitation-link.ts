@@ -1,11 +1,15 @@
 export const JOIN_LINK_PREFIX = 'gcoms://join#';
 export const MAX_JOIN_LINK_BYTES = 8192;
+const MAX_COMPACT_LINK_BYTES = 2048;
 export function invitationLink(code: string): string | undefined {
-  const link = JOIN_LINK_PREFIX + code;
-  return /^GCI1-[A-Za-z0-9_-]+$/.test(code) && link.length <= MAX_JOIN_LINK_BYTES ? link : undefined;
+  const raw = code.startsWith(JOIN_LINK_PREFIX) ? code.slice(JOIN_LINK_PREFIX.length) : code;
+  const link = JOIN_LINK_PREFIX + raw;
+  const limit = raw.startsWith('GCIR1-') ? MAX_COMPACT_LINK_BYTES : MAX_JOIN_LINK_BYTES;
+  return /^(GCI1|GCIR1)-[A-Za-z0-9_-]+$/.test(raw) && link.length <= limit ? link : undefined;
 }
 export function validInvitationLink(link: string): boolean {
-  return link.length <= 174800 && /^gcoms:\/\/join#GCI1-[A-Za-z0-9_-]+$/.test(link);
+  const limit = link.startsWith(JOIN_LINK_PREFIX+'GCIR1-') ? MAX_COMPACT_LINK_BYTES : 174800;
+  return link.length <= limit && /^gcoms:\/\/join#(?:GCI1|GCIR1)-[A-Za-z0-9_-]+$/.test(link);
 }
 /** Memory only, bounded, and deduplicated across cold + warm OS notifications. */
 export class InvitationInbox {

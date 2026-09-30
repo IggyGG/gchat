@@ -80,6 +80,9 @@ impl From<SubmitOutcome> for Response {
 
 #[gcoms::rpc::service(name = "ghost.chat", version = 1)]
 pub trait Chat {
+    /// Controls a profile-owned enrollment; a view timeout never cancels it.
+    #[rpc(id = "enrollment", kind = "session")]
+    async fn enrollment(&self, id: String, action: String) -> Result<SubmitOutcome, ChatError>;
     /// Durable network-scoped admission; status survives a lost UI reply.
     #[rpc(id = "network_operation", kind = "operation")]
     async fn network_operation(
