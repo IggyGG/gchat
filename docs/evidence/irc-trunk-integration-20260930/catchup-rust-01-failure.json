@@ -1,0 +1,29 @@
+{
+  "scope": "First catch-up Rust release test attempt; failed, no qualification",
+  "gcoms_source": "250ece7c7abdb10458e8db72a9c60f110ce4ad08",
+  "gchat_scope": "catchup-source-01.tar.gz: core catch-up implementation before final API declaration export",
+  "passed": false,
+  "exit_code": 101,
+  "assertion": "files_cross_real_private_channel_after_acceptance_without_transcript_records: immediate history lacked chat alongside attachment",
+  "completed_core_unit_tests": 63,
+  "unchanged_ignored_core_tests": 3,
+  "completed_chat_service_tests": 22,
+  "diagnosis": "File completion and chat archive insertion happen in independent workers. The test asserted chat arrival immediately after observing file completion.",
+  "correction_commit": "39848b8",
+  "correction": "Await the independently sent chat message, bounded to 10 seconds, retaining exact file bytes and exclusion of attachment protocol records from chat history.",
+  "retest_status": "pending",
+  "evidence": {
+    "catchup-rust-01.log": {
+      "path": "test-evidence/irc-parity/catchup-rust-01.log",
+      "sha256": "745cdf2937a40c743d23912304299a94083bca08710e65552468e8f44403138a"
+    },
+    "catchup-rust-01.exit": {
+      "path": "test-evidence/irc-parity/catchup-rust-01.exit",
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "catchup-source-01.tar.gz": {
+      "path": "test-evidence/irc-parity/catchup-source-01.tar.gz",
+      "sha256": "20a4414ba47d23e6cbead297574466cfd66e1f975703c52803b750f329b818a1"
+    }
+  }
+}

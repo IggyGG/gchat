@@ -871,3 +871,13 @@ and clears the indicator on an empty page, failure or cancellation. Shared
 mobile/desktop UI and terminal UI consume the same optional snapshot field;
 profiles and GComs IPC remain unchanged. Validation and the actual retained
 81-member replay are pending. Earlier timing misses retain their original scope.
+
+### IRC-8 final catch-up validation — 2026-09-30
+
+Shared UI checks pass at desktop and phone widths. The first Rust release run
+passed 63 core unit tests (three existing ignores), then found an ordering
+assumption in the real private-file/chat test. Commit `39848b8` waits up to
+10 seconds for chat independently of file completion, keeping all byte/hash
+and transcript-isolation assertions. The original failure is retained in
+`docs/evidence/irc-trunk-integration-20260930/catchup-rust-01-failure.json`.
+Full final-source Rust, live backlog and package qualification remain in progress.
