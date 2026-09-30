@@ -49,6 +49,7 @@ const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', use
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
+  setCatchUp(appliedRecords: number | null) { conversations[0].catchUp = appliedRecords === null ? undefined : { appliedRecords }; revision++; },
   setArchiveBlocked(value: boolean) { archiveBlocked = value; revision++; },
   updateRestarts: () => updateRestarts, setUpdate(value: Partial<typeof updateStatus>) { updateStatus = {...updateStatus,...value}; },
   requests, unlockChoices, recoverInvitation() {

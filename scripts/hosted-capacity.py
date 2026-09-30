@@ -35,7 +35,7 @@ def qualifies(report):
             and report.get('peak_active_profiles', 0) >= 500
             and observed.get('independent_members') == 500
             and all(observed.get(case) is True for case in
-                    ('offline_recovery', 'verified_file_resume', 'churn_and_exclusion'))
+                    ('membership_catchup', 'offline_recovery', 'verified_file_resume', 'churn_and_exclusion'))
             and all(observed.get(case) == {'senders': 10, 'recipients_per_sender': 499}
                     for case in ('baseline', 'mixed_file')))
 
@@ -177,9 +177,30 @@ class Capacity(live.Journey):
                     self.join(who, channel, link)
             self.start('alice')
             recovered = time.monotonic()
-            self.wait('owner recovered complete roster', lambda:
-                      verify_roster(self.room('alice', channel), self.args.members), 300)
-            self.timed('offline owner recovery after network ready', recovered, 10000)
+            progress = []
+            def owner_current():
+                room = self.room('alice', channel)
+                status = room.get('catchUp')
+                if status is not None:
+                    applied = status['appliedRecords']
+                    if not progress or progress[-1] != applied:
+                        progress.append(applied)
+                        self.note('owner membership catch-up progress', applied_records=applied)
+                return verify_roster(room, self.args.members) and status is None
+            large_backlog = self.args.members > 32
+            # Explicitly selected recovery policy: retain the ten-second
+            # ordinary-message gate below; measure long membership replay
+            # separately and require real visible progress before completion.
+            self.wait('owner recovered complete roster', owner_current,
+                      1800 if large_backlog else 300)
+            if large_backlog:
+                assert any(value > 0 for value in progress), 'large backlog needs visible applied progress'
+                self.note('large membership backlog recovered',
+                          duration_ms=round((time.monotonic() - recovered) * 1000),
+                          observation_deadline_seconds=1800, applied_progress=progress)
+            else:
+                self.timed('offline owner recovery after network ready', recovered, 10000)
+            self.report['observations']['membership_catchup'] = True
             self.all_rosters(channel, self.names)
             self.messages(channel, self.names, 'baseline')
             # Every expected receipt remains outstanding while this actual member is offline.

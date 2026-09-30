@@ -926,7 +926,7 @@
       <div class="channel-actions"><button class="circle" aria-label="Join or create a channel" title="Join or create a channel" disabled={busy} onclick={() => openDialog('choose')}>+</button></div>
     </aside>{/if}
     <main class="conversation" inert={navigationModal}>
-      <div class="conversation-heading">    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>{#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}{/if}</div>
+      <div class="conversation-heading">    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>{#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}{#if active?.catchUp}<span class="header-topic" role="status">{active.catchUp.appliedRecords > 0 ? `Catching up · ${active.catchUp.appliedRecords} updates applied` : 'Checking channel updates…'}</span>{/if}{/if}</div>
       {#if !locked && snapshot?.providerErrors?.length}
         <div class="provider-errors" role="status">
           {#each snapshot.providerErrors as error}

@@ -32,8 +32,13 @@ export type InstanceInfo = { build?: BuildInfo, id: string, label: string, bootI
 export type MessageKind = "text" | "action" | "notice";
 export type MemberPresence = { "state": "available" } | { "state": "away", reason: string, } | { "state": "unknown" };
 export type ChannelPolicy = { profile: string, capacity: number, moderated: boolean, inviteOnly: boolean, topicOperators: boolean, presenceEnabled: boolean, };
+export type ChannelCatchUp = { appliedRecords: number, };
 export type Member = { presence?: MemberPresence, id: string, nickname: string, isSelf: boolean, recentlyActive?: boolean, capabilities: Array<string>, };
-export type Conversation = { muted?: boolean, policy?: ChannelPolicy, provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };
+export type Conversation = {
+/**
+ * Transient progress; absent once an empty recovery page confirms catch-up.
+ */
+catchUp?: ChannelCatchUp, muted?: boolean, policy?: ChannelPolicy, provider: string | null, id: string, channelId: string, kind: ConversationKind, name: string, topic: string, active: boolean, owner: boolean, visibility?: string, directory?: string, members: Array<Member>, unread: number, lastMessageId: string | null, inputLimitBytes: number, commands: Array<CommandSpec>, };
 export type ConversationKind = "channel" | "query" | "archive";
 export type Message = { highlighted?: boolean, messageKind?: MessageKind, id: string, conversationId: string, memberId: string | null, nickname: string, body: string, timestamp: number, mine: boolean, operationId?: string,
 /**

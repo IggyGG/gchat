@@ -119,6 +119,10 @@ pub struct Member {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Conversation {
+    /// Transient progress; absent once an empty recovery page confirms catch-up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub catch_up: Option<ChannelCatchUp>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub muted: Option<bool>,
@@ -147,6 +151,13 @@ pub struct Conversation {
     pub input_limit_bytes: usize,
     #[serde(default)]
     pub commands: Vec<CommandSpec>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelCatchUp {
+    #[ts(type = "number")]
+    pub applied_records: u64,
 }
 
 fn default_input_limit() -> usize {
@@ -559,6 +570,7 @@ pub fn typescript() -> String {
         MessageKind::decl(),
         MemberPresence::decl(),
         ChannelPolicy::decl(),
+        ChannelCatchUp::decl(),
         Member::decl(),
         Conversation::decl(),
         ConversationKind::decl(),

@@ -459,6 +459,7 @@ pub(super) fn conversations(book: &Book, prefs: &preferences::Preferences) -> Ve
                 .and_then(|id| contact.messages.iter().position(|m| m.id == *id))
                 .map_or(0, |i| i + 1);
             Conversation {
+                catch_up: None,
                 muted: None,
                 policy: None,
                 provider: None,

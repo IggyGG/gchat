@@ -35,7 +35,7 @@ class CapacityEvidenceTest(unittest.TestCase):
                   'peak_active_profiles': 500, 'observations': {
                       'independent_members': 500, 'baseline': {'senders': 10, 'recipients_per_sender': 499},
                       'mixed_file': {'senders': 10, 'recipients_per_sender': 499},
-                      'offline_recovery': True, 'verified_file_resume': True,
+                      'membership_catchup': True, 'offline_recovery': True, 'verified_file_resume': True,
                       'churn_and_exclusion': True}}
         self.assertTrue(module.qualifies(report))
         for key in report:

@@ -606,3 +606,14 @@ original profile and the full concurrent profile count. Retain per-process CPU
 ticks, RSS and I/O with PIDs and clock frequency. A missing/failed sampler cannot
 qualify 500 members. Compare timing targets before rounding display values; the
 regression rejects a 200.4ms result against the 200ms feedback limit.
+
+### Large membership backlogs and ordinary recovery
+
+The user selected separate treatment for long membership replay on 2026-09-30.
+Keep the 10-second ordinary offline-message gate. The capacity harness retains
+10 seconds for the 12-member smoke's short membership replay; campaigns above
+32 members instead require visible, positive applied-record progress and record
+full membership catch-up time within a separate 1,800-second observation bound.
+Do not convert earlier failed 10-second results into passes. Confirm that locked
+views hide progress, cancellation/errors clear it, and an empty recovery page
+clears it after a complete roster. Progress is not a delivery acknowledgment.

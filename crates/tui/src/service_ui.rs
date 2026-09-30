@@ -799,7 +799,13 @@ pub async fn run(client: ChatClient, mono: bool) -> Result<(), String> {
                                 .title(active.map_or_else(
                                     || "Status".to_string(),
                                     |c| {
-                                        if c.kind == gchat_api::ConversationKind::Query {
+                                        if let Some(progress) = &c.catch_up {
+                                            if progress.applied_records == 0 {
+                                                format!("{} · Checking channel updates…", c.name)
+                                            } else {
+                                                format!("{} · Catching up · {} updates applied", c.name, progress.applied_records)
+                                            }
+                                        } else if c.kind == gchat_api::ConversationKind::Query {
                                             format!("{} · {}", c.name, c.topic)
                                         } else {
                                             c.name.clone()

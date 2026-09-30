@@ -631,3 +631,43 @@ async fn idle_cpu_large_history_measurement() {
     service.disconnect().await.unwrap();
     runtime.shutdown().await.unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cancelled_hosted_replay_clears_transient_progress() {
+    let (_home, runtime, service) = fixture().await;
+    let (started, ready) = tokio::sync::oneshot::channel();
+    let task = tokio::spawn({
+        let service = service.clone();
+        async move {
+            {
+                let mut progress = service.hosted_catchup.lock().unwrap();
+                progress.begin("hosted/test", 10, Instant::now());
+                progress.show("hosted/test");
+            }
+            let _attempt = hosted_catchup::Attempt {
+                service: &service,
+                id: "hosted/test".into(),
+                completed: false,
+            };
+            started.send(()).unwrap();
+            std::future::pending::<()>().await;
+        }
+    });
+    ready.await.unwrap();
+    assert!(service
+        .hosted_catchup
+        .lock()
+        .unwrap()
+        .view("hosted/test")
+        .is_some());
+    task.abort();
+    assert!(task.await.unwrap_err().is_cancelled());
+    assert!(service
+        .hosted_catchup
+        .lock()
+        .unwrap()
+        .view("hosted/test")
+        .is_none());
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}

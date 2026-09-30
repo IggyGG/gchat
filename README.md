@@ -325,3 +325,9 @@ journey, including covered delivery receipts and interrupted 16 MiB verification
 `scripts/hosted-capacity.py` provides separate 12-member smoke and 500-member
 application campaigns; see TESTPLAN.md for required evidence and retained limits.
 This does not yet qualify a 500-member or native installed release.
+
+Hosted channels show progress while catching up on a large membership backlog.
+The count reflects updates already applied, without estimating an unknown total.
+Ordinary offline-message recovery retains its ten-second qualification target;
+long membership replay is measured separately. Delivery status still requires
+authenticated recipient acknowledgments on the covered channel.

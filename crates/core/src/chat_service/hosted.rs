@@ -213,6 +213,7 @@ pub(super) fn conversations(state: &UiState) -> Vec<Conversation> {
                 .and_then(|id| archive.messages.iter().position(|m| m.id == *id))
                 .map_or(0, |n| n + 1);
             Conversation {
+                catch_up: None,
                 muted: None,
                 policy: Some(gchat_api::ChannelPolicy {
                     profile: "hosted-mls-pq-v1".into(),
@@ -692,6 +693,41 @@ impl ChatService {
         }
         Ok(())
     }
+    async fn sync_hosted_tracked(&self, id: h::ChannelId, cursor: u64) -> Result<(), String> {
+        let room = key(id);
+        let show_at = self.hosted_catchup.lock().expect("hosted catch-up").begin(
+            &room,
+            cursor,
+            Instant::now(),
+        );
+        let mut attempt = super::hosted_catchup::Attempt {
+            service: self,
+            id: room.clone(),
+            completed: false,
+        };
+        let sync = self.hosted_exchange(h::Request::Sync { channel: id });
+        tokio::pin!(sync);
+        let reply = tokio::select! {
+            result = &mut sync => result,
+            _ = tokio::time::sleep_until(show_at.into()) => {
+                self.hosted_catchup.lock().expect("hosted catch-up").show(&room);
+                self.invalidate();
+                sync.await
+            }
+        }?;
+        let h::Reply::Channel(channel) = reply else {
+            return Err("Invalid hosted sync reply".into());
+        };
+        let through = channel.cursor;
+        self.archive_hosted(*channel, true).await?;
+        self.hosted_catchup
+            .lock()
+            .expect("hosted catch-up")
+            .finish(&room, through);
+        attempt.completed = true;
+        self.invalidate();
+        Ok(())
+    }
     pub(super) fn spawn_hosted_worker(service: &Arc<Self>) -> tokio::task::JoinHandle<()> {
         let weak = Arc::downgrade(service);
         let mut stopped = service.stopped.subscribe();
@@ -718,18 +754,18 @@ impl ChatService {
                     else {
                         return Err("Invalid hosted listing".to_string());
                     };
+                    service
+                        .hosted_catchup
+                        .lock()
+                        .expect("hosted catch-up")
+                        .retain(&channels.iter().map(|channel| key(channel.id)).collect());
                     for channel in channels {
                         let id = channel.id;
+                        let cursor = channel.cursor;
                         // Archive locally queued events even while service recovery is offline.
                         service.archive_hosted(channel, false).await?;
-                        match service
-                            .hosted_exchange(h::Request::Sync { channel: id })
-                            .await
-                        {
-                            Ok(h::Reply::Channel(channel)) => {
-                                service.archive_hosted(*channel, true).await?
-                            }
-                            Ok(_) => return Err("Invalid hosted sync reply".into()),
+                        match service.sync_hosted_tracked(id, cursor).await {
+                            Ok(()) => {}
                             Err(error) => {
                                 let mut session = service.session.lock().await;
                                 if let Some(current) = session.as_mut() {
@@ -756,6 +792,10 @@ impl ChatService {
                     Ok::<_, String>(())
                 };
                 let result = tokio::select! {_ = stopped.changed()=>break, result = work=>result};
+                if result.is_err() {
+                    *service.hosted_catchup.lock().expect("hosted catch-up") = Default::default();
+                    service.invalidate();
+                }
                 let mut session = service.session.lock().await;
                 if let Some(current) = session.as_mut() {
                     let error = result.err();
@@ -764,6 +804,10 @@ impl ChatService {
                         service.invalidate();
                     }
                 }
+            }
+            if let Some(service) = weak.upgrade() {
+                *service.hosted_catchup.lock().expect("hosted catch-up") = Default::default();
+                service.invalidate();
             }
         })
     }

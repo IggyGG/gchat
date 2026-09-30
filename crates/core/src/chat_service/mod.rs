@@ -6,6 +6,7 @@ mod fleet;
 pub mod host;
 mod host_updates;
 mod hosted;
+mod hosted_catchup;
 mod networks;
 mod persistence;
 mod preferences;
@@ -198,6 +199,7 @@ pub struct ChatService {
     provider_error: std::sync::RwLock<Option<gchat_api::ProviderStatus>>,
     stopped: watch::Sender<bool>,
     file_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    hosted_catchup: std::sync::Mutex<hosted_catchup::Progress>,
     hosted_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     contact_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     fleet: Mutex<Option<fleet::Transport>>,
@@ -322,6 +324,7 @@ impl ChatService {
             provider_error: std::sync::RwLock::new(None),
             stopped: watch::channel(false).0,
             file_worker: std::sync::Mutex::new(None),
+            hosted_catchup: std::sync::Mutex::new(Default::default()),
             hosted_worker: std::sync::Mutex::new(None),
             contact_worker: std::sync::Mutex::new(None),
             fleet: Mutex::new(None),
@@ -1216,6 +1219,7 @@ impl ChatService {
             for channel in &archive.channels {
                 let id = record_key(channel);
                 conversations.push(Conversation {
+                    catch_up: None,
                     muted: None,
                     policy: None,
                     provider: None,
@@ -1273,6 +1277,7 @@ impl ChatService {
             for pm in &archive.scoped_pms {
                 let id = query_key(pm.id);
                 conversations.push(Conversation {
+                    catch_up: None,
                     muted: None,
                     policy: None,
                     provider: None,
@@ -1325,6 +1330,7 @@ impl ChatService {
             }
             for (index, legacy) in archive.legacy.conversations.list.iter().enumerate() {
                 conversations.push(Conversation {
+                    catch_up: None,
                     muted: None,
                     policy: None,
                     provider: None,
@@ -1352,7 +1358,9 @@ impl ChatService {
             command_history = session.state.command_history.clone();
             input_history = session.state.input_history.clone();
             conversations.extend(self.projection.read().expect("projection lock").0.clone());
+            let catchup = self.hosted_catchup.lock().expect("hosted catch-up");
             for room in &mut conversations {
+                room.catch_up = catchup.view(&room.id);
                 room.muted = Some(session.state.preferences.muted(&room.id));
                 if room.muted == Some(true) {
                     room.unread = 0;

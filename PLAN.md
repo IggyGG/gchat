@@ -861,3 +861,13 @@ The initial link attempt exhausted a 12GiB scratch PVC before tests; its failure
 is retained. Expanding only the owned build scratch to 32GiB preserved the cache
 and allowed the unchanged source/commands to pass. Runtime capacity limits were
 not changed. The current archive-consumer gate remains active.
+
+### IRC-8 visible membership catch-up — 2026-09-30
+
+The user selected 10-second ordinary offline-message recovery with visible
+progress for large membership backlogs. The shared service now tracks confirmed
+applied records across pages, displays slow synchronization after two seconds,
+and clears the indicator on an empty page, failure or cancellation. Shared
+mobile/desktop UI and terminal UI consume the same optional snapshot field;
+profiles and GComs IPC remain unchanged. Validation and the actual retained
+81-member replay are pending. Earlier timing misses retain their original scope.
