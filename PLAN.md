@@ -893,3 +893,8 @@ message recovery still separately limited to 10 seconds. Evidence:
 `docs/evidence/irc-trunk-integration-20260930/catchup-live-81.json`.
 The earlier 96.815-second result remains a failure against its original 10-second
 backlog requirement. Full 500-member and installed-native qualification remain open.
+
+Final paired catch-up Rust validation now passes 190 tests with
+3 unchanged ignores and strict all-target/all-feature Clippy.
+Source: GComs `250ece7` / GChat `39848b8`; evidence:
+`docs/evidence/irc-trunk-integration-20260930/catchup-rust-02-pass.json`.

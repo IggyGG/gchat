@@ -1,0 +1,35 @@
+{
+  "gcoms_source": "250ece7c7abdb10458e8db72a9c60f110ce4ad08",
+  "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+  "status": "passed",
+  "commands": [
+    "cargo test --offline --config /work/paired250/patch.toml --workspace --all-features",
+    "cargo clippy --offline --config /work/paired250/patch.toml --workspace --all-features --all-targets -- -D warnings"
+  ],
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "pod": "gcoms-irc-verify03-20260930",
+    "cpu_limit": "4",
+    "memory_limit": "8Gi"
+  },
+  "suites": 17,
+  "passed_tests": 190,
+  "failed_tests": 0,
+  "unchanged_ignored_tests": 3,
+  "scope": "Full GChat workspace and strict Clippy, paired GComs path dependencies; native and archive qualification separate",
+  "evidence": {
+    "catchup-rust-02.log": {
+      "path": "test-evidence/irc-parity/catchup-rust-02.log",
+      "sha256": "a60b18bca9b24a2d7054dea03dff52256a87a15f7fbda25a26e4798da48c4860"
+    },
+    "catchup-rust-02.exit": {
+      "path": "test-evidence/irc-parity/catchup-rust-02.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "catchup-final-39848b8.tar.gz": {
+      "path": "test-evidence/irc-parity/catchup-final-39848b8.tar.gz",
+      "sha256": "1eb60caa4bd10f59a1ae48add54ff71f12a62827f91ad386cd6058495a8d8318"
+    }
+  }
+}
