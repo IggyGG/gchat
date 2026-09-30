@@ -1,0 +1,43 @@
+{
+  "source": "6896a89028e98c33e9870d40df57914f439294a5",
+  "scope": "Catch-up shared UI/JSON contract; source03 Rust type exporter with final generated files",
+  "unit_tests_passed": 63,
+  "svelte_workspaces": "both passed",
+  "production_build": "passed with existing chunk-size notice",
+  "browser_tests_passed": 4,
+  "browser_widths": [
+    390,
+    1100
+  ],
+  "browser_cases": [
+    "scoped hosted member roles/actions",
+    "applied-record progress updates",
+    "empty catch-up state clears",
+    "locked views hide progress"
+  ],
+  "browser": "Playwright 1.63.0 / cached Chromium headless 1243",
+  "qualification_remaining": [
+    "current Rust workspace and strict checks",
+    "actual retained-member backlog",
+    "protected-network 500-member campaign",
+    "native installed release"
+  ],
+  "earlier_failures_retained": [
+    "UI02 missing TypeScript declaration, fixed in Rust export list",
+    "browser download DNS failure; verified cached browser and Debian library packages used"
+  ],
+  "evidence": {
+    "catchup-ui-02.log": {
+      "path": "test-evidence/irc-parity/catchup-ui-02.log",
+      "sha256": "51cb085491e792385581ad8e7c80056cfa9610c687243fed80ef7bd7faab7d92"
+    },
+    "catchup-ui-03.log": {
+      "path": "test-evidence/irc-parity/catchup-ui-03.log",
+      "sha256": "ea0e51902cd1a3cb489706a92fb6d74bf509f74ee9a74b5c3caafb911f093ebc"
+    },
+    "catchup-browser-01.log": {
+      "path": "test-evidence/irc-parity/catchup-browser-01.log",
+      "sha256": "0f55f597c387ae601f8992f10fb9ad5c49a2ef69a8361b4a7b33b60dfa872864"
+    }
+  }
+}
