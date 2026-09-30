@@ -2028,22 +2028,34 @@ async fn files_cross_real_private_channel_after_acceptance_without_transcript_re
             .unwrap(),
         bytes
     );
-    let Response::History { page } = request(
-        &receiver,
-        Request::History {
-            conversation: receiver_channel,
-            before: None,
-            limit: 200,
-        },
-    )
+    // Chat and bulk transfer use independent workers. Completing the file does
+    // not imply the separately sent chat message has reached the archive yet.
+    let page = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let Response::History { page } = request(
+                &receiver,
+                Request::History {
+                    conversation: receiver_channel.clone(),
+                    before: None,
+                    limit: 200,
+                },
+            )
+            .await
+            else {
+                panic!("history")
+            };
+            if page
+                .messages
+                .iter()
+                .any(|m| m.body == "chat alongside attachment")
+            {
+                break page;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
     .await
-    else {
-        panic!("history")
-    };
-    assert!(page
-        .messages
-        .iter()
-        .any(|m| m.body == "chat alongside attachment"));
+    .expect("chat alongside attachment reaches the archive");
     assert!(page
         .messages
         .iter()
