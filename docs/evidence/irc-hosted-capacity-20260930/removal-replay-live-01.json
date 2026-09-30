@@ -1,0 +1,36 @@
+{
+  "source": {
+    "gcoms_source": "2c4535d562216340ea54a08e5fc8d419549d73e2",
+    "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+    "harness_source": "c449de7dcda028bd6102ad9402e425dd685c2ddf",
+    "artifacts": {
+      "gchat": "543843bf68841d65ab07a7a80170cc0b63919450017e805826a8929b60482151",
+      "fleet_probe": "30707afe124d53925189ca1c9d5316a2d77a072f1b4fbb58c8c4c96ab8978fcb",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+      "hosted-capacity.py": "94c5fa56f1fa8d950de1567603eead1de7aae2794d9b6b72929b9a3043abcc9e"
+    }
+  },
+  "scope": "retained failed removal replay and reopen; no capacity qualification",
+  "passed": true,
+  "replay_after_network_ready_ms": 262,
+  "healthy_inactive_retained_seconds": 10,
+  "inactive_after_reopen": true,
+  "cleanup_passed": true,
+  "grant_revoked": true,
+  "original_profile_unchanged": true,
+  "finished_unix": 1790752227,
+  "evidence": {
+    "removal-replay-live-01-result.json": {
+      "path": "test-evidence/irc-parity/removal-replay-live-01-result.json",
+      "sha256": "eb158ca6a8781aab26011d09e786a094929fb626f643d39b139bce27e0a8aed5"
+    },
+    "removal-replay-live-01.log": {
+      "path": "test-evidence/irc-parity/removal-replay-live-01.log",
+      "sha256": "4f59de9eaf26ed7b5ab75a7792432971e2a511ebbd24eea27a9b5ed775805749"
+    },
+    "removal-replay-live-01-transport.json": {
+      "path": "test-evidence/irc-parity/removal-replay-live-01-transport.json",
+      "sha256": "320e68091cbb2fe0ec05602e42d6956bcde8ffe043ba681b7edd68995b3b4a81"
+    }
+  }
+}

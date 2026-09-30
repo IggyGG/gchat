@@ -939,3 +939,10 @@ unchanged ignores), strict Clippy, all 22 package archives, generated contracts,
 UI checks and Linux desktop compilation. This predates the removal replay fix;
 it does not override smoke05. Evidence: `snapshot-maintenance-paired.json`
 in the trunk-integration evidence directory.
+
+Removal fix `2c4535d` / GChat `39848b8` recovers a private clone of the exact
+failed smoke05 victim in 262 ms after network readiness. It stays inactive
+without replay errors for ten seconds and reopens inactive. The original
+profile is unchanged; cleanup and grant revocation pass. Evidence:
+`docs/evidence/irc-hosted-capacity-20260930/removal-replay-live-01.json`.
+Fresh smoke06 now exercises the full journey with the stricter final churn check.
