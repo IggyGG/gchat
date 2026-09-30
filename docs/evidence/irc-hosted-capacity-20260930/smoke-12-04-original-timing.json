@@ -1,0 +1,92 @@
+{
+  "source": {
+    "gcoms_source": "a715a70df1673e18fd730cf2ba9b4faf76f0c231",
+    "gchat_source": "39848b8073e929b86f35aadd7ccbad41e602d158",
+    "artifacts": {
+      "gchat": "499130e487908e566f26328d6dd11ac5662864e796ae9361bd2f56e67d58cf1b",
+      "fleet_probe": "4e1407bc0e62c33fc5ad9d08daa88b466fdcf9d144711b7ccec44a5a7a05a9b0",
+      "hosted-live.py": "ef69fdd6071bdc45bf82b1237fcf877e729855ff827544841beec27f6c6530c3",
+      "hosted-capacity.py": "5cab0679900d992b195a91df9320d37a3e519b85cdabb12ab74a4fad74107209"
+    }
+  },
+  "status": "correctness_passed_timing_failed",
+  "passed": false,
+  "original_timing_result_unchanged": true,
+  "correctness_passed": true,
+  "latency_passed": false,
+  "requested_members": 12,
+  "qualified_500": false,
+  "observations": {
+    "membership_catchup": true,
+    "independent_members": 12,
+    "baseline": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "offline_recovery": true,
+    "mixed_file": {
+      "senders": 10,
+      "recipients_per_sender": 11
+    },
+    "verified_file_resume": true,
+    "churn_and_exclusion": true
+  },
+  "timing_failures": [
+    {
+      "step": "offline owner recovery after network ready",
+      "elapsed_ms": 312427,
+      "duration_ms": 16590,
+      "target_ms": 10000,
+      "within_target": false
+    }
+  ],
+  "file": [
+    {
+      "step": "file resume verification timing",
+      "elapsed_ms": 661646,
+      "duration_ms": 169315,
+      "target_ms": 180000,
+      "within_target": true
+    },
+    {
+      "step": "file journey complete",
+      "elapsed_ms": 664165,
+      "size": 16777216,
+      "sha256": "4ce5eae992c84dc603e1915bc71017aed8f3838fd2f1239d58ebfcddd340c82b",
+      "resume_ms": 171833,
+      "duration_ms": 336055,
+      "target_ms": 600000,
+      "within_target": true
+    }
+  ],
+  "cleanup_passed": true,
+  "resources_complete": true,
+  "grant_revoked": true,
+  "followup": "Fresh smoke05 uses the user-selected distinction between ordinary offline messages and membership replay. Slow replay requires visible confirmed progress regardless of room size. This original result is not reclassified.",
+  "evidence": {
+    "capacity12-04-result.json": {
+      "path": "test-evidence/irc-parity/capacity12-04-result.json",
+      "sha256": "bb349a728873b049ad6104dd93e09b07d8607b70ddcda9466a98a8ae160ad1c0"
+    },
+    "capacity12-04-log": {
+      "path": "test-evidence/irc-parity/capacity12-04-log",
+      "sha256": "f00a331d550a36b656d4058d078cf5a07c904bc3ef3a42fb032c20f1bbebe431"
+    },
+    "capacity12-04-source.json": {
+      "path": "test-evidence/irc-parity/capacity12-04-source.json",
+      "sha256": "6ea5f68b864473fbc29507759c914f841e0593d9f159ed32e025556a53bb4eb8"
+    },
+    "capacity12-04-resources.jsonl": {
+      "path": "test-evidence/irc-parity/capacity12-04-resources.jsonl",
+      "sha256": "25dbd854afeeae0c810f81ea11e987d9e278acc5063d4afe97a3a7d82c62fd63"
+    },
+    "capacity12-04-grant-revocation.json": {
+      "path": "test-evidence/irc-parity/capacity12-04-grant-revocation.json",
+      "sha256": "f726a559e123f485bed23a6cfdba06e4c1ba3e80fa66287a8889e0de97231c39"
+    },
+    "capacity12-04-provision.json": {
+      "path": "test-evidence/irc-parity/capacity12-04-provision.json",
+      "sha256": "705a39aba77354df7b5332f697362cfe71324ae872771707401445b503fa1408"
+    }
+  }
+}
