@@ -733,3 +733,12 @@ respective 5s and 600s targets. Resumed verification is 234.873s and still misse
 `docs/evidence/irc-hosted-live-20260930/batch-06.json`. Both daemons stopped and
 the temporary bootstrap grant was revoked through the ordinary operator tool.
 A bounded two-piece runtime window is now undergoing component qualification.
+
+### IRC-8 file-window paired gate — 2026-09-30
+
+GChat passes its full 185-test paired workspace and strict Clippy against GComs
+907e54f (three explicit ignores). Source-bound evidence is
+`docs/evidence/irc-blob-window-paired-20260930/summary.json`. The release client
+built and was hash-verified before starting live07; the fixed file verification
+and workflow deadlines remain under measurement. No installed release or
+500-member protected-network pass is implied.

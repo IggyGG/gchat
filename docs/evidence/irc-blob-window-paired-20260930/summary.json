@@ -1,0 +1,11 @@
+{
+  "gcoms_runtime_revision": "907e54f",
+  "gchat_rust_source_revision": "28ea691",
+  "scope": "full paired all-feature workspace tests and strict all-target Clippy",
+  "passed": 185,
+  "failed": 0,
+  "ignored": 3,
+  "suites": 17,
+  "log": "test-evidence/irc-parity/paired-window-05.log",
+  "sha256": "a030eccff806471a3bb0fe56a1bf59e101da06f6c3d99ab15e21d80e803b961c"
+}
