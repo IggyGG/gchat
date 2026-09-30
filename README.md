@@ -313,7 +313,7 @@ Hosted live qualification reports correctness and latency independently. The
 first completed protected-network two-client journey verified messages, policies,
 offline recovery and a resumed 16 MiB file, but missed small-room receipt and
 file-resume timing targets. See docs/evidence/irc-hosted-live-20260930/summary.json;
-it does not qualify the 500-member or native installed release gates.
+it does not qualify the 64-member or native installed release gates.
 
 The later two-piece hosted file window passes the two-client live correctness
 and latency journey, including interrupted 16MiB resume and covered completion.
@@ -327,12 +327,15 @@ remains an explicit owner action; hosted policy uses its own verified controls.
 
 The current merged hosted implementation passes its two-client protected-network
 journey, including covered delivery receipts and interrupted 16 MiB verification.
-`scripts/hosted-capacity.py` provides separate 12-member smoke and 500-member
+`scripts/hosted-capacity.py` provides separate 12-member smoke and 64-member
 application campaigns; see TESTPLAN.md for required evidence and retained limits.
-This does not yet qualify a 500-member or native installed release.
+This does not yet qualify a 64-member or native installed release.
 
 Hosted channels show progress while catching up on a large membership backlog.
 The count reflects updates already applied, without estimating an unknown total.
 Ordinary offline-message recovery retains its ten-second qualification target;
 long membership replay is measured separately. Delivery status still requires
 authenticated recipient acknowledgments on the covered channel.
+
+Hosted channels retain the 64-member maximum, including the owner. Operators
+may lower it with `/mode +l` (2–64); clients and the service enforce the ceiling.

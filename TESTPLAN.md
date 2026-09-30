@@ -1,3 +1,12 @@
+## IRC parity: retain the 64-member limit (2026-09-30)
+
+The user confirmed **64 members**, including the owner, as the channel limit.
+Hosted creation defaults to 64; `/mode +l` accepts 2–64 and GComs independently
+enforces signed policy. Capacity qualification now uses 64 independent members,
+ten senders and 630 actual recipient signatures per messaging phase. No larger
+campaign is required. The former 500-member run was stopped, its grant revoked,
+and its original evidence retained without relabelling it as a pass.
+
 ## Independent contacts, preferences and presence
 
 With the paired GComs checkout, run `cargo test --workspace --all-features contact
@@ -580,12 +589,12 @@ and retain the owner-confirmation browser tests for the merged members panel.
 
 ## Protected-network hosted capacity
 
-`scripts/hosted-capacity.py --members 12|500 --root NEW_PRIVATE_DIRECTORY --gchat
+`scripts/hosted-capacity.py --members 12|64 --root NEW_PRIVATE_DIRECTORY --gchat
 EXACT_BINARY --probe EXACT_PROBE --invitation-file PRIVATE_INVITATION` runs actual
 independent GChat daemon profiles through the installed protected network. Provision
 only the emitted channel ID, then create `enabled`. Run the 12-member smoke before
-the 500-member campaign; neither component tests nor a smoke pass can set
-`qualified_500`. Retain all profiles, logs, source/binary hashes and ten-second
+the 64-member campaign; neither component tests nor a smoke pass can set
+`qualified_64`. Retain all profiles, logs, source/binary hashes and ten-second
 process RSS/I/O samples. The owner remains offline throughout admission. Require
 independent verified rosters, ten simultaneous senders and all authenticated
 recipient receipts, offline delivery recovery, real mixed chat/file traffic,
@@ -594,7 +603,7 @@ Keep 200ms feedback, 30s join and 10s recovery targets; covered large-room recei
 completion is measured separately with a 600s observation bound. Existing 180s
 file-resume and 600s full-workflow targets remain unchanged. Cleanup and every
 required observation must pass. `hosted_capacity_test.py` rejects missing evidence,
-duplicate identities, failed timing/cleanup and promotion of a smoke to 500 members.
+duplicate identities, failed timing/cleanup and promotion of a smoke to 64 members.
 
 Capacity defaults to sequential cold bootstrap. `--startup-concurrency 4` starts
 at most four independent profiles together, then submits their membership joins
@@ -604,7 +613,7 @@ all deadlines are unchanged. Preserve results from the original sequential smoke
 Capacity qualification also requires process resource samples covering every
 original profile and the full concurrent profile count. Retain per-process CPU
 ticks, RSS and I/O with PIDs and clock frequency. A missing/failed sampler cannot
-qualify 500 members. Compare timing targets before rounding display values; the
+qualify 64 members. Compare timing targets before rounding display values; the
 regression rejects a 200.4ms result against the 200ms feedback limit.
 
 ### Large membership backlogs and ordinary recovery
@@ -614,7 +623,7 @@ Keep the 10-second ordinary offline-message gate in every campaign. Measure
 membership replay separately in both small and large rooms: whenever it exceeds
 10 seconds, require visible, positive applied-record progress. A small room can
 also accumulate a long membership backlog. Retain the existing bounded
-observation windows: 300 seconds for the smoke and 1,800 seconds for 500 members.
+observation windows: 300 seconds for the smoke and 1,800 seconds for 64 members.
 Reports explicitly identify this recovery policy; earlier reports cannot inherit it.
 Do not convert earlier failed 10-second results into passes. Confirm that locked
 views hide progress, cancellation/errors clear it, and an empty recovery page

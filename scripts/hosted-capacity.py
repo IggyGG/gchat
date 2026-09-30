@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Independent GChat daemons over the installed protected hosted service.
 
-A 12-member smoke run does not qualify the 500-member campaign. Every daemon
+A 12-member smoke run does not qualify the 64-member campaign. Every daemon
 uses its own retained encrypted profile. The operator allowlists only channel.json
 and creates enabled; invitations and profiles remain private. No direct service
 transport, synthetic receipt, changed routing or shared MLS identity is used.
@@ -36,15 +36,15 @@ def verify_roster(room, count):
 
 def qualifies(report):
     observed = report.get('observations', {})
-    return (report.get('requested_members') == 500 and report.get('passed') is True
+    return (report.get('requested_members') == 64 and report.get('passed') is True
             and report.get('recovery_policy') == RECOVERY_POLICY
             and report.get('latency_passed') is True and report.get('cleanup_passed') is True
             and report.get('resources_complete') is True
-            and report.get('peak_active_profiles', 0) >= 500
-            and observed.get('independent_members') == 500
+            and report.get('peak_active_profiles', 0) >= 64
+            and observed.get('independent_members') == 64
             and all(observed.get(case) is True for case in
                     ('membership_catchup', 'offline_recovery', 'verified_file_resume', 'churn_and_exclusion'))
-            and all(observed.get(case) == {'senders': 10, 'recipients_per_sender': 499}
+            and all(observed.get(case) == {'senders': 10, 'recipients_per_sender': 63}
                     for case in ('baseline', 'mixed_file')))
 
 
@@ -54,7 +54,7 @@ class Capacity(live.Journey):
         super().__init__(args)
         self.names = ['alice', 'bob'] + [f'member-{i}' for i in range(2, args.members)]
         self.report.update(scope='independent GChat protected-network capacity',
-                           requested_members=args.members, qualified_500=False,
+                           requested_members=args.members, qualified_64=False,
                            startup_concurrency=args.startup_concurrency,
                            recovery_policy=RECOVERY_POLICY,
                            receipt_deadline_seconds=600, observations={})
@@ -283,9 +283,9 @@ class Capacity(live.Journey):
                     cleanup_errors.append(f'{who}: {error}')
             self.report['cleanup_passed'] = not cleanup_errors and not self.processes
             self.report['cleanup_errors'] = cleanup_errors
-            self.report['qualified_500'] = qualifies(self.report)
+            self.report['qualified_64'] = qualifies(self.report)
             self.note('capacity finished', passed=self.report['passed'],
-                      latency_passed=self.report['latency_passed'], qualified_500=self.report['qualified_500'])
+                      latency_passed=self.report['latency_passed'], qualified_64=self.report['qualified_64'])
 
 
 if __name__ == '__main__':
@@ -294,7 +294,7 @@ if __name__ == '__main__':
     parser.add_argument('--gchat', type=Path, required=True)
     parser.add_argument('--probe', type=Path, required=True)
     parser.add_argument('--invitation-file', type=Path, required=True)
-    parser.add_argument('--members', type=int, choices=(12, 500), required=True)
+    parser.add_argument('--members', type=int, choices=(12, 64), required=True)
     parser.add_argument('--startup-concurrency', type=int, choices=(1, 4), default=1)
     args = parser.parse_args()
     args.gchat = args.gchat.resolve()

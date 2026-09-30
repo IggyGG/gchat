@@ -933,7 +933,7 @@ impl ChatService {
                     let parts:Vec<_>=args.split_whitespace().collect(); if !(2..=3).contains(&parts.len()){return Err("Usage: /hosted create #name nickname [private|public|code]".into())}
                     let target=self.runtime.network_client().ok_or("Hosted creation requires an installed network")?.hosted_endpoints().map_err(|e|e.to_string())?.into_iter().next().ok_or("Network has no hosted endpoint")?;
                     let admission=match parts.get(2).copied().unwrap_or("private"){"private"=>h::Admission::InviteOnly,"public"=>h::Admission::Public,"code"=>h::Admission::ReusableCode,_=>return Err("Choose private, public or code admission".into())};
-                    h::Request::Create{endpoint:target,alias:parts[0].trim_start_matches('#').into(),nickname:parts[1].into(),capacity:500,admission}
+                    h::Request::Create{endpoint:target,alias:parts[0].trim_start_matches('#').into(),nickname:parts[1].into(),capacity:64,admission}
                 }
                 "join"=>{let parts:Vec<_>=args.split_whitespace().collect(); if parts.len()!=3{return Err("Usage: /hosted join link #alias nickname".into())} h::Request::Join{link:h::InviteLink(parts[0].into()),alias:parts[1].trim_start_matches('#').into(),nickname:parts[2].into()} }
                 _=>return Err("Usage: /hosted list [cursor] | /hosted create #name nickname [private|public|code] | /hosted join link #alias nickname".into()),
@@ -1247,7 +1247,13 @@ impl ChatService {
                         "",
                     ),
                     "+l" => (
-                        h::Change::Capacity(value.parse().map_err(|_| "Capacity must be 2–500")?),
+                        h::Change::Capacity(
+                            value
+                                .parse::<u32>()
+                                .ok()
+                                .filter(|limit| (2..=64).contains(limit))
+                                .ok_or("Capacity must be 2–64")?,
+                        ),
                         "",
                     ),
                     "private" => (h::Change::Discovery(h::Discovery::Private), ""),
@@ -1320,7 +1326,7 @@ mod tests {
                     },
                 },
             ],
-            capacity: 500,
+            capacity: 64,
             bans: vec![],
             exemptions: vec![],
             invite_exceptions: vec![],

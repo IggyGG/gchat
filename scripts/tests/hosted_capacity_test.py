@@ -41,13 +41,13 @@ class CapacityEvidenceTest(unittest.TestCase):
         room['members'][0]['isSelf'] = False
         self.assertFalse(module.verify_roster(room, 2))
 
-    def test_smoke_and_missing_or_failed_observations_never_qualify_500(self):
-        report = {'requested_members': 500, 'passed': True, 'latency_passed': True,
+    def test_smoke_and_missing_or_failed_observations_never_qualify_64(self):
+        report = {'requested_members': 64, 'passed': True, 'latency_passed': True,
                   'recovery_policy': module.RECOVERY_POLICY,
                   'cleanup_passed': True, 'resources_complete': True,
-                  'peak_active_profiles': 500, 'observations': {
-                      'independent_members': 500, 'baseline': {'senders': 10, 'recipients_per_sender': 499},
-                      'mixed_file': {'senders': 10, 'recipients_per_sender': 499},
+                  'peak_active_profiles': 64, 'observations': {
+                      'independent_members': 64, 'baseline': {'senders': 10, 'recipients_per_sender': 63},
+                      'mixed_file': {'senders': 10, 'recipients_per_sender': 63},
                       'membership_catchup': True, 'offline_recovery': True, 'verified_file_resume': True,
                       'churn_and_exclusion': True}}
         self.assertTrue(module.qualifies(report))
@@ -63,8 +63,9 @@ class CapacityEvidenceTest(unittest.TestCase):
             failed = copy.deepcopy(report)
             failed[key] = False
             self.assertFalse(module.qualifies(failed), key)
-        report['requested_members'] = 12
-        self.assertFalse(module.qualifies(report))
+        for count in (12, 63, 65, 100, 500):
+            report['requested_members'] = count
+            self.assertFalse(module.qualifies(report), count)
 
 
 if __name__ == '__main__':

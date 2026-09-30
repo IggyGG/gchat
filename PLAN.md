@@ -1,3 +1,12 @@
+## IRC parity: retain the 64-member limit (2026-09-30)
+
+The user confirmed **64 members**, including the owner, as the channel limit.
+Hosted creation defaults to 64; `/mode +l` accepts 2–64 and GComs independently
+enforces signed policy. Capacity qualification now uses 64 independent members,
+ten senders and 630 actual recipient signatures per messaging phase. No larger
+campaign is required. The former 500-member run was stopped, its grant revoked,
+and its original evidence retained without relabelling it as a pass.
+
 ## IRC 500-profile network failure — 2026-09-30
 
 The `40b440d` / `c5bbfe8` campaign stopped at the original 180-second cold
