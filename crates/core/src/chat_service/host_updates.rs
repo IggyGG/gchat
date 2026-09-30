@@ -95,7 +95,11 @@ impl InstanceHost {
                 Ok(ResultState::Attached)
             }
             UpdateRequest::Prepare { view, release } => {
-                if self.config.fleet_config.is_some() {
+                let managed = std::env::var("GCHAT_OWNER_MANAGED_UPDATES").as_deref() == Ok("1")
+                    && crate::managed_updates::service_for_process(std::process::id())
+                        .await?
+                        .is_some();
+                if self.config.fleet_config.is_some() && !managed {
                     return Ok(ResultState::Busy {
                         reason:
                             "This fleet-managed instance must be upgraded through its controller."

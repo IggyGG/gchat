@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "scope": "local activation and deployment automation checkpoint",
+  "observed_at": "2026-09-30T12:35:02.307272+00:00",
+  "local": {
+    "release_id": "fb6311372205ef87b66b2852143ffde86d28e21cde6cf37ace8a22babcdcaed2",
+    "version": "0.1.39+local.irc64",
+    "sources": {
+      "gchat": "624e8b2b374fd86b5173eefd4d47726bb1554475",
+      "gcoms": "a460d74d672179a7c82d45a4c80ca54409e6cc4a"
+    },
+    "api_version": 3,
+    "same_instance": true,
+    "backup_files_verified": 2361,
+    "protected_files_unchanged": 4,
+    "desktop_launched_under_user_service": true,
+    "fleet_registration_invalid_bootstrap_channel_admin_removed": true,
+    "credentials_preserved": true,
+    "unlock_requires_owner": true
+  },
+  "kubernetes": {
+    "anchors_ready": 3,
+    "anchors_desired": 3,
+    "restored_existing_image": "sha256:acd5f8c4655463e1c088ed5ee34b2d2d2b0e59c81acd0a7c3d8cac10f56575a2",
+    "new_infrastructure_release_activated": false
+  },
+  "complete_rollout": false
+}

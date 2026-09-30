@@ -7,6 +7,7 @@
   import './theme.css';
   import ResizeHandles from './ResizeHandles.svelte';
   import UpdatePanel from './UpdatePanel.svelte';
+  import IdleUpdates from './IdleUpdates.svelte';
   import type { NativeShell } from './native-shell';
   import { onMount, tick, type Snippet } from 'svelte';
   import type { OperationHandle } from '@gcoms/rpc';
@@ -864,6 +865,7 @@
   }
   function time(timestamp: number) { return new Date(timestamp * 1000).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' }); }
 </script>
+<IdleUpdates updates={nativeShell?.updates} busy={!workspaceReady || busy || !!draft || !!promptDraft || !!savedDraft || views.hasDraftsExcept(selected) || !!Object.keys(pending).length || !!savedOperations.length || !!failures.length || joinBusy || fileState.busy || !!pickerView || !!dialog || !!password || searchBusy || pushBusy} />
 
 {#snippet outcomes()}
       {#if pickerView?.selected && !invitationSelection}

@@ -20,6 +20,49 @@ fn save(path: &Path, config: &FleetConfig) {
     file.persist(path).unwrap();
 }
 
+#[test]
+fn invalid_bootstrap_registration_is_rejected_before_profile_startup() {
+    let dir = tempfile::tempdir().unwrap();
+    gcoms::sdk::private_fs::make_private(dir.path(), true).unwrap();
+    let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    let path = dir.path().join("fleet.json");
+    let mut fleet = FleetConfig {
+        version: 1,
+        safety_number: "fixture identity".into(),
+        primary_component: [1; 16],
+        registry: MachineRegistry {
+            version: 1,
+            components: vec![ComponentRegistration {
+                credentials: ComponentCredentials {
+                    component_id: [2; 16],
+                    token: [7; 32],
+                },
+                capabilities: vec![
+                    Capability::IdentityRead,
+                    Capability::EventRead,
+                    Capability::BootstrapApplication,
+                    Capability::ChannelAdmin,
+                ],
+                peers: Vec::new(),
+                files: None,
+            }],
+        },
+    };
+    save(&path, &fleet);
+    config.fleet_config = Some(path.clone());
+    let Err(error) = InstanceHost::new(config.clone()) else {
+        panic!("invalid component registration accepted at startup");
+    };
+    assert!(error.contains("invalid component registration"));
+    assert!(!config.profile.exists());
+    assert!(!config.archive.exists());
+    fleet.registry.components[0]
+        .capabilities
+        .retain(|cap| *cap != Capability::ChannelAdmin);
+    save(&path, &fleet);
+    assert!(InstanceHost::new(config).is_ok());
+}
+
 async fn attach(endpoint: &Path, credentials: &ComponentCredentials) -> SdkClient {
     tokio::time::timeout(Duration::from_secs(15), async {
         loop {

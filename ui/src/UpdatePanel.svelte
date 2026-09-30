@@ -26,7 +26,7 @@
   <p role="status">{status?.message || 'Checking update status…'}</p>
   {#if status?.version}<p>Version {status.version}</p>{/if}
   {#if status?.state === 'downloading'}<progress aria-label="Update download" max={status.total || 1} value={status.downloaded}></progress>{/if}
-  <p>Updates download automatically and activate at your next launch. Your profile is kept. You may need to unlock it again after restarting.</p>
+  <p>Updates download automatically and activate when GChat is idle. Drafts and current actions delay the restart. Your profile is kept. You may need to unlock it again.</p>
   <button disabled={working || status?.state === 'downloading'} onclick={() => void action()}>Check for updates</button>
   {#if ['ready', 'deferred'].includes(status?.state ?? '')}<button disabled={working || busy} onclick={() => void action(true)}>{working ? 'Preparing restart…' : 'Restart now'}</button>{/if}
   {#if busy}<p>Finish or save your draft and wait for current actions before restarting.</p>{/if}

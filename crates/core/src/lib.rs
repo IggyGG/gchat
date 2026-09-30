@@ -15,4 +15,5 @@ pub mod runtime;
 pub mod store;
 pub mod transcript;
 
+pub mod managed_updates;
 pub mod network;

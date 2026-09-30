@@ -1,3 +1,18 @@
+## Automatic deployment and activation work
+
+The release coordinator can gate publication on a fresh, exact-source deployment
+observation. Serial native-service and Kubernetes workers retain rollback artifacts
+and preserve service configuration and relay identities. The operator inventory,
+artifact producer and real installed-network acceptance must be configured before
+this is operational; see [current work](PLAN.md).
+
+Desktop updates activate after 30 seconds without input when drafts, sends, files
+and foreground work have cleared. Other windows and daemon activity can defer
+activation. A Linux fleet service can explicitly opt in with
+`GCHAT_OWNER_MANAGED_UPDATES=1`; the owner-authenticated maintenance protocol still
+checkpoints the instance, observes process exit and restarts only the verified
+owning GChat user service. Normal unlock may be required after activation.
+
 Hosted sends, policy changes and committed consumer receipts wake the application
 worker immediately after durable local acceptance. Wake-ups coalesce while work
 is in flight; idle polling remains once per second and transport stays covered.

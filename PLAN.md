@@ -1,3 +1,22 @@
+## Automatic deployment and idle activation (2026-09-30, in progress)
+
+The local qualified IRC-parity pair is now installed in the launcher, CLI and
+production background service. Its original profile was backed up and retained.
+An invalid pre-existing bootstrap `ChannelAdmin` registration was removed without
+changing credentials; startup validation now catches this before an unlock prompt.
+The three Kubernetes anchors are healthy after restoring their exact retained
+image digest. This is recovery of the old deployment, not activation of new relays.
+See [local recovery receipt](docs/evidence/deployment-automation-20260930/local-and-anchor-recovery.json).
+
+Implementation in this task adds source-bound serial deployment reconciliation,
+native systemd and Kubernetes workers, identity preservation, rollback, actual
+image observation, an image-pull gate, and publication gated on a fresh deployment
+observation. Desktop activation waits for idle UI and daemon state; managed Linux
+user services require explicit owner opt-in. Infrastructure artifact production,
+operator inventory/credentials, acceptance producers, controller activation and
+a complete automatically observed release remain required before this task is done.
+The 64-member/covered-receipt/topic-pending/recovery policies are unchanged.
+
 ## IRC parity: full 64-member network qualification (2026-09-30)
 
 The user retained the 64-member limit. The final `a460d74`/`624e8b2` pair passes

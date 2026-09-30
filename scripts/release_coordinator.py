@@ -72,6 +72,56 @@ class Coordinator:
         self.ledger = Ledger(self.state / 'ledger.sqlite')
         self.config = config
 
+    def deployment_ready(self, manifest):
+        if not manifest['policy'].get('deployment_required', False):
+            return True
+        path = self.state / 'deployment' / manifest['release_id'] / 'journal.json'
+        if not path.is_file():
+            return False
+        report = json.loads(path.read_text())
+        configured = self.config.get('deployment_file')
+        if not configured or not Path(configured).is_file():
+            return False
+        revision = hashlib.sha256(canonical(json.loads(Path(configured).read_text()))).hexdigest()
+        desired = self.state / 'deployment/desired.json'
+        return (desired.is_file() and json.loads(desired.read_text())['release_id'] == manifest['release_id']
+                and report.get('state') == 'deployed' and report.get('sources') == manifest['sources']
+                and report.get('revision') == revision
+                and 0 <= time.time() - report.get('observed_at', 0) <= 300)
+
+    def reconcile_deployment(self):
+        """Select monotonically; a late old build must never downgrade the fleet."""
+        configured = self.config.get('deployment_file')
+        if not configured:
+            return
+        from release_deployment import reconcile
+        desired_path = self.state / 'deployment/desired.json'
+        previous = json.loads(desired_path.read_text()) if desired_path.exists() else None
+        owner_path = self.state / 'deployment/owner.json'
+        active = json.loads(owner_path.read_text()) if owner_path.exists() else None
+        if active:
+            selected = self.ledger.db.execute('SELECT id,seq FROM candidates WHERE id=?',
+                                              (active['release_id'],)).fetchone()
+        else:
+            selected = self.ledger.db.execute('''SELECT c.id,c.seq FROM candidates c
+                WHERE EXISTS (SELECT 1 FROM platforms p WHERE p.candidate=c.id
+                    AND p.platform!='sdk' AND p.state IN
+                    ('verified','publishing','submitting','processing','in_review','available'))
+                ORDER BY c.seq DESC LIMIT 1''').fetchone()
+        if selected is None or (previous and selected['seq'] < previous['sequence']):
+            return
+        manifest = self.ledger.manifest(selected['id'])
+        if not manifest['policy'].get('deployment_required', False):
+            return
+        atomic_json(desired_path, {'release_id': selected['id'], 'sequence': selected['seq']})
+        try:
+            reconcile(self.state, manifest, json.loads(Path(configured).read_text()))
+        except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
+            atomic_json(self.state / 'public/deployment.json', {
+                'schema': 1, 'release_id': selected['id'], 'state': 'blocked',
+                'reason': 'Deployment inventory or worker is unavailable; publication is waiting',
+                'error_type': type(error).__name__})
+
     def execute(self, manifest, platform, stage, action='run'):
         recipe = self.config['workers'][platform][stage]
         if stage == 'build':
@@ -129,6 +179,8 @@ class Coordinator:
             self.ledger.transition(release, platform, 'blocked', reason='platform worker is not configured')
             return
         try:
+            if state in {'verified', 'publishing', 'submitting'} and platform != 'sdk' and not self.deployment_ready(manifest):
+                return
             if state == 'verified' and platform in {'ios', 'android'}:
                 other = self.ledger.db.execute("""SELECT 1 FROM platforms WHERE platform=? AND candidate!=?
                     AND (state IN ('submitting','processing','in_review') OR
@@ -145,6 +197,9 @@ class Coordinator:
             stage = {'building': 'build', 'verifying': 'verify', 'verified': 'compatibility',
                      'publishing': 'publish', 'submitting': 'submit',
                      'processing': 'observe', 'in_review': 'observe'}[state]
+            if state == 'verified' and 'acceptance' in self.config['workers'][platform]:
+                if self.execute(manifest, platform, 'acceptance') is None:
+                    return
             completed = self.execute(manifest, platform, stage)
             if completed is None:
                 return
@@ -205,6 +260,7 @@ class Coordinator:
         rows = self.ledger.db.execute('SELECT candidate,platform FROM platforms ORDER BY rowid').fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
+        self.reconcile_deployment()
         atomic_json(self.state / 'public/status.json', self.ledger.status())
         os.chmod(self.state / 'public/status.json', 0o644)
 

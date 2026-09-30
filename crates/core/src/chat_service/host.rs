@@ -204,6 +204,12 @@ impl InstanceHost {
         {
             return Err("fleet requires the desktop in-process GChat host".into());
         }
+        // An installed-build health check must not report a usable service and
+        // postpone invalid local registrations until the owner enters a secret.
+        // Unlock still reloads the file, preserving normal credential rotation.
+        if let Some(path) = &config.fleet_config {
+            super::fleet::load(path)?;
+        }
         #[cfg(any(target_os = "android", target_os = "ios"))]
         if config.uses_protocol_ipc() || !config.gc2_carrier {
             return Err("mobile instances require the outbound GC/2 network client".into());

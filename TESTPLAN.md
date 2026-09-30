@@ -1,3 +1,18 @@
+## Deployment reconciliation and idle activation (2026-09-30)
+
+Run `release_deployment_test.py`, `release_host_install_test.py`,
+`release_kubernetes_worker_test.py` and `release_coordinator_test.py` through
+unittest discovery. Cover interruption after activation, serial canaries,
+rollback, unchanged identity/configuration, concurrent operator changes, missing
+image availability, disabled workloads and stale deployment observations.
+UI `idle-updates.test.ts` must reject new activity while native status is pending,
+wait for saved drafts/actions, and back off after native deferral. Run the UI type
+checks/build and all unit tests. Rust `fleet_host` must reject invalid bootstrap
+registration before profile startup; managed updates retain owner-lease and
+checkpoint/exit checks. Live completion requires exact running identities for all
+managed targets and a subsequent unattended update; component passes alone do not
+qualify the deployment process.
+
 ## Completed 64-member protected-network gate (2026-09-30)
 
 The `a460d74`/`624e8b2` source pair passes the full `--members 64` campaign.

@@ -24,6 +24,38 @@ class CoordinatorTests(unittest.TestCase):
                 Coordinator(state,{'poll_interval_seconds':interval})
             self.assertFalse(state.exists())
 
+    def test_required_deployment_blocks_even_a_verified_platform(self):
+        from release_pair import canonical
+        manifest=copy.deepcopy(self.manifest)
+        manifest['policy']['deployment_required']=True
+        manifest['release_id']=hashlib.sha256(canonical({k:v for k,v in manifest.items() if k!='release_id'})).hexdigest()
+        c=Coordinator(self.root,{'workers':{'android':{}}});self.addCleanup(c.ledger.close)
+        release=c.ledger.add(manifest)
+        c.ledger.transition(release,'android','building')
+        c.ledger.transition(release,'android','verifying')
+        c.ledger.transition(release,'android','verified',evidence='a'*64)
+        with patch.object(c,'execute',side_effect=AssertionError('publication before deployment')):
+            c.step(release,'android')
+        self.assertEqual(c.ledger.target(release,'android')['state'],'verified')
+
+    def test_deployment_observation_must_be_fresh_and_inventory_unchanged(self):
+        from release_pair import canonical
+        manifest=copy.deepcopy(self.manifest);manifest['policy']['deployment_required']=True
+        inventory=self.root/'inventory.json';atomic_json(inventory,{'targets':[]})
+        c=Coordinator(self.root,{'deployment_file':str(inventory)});self.addCleanup(c.ledger.close)
+        release=manifest['release_id'];directory=self.root/'deployment'/release
+        atomic_json(self.root/'deployment/desired.json',{'release_id':release})
+        report={'state':'deployed','sources':manifest['sources'],'observed_at':100,
+                'revision':hashlib.sha256(canonical({'targets':[]})).hexdigest()}
+        atomic_json(directory/'journal.json',report)
+        with patch('release_coordinator.time.time',return_value=150):
+            self.assertTrue(c.deployment_ready(manifest))
+        with patch('release_coordinator.time.time',return_value=401):
+            self.assertFalse(c.deployment_ready(manifest))
+        atomic_json(inventory,{'targets':[],'revision':2})
+        with patch('release_coordinator.time.time',return_value=150):
+            self.assertFalse(c.deployment_ready(manifest))
+
     @unittest.skipUnless(os.name == 'posix', 'coordinator daemon uses POSIX flock')
     def test_daemon_polling_uses_configured_interval_and_releases_lock(self):
         import release_coordinator

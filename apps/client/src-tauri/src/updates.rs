@@ -242,7 +242,7 @@ async fn check(app: &tauri::AppHandle) -> Result<(), String> {
     status(
         app,
         "ready",
-        "Update ready. It will activate at your next launch, or choose Restart now.",
+        "Update ready. It will activate when GChat is idle, or choose Restart now.",
     );
     Ok(())
 }
@@ -323,6 +323,7 @@ async fn stop_instance(app: &tauri::AppHandle, release: &str) -> Result<(), Stri
     let attachment = app.state::<crate::desktop::Attachment>();
     let client = crate::desktop::attached(&attachment).await?;
     let result: Result<(), String> = async {
+        let managed_service = gchat_core::managed_updates::service_for_process(pid).await?;
         let response = client
             .request_v2(Request::Disconnect)
             .await
@@ -342,6 +343,9 @@ async fn stop_instance(app: &tauri::AppHandle, release: &str) -> Result<(), Stri
         for _ in 0..50 {
             // Socket failure alone does not prove the process has terminated.
             if process_exited(pid)? {
+                if let Some(unit) = &managed_service {
+                    gchat_core::managed_updates::start_service(unit).await?;
+                }
                 attachment
                     .updating
                     .store(true, std::sync::atomic::Ordering::SeqCst);
@@ -417,6 +421,17 @@ pub(super) async fn chat_update_install(app: tauri::AppHandle) -> Result<(), Str
                 return Err("Invalid installed release identity".into());
             }
             stop_instance(&app, release).await?;
+            #[cfg(target_os = "linux")]
+            {
+                // A temporary local repair may have started this view. Activate
+                // the verified APT executable rather than restarting that pin.
+                use std::os::unix::process::CommandExt;
+                return Err(std::process::Command::new("/usr/bin/gchat-desktop")
+                    .args(std::env::args_os().skip(1))
+                    .exec()
+                    .to_string());
+            }
+            #[cfg(not(target_os = "linux"))]
             app.restart();
         }
         let staged = updates.staged.lock().await;
