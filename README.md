@@ -1,5 +1,16 @@
 ## Stable client contracts
 
+Native iOS run `36866692098` fails before building because the allocator reserved
+`1.0.100`, outside the signing worker's established numeric build policy. Allocation
+now carries `1.0.99` to `1.1.0` and `1.99.99` to `2.0.0`; it advances above failed
+overflow reservations without changing them. Manifest validation and version
+preparation use the same validator as the signing worker, before reserving or
+writing Git objects. Exhaustion fails explicitly. Three boundary/atomicity controls,
+real discovery with lost publication recovery, and 636 Python checks pass with
+five existing skips. Controller activation and a native valid-number build remain
+required; original failures are retained in the
+[allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
+
 The service retains GChat API 2 attachments alongside API 3 for the stable major.
 Typed RPC service 1 retains its original methods. Optional methods are advertised
 as `chat.method.<id>` in instance capabilities; clients select detailed history,

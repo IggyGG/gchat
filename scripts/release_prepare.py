@@ -6,7 +6,7 @@ import re
 import subprocess
 import tempfile
 
-from release_pair import canonical, git
+from release_pair import canonical, git, ios_build_number
 from release_feed import version
 
 
@@ -20,7 +20,7 @@ def prepare(root, base, coms, versions, branch):
         raise ValueError('desktop versions must agree')
     if not re.fullmatch('[1-9][0-9]{0,9}', versions['android']) or int(versions['android']) > 2100000000:
         raise ValueError('invalid Android version code')
-    version(versions['ios'])
+    ios_build_number(versions['ios'])
     config = json.loads(read('apps/client/src-tauri/tauri.conf.json'))
     config['version'] = app_version; config['bundle']['android']['versionCode'] = int(versions['android'])
     publication = json.loads(read('release/publication.json')); publication['version'] = app_version

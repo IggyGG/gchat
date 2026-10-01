@@ -33,6 +33,32 @@ def freeze(chat, coms, versions, policy):
     return value
 
 
+def ios_build_number(value):
+    # Match the signing worker's established four/two/two-digit release policy.
+    if (not isinstance(value, str) or not re.fullmatch(
+            r'[1-9][0-9]{0,3}\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)', value)):
+        raise ValueError('build number must use Apple numeric major.minor.patch (four/two/two digits)')
+    return value
+
+
+def next_ios_build_number(previous):
+    # Old failed reservations may contain an overflowing minor/patch. Advance
+    # above them without rewriting history or attempting to reuse a reservation.
+    if (not isinstance(previous, str) or not re.fullmatch(
+            r'[1-9][0-9]*\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', previous)):
+        raise ValueError('invalid previous iOS build reservation')
+    major, minor, patch = map(int, previous.split('.'))
+    if patch >= 99:
+        minor, patch = minor + 1, 0
+    else:
+        patch += 1
+    if minor >= 100:
+        major, minor, patch = major + 1, 0, 0
+    if major > 9999:
+        raise ValueError('iOS build-number space exhausted')
+    return ios_build_number(f'{major}.{minor}.{patch}')
+
+
 def validate(value):
     if type(value.get('schema')) is not int or value.get('schema') != 1 or set(value.get('sources', {})) != {'gchat', 'gcoms'}:
         raise ValueError('invalid paired release manifest')
@@ -53,6 +79,8 @@ def validate(value):
         expression = r'[1-9][0-9]{0,9}' if target == 'android' else r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
         if not isinstance(version, str) or not re.fullmatch(expression, version):
             raise ValueError('invalid production platform version')
+        if target == 'ios':
+            ios_build_number(version)
         if target == 'android' and int(version) > 2100000000:
             raise ValueError('Android version code exceeds the store limit')
     if 'refs' in value:

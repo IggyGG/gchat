@@ -1,5 +1,16 @@
 ## Live controller and native acceptance (2026-10-01, in progress)
 
+Native iOS run `36866692098` fails before building because the allocator reserved
+`1.0.100`, outside the signing worker's established numeric build policy. Allocation
+now carries `1.0.99` to `1.1.0` and `1.99.99` to `2.0.0`; it advances above failed
+overflow reservations without changing them. Manifest validation and version
+preparation use the same validator as the signing worker, before reserving or
+writing Git objects. Exhaustion fails explicitly. Three boundary/atomicity controls,
+real discovery with lost publication recovery, and 636 Python checks pass with
+five existing skips. Controller activation and a native valid-number build remain
+required; original failures are retained in the
+[allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
+
 Android and iOS now have retained-app acceptance producers and a separate native
 workflow. They install distinct signed releases on a fresh owned AVD/Simulator,
 create state with the baseline, then upgrade, roll back and restore through normal

@@ -1,5 +1,13 @@
 ## Stable contracts and released clients (2026-10-01)
 
+Run `release_ios_versions_test.py` and `release_prepare_test.py`. Require patch
+and minor carries, monotonic allocation above retained invalid reservations,
+exhaustion refusal, invalid-number rejection before Git preparation or partial
+ledger writes, and idempotent reservation after a lost source-ref publication.
+Use the signing worker's existing numeric constraints throughout. Retain the
+original failed `1.0.100` worker and require a fresh native build with a valid new
+reservation; component controls do not qualify the signed application.
+
 Run `scripts/check_contracts.py`, the `contracts_test.py` negative controls,
 `scripts/check-generated.py` and `scripts/check-released-client.py`. The retained
 consumer must use unchanged API 2 client/RPC source, attach to the current real

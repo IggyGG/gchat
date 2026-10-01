@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 import time
 
-from release_pair import canonical, identity, validate
+from release_pair import canonical, identity, next_ios_build_number, validate
 from release_coordinator import atomic_json
 
 
@@ -133,7 +133,7 @@ def discover(config, state, ledger):
     desktop = '.'.join(map(str, (*desktop[:2], desktop[2] + 1)))
     android = str(max([int(baseline['android']), *[int(p['versions']['android']) for p in previous]]) + 1)
     ios = max([version(baseline['ios']), *[version(p['versions']['ios']) for p in previous]])
-    ios = '.'.join(map(str, (*ios[:2], ios[2] + 1)))
+    ios = next_ios_build_number('.'.join(map(str, ios)))
     from release_ledger import PLATFORMS
     versions = {p: android if p == 'android' else ios if p == 'ios' else desktop for p in PLATFORMS}
     pair = hashlib.sha256(canonical({'sources': upstream, 'policy': policy})).hexdigest()

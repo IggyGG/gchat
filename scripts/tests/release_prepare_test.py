@@ -54,7 +54,7 @@ class PreparationTests(unittest.TestCase):
             (origin/'release/automation/policy.json').write_text('{"channel":"production"}')
             git('add','.');git('commit','-m','initial')
             config={p:{'mirror':str(root/(p+'.git')),'url':str(origin)} for p in ('gchat','gcoms')}
-            config.update(version_floor={'desktop':'1.0.0','android':'1','ios':'1.0.0'},settle_seconds=0,candidate_remotes=[str(origin)],companion_remotes=[])
+            config.update(version_floor={'desktop':'1.0.0','android':'1','ios':'1.0.99'},settle_seconds=0,candidate_remotes=[str(origin)],companion_remotes=[])
             state=root/'state';state.mkdir();ledger=Ledger(state/'db')
             try:
                 self.assertIsNone(discover(config,state,ledger))
@@ -68,6 +68,7 @@ class PreparationTests(unittest.TestCase):
                 self.assertEqual(discover(config,state,ledger),release)
                 self.assertEqual(len(ledger.status()['candidates']),1)
                 manifest=ledger.manifest(release)
+                self.assertEqual(manifest['versions']['ios'],'1.1.0')
                 self.assertEqual(git('rev-parse',manifest['refs']['gchat']),manifest['sources']['gchat']['commit'])
                 # Documentation does not change application or controller bytes.
                 stable=root/'stable-coms.git'

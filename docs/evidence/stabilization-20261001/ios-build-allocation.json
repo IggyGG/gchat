@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "scope": "Automatic iOS build reservation; existing signing and runtime gates unchanged",
+  "original_failed_run": 36866692098,
+  "original_reserved_number": "1.0.100",
+  "original_gchat_commit": "40f4cecc1f06e6c5793eb611da0168acc6b62ea7",
+  "behavior": {
+    "patch_carry": "1.0.99 -> 1.1.0",
+    "minor_carry": "1.99.99 -> 2.0.0",
+    "advance_above_failed_overflow_reservations": true,
+    "invalid_number_rejected_before_git_preparation_and_atomic_reservation": true,
+    "immutable_old_reservations_preserved": true,
+    "exhaustion_rejected": true,
+    "same_validator_as_signing_worker": true
+  },
+  "validation": {
+    "focused_controls": 3,
+    "real_discovery_and_failed_push_recovery": true,
+    "python_tests": 636,
+    "existing_skips": 5,
+    "passed": true
+  },
+  "controller_activation": "pending",
+  "native_valid_number_build": "pending",
+  "source_sha256": {
+    "scripts/release_pair.py": "68ce4991ca25be435dda21df139390dee92a314cd054bdee252e3081a9a2bfb7",
+    "scripts/release_discovery.py": "96f0e01d98a39c135f1363531a33ac94ba1baccc2cbd891c11d6e7dfbd1e3a65",
+    "scripts/release_prepare.py": "1a855d945cdd7c1b3c90e82f22aaef9c7808345e742be7343c3c756b49c1b00f",
+    "scripts/ios-build.py": "e65dae0cd234b1d759e3451e04fe5687bc36dea17a89fd8ad33ce88b82d214b1",
+    "scripts/tests/release_ios_versions_test.py": "a5069ff3ccbff13b75b28c3a1c1e43292eb43672ea47dcbc48514a441431816c",
+    "scripts/tests/release_prepare_test.py": "957b0cfe5a8a50bf102f709f45715bbdf448e1bb2d1394a0e5df9a47b7248907"
+  },
+  "evidence": [
+    {
+      "path": "test-evidence/stabilization-20261001/ios-current-36866692098-failure.log",
+      "sha256": "1f782bbe54bbe6dad8a524c144556a1fbc2ec6e99bbe6568a14379db1e1253be"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-version-python-99.log",
+      "sha256": "677fe34feac94c8dda11468cc2dd9120981f44cbbc728f58c407eb9b4a79f840"
+    }
+  ],
+  "existing_build_policy_reference": "https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html"
+}

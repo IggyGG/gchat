@@ -31,6 +31,7 @@ import zipfile
 
 from paired_sources import prepare_pair, verify_derived_inputs, verify_resolved_protocol
 from release_evidence import digest, source_identity
+from release_pair import ios_build_number as build_number
 
 BUNDLE = 'boo.gchat.app'
 TEAM = 'U93DVTJ3T5'
@@ -77,12 +78,6 @@ def secret_command(command):
     except subprocess.TimeoutExpired:
         raise ValueError('private signing command timed out') from None
     require(result.returncode == 0, 'private signing setup/cleanup command failed')
-
-
-def build_number(value):
-    require(re.fullmatch(r'[1-9][0-9]{0,3}\.[0-9]{1,2}\.[0-9]{1,2}', value),
-            'build number must use Apple numeric major.minor.patch (four/two/two digits)')
-    return value
 
 
 def signing_pin():
