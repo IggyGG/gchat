@@ -77,6 +77,14 @@ class MobileAcceptanceTests(unittest.TestCase):
                 changed['phases'][1]['encrypted_cache_sha256'] = bad
                 with self.assertRaises(ValueError):
                     acceptance.qualify_native(report, changed, network, manifest, target, specs, 110)
+            changed = copy.deepcopy(rollback)
+            for phase in changed['phases']:
+                phase['encrypted_cache_sha256'] = phase['cache_sha256']
+            with self.assertRaises(ValueError):
+                acceptance.qualify_native(report, changed, network, manifest, target, specs, 110)
+            with self.assertRaises(ValueError):
+                acceptance.qualify_native({**report,'installation_cleanup':[]},rollback,network,
+                                          manifest,target,specs,110)
 
     def test_desktop_or_ordinary_picker_receipt_cannot_qualify_mobile(self):
         manifest, specs, report, rollback, network = mobile_fixture()
@@ -115,11 +123,13 @@ class MobileAcceptanceTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as denied:
                 post('/next', {'ready': True}, token='wrong')
             self.assertEqual(denied.exception.code, 403)
+            denied.exception.close()
             worker.start()
             command = post('/next', {'ready': True})
             with self.assertRaises(HTTPError) as unknown:
                 post('/result', {'id': '0' * 32, 'passed': True})
             self.assertEqual(unknown.exception.code, 400)
+            unknown.exception.close()
             self.assertEqual(post('/result', {'id': command['id'], 'passed': True, 'value': True}),
                              {'accepted': True})
             worker.join(timeout=5)
@@ -128,6 +138,7 @@ class MobileAcceptanceTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as duplicate:
                 post('/result', {'id': command['id'], 'passed': True, 'value': True})
             self.assertEqual(duplicate.exception.code, 400)
+            duplicate.exception.close()
             with self.assertRaisesRegex(ValueError, 'original XCTest command deadline'):
                 bridge.call('ready', timeout=0.02)
         finally:

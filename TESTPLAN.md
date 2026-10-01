@@ -51,6 +51,8 @@ export hashes, covered ACKs, the original 16 MiB/360-second/600-second interrupt
 network check and verified owned-device/process cleanup. Compile only the XCTest
 runner. No application debug API, re-signing or personal-device state can qualify
 this gate. Native UI execution and live activation are still pending.
+Run `release_config_test.py` to require a reconcilable acceptance recipe and its
+freshness limit for every installed platform, with SDK qualification separate.
 Windows fixture cleanup must close SQLite and temporary upload handles before
 removal. Linux grant-store ownership and Kubernetes rollout locks require their
 POSIX host; portable invalid-authority guards still execute on every platform.

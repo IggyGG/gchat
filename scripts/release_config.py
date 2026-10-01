@@ -20,10 +20,9 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
         workers[target]={'build':build,
             'verify':recipe('release_verify.py','--state',state,'--android-tools','/usr/bin',timeout=600),
             'compatibility':recipe('release_compatibility.py','--receipts',state/'acceptance'/target)}
-        if target not in ('android', 'ios'):
-            acceptance = recipe('release_acceptance.py', '--state', state, '--config', config/'acceptance.json', timeout=900)
-            acceptance['max_age_seconds'] = 3000
-            workers[target]['acceptance'] = acceptance
+        acceptance = recipe('release_acceptance.py', '--state', state, '--config', config/'acceptance.json', timeout=900)
+        acceptance['max_age_seconds'] = 3000
+        workers[target]['acceptance'] = acceptance
         if target in ('android','ios'):
             workers[target].update({stage:recipe('release_store_worker.py','--state',state,'--config',config/'stores.json',timeout=600) for stage in ('submit','observe')})
         else:workers[target]['publish']=recipe('release_publish.py','--state',state,'--config',config/'publisher.json',timeout=900)

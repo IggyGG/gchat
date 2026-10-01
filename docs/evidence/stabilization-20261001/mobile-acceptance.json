@@ -3,7 +3,7 @@
   "scope": "Retained installed mobile UI acceptance producers; component evidence only",
   "parent": "47264a3b8a7b49b4e09ee4699090b5e1ed3aafe2",
   "source_sha256": {
-    "scripts/release_acceptance.py": "2c617ea5d185785aec444c3167392b718869eef37165e016d5e51b84fb555cb0",
+    "scripts/release_acceptance.py": "a59e3c5d457bed8bdd67929495712da552ff3892ded13b84df1f4174d42ddab8",
     "scripts/android-build.py": "a2b07a7a366536e58fe87aa2836bb03c549f147192ecc6acc717fdac4176a47e",
     "scripts/mobile_acceptance_inputs.py": "6923354d51436703f59052c43579522404e2ddca5aee2803cc197487586307cc",
     "scripts/mobile_android_ui.py": "1b936c73b901e22dd047a4bb7af1124f00a213b13edc79408f9238290feab091",
@@ -12,7 +12,8 @@
     "scripts/test-mobile-upgrade.py": "96dd383e9a1cf888e07d0a2365bafdf356d0f317ef07daddf4a69425dd38bbd4",
     "scripts/fixtures/ios-acceptance/AcceptanceTests.swift": "75a381edde32149a9e3559ea9de164a6ac70807c5bcb6224288861e2142496a4",
     ".github/workflows/mobile-acceptance.yml": "31e76a00889918fe2fac8d4edbb3067f61cdd259f4bfaa4438b11b1d71f02f44",
-    "scripts/tests/mobile_acceptance_test.py": "5e6342e37a7a955fd6ef11959c5a4390b9cdbbbbb4550f1c5ec8d619b418aa35"
+    "scripts/tests/mobile_acceptance_test.py": "570755c270d2f2da7cddedbaf924cdee8cd9e34cd37f7e2f24cc8fd8e825a6d1",
+    "scripts/release_config.py": "3d6633f3f80fc30880fae63aedaefa09032b35be4e06b31b339debef55ee022f"
   },
   "checks": {
     "mobile_component_passed": 9,
@@ -25,7 +26,9 @@
     "source_inventory": 792,
     "stable_methods": 18,
     "optional_methods": 3,
-    "api2_fixtures_unchanged": true
+    "api2_fixtures_unchanged": true,
+    "every_installed_platform_requires_reconcilable_acceptance": true,
+    "full_python_log_sha256": "9059fb058a1850ee34ea6811b4c8f131db7c52fe24999190ff1a52dd090fe971"
   },
   "behavior": {
     "api": 3,

@@ -11,6 +11,8 @@ iOS compiles only its XCTest runner, never the retained application. No personal
 profiles or physical devices are used. Dispatch waits for an exact-pair qualified
 native desktop peer before issuing its private expiring bootstrap grant. Mobile
 workers use the existing lost-reply, revocation and eight-relay observation gates.
+Generated controller configurations require the acceptance stage for every
+installed platform, including both mobile stores; the SDK keeps its separate gate.
 Component tests pass nine controls, including a real loopback XCTest bridge and
 unrelated-delivery-marker rejection. Full Python validation and actual native UI
 execution remain separately recorded in the

@@ -109,7 +109,7 @@ def qualify_native(report, rollback, network, manifest, target, specs, now):
         raise ValueError('native acceptance source, platform, cleanup or freshness failed')
     if target in ('android', 'ios') and (
             report.get('application_resigned') is not False or report.get('ui_driven') is not True
-            or report.get('physical_device_qualified') is not False):
+            or report.get('physical_device_qualified') is not False or not report.get('installation_cleanup')):
         raise ValueError('mobile acceptance needs the unchanged retained app and actual native UI')
     for name in ('current', 'baseline'):
         item = report.get('artifacts', {}).get(name, {})
@@ -136,6 +136,7 @@ def qualify_native(report, rollback, network, manifest, target, specs, now):
         raise ValueError('retained encrypted cache hash changed across rollback')
     if target in ('android', 'ios') and (
             not re.fullmatch('[0-9a-f]{64}', phases[0].get('encrypted_cache_sha256', ''))
+            or phases[0]['encrypted_cache_sha256'] == phases[0]['cache_sha256']
             or any(phase.get('encrypted_cache_sha256') != phases[0]['encrypted_cache_sha256']
                    for phase in phases[1:])):
         raise ValueError('actual retained mobile ciphertext changed across replacement')

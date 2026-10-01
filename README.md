@@ -91,6 +91,8 @@ same bounded 16 MiB interrupted transfer. The peer is the qualified current Linu
 or Apple Silicon package for that exact pair. Only the iOS XCTest runner is built;
 the applications are neither rebuilt nor re-signed. Component checks pass; native
 execution and live producer activation remain required.
+The generated coordinator config includes mobile acceptance before either store
+submission. Missing matching peers or baselines keeps that stage waiting.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer
