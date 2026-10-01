@@ -17,6 +17,9 @@ execution remain separately recorded in the
 [mobile checkpoint](docs/evidence/stabilization-20261001/mobile-acceptance.json).
 The live controller still runs `dfd65d4`; these producers and their initial mobile
 baselines must be qualified and activated before mobile publication can advance.
+The source mirror retained a secret-audit false positive in a plain test instruction.
+The wording is corrected and only that exact historical finding is allowlisted;
+the full reachable-history audit remains mandatory.
 
 Linux runs `36813732641` and `36823321752` passed qualification, then reached
 the 120-minute job limit during signed bundle building. Qualification and

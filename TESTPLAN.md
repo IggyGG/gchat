@@ -42,8 +42,8 @@ report. Attribute acceptance failures to their own recovery stage.
 Run `python3 -m unittest discover -s scripts/tests -p 'mobile_acceptance_test.py'`.
 Reject desktop/ordinary-picker receipts, changed ciphertext, re-signing, changed
 post-journey binaries, another message's delivery marker and missing exact-pair
-native peers. The actual XCTest loopback bridge must reject wrong tokens,
-unknown/duplicate replies and an expired original command deadline. Then execute
+native peers. The actual XCTest loopback bridge must reject incorrect credentials.
+It must also reject unknown or duplicate replies and expired command deadlines. Then execute
 `mobile-acceptance.yml` on the native Android/iOS workers with retained signed
 applications and distinct successful providers. Require baseline-created identity,
 rendered history and encrypted cache across all three replacements, genuine picker
