@@ -130,6 +130,10 @@
     {
       "path": "test-evidence/stabilization-20261001/watchdog-registry-repair-85.log",
       "sha256": "0caf0a9a3726895d00a72767f2e09ebf91a6c4f560ef6bbc668f65efdb6c73bb"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/linux-provider-success-87.json",
+      "sha256": "ef25963f02a34e468ab99d3fec0e55d6b9d1a7c9af62e4888237a75815d9fc41"
     }
   ],
   "native_progress": {
@@ -251,6 +255,24 @@
     "retained_exact_digest_repaired": true,
     "negative_job": "gchat-watchdog-registry-negative-85",
     "positive_job": "gchat-watchdog-registry-repair-85",
-    "completed_at": "2026-10-01T11:59:31Z"
+    "completed_at": "2026-10-01T11:59:31Z",
+    "source_policy_sha256": "201e5822ae717f60c2ca60a31c30d13f207bd69bcace5e42e136babc3c141163",
+    "live_policy_matches_source": true
+  },
+  "linux_split_provider": {
+    "run": 36844555101,
+    "artifact": 11158503767,
+    "controller": "cb6d0a2eb2589330e72979f26bf5a443ad1e4ad8",
+    "archive": "16c332900a3dbe7f390d8b45e8808a1ba22f572649f17e5da8848cd9bbc8f8ce",
+    "sources": {
+      "gchat": "cb6d0a2eb2589330e72979f26bf5a443ad1e4ad8",
+      "gcoms": "88b743d3961d51f6de13aaaf064bdbb6dc1130e3"
+    },
+    "manifest": "signed/build.json",
+    "conclusion": "success",
+    "scope": "Native qualification and signed packaging; original provider pair retained",
+    "qualification_passed": true,
+    "packaging_passed": true,
+    "fleet_rollout_qualified": false
   }
 }

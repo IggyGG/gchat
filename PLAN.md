@@ -11,6 +11,12 @@ iOS compiles only its XCTest runner, never the retained application. No personal
 profiles or physical devices are used. Dispatch waits for an exact-pair qualified
 native desktop peer before issuing its private expiring bootstrap grant. Mobile
 workers use the existing lost-reply, revocation and eight-relay observation gates.
+The iOS UI runner now verifies the exact entered passphrase through the existing
+Show/Hide control within the original ten-second value assertion. This avoids
+relying on the masked secure-field value, which failed the retained lifecycle
+run; original assertions and failed verdicts remain, and native rerun is pending.
+Full Python validation passes 632 checks with five existing skips in a short SSD
+temporary directory. Earlier long-path harness failures are retained separately.
 Generated controller configurations require the acceptance stage for every
 installed platform, including both mobile stores; the SDK keeps its separate gate.
 Component tests pass nine controls, including a real loopback XCTest bridge and

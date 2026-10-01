@@ -50,7 +50,10 @@ rendered history and encrypted cache across all three replacements, genuine pick
 export hashes, covered ACKs, the original 16 MiB/360-second/600-second interrupted
 network check and verified owned-device/process cleanup. Compile only the XCTest
 runner. No application debug API, re-signing or personal-device state can qualify
-this gate. Native UI execution is pending. Controller `d7e3e8d` passes 75 checks
+this gate. Verify iOS passphrase entry through the normal Show/Hide control and
+require the exact value in the original ten-second assertion, then hide it again.
+The original masked-field failure remains failed; real native rerun is required.
+Native UI execution is pending. Controller `d7e3e8d` passes 75 checks
 in an independent Kubernetes Job and is active with both mobile recipes and
 verified retained baselines. Retain its first registry-policy failure, corrected
 retention/repair result, ready-image observation and independent watchdog success.

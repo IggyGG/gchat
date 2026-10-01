@@ -65,7 +65,34 @@ final class GChatAcceptanceTests: XCTestCase {
         try require(focused)
         field.typeText(value)
         try dismissKeyboard()
-        try require(!((field.value as? String) ?? "").isEmpty)
+        if field.elementType == .secureTextField {
+            let label = field.label
+            try require(!label.isEmpty)
+            try passphraseVisibility("Show passphrase")
+            let revealed = app.webViews.textFields.matching(NSPredicate(format: "label == %@", label)).firstMatch
+            try wait(10) { revealed.exists && (revealed.value as? String) == value }
+            try passphraseVisibility("Hide passphrase")
+            try wait(10) { field.exists }
+        } else {
+            try require(!((field.value as? String) ?? "").isEmpty)
+        }
+    }
+
+    func passphraseVisibility(_ title: String) throws {
+        let button = app.webViews.buttons[title].firstMatch
+        let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
+        try wait(10) { button.exists && main.exists }
+        let deadline = ProcessInfo.processInfo.systemUptime + 10
+        while button.exists && (!button.isHittable || !main.frame.contains(button.frame))
+                && ProcessInfo.processInfo.systemUptime < deadline {
+            if button.frame.midY < main.frame.minY {
+                app.webViews.firstMatch.swipeDown()
+            } else {
+                app.webViews.firstMatch.swipeUp()
+            }
+        }
+        try require(button.isHittable && main.frame.contains(button.frame))
+        button.tap()
     }
 
     func unlock(_ create: Bool, _ value: String) throws {

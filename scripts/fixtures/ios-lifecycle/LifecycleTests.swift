@@ -55,13 +55,37 @@ final class GChatLifecycleTests: XCTestCase {
     }
 
     func waitForPopulated(_ field: XCUIElement) {
-        // WKWebView typing can target a stale focus after scrolling. Observe the
-        // intended native field before submitting; never log the entered value.
+        // WKWebView may omit the secure field's masked accessibility value.
+        // Use the application's normal visibility control to observe the exact
+        // input, then hide it again. The original ten-second assertion remains.
+        let label = field.label
+        XCTAssertTrue(field.exists && !label.isEmpty)
+        tapPassphraseVisibility("Show passphrase")
+        let revealed = app.webViews.textFields.matching(NSPredicate(format: "label == %@", label)).firstMatch
         let populated = NSPredicate { _, _ in
-            field.exists && !((field.value as? String) ?? "").isEmpty
+            revealed.exists && (revealed.value as? String) == self.passphrase
         }
         expectation(for: populated, evaluatedWith: nil)
         waitForExpectations(timeout: 10)
+        tapPassphraseVisibility("Hide passphrase")
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+    }
+
+    func tapPassphraseVisibility(_ title: String) {
+        let button = app.webViews.buttons[title].firstMatch
+        let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 10))
+        let deadline = ProcessInfo.processInfo.systemUptime + 10
+        while button.exists && (!button.isHittable || !main.frame.contains(button.frame))
+                && ProcessInfo.processInfo.systemUptime < deadline {
+            if button.frame.midY < main.frame.minY {
+                app.webViews.firstMatch.swipeDown()
+            } else {
+                app.webViews.firstMatch.swipeUp()
+            }
+        }
+        XCTAssertTrue(button.isHittable && main.frame.contains(button.frame))
+        button.tap()
     }
 
     func focusField(_ field: XCUIElement) {

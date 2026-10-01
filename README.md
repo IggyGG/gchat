@@ -23,6 +23,8 @@ to their qualification gates; see [current work](PLAN.md).
 Controller source `d7e3e8d` is active with 75 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile
 acceptance recipes and verified retained Android/iOS baselines are configured.
+iOS passphrase qualification uses normal Show/Hide controls to check the exact
+entered value within the original ten-second assertion; native rerun is pending.
 The pinned watchdog also repairs the exact retained controller digest through
 scoped registry access; the original blocked connection is retained as a control.
 Native SDK Linux and Windows recovery pass; fresh native size/Mac and installed acceptance

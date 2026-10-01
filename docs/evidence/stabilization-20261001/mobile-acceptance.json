@@ -10,10 +10,11 @@
     "scripts/mobile_installed_journey.py": "6714f6ce3bb99e07a112b2e0a6e21995c6774520036ddcc08abd94bfa9ca26bd",
     "scripts/mobile_ios_ui.py": "054aa6da73c981cf1b6cf6ce5d907244ee654126d5bbe3861e939b2adb1abbce",
     "scripts/test-mobile-upgrade.py": "96dd383e9a1cf888e07d0a2365bafdf356d0f317ef07daddf4a69425dd38bbd4",
-    "scripts/fixtures/ios-acceptance/AcceptanceTests.swift": "75a381edde32149a9e3559ea9de164a6ac70807c5bcb6224288861e2142496a4",
+    "scripts/fixtures/ios-acceptance/AcceptanceTests.swift": "66ccf9b4372f907f49bf4df418169b907084ee8648e899569f5b4ce40367383e",
     ".github/workflows/mobile-acceptance.yml": "31e76a00889918fe2fac8d4edbb3067f61cdd259f4bfaa4438b11b1d71f02f44",
     "scripts/tests/mobile_acceptance_test.py": "570755c270d2f2da7cddedbaf924cdee8cd9e34cd37f7e2f24cc8fd8e825a6d1",
-    "scripts/release_config.py": "3d6633f3f80fc30880fae63aedaefa09032b35be4e06b31b339debef55ee022f"
+    "scripts/release_config.py": "3d6633f3f80fc30880fae63aedaefa09032b35be4e06b31b339debef55ee022f",
+    "scripts/fixtures/ios-lifecycle/LifecycleTests.swift": "575e2e41dcfd0624dad7a83337c0993dd5e618a9595ccdcd05253461a8d6b77d"
   },
   "checks": {
     "mobile_component_passed": 9,
@@ -64,5 +65,32 @@
     "approved_on": "2026-10-01",
     "scope": "Initial feature release; fresh native qualification required",
     "original_workflow_failures_preserved": true
-  }
+  },
+  "ios_field_observation": {
+    "normal_app_visibility_control": true,
+    "exact_entered_value_required": true,
+    "value_assertion_seconds": 10,
+    "passphrase_hidden_after_check": true,
+    "native_execution": "pending",
+    "original_lifecycle_run": 36837842309,
+    "original_lifecycle_passed": false,
+    "original_assertion": "waitForPopulated at LifecycleTests.swift:64"
+  },
+  "additional_evidence": [
+    {
+      "path": "test-evidence/stabilization-20261001/ios-exact-input-python-88.log",
+      "sha256": "d46b6af24b42a2806e71465248c30a201e795e7909798415fac0fef9b199e22d",
+      "scope": "short-89 passes; earlier attempts fail due to the workstation Unix socket temporary-path bound"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-exact-input-python-short-88.log",
+      "sha256": "fce9ccae2a3f4bcca9ed2d08514f7fe4bc47db771aa315b947889a5066a4e732",
+      "scope": "short-89 passes; earlier attempts fail due to the workstation Unix socket temporary-path bound"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-exact-input-python-short-89.log",
+      "sha256": "c825783b431367dedbd7365e640b33b154c22cc011a554f934a8172566116b3c",
+      "scope": "short-89 passes; earlier attempts fail due to the workstation Unix socket temporary-path bound"
+    }
+  ]
 }
