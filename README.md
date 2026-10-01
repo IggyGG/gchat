@@ -70,7 +70,7 @@ push and controller from the operator's installed policies. Each target requires
 a real canary; controller activation follows the other services. The recovery job
 shares the controller's node and volume without repeatedly changing file ownership.
 
-`release_acceptance.py` dispatches platform-specific desktop acceptance from
+`release_acceptance.py` dispatches platform-specific desktop and mobile acceptance from
 distinct retained releases. It creates disposable state with the baseline, then
 upgrades, rolls back and restores the current application, requiring identity,
 history, encrypted cache and covered delivery throughout. Its current/baseline
@@ -82,6 +82,15 @@ without discarding evidence; an unknown dispatch is reconciled before another
 worker can run. Initial baselines may be pinned in `/config/acceptance.json`;
 otherwise the controller selects the platform's latest normally published native
 provider. Missing baselines or native/mobile evidence keep publication waiting.
+
+`mobile-acceptance.yml` installs the retained Android split APKs or iOS Simulator
+app on a fresh owned device and drives ordinary UI, deep links and the system
+file picker. It checks rendered history, identity, unchanged encrypted cache and
+covered delivery across baseline → current → baseline → current, then runs the
+same bounded 16 MiB interrupted transfer. The peer is the qualified current Linux
+or Apple Silicon package for that exact pair. Only the iOS XCTest runner is built;
+the applications are neither rebuilt nor re-signed. Component checks pass; native
+execution and live producer activation remain required.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer

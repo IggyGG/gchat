@@ -1,0 +1,299 @@
+"""Real accessibility/picker driver for a newly created, owned Android AVD.
+
+UI hierarchies and invitation values stay in memory. No application endpoint,
+debug build, WebView instrumentation or personal-device operation is used.
+"""
+import hashlib
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import time
+import xml.etree.ElementTree as ET
+
+from mobile_acceptance_inputs import require
+from release_network_canary import module
+
+android = module('android-build')
+
+
+def labels(node):
+    return [value for child in node.iter('node')
+            for value in (child.get('text', ''), child.get('content-desc', '')) if value]
+
+
+def delivery_row(tree, body, known_bodies):
+    # A delivered suffix elsewhere in the transcript cannot qualify this send.
+    # Require one smallest message subtree containing exactly this test body.
+    for node in reversed(list(tree.iter('node'))):
+        values = labels(node)
+        if body in values and any(value.strip() == '· delivered' for value in values):
+            if {value for value in values if value in known_bodies} == {body}:
+                return True
+    return False
+
+
+class AndroidUI:
+    dump = '/sdcard/gchat-mobile-acceptance-ui.xml'
+
+    def __init__(self, serial, output, passphrase, deadline):
+        match = re.fullmatch(r'emulator-(\d{4})', serial)
+        require(match and 5554 <= int(match[1]) <= 5682 and int(match[1]) % 2 == 0,
+                'owned explicit Android emulator required')
+        sdk = android.sdk(require_ndk=False)
+        self.adb = [str(sdk / 'platform-tools/adb'), '-s', serial]
+        self.output, self.passphrase, self.deadline = output, passphrase, deadline
+        self.installed = False
+        self.uid = None
+        self.names, self.bodies = set(), set()
+        self.exports = []
+        require(self.shell('getprop', 'ro.kernel.qemu') == '1', 'physical device refused')
+        expected = 'gchat-release-fixture-' + serial.removeprefix('emulator-')
+        require(self.command('emu', 'avd', 'name').splitlines()[0] == expected,
+                'emulator was not created by this test driver')
+        require(not self.shell('pm', 'path', android.PACKAGE, absent=True),
+                'GChat already installed; fresh owned AVD required')
+        android.root_emulator(self.adb, output / 'adb-root.json')
+        android.prepare_emulator_user(self.shell)
+        require(self.shell('getprop', 'ro.product.cpu.abi') == 'x86_64'
+                and int(self.shell('getprop', 'ro.build.version.sdk')) >= 26,
+                'Android test ABI/API differs')
+
+    def command(self, *args, binary=False, absent=False):
+        left = min(120, self.deadline() - time.monotonic())
+        require(left > 0, 'original mobile journey deadline')
+        result = subprocess.run([*self.adb, *map(str, args)], capture_output=True, timeout=left)
+        if absent and result.returncode == 1 and not result.stdout.strip() and not result.stderr.strip():
+            return b'' if binary else ''
+        # Never include a command, stderr or hierarchy in an exception: native
+        # intent/input arguments can contain the private canary invitation.
+        require(result.returncode == 0, 'owned Android command failed')
+        return result.stdout if binary else result.stdout.decode().strip()
+
+    def shell(self, *args, absent=False):
+        return self.command('shell', *args, absent=absent)
+
+    def tree(self):
+        self.shell('rm', '-f', self.dump)
+        try:
+            self.shell('uiautomator', 'dump', self.dump)
+            return ET.fromstring(self.shell('cat', self.dump))
+        except (ValueError, ET.ParseError):
+            return ET.Element('hierarchy')
+
+    def until(self, fn, timeout=60):
+        end = min(self.deadline(), time.monotonic() + timeout)
+        while time.monotonic() < end:
+            value = fn()
+            if value:
+                require(time.monotonic() <= end, 'late mobile UI observation')
+                return value
+            time.sleep(0.4)
+        raise TimeoutError('original mobile UI observation deadline')
+
+    def node(self, predicate, timeout=60):
+        def find():
+            return next((node for node in self.tree().iter('node')
+                         if predicate(node) and android.ui_bounds(node)), None)
+        # ElementTree elements have false truth values when childless.
+        return self.until(lambda: (node,) if (node := find()) is not None else None, timeout)[0]
+
+    @staticmethod
+    def text(value):
+        return lambda node: node.get('text') == value or node.get('content-desc') == value
+
+    def click(self, value):
+        node = self.node(self.text(value))
+        self.tap(node)
+
+    def tap(self, node):
+        x1, y1, x2, y2 = android.ui_bounds(node)
+        self.shell('input', 'tap', (x1 + x2) // 2, (y1 + y2) // 2)
+
+    def type(self, node, value):
+        self.tap(node)
+        self.shell('input', 'text', shlex.quote(value.replace(' ', '%s')))
+        self.shell('input', 'keyevent', '4')
+
+    def no_listener(self):
+        require(self.uid is not None, 'installed mobile UID unavailable')
+        require(not android.listener_rows(self.shell('cat', '/proc/net/tcp', '/proc/net/tcp6'), self.uid),
+                'outbound application opened a TCP listener')
+
+    def install(self, item):
+        if self.installed:
+            self.stop()
+        self.installed = True  # Partial installation also belongs to this AVD.
+        self.command('install-multiple', '-r', '-d', '--no-streaming', *item['apks'])
+        self.activity = item['activity']
+        self.uid = android.installed_package_uid(
+            self.shell('pm', 'list', 'packages', '-U', '--user', '0', android.PACKAGE))
+        self.no_listener()
+
+    def launch(self):
+        self.shell('input', 'keyevent', 'KEYCODE_WAKEUP')
+        self.shell('wm', 'dismiss-keyguard')
+        self.shell('am', 'start', '-W', '-n', android.PACKAGE + '/' + self.activity)
+
+    def stop(self):
+        self.shell('am', 'force-stop', android.PACKAGE)
+        require(not self.shell('pidof', android.PACKAGE, absent=True),
+                'owned application survived force-stop')
+
+    def unlock(self, create=False):
+        self.launch()
+        button = 'Create identity' if create else 'Reconnect'
+        self.node(self.text(button))
+        for _ in range(2 if create else 1):
+            field = self.node(lambda node: node.get('package') == android.PACKAGE
+                              and node.get('password') == 'true' and not node.get('text'))
+            self.type(field, self.passphrase)
+        self.click(button)
+        self.until(lambda: not any(self.text(button)(node) for node in self.tree().iter('node')), 120)
+        self.no_listener()
+
+    def join(self, invitation):
+        require(invitation.startswith('gcoms:') and len(invitation.encode()) <= 180000,
+                'bounded conversation invitation required')
+        self.shell('am', 'start', '-W', '-a', 'android.intent.action.VIEW',
+                   '-d', shlex.quote(invitation), android.PACKAGE)
+        self.click('Review invitation')
+        self.node(self.text('Your nickname in this channel'), 120)
+        field = self.node(lambda node: node.get('package') == android.PACKAGE
+                          and node.get('class') == 'android.widget.EditText'
+                          and node.get('password') != 'true')
+        self.type(field, 'mobile')
+        self.click('Join')
+        self.node(self.text('Message or command'), 120)
+
+    def identity(self):
+        self.tap(self.node(lambda node: node.get('content-desc', '').startswith('Network:')))
+        self.click('Your identity')
+        def identify():
+            values = labels(self.tree())
+            ids = {value for value in values if re.fullmatch('[0-9a-f]{64}', value)}
+            safety = {value for value in values if re.fullmatch(r'[A-Z2-7]{8}(?: [A-Z2-7]{8}){4}', value)}
+            return next(iter(ids)) + '\n' + next(iter(safety)) if len(ids) == len(safety) == 1 else None
+        value = self.until(identify)
+        self.click('Close dialog')
+        return hashlib.sha256(value.encode()).hexdigest()
+
+    def send(self, body):
+        self.bodies.add(body)
+        self.type(self.node(self.text('Message or command')), body)
+        self.click('Send')
+
+    def received(self, body):
+        self.bodies.add(body)
+        return body in labels(self.tree())
+
+    def delivered(self, body):
+        return delivery_row(self.tree(), body, self.bodies)
+
+    def history(self, bodies):
+        self.bodies.update(bodies)
+        missing = set(bodies)
+        scrolled = 0
+        # UIAutomator can omit offscreen WebView text. Walk the rendered
+        # transcript, never a database or application instrumentation endpoint.
+        for _ in range(12):
+            tree = self.tree()
+            missing.difference_update(labels(tree))
+            if not missing:
+                break
+            transcript = next((node for node in tree.iter('node')
+                if node.get('content-desc', '').endswith(' messages') and android.ui_bounds(node)), None)
+            require(transcript is not None, 'rendered mobile transcript unavailable')
+            x1, y1, x2, y2 = android.ui_bounds(transcript)
+            self.shell('input', 'swipe', (x1 + x2) // 2, y1 + (y2 - y1) // 4,
+                       (x1 + x2) // 2, y1 + 3 * (y2 - y1) // 4, 250)
+            scrolled += 1
+        require(not missing, 'rendered mobile history was lost after replacement')
+        # Return to the tail through the same transcript before sending again.
+        for _ in range(scrolled):
+            tree = self.tree()
+            transcript = next((node for node in tree.iter('node')
+                if node.get('content-desc', '').endswith(' messages') and android.ui_bounds(node)), None)
+            if transcript is None:
+                break
+            x1, y1, x2, y2 = android.ui_bounds(transcript)
+            self.shell('input', 'swipe', (x1 + x2) // 2, y1 + 3 * (y2 - y1) // 4,
+                       (x1 + x2) // 2, y1 + (y2 - y1) // 4, 250)
+
+    def file_action(self, name, action):
+        self.names.add(name)
+        self.tap(self.node(lambda node: node.get('content-desc', '').startswith('Files:')))
+        def find():
+            for node in reversed(list(self.tree().iter('node'))):
+                values = labels(node)
+                if name in values and set(values) & self.names == {name}:
+                    button = next((child for child in node.iter('node')
+                                   if self.text(action)(child) and android.ui_bounds(child)), None)
+                    if button is not None:
+                        return (button,)
+            return None
+        self.tap(self.until(find, 120)[0])
+        if action != 'Save file…':
+            self.click('Close dialog')
+
+    def progress(self, name, size):
+        self.names.add(name)
+        for node in self.tree().iter('node'):
+            values = labels(node)
+            if name in values and set(values) & self.names == {name}:
+                for value in values:
+                    match = re.fullmatch(r'([\d,]+) / ([\d,]+) bytes verified', value)
+                    if match and int(match[2].replace(',', '')) == size:
+                        return int(match[1].replace(',', ''))
+        return None
+
+    def cache_hash(self, ident):
+        require(re.fullmatch('[0-9a-f]{32}', ident), 'invalid retained file ID')
+        root = '/data/user/0/' + android.PACKAGE + '/files'
+        paths = self.shell('find', root, '-type', 'f', '-name', '*.piece').splitlines()
+        selected = [path for path in paths if Path(path).parent.name == ident]
+        require(len(selected) == 1 and Path(selected[0]).name == '0.piece'
+                and selected[0].startswith(root + '/'), 'one retained encrypted cache piece required')
+        return hashlib.sha256(self.command('exec-out', 'cat', selected[0], binary=True)).hexdigest()
+
+    def export(self, name, phase):
+        self.file_action(name, 'Save file…')
+        filename = 'gchat-acceptance-' + phase + '.bin'
+        require(re.fullmatch(r'gchat-acceptance-[a-z0-9-]+\.bin', filename), 'invalid owned export name')
+        field = self.node(lambda node: node.get('package', '').endswith('.documentsui')
+                          and node.get('class') == 'android.widget.EditText', 30)
+        self.tap(field)
+        self.shell('input', 'keyevent', 'KEYCODE_MOVE_END')
+        require(0 < len(field.get('text', '')) <= 255, 'unexpected system export filename')
+        self.shell('input', 'keyevent', *(['KEYCODE_DEL'] * len(field.get('text', ''))))
+        self.type(field, filename)
+        self.node(lambda node: node.get('package', '').endswith('.documentsui')
+                  and node.get('class') == 'android.widget.EditText' and node.get('text') == filename, 10)
+        # Select the system provider's Downloads root and save its exact bytes.
+        self.tap(self.node(lambda node: node.get('package', '').endswith('.documentsui')
+                          and node.get('content-desc') == 'Show roots', 30))
+        self.click('Downloads')
+        self.click('Save')
+        path = '/sdcard/Download/' + filename
+        self.exports.append(path)
+        self.until(lambda: filename in self.shell('ls', '-1', '/sdcard/Download').splitlines(), 30)
+        data = self.command('exec-out', 'cat', path, binary=True)
+        # Returning from the real system picker preserves the manual unlock flow.
+        self.unlock()
+        return hashlib.sha256(data).hexdigest()
+
+    def cleanup(self):
+        errors = []
+        if self.installed:
+            for operation in (lambda: self.stop(), lambda: self.command('uninstall', android.PACKAGE)):
+                try:
+                    operation()
+                except Exception as error:
+                    errors.append(type(error).__name__)
+        try:
+            self.shell('rm', '-f', self.dump, *self.exports)
+            require(not self.shell('pm', 'path', android.PACKAGE, absent=True),
+                    'owned mobile profile was not removed')
+        except Exception as error:
+            errors.append(type(error).__name__)
+        return {'passed': not errors, 'errors': errors}

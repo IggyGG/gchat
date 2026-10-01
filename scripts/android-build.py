@@ -1034,7 +1034,7 @@ def emulator_environment(root, inherited):
     return environment, avds
 
 
-def emulator(args):
+def emulator(args, installed_journey=None):
     root = args.output.resolve()
     port = getattr(args, 'port', 5554)
     require(type(port) is int and 5554 <= port <= 5682 and port % 2 == 0,
@@ -1084,9 +1084,15 @@ def emulator(args):
             else:
                 raise ValueError('emulator failed its bounded boot deadline')
             run([*adb, 'shell', 'input', 'keyevent', '82'], timeout=30)
-            smoke(argparse.Namespace(output=root, serial=serial, probe_picker=getattr(args, 'probe_picker', False),
-                                     from_bundle=getattr(args, 'from_bundle', False),
-                                     store_screenshots=getattr(args, 'store_screenshots', False)))
+            if installed_journey is None:
+                smoke(argparse.Namespace(output=root, serial=serial, probe_picker=getattr(args, 'probe_picker', False),
+                                         from_bundle=getattr(args, 'from_bundle', False),
+                                         store_screenshots=getattr(args, 'store_screenshots', False)))
+            else:
+                # Test-process seam: the caller owns a real UI journey against
+                # retained signed applications on this exact disposable AVD.
+                # No callback is installed in the application or exposed by IPC.
+                installed_journey(serial)
             report['passed'] = True
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)

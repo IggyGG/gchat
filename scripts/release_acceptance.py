@@ -28,8 +28,9 @@ from release_publish import job
 from release_compatibility import verify as verify_compatibility
 
 WORKFLOW = 'native-acceptance.yml'
+MOBILE_WORKFLOW = 'mobile-acceptance.yml'
 PREFIX = 'Native acceptance '
-TARGETS = ('linux-x86_64', 'windows-x86_64', 'macos-aarch64', 'macos-x86_64')
+TARGETS = ('linux-x86_64', 'windows-x86_64', 'macos-aarch64', 'macos-x86_64', 'android', 'ios')
 
 
 def digest(path):
@@ -52,11 +53,18 @@ def provider(state, manifest, target):
             part in ('inputs', 'build', 'native-tests', 'infrastructure') for part in Path(name).parts[:-1])]
         if len(reports) != 1: raise ValueError('acceptance provider build report is ambiguous')
         build = json.loads(source.read(reports[0]))
-    if build.get('sources') != {k: v['commit'] for k, v in manifest['sources'].items()} or build.get('target') != target:
+    expected = {k: v['commit'] for k, v in manifest['sources'].items()}
+    if target in ('android', 'ios'):
+        sources = {key: value.get('commit') for key, value in build.get('sources', {}).items()}
+        if build.get('passed') is not True or build.get('sources_unchanged') is not True or sources != expected:
+            raise ValueError('mobile acceptance provider source/native verdict differs')
+    else:
+        sources = build.get('sources')
+    if sources != expected or (target not in ('android', 'ios') and build.get('target') != target):
         raise ValueError('acceptance provider target/source differs')
     result = {'run': int(proof['external_id']), 'artifact': proof['worker']['artifact_id'],
               'controller': proof['worker']['workflow_commit'], 'archive': sha,
-              'sources': build['sources'], 'manifest': reports[0], 'conclusion': 'success'}
+              'sources': sources, 'manifest': reports[0], 'conclusion': 'success'}
     if target == 'windows-x86_64':
         executables = [item for item in build['executables'] if item['name'] == 'gchat-desktop.exe']
         if len(executables) != 1: raise ValueError('acceptance needs one Windows executable')
@@ -89,7 +97,7 @@ def cleanup(marker, intent, grant):
 
 
 def qualify_native(report, rollback, network, manifest, target, specs, now):
-    driver = module('test-native-upgrade')
+    driver = module('test-mobile-upgrade' if target in ('android', 'ios') else 'test-native-upgrade')
     driver.validate_inputs(specs)
     if (report.get('schema') != 1 or report.get('passed') is not True
             or report.get('platform') != target or report.get('sources') != manifest['sources']
@@ -99,6 +107,10 @@ def qualify_native(report, rollback, network, manifest, target, specs, now):
             or type(report.get('completed_at')) is not int or not 0 <= now - report['completed_at'] <= 3000
             or any(item.get('passed') is not True for item in report.get('installation_cleanup', []))):
         raise ValueError('native acceptance source, platform, cleanup or freshness failed')
+    if target in ('android', 'ios') and (
+            report.get('application_resigned') is not False or report.get('ui_driven') is not True
+            or report.get('physical_device_qualified') is not False):
+        raise ValueError('mobile acceptance needs the unchanged retained app and actual native UI')
     for name in ('current', 'baseline'):
         item = report.get('artifacts', {}).get(name, {})
         if (item.get('archive_sha256') != specs[name]['archive'] or item.get('sources') != specs[name]['sources']
@@ -122,6 +134,11 @@ def qualify_native(report, rollback, network, manifest, target, specs, now):
     if (not re.fullmatch('[0-9a-f]{64}', phases[0].get('cache_sha256', ''))
             or any(phase.get('cache_sha256') != phases[0]['cache_sha256'] for phase in phases[1:])):
         raise ValueError('retained encrypted cache hash changed across rollback')
+    if target in ('android', 'ios') and (
+            not re.fullmatch('[0-9a-f]{64}', phases[0].get('encrypted_cache_sha256', ''))
+            or any(phase.get('encrypted_cache_sha256') != phases[0]['encrypted_cache_sha256']
+                   for phase in phases[1:])):
+        raise ValueError('actual retained mobile ciphertext changed across replacement')
     if network.get('inputs', {}).get('sources') != manifest['sources'] or network.get('binary_sha256') != report['artifacts']['current']['binary_sha256']:
         raise ValueError('installed-network journey used a different native application')
     verify_journey(network, manifest)
@@ -133,15 +150,19 @@ def qualify_native(report, rollback, network, manifest, target, specs, now):
 def collect(state, config, manifest, target, work, request):
     if target not in TARGETS: raise ValueError('native acceptance cannot qualify a different platform')
     marker = work / 'acceptance-intent.json'
+    workflow = MOBILE_WORKFLOW if target in ('android', 'ios') else WORKFLOW
     grant = json.loads(Path(config['grant_config']).read_text())
     intent = json.loads(marker.read_text()) if marker.exists() else None
     if intent is None:
         current = provider(state, manifest, target); previous = baseline(state, target, config)
         if current is None or previous is None: return None
-        from importlib.util import spec_from_file_location, module_from_spec
-        spec = spec_from_file_location('native_upgrade', Path(__file__).with_name('test-native-upgrade.py'))
-        driver = module_from_spec(spec); spec.loader.exec_module(driver)
-        inputs = driver.validate_inputs({'target': target, 'current': current, 'baseline': previous})
+        driver = module('test-mobile-upgrade' if target in ('android', 'ios') else 'test-native-upgrade')
+        inputs = {'target': target, 'current': current, 'baseline': previous}
+        if target in ('android', 'ios'):
+            inputs['peer_target'] = 'linux-x86_64' if target == 'android' else 'macos-aarch64'
+            inputs['peer'] = provider(state, manifest, inputs['peer_target'])
+            if inputs['peer'] is None: return None
+        inputs = driver.validate_inputs(inputs)
         operation = hashlib.sha256(canonical(['native-acceptance', request])).hexdigest()
         intent = {'request': request, 'sources': manifest['sources'], 'target': target, 'inputs': inputs,
                   'operation': operation, 'secret': 'GCHAT_ACCEPTANCE_' + operation.upper(), 'created_at': int(time.time())}
@@ -153,7 +174,7 @@ def collect(state, config, manifest, target, work, request):
         raise ValueError('native acceptance invitation exceeded the provider secret bound; grant revoked')
     runs = []
     for page in range(1, 11):
-        values = gh(f'actions/workflows/{WORKFLOW}/runs?event=workflow_dispatch&per_page=100&page={page}')['workflow_runs']
+        values = gh(f'actions/workflows/{workflow}/runs?event=workflow_dispatch&per_page=100&page={page}')['workflow_runs']
         runs += [run for run in values if run.get('display_title') == PREFIX + request]
         if runs or len(values) < 100: break
     if len(runs) > 1: raise ValueError('native acceptance request has duplicate provider runs')
@@ -175,11 +196,11 @@ def collect(state, config, manifest, target, work, request):
         inputs = {'request_id': request, 'target': target, 'gchat_commit': manifest['sources']['gchat']['commit'],
                   'release_manifest': base64.b64encode(canonical(manifest)).decode(),
                   'artifacts': base64.b64encode(canonical(intent['inputs'])).decode(), 'invitation_secret': intent['secret']}
-        gh(f'actions/workflows/{WORKFLOW}/dispatches', method='POST', body={'ref': manifest['refs']['gchat'].removeprefix('refs/heads/'), 'inputs': inputs})
+        gh(f'actions/workflows/{workflow}/dispatches', method='POST', body={'ref': manifest['refs']['gchat'].removeprefix('refs/heads/'), 'inputs': inputs})
         return None
     run = runs[0]
     if (run.get('head_sha') != manifest['sources']['gchat']['commit'] or run.get('event') != 'workflow_dispatch'
-            or run.get('path') != '.github/workflows/' + WORKFLOW
+            or run.get('path') != '.github/workflows/' + workflow
             or run.get('head_repository', {}).get('full_name') != 'IggyGG/gchat'):
         raise ValueError('native acceptance workflow/source differs')
     if run['status'] != 'completed': return None

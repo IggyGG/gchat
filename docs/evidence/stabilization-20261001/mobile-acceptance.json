@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "scope": "Retained installed mobile UI acceptance producers; component evidence only",
+  "parent": "47264a3b8a7b49b4e09ee4699090b5e1ed3aafe2",
+  "source_sha256": {
+    "scripts/release_acceptance.py": "2c617ea5d185785aec444c3167392b718869eef37165e016d5e51b84fb555cb0",
+    "scripts/android-build.py": "a2b07a7a366536e58fe87aa2836bb03c549f147192ecc6acc717fdac4176a47e",
+    "scripts/mobile_acceptance_inputs.py": "6923354d51436703f59052c43579522404e2ddca5aee2803cc197487586307cc",
+    "scripts/mobile_android_ui.py": "1b936c73b901e22dd047a4bb7af1124f00a213b13edc79408f9238290feab091",
+    "scripts/mobile_installed_journey.py": "6714f6ce3bb99e07a112b2e0a6e21995c6774520036ddcc08abd94bfa9ca26bd",
+    "scripts/mobile_ios_ui.py": "054aa6da73c981cf1b6cf6ce5d907244ee654126d5bbe3861e939b2adb1abbce",
+    "scripts/test-mobile-upgrade.py": "96dd383e9a1cf888e07d0a2365bafdf356d0f317ef07daddf4a69425dd38bbd4",
+    "scripts/fixtures/ios-acceptance/AcceptanceTests.swift": "75a381edde32149a9e3559ea9de164a6ac70807c5bcb6224288861e2142496a4",
+    ".github/workflows/mobile-acceptance.yml": "31e76a00889918fe2fac8d4edbb3067f61cdd259f4bfaa4438b11b1d71f02f44",
+    "scripts/tests/mobile_acceptance_test.py": "5e6342e37a7a955fd6ef11959c5a4390b9cdbbbbb4550f1c5ec8d619b418aa35"
+  },
+  "checks": {
+    "mobile_component_passed": 9,
+    "xctest_private_loopback_bridge": true,
+    "unrelated_delivery_marker_rejected": true,
+    "post_journey_changed_binary_rejected": true,
+    "missing_current_peer_waits_before_grant": true,
+    "full_python_passed": 632,
+    "full_python_skipped": 5,
+    "source_inventory": 792,
+    "stable_methods": 18,
+    "optional_methods": 3,
+    "api2_fixtures_unchanged": true
+  },
+  "behavior": {
+    "api": 3,
+    "typed_service": 1,
+    "members": 64,
+    "retained_application_rebuilt": false,
+    "retained_application_resigned": false,
+    "personal_profiles_accessed": false,
+    "physical_devices_required": false,
+    "file_bytes": 16777216,
+    "file_deadline_seconds": 360,
+    "network_deadline_seconds": 600,
+    "rollback_deadline_seconds": 600
+  },
+  "native_ui_execution": "pending",
+  "live_producer_activation": "pending",
+  "initial_mobile_baselines": "pending",
+  "sdk_size_limit_percent": 5
+}

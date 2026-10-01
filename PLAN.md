@@ -1,5 +1,23 @@
 ## Live controller and native acceptance (2026-10-01, in progress)
 
+Android and iOS now have retained-app acceptance producers and a separate native
+workflow. They install distinct signed releases on a fresh owned AVD/Simulator,
+create state with the baseline, then upgrade, roll back and restore through normal
+UI. Every phase checks rendered history, the same identity, unchanged encrypted
+cache, a real system-picker export and fresh covered bidirectional acknowledgments.
+The current app then performs the unchanged 16 MiB interrupted-transfer check
+within 360 seconds and a 600-second network journey. Android uses accessibility;
+iOS compiles only its XCTest runner, never the retained application. No personal
+profiles or physical devices are used. Dispatch waits for an exact-pair qualified
+native desktop peer before issuing its private expiring bootstrap grant. Mobile
+workers use the existing lost-reply, revocation and eight-relay observation gates.
+Component tests pass nine controls, including a real loopback XCTest bridge and
+unrelated-delivery-marker rejection. Full Python validation and actual native UI
+execution remain separately recorded in the
+[mobile checkpoint](docs/evidence/stabilization-20261001/mobile-acceptance.json).
+The live controller still runs `dfd65d4`; these producers and their initial mobile
+baselines must be qualified and activated before mobile publication can advance.
+
 Linux runs `36813732641` and `36823321752` passed qualification, then reached
 the 120-minute job limit during signed bundle building. Qualification and
 packaging now use separate native jobs with the original job limits. Packaging

@@ -126,7 +126,17 @@ and signing credentials stay in the coordinator. Grant revocation and owned secr
 removal precede collection of completed evidence. Lost dispatch replies reconcile
 the same request. Completed receipts refresh after their freshness window without
 removing earlier evidence; unresolved attempts never expire into duplicate work.
-Mobile acceptance producers and actual native execution remain tracked in PLAN.md.
+Mobile acceptance uses `mobile-acceptance.yml` with its own retained provider
+bindings and an exact-pair qualified Linux/Apple Silicon peer. It creates a fresh
+owned AVD/Simulator, installs the unchanged signed apps and drives their ordinary
+UI, deep links and system file picker. Baseline-created identity, rendered history
+and encrypted cache must survive current → baseline → current replacement with
+fresh covered ACKs at every phase. The independent network journey retains the
+same 16 MiB interrupted-transfer, 360-second file and 600-second overall bounds.
+iOS compiles only its XCTest runner. No signing keys reach acceptance; no app is
+rebuilt or re-signed. Component validation, actual native execution and live
+producer activation are separate states, tracked in PLAN.md. A normal mobile
+profile/picker smoke pass cannot satisfy this installed-network gate.
 
 There is no 24-hour campaign, physical-device requirement or statistical privacy
 release gate. This does not claim traffic-analysis privacy qualification. The

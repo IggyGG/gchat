@@ -38,6 +38,19 @@ mobile platform. Component tests are not native acceptance evidence.
 Reject identical baseline/current provider runs, archives, sources or installed
 binaries. Cleanup failure must still stop other owned children and retain a failed
 report. Attribute acceptance failures to their own recovery stage.
+
+Run `python3 -m unittest discover -s scripts/tests -p 'mobile_acceptance_test.py'`.
+Reject desktop/ordinary-picker receipts, changed ciphertext, re-signing, changed
+post-journey binaries, another message's delivery marker and missing exact-pair
+native peers. The actual XCTest loopback bridge must reject wrong tokens,
+unknown/duplicate replies and an expired original command deadline. Then execute
+`mobile-acceptance.yml` on the native Android/iOS workers with retained signed
+applications and distinct successful providers. Require baseline-created identity,
+rendered history and encrypted cache across all three replacements, genuine picker
+export hashes, covered ACKs, the original 16 MiB/360-second/600-second interrupted
+network check and verified owned-device/process cleanup. Compile only the XCTest
+runner. No application debug API, re-signing or personal-device state can qualify
+this gate. Native UI execution and live activation are still pending.
 Windows fixture cleanup must close SQLite and temporary upload handles before
 removal. Linux grant-store ownership and Kubernetes rollout locks require their
 POSIX host; portable invalid-authority guards still execute on every platform.
