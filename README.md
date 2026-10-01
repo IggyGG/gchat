@@ -25,7 +25,7 @@ The Linux release workflow also builds a retained native-service/OCI bundle.
 The release controller uses `skopeo` to publish digest-pinned images from the
 verified provider archive; the build worker requires Docker. These infrastructure
 steps remain subject to live deployment and installed-network qualification.
-The bundle retains both service and controller images and binds their exact source
+The bundle retains service, controller and push gateway images and binds their exact source
 pair. The controller includes checksum-pinned kubectl 1.35.2. Native deployment
 uses a forced SSH command and a root-owned service inventory; the controller key
 can upload verified binaries and operate only those installed units.
@@ -50,6 +50,12 @@ failed start and resumes interrupted rollback. Keep its last healthy image pinne
 when updating the main controller.
 Image configuration digests come from the retained Docker archive. This supports
 Docker installations that return an attested image index from `image inspect`.
+The gateway build uses GComs' reviewed, hash-bound context. Its initialization and
+runtime containers advance together. `release_inventory.py` renders all eight
+native relays, both bootstraps, hosted channels, three Kubernetes anchors, catalog,
+push and controller from the operator's installed policies. Each target requires
+a real canary; controller activation follows the other services. The recovery job
+shares the controller's node and volume without repeatedly changing file ownership.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer

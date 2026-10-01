@@ -17,13 +17,16 @@ spec:
           automountServiceAccountToken: true
           restartPolicy: Never
           affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - {key: kubernetes.io/hostname, operator: NotIn, values: [triform-1]}
             podAffinity:
-              preferredDuringSchedulingIgnoredDuringExecution:
-                - weight: 100
-                  podAffinityTerm:
-                    labelSelector: {matchLabels: {app: gchat-release}}
-                    topologyKey: kubernetes.io/hostname
-          securityContext: {fsGroup: 10001}
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector: {matchLabels: {app: gchat-release}}
+                  topologyKey: kubernetes.io/hostname
+          securityContext: {fsGroup: 10001, fsGroupChangePolicy: OnRootMismatch}
           containers:
             - name: watchdog
               # Keep the last healthy recovery implementation when the

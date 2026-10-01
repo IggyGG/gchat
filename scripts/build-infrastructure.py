@@ -74,14 +74,23 @@ def main():
         '-f', str(chat / 'release/automation/Dockerfile'), str(chat)], check=True)
     subprocess.run(['docker', 'save', '-o', str(output / 'controller.tar'), controller], check=True)
     controller_id = archive_config(output / 'controller.tar', controller)
+    push_context = output / 'push-context'
+    subprocess.run(['python3', str(root / 'mobile/push/deploy/build-context.py'),
+                    '--output', str(push_context)], check=True, stdout=subprocess.DEVNULL)
+    shutil.copyfile(push_context / 'context-manifest.json', output / 'push-context.json')
+    push = 'gchat-push:' + manifest['sources']['gcoms']['commit']
+    subprocess.run(['docker', 'build', '--platform', 'linux/amd64', '-t', push,
+                    '-f', str(push_context / 'mobile/push/deploy/Dockerfile'), str(push_context)], check=True)
+    subprocess.run(['docker', 'save', '-o', str(output / 'push.tar'), push], check=True)
+    push_id = archive_config(output / 'push.tar', push)
     if identity(root) != manifest['sources']['gcoms'] or identity(chat) != manifest['sources']['gchat']:
         raise ValueError('infrastructure source changed during build')
     atomic_json(output / 'build.json', {'schema': 1, 'sources': manifest['sources'],
         'gcoms_source': manifest['sources']['gcoms'],
         'release_id': manifest['release_id'], 'runtime_base': BASE, 'image_tag': tag,
-        'image_config': image_id, 'controller_config': controller_id,
+        'image_config': image_id, 'controller_config': controller_id, 'push_config': push_id,
         'sha256': {name: digest(output / name) for name in
-            (*BINARIES, 'image.tar', 'controller.tar', 'Dockerfile', 'ca-certificates.crt')}})
+            (*BINARIES, 'image.tar', 'controller.tar', 'push.tar', 'push-context.json', 'Dockerfile', 'ca-certificates.crt')}})
 
 
 if __name__ == '__main__': main()

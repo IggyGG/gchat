@@ -46,6 +46,13 @@ The live bridge caught two secret-audit false positives: a public Cargo checksum
 and the existing public GPG fingerprint. Only those exact historical findings are
 allowlisted. Archive-derived image configuration hashes fix Docker's index-ID
 behavior without weakening the source/configuration verification gate.
+The production inventory renderer now covers 17 serial targets with the controller
+last. The push gateway has its own source-bound retained archive/configuration and
+its init/runtime containers advance together. The catalog image keeps the installed
+executable name. A live copy retained and restored the previous controller digest
+through the registry's digest-addressed destination. Recovery jobs share the
+controller node/PVC and avoid recursive volume ownership changes. Full activation
+and native package acceptance remain open.
 
 ## Automatic deployment and idle activation (2026-09-30, in progress)
 

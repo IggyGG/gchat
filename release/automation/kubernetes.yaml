@@ -35,6 +35,7 @@ spec:
                     values: [triform-1]
       securityContext:
         fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
       initContainers:
         - name: prepare-state
           image: busybox:1.37

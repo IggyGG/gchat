@@ -33,6 +33,10 @@ must derive configuration digests from retained archive bytes even when
 Docker reports an image index ID. A different or ambiguous archive tag must fail.
 Linux packaging must reject a missing or changed CLI; the native worker runs both packaged binaries
 through isolated unlock, wrong-passphrase refusal, disconnect and reopen.
+The push image must use its own qualified configuration/repository; a service-image
+configuration cannot authenticate it. `release_inventory_test.py` requires all 17
+targets, descending anchor partitions, matching init/runtime containers and the
+controller last; missing or duplicated host policies must fail closed.
 The live canary producer must use the hash-bound provider archive and exact native
 CLI receipt. Missing ACKs, smaller files, late or non-finite measurements, changed
 inputs and incomplete cleanup cannot pass. Interrupted cleanup must be limited to

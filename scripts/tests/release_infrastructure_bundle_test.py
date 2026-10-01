@@ -18,8 +18,7 @@ class InfrastructureBundleTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.manifest = {'release_id': 'a' * 64, 'sources': {'gcoms': {'commit': 'b' * 40, 'tree': 'c' * 40},
             'gchat': {'commit': 'd' * 40, 'tree': 'e' * 40}}}
-        self.files = {name: name.encode() for name in
-                      (*bundle.BINARIES, 'Dockerfile', 'image.tar', 'controller.tar', 'ca-certificates.crt')}
+        self.files = {name: name.encode() for name in bundle.FILES}
         self.build = {'release_id': self.manifest['release_id'],
                       'sources': self.manifest['sources'],
                       'gcoms_source': self.manifest['sources']['gcoms'],
@@ -66,6 +65,27 @@ class InfrastructureBundleTests(unittest.TestCase):
         with patch.object(bundle, 'publish') as publish:
             self.assertIsNone(bundle.collect(self.root, self.manifest, {}))
             publish.assert_not_called()
+
+    def test_push_image_uses_its_own_qualified_configuration_and_repository(self):
+        directory = self.root / 'retained'
+        (directory / 'push-oci').mkdir(parents=True)
+        (directory / 'push-oci/index.json').write_text('{}')
+        expected_config = 'sha256:' + 'a' * 64
+        (directory / 'source-build.json').write_text(json.dumps({'image_config': 'sha256:' + 'b' * 64,
+                                                               'push_config': expected_config}))
+        raw = json.dumps({'config': {'digest': expected_config}}).encode()
+        config = {'push_registry_repository': 'registry/push', 'push_pull_repository': 'node/push'}
+        with patch.object(bundle.subprocess, 'run') as copy, \
+             patch.object(bundle.subprocess, 'check_output', return_value=raw):
+            image = bundle.publish(directory, config, 'retained', 'push')
+            self.assertEqual(image, 'node/push@sha256:' + hashlib.sha256(raw).hexdigest())
+            self.assertEqual(copy.call_args.args[0][-1], 'docker://registry/push:retained')
+        (directory / 'source-build.json').write_text(json.dumps({'push_config': 'sha256:' + 'b' * 64}))
+        with patch.object(bundle.subprocess, 'run') as copy, \
+             patch.object(bundle.subprocess, 'check_output', return_value=raw):
+            with self.assertRaisesRegex(ValueError, 'qualified image configuration'):
+                bundle.publish(directory, config, 'retained', 'push')
+            copy.assert_not_called()
 
     def test_surviving_manifest_repairs_missing_layers_before_readback(self):
         directory = self.root / 'retained'

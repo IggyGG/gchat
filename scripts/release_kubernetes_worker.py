@@ -171,6 +171,9 @@ def run(target, manifest, stage, output):
         probe = {'apiVersion': 'batch/v1', 'kind': 'Job', 'metadata': {'name': job}, 'spec': {
             'backoffLimit': 0, 'activeDeadlineSeconds': 180, 'ttlSecondsAfterFinished': 86400,
             'template': {'spec': {'automountServiceAccountToken': False, 'restartPolicy': 'Never',
+                'affinity': {'nodeAffinity': {'requiredDuringSchedulingIgnoredDuringExecution': {
+                    'nodeSelectorTerms': [{'matchExpressions': [{'key': 'kubernetes.io/hostname',
+                        'operator': 'NotIn', 'values': ['triform-1']}]}]}}},
                 'containers': [{'name': 'pull', 'image': expected, 'imagePullPolicy': 'Always',
                     'command': ['/bin/sh', '-c', 'exit 0'],
                     'securityContext': {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
