@@ -23,8 +23,8 @@ Component tests pass nine controls, including a real loopback XCTest bridge and
 unrelated-delivery-marker rejection. Full Python validation and actual native UI
 execution remain separately recorded in the
 [mobile checkpoint](docs/evidence/stabilization-20261001/mobile-acceptance.json).
-Controller `d7e3e8d` is now active with two ready containers and no restarts. Its
-75 deployment/acceptance checks pass in an independent Kubernetes Job, the prior
+Controller `5b89c81` is now active with two ready containers and no restarts. Its
+76 deployment/acceptance checks pass in an independent Kubernetes Job, the prior
 image is retained and registry repair passes, and the independent minute watchdog
 continues succeeding. The first validation attempt's registry-policy failure is
 retained separately from the scoped correction. Signed Android/iOS baselines were
@@ -46,7 +46,7 @@ recent available predecessor automatically and uses initial seeds only as fallba
 It excludes the current/newer candidates and identical source pairs; missing
 historical provider archives are skipped, while corrupt receipts still fail.
 The real-ledger rotation and fingerprint controls pass, with 633 full Python
-checks and five existing skips. Activation of these controller fixes is pending.
+checks and five existing skips. These controller fixes are active in generation 48; its previous image was retained and repaired before activation.
 Unknown files, Android/iOS build scripts and application workflows still invalidate
 artifacts; the original qualified source pair is never rewritten.
 

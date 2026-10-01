@@ -49,14 +49,14 @@
   },
   "native_ui_execution": "pending",
   "live_producer_activation": {
-    "source": "d7e3e8d96e8d8c65fc0851be90faf4fa3e147ddd",
-    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:80235f5f68c91ee9c4bfd660de1e518eb30bc2c08c6c8e38aa3e6fa802a78ff6",
+    "source": "5b89c81c855237fdf5b36aaa59986a7adf2317c0",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:e03d6293f8b6a08bac5c03c46c23f9f46fff79d5db421c6218496bdfdf8efdf3",
     "ready": true,
     "containers": 2,
     "restarts": 0,
-    "observed_at": "2026-10-01T12:04:40.148185+00:00",
-    "last_independent_watchdog_success": "2026-10-01T12:03:04Z",
-    "validation_tests": 75,
+    "observed_at": "2026-10-01T13:27:54.264437+00:00",
+    "last_independent_watchdog_success": "2026-10-01T13:27:06Z",
+    "validation_tests": 76,
     "prior_retained_and_repaired": true,
     "initial_mobile_baselines_bound": true,
     "mobile_acceptance_recipes_active": true
@@ -110,6 +110,6 @@
     "corrupt_receipts_not_skipped": true,
     "component_python_tests": 633,
     "existing_skips": 5,
-    "activated_on_controller": false
+    "activated_on_controller": true
   }
 }

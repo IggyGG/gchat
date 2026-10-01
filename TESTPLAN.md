@@ -53,7 +53,7 @@ runner. No application debug API, re-signing or personal-device state can qualif
 this gate. Verify iOS passphrase entry through the normal Show/Hide control and
 require the exact value in the original ten-second assertion, then hide it again.
 The original masked-field failure remains failed; real native rerun is required.
-Native UI execution is pending. Controller `d7e3e8d` passes 75 checks
+Native UI execution is pending. Controller `5b89c81` passes 76 checks
 in an independent Kubernetes Job and is active with both mobile recipes and
 verified retained baselines. Retain its first registry-policy failure, corrected
 retention/repair result, ready-image observation and independent watchdog success.

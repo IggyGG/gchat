@@ -2,27 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "d7e3e8d96e8d8c65fc0851be90faf4fa3e147ddd",
-    "image": "sha256:80235f5f68c91ee9c4bfd660de1e518eb30bc2c08c6c8e38aa3e6fa802a78ff6",
+    "gchat_commit": "5b89c81c855237fdf5b36aaa59986a7adf2317c0",
+    "image": "sha256:e03d6293f8b6a08bac5c03c46c23f9f46fff79d5db421c6218496bdfdf8efdf3",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-01T12:03:04Z",
+    "watchdog_last_success": "2026-10-01T13:27:06Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:6d2f7e7d95c894d46a3ca3ef04fc7bbbf579a66fe2cb8f3fc1d215d65f97dda9",
-    "archive_sha256": "5b10a03aa827542470b94c3af8b395c4bfdddb9efac890c10139372a4903d2d5",
-    "observed_at": "2026-10-01T12:04:40.148185+00:00",
+    "configuration_digest": "sha256:58ee1bcc95724223761734a68a8b1fd097420a79eb19bda30292c6044d5b8db9",
+    "archive_sha256": "2ba2015a280de03277113cbaf65efad358f67dff1d807e1cfa252346cf043142",
+    "observed_at": "2026-10-01T13:27:54.264437+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:a0463b3c43a6cb588d8597a9ecd672810ffdb4dbbcdbff9d82f69c22b3df7c84",
+    "previous_digest": "sha256:80235f5f68c91ee9c4bfd660de1e518eb30bc2c08c6c8e38aa3e6fa802a78ff6",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 75,
-    "deployment_generation": 47
+    "validation_tests": 76,
+    "deployment_generation": 48
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -59,9 +59,9 @@
     "baseline_current_baseline_current_rollback": true
   },
   "component_validation": {
-    "python_tests": 632,
+    "python_tests": 633,
     "python_skipped": 5,
-    "controller_validation_tests": 75
+    "controller_validation_tests": 76
   },
   "open": [
     "Fresh SDK native desktop/mobile qualification with the approved 20% feature allowance and automatic 5% cap at SDK 1.0",
@@ -134,6 +134,18 @@
     {
       "path": "test-evidence/stabilization-20261001/linux-provider-success-87.json",
       "sha256": "ef25963f02a34e468ab99d3fec0e55d6b9d1a7c9af62e4888237a75815d9fc41"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-5b89c81-validation.log",
+      "sha256": "1669f78b3ff883a7e8217068a6b8fa50068eabf99fc07d8e9def1edbb28c92de"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-5b89c81-validation.json",
+      "sha256": "e37678ef630b619c8bbec135478ed00350890de1703e49fc730c914092c8345a"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-5b89c81-observed.json",
+      "sha256": "c35beff29fc0650f26c9ab7ffbcf2438d87564bb5ecfcd4a5ab446497a43c195"
     }
   ],
   "native_progress": {
@@ -214,6 +226,29 @@
       "mobile_acceptance_recipes_active": true,
       "initial_mobile_baselines_bound": true,
       "validation_tests": 73
+    },
+    {
+      "gchat_commit": "d7e3e8d96e8d8c65fc0851be90faf4fa3e147ddd",
+      "image": "sha256:80235f5f68c91ee9c4bfd660de1e518eb30bc2c08c6c8e38aa3e6fa802a78ff6",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-01T12:03:04Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:6d2f7e7d95c894d46a3ca3ef04fc7bbbf579a66fe2cb8f3fc1d215d65f97dda9",
+      "archive_sha256": "5b10a03aa827542470b94c3af8b395c4bfdddb9efac890c10139372a4903d2d5",
+      "observed_at": "2026-10-01T12:04:40.148185+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:a0463b3c43a6cb588d8597a9ecd672810ffdb4dbbcdbff9d82f69c22b3df7c84",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 75,
+      "deployment_generation": 47
     }
   ],
   "mobile_baselines": {
@@ -274,5 +309,12 @@
     "qualification_passed": true,
     "packaging_passed": true,
     "fleet_rollout_qualified": false
+  },
+  "automatic_followup": {
+    "reviewed_status_preserves_artifact_and_infrastructure_identity": true,
+    "latest_available_distinct_earlier_provider_is_baseline": true,
+    "initial_seed_fallback": true,
+    "corrupt_receipts_fail": true,
+    "active": true
   }
 }

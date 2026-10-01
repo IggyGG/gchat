@@ -21,10 +21,10 @@ Kubernetes services, retains rollback artifacts, and preserves configuration and
 relay identities. Acceptance automatically rotates to the most recent available predecessor; the
 initial operator-bound baseline remains a fallback. Reviewed GComs status documents
 preserve both application and infrastructure identity; unknown inputs still
-require fresh artifacts. Activation of these controller changes is pending.
+require fresh artifacts. These controller changes are active in generation 48.
 New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
-Controller source `d7e3e8d` is active with 75 deployment/acceptance checks, a
+Controller source `5b89c81` is active with 76 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile
 acceptance recipes and verified retained Android/iOS baselines are configured.
 iOS passphrase qualification uses normal Show/Hide controls to check the exact
