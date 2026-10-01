@@ -26,6 +26,11 @@ ordinary Android lifecycle pass; SDK recovery and full installed acceptance
 remain open in the [operational checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
 
 The Linux release workflow also builds a retained native-service/OCI bundle.
+It runs full paired qualification separately from signing and packaging. The
+packaging job verifies the same-run qualification archive and both source/dependency
+bindings before accessing signing keys. Failed attempts retain separate evidence;
+an incomplete qualification cannot start packaging. Native execution of this
+workflow split remains pending.
 The release controller uses `skopeo` to publish digest-pinned images from the
 verified provider archive; the build worker requires Docker. These infrastructure
 steps remain subject to live deployment and installed-network qualification.

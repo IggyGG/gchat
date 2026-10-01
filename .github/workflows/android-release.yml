@@ -144,5 +144,6 @@ jobs:
             android-output/native-tests/
             android-output/emulator.log
             android-output/emulator-driver.json
+            android-output/shell-errors.jsonl
             android-output/avd-create.log
             android-output/paired/provenance/

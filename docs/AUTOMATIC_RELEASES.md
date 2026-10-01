@@ -211,6 +211,18 @@ review does not prevent preparing the next candidate.
 The public status document distinguishes building, verification, publication,
 processing, review, blocked and available.
 
+Linux qualification and packaging have separate 120-minute native jobs. The
+first runs both unchanged repository CI entrypoints and retains their logs,
+paired source/dependency evidence and workflow/release bindings. The signing job
+requires that successful job, fetches its exact same-run artifact by ID, checks
+the provider digest and every retained binding against its clean frozen pair,
+then prepares and rechecks the installer's dependency inputs. A packaging retry
+may reuse that run's earlier successful qualification. Qualification and failed
+build archives include their attempt number; successful packages keep the
+`linux-x86_64` provider name. Neither failed CI nor another run's artifact can
+authorize signing. Application recovery deadlines and acceptance gates remain
+unchanged. The original timed-out jobs remain failed/cancelled evidence.
+
 Initial deployment is not complete merely because these files or tests exist.
 Retain a concrete deployment receipt, a first qualified release, a real installed
 upgrade/reopen result and provider observations before claiming it operational.

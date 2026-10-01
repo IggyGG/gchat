@@ -16,6 +16,16 @@ single mutation admission and optional-method capability selection.
 
 ## Deployment reconciliation and idle activation (2026-09-30)
 
+Run `release_linux_qualification_test.py` for the separate Linux qualification
+and packaging jobs. Reject missing/failed CI, boolean exit codes, changed source
+or dependency inputs, altered/missing logs and locks, another run's artifact and
+a digest different from the qualifying job output. A packaging-only retry may
+reuse the earlier successful qualification attempt in the same run. Failed
+attempts must keep separate archives, and no signing key is available to the
+qualification job. Actual native execution remains required; original cancelled
+Linux runs retain their original conclusions. Android failure artifacts must
+retain `shell-errors.jsonl` without changing the installed smoke/retry policy.
+
 Run `release_acceptance_test.py` for exact native source/archive/platform
 bindings, baseline → current → baseline → current identity/history/cache preservation,
 covered ACKs, unchanged 16 MiB/360-second/600-second bounds, cleanup, lost dispatch

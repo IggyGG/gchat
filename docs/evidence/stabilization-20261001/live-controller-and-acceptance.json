@@ -53,11 +53,11 @@
     "baseline_current_baseline_current_rollback": true
   },
   "component_validation": {
-    "python_tests": 615,
+    "python_tests": 623,
     "python_skipped": 5
   },
   "open": [
-    "Native SDK contact file recovery fails on Linux, Windows and Intel Mac; ARM worker queued; unchanged 5% size gate remains open",
+    "Native SDK contact file recovery failed on all four platforms; diagnostic run 36835572270 executing; unchanged 5% size gate remains open",
     "actual native desktop acceptance",
     "mobile acceptance producers",
     "qualified fleet and app activation",
@@ -108,6 +108,14 @@
     {
       "path": "test-evidence/stabilization-20261001/native-windows-36824009006-job.log",
       "sha256": "f84bebf45b9d6f464ae7454c5b0462786e3eea0ae8b428762512b179d73daa7d"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/linux-handoff-python-55.log",
+      "sha256": "790f71e793be411205c6681d4bc043c6d64bd3d0cabfb6876776aa7eb0f84a98"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/native-linux-36823321752-job.log",
+      "sha256": "c4ce75f9914951f61d0112f6c156c4118c65c9fc4259bad60711b611709fde94"
     }
   ],
   "native_progress": {
@@ -126,7 +134,25 @@
       "linux": "contact recovery failed",
       "windows": "contact recovery failed",
       "macos_intel": "contact recovery failed",
-      "macos_arm": "queued"
+      "macos_arm": "contact recovery failed"
+    },
+    "android_failure": {
+      "run": 36828192748,
+      "artifact_id": 11147068885,
+      "archive_sha256": "cf7a41b7105e517258bb55847ae0ad2f4e288f3fb2908b3b16978a7510ba12a3",
+      "verdict": "installed keyboard smoke failed; original shell stderr was omitted from the archive; future archives retain it"
     }
+  },
+  "linux_workflow": {
+    "qualification_separate_from_packaging": true,
+    "same_run_archive_digest_required": true,
+    "both_repository_ci_required": true,
+    "job_minutes": 120,
+    "native_execution_qualified": false,
+    "original_cancelled_runs": [
+      36813732641,
+      36823321752
+    ],
+    "handoff_negative_controls": 8
   }
 }

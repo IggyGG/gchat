@@ -1,5 +1,18 @@
 ## Live controller and native acceptance (2026-10-01, in progress)
 
+Linux runs `36813732641` and `36823321752` passed qualification, then reached
+the 120-minute job limit during signed bundle building. Qualification and
+packaging now use separate native jobs with the original job limits. Packaging
+requires both successful repository CI gates from the same workflow run, the
+qualifying job's exact artifact ID/digest, clean matching source objects and
+unchanged retained dependency inputs before signing access. Attempt-specific
+qualification/failure artifacts preserve earlier failures. Native execution of
+this split remains required. Android release artifacts now retain the existing
+shell-error log so a keyboard/ADB failure can be diagnosed from its original
+stderr; the smoke assertions and retry policy are unchanged. Validation passes
+623 Python tests with the five existing skips, including eight handoff controls;
+the source inventory and whitespace gate pass.
+
 The next upgrade's real-image check exposed two archive interoperability issues.
 Containerd Docker exports preserve their configuration bytes through the native
 OCI archive reader; the Docker compatibility reader reserializes those bytes.
@@ -54,7 +67,7 @@ The corrected Windows run `36824009006` passes GChat's native checks, including
 the portable fixtures; its paired GComs stage still fails. Android's ordinary
 profile/picker/no-listener run `36824016393` passes and does not qualify network
 acceptance. SDK run `36827922107` against the four-record legacy window fails
-contact recovery on Linux, Windows and Intel Mac. The independent controller
+contact recovery on all four native platforms. The independent controller
 validation Job succeeds, its prior digest remains retained, and the live minute
 watchdog continues to succeed. Client/fleet activation remains gated.
 
