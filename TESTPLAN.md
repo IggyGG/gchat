@@ -50,9 +50,15 @@ rendered history and encrypted cache across all three replacements, genuine pick
 export hashes, covered ACKs, the original 16 MiB/360-second/600-second interrupted
 network check and verified owned-device/process cleanup. Compile only the XCTest
 runner. No application debug API, re-signing or personal-device state can qualify
-this gate. Native UI execution and live activation are still pending.
+this gate. Native UI execution is pending. Controller `6a7a8bf` passes 73 checks
+in an independent Kubernetes Job and is active with both mobile recipes and
+verified retained baselines. Retain its first registry-policy failure, corrected
+retention/repair result, ready-image observation and independent watchdog success.
 Run `release_config_test.py` to require a reconcilable acceptance recipe and its
 freshness limit for every installed platform, with SDK qualification separate.
+Run `release_inputs_test.py`: reviewed acceptance/status files change qualification
+identity while preserving artifact identity. Unclassified mobile files, application
+build scripts/workflows and unreviewed GComs evidence must still change artifacts.
 Windows fixture cleanup must close SQLite and temporary upload handles before
 removal. Linux grant-store ownership and Kubernetes rollout locks require their
 POSIX host; portable invalid-authority guards still execute on every platform.

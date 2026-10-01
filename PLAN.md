@@ -17,11 +17,22 @@ Component tests pass nine controls, including a real loopback XCTest bridge and
 unrelated-delivery-marker rejection. Full Python validation and actual native UI
 execution remain separately recorded in the
 [mobile checkpoint](docs/evidence/stabilization-20261001/mobile-acceptance.json).
-The live controller still runs `dfd65d4`; these producers and their initial mobile
-baselines must be qualified and activated before mobile publication can advance.
+Controller `6a7a8bf` is now active with two ready containers and no restarts. Its
+73 deployment/acceptance checks pass in an independent Kubernetes Job, the prior
+image is retained and registry repair passes, and the independent minute watchdog
+continues succeeding. The first validation attempt's registry-policy failure is
+retained separately from the scoped correction. Signed Android/iOS baselines were
+verified from retained provider archives and bound with both mobile acceptance
+recipes. This activates the producers; actual native UI, fleet/client rollout and
+the subsequent unattended release remain required. SDK source `7c4af27` passes
+native Linux and Windows recovery; Mac and the unchanged 5% size gate remain open.
 The source mirror retained a secret-audit false positive in a plain test instruction.
 The wording is corrected and only that exact historical finding is allowlisted;
 the full reachable-history audit remains mandatory.
+The exact reviewed acceptance drivers and GComs status/reopen-validation documents
+now change qualification identity without reserving another application version.
+Unknown files, Android/iOS build scripts and application workflows still invalidate
+artifacts; the original qualified source pair is never rewritten.
 
 Linux runs `36813732641` and `36823321752` passed qualification, then reached
 the 120-minute job limit during signed bundle building. Qualification and

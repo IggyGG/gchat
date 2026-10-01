@@ -44,7 +44,20 @@
     "rollback_deadline_seconds": 600
   },
   "native_ui_execution": "pending",
-  "live_producer_activation": "pending",
-  "initial_mobile_baselines": "pending",
+  "live_producer_activation": {
+    "source": "6a7a8bfe22c57e64ef9e7ac3162fae1bf183056c",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:a0463b3c43a6cb588d8597a9ecd672810ffdb4dbbcdbff9d82f69c22b3df7c84",
+    "ready": true,
+    "containers": 2,
+    "restarts": 0,
+    "observed_at": "2026-10-01T11:19:46.061944+00:00",
+    "last_independent_watchdog_success": "2026-10-01T11:19:05Z",
+    "last_watchdog_job": "gchat-release-watchdog-29847559",
+    "validation_tests": 73,
+    "prior_retained_and_repaired": true,
+    "initial_mobile_baselines_bound": true,
+    "mobile_acceptance_recipes_active": true
+  },
+  "initial_mobile_baselines": "verified source-bound retained archives configured",
   "sdk_size_limit_percent": 5
 }

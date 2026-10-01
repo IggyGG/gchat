@@ -20,9 +20,10 @@ deployment observation. Its configured 17-target inventory serializes native and
 Kubernetes services, retains rollback artifacts, and preserves configuration and
 relay identities. New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
-Controller source `dfd65d4` is active with a successful independent minute
-watchdog and retained previous image. The corrected Windows GChat checks and
-ordinary Android lifecycle pass; SDK recovery and full installed acceptance
+Controller source `6a7a8bf` is active with 73 deployment/acceptance checks, a
+successful independent minute watchdog and retained previous image. Mobile
+acceptance recipes and verified retained Android/iOS baselines are configured.
+Native SDK Linux and Windows recovery pass; Mac, the 5% size ceiling and installed acceptance
 remain open in the [operational checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
 
 The Linux release workflow also builds a retained native-service/OCI bundle.
@@ -90,9 +91,13 @@ covered delivery across baseline → current → baseline → current, then runs
 same bounded 16 MiB interrupted transfer. The peer is the qualified current Linux
 or Apple Silicon package for that exact pair. Only the iOS XCTest runner is built;
 the applications are neither rebuilt nor re-signed. Component checks pass; native
-execution and live producer activation remain required.
+execution remains required; the producers and initial mobile baselines are active
+in the qualified controller.
 The generated coordinator config includes mobile acceptance before either store
 submission. Missing matching peers or baselines keeps that stage waiting.
+Changes to the explicitly reviewed acceptance drivers and GComs status documents
+request fresh qualification without rebuilding identical apps. Unknown files,
+packaging scripts and native application workflows remain artifact inputs.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer

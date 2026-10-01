@@ -1,24 +1,27 @@
 {
   "schema": 1,
-  "scope": "live controller bootstrap and desktop acceptance implementation; full release still open",
+  "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "dfd65d4b62cc567285a688a8b7e553cccf762f94",
-    "image": "sha256:7098287e3832a8e7020eaf38bfe09a93c1f86b2ef99ee4308b098eb524f42ebf",
+    "gchat_commit": "6a7a8bfe22c57e64ef9e7ac3162fae1bf183056c",
+    "image": "sha256:a0463b3c43a6cb588d8597a9ecd672810ffdb4dbbcdbff9d82f69c22b3df7c84",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-01T07:48:07Z",
+    "watchdog_last_success": "2026-10-01T11:19:05Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:7e5e8169144b0f0b3b4b8dd34b31ab09e149b55dd228c3108e40a1cdc5040dd5",
-    "archive_sha256": "db98dd18b5680a7b7c158d1f68ab72cf66b1f73982ba21292064b3bed575542b",
-    "observed_at": "2026-10-01T07:48:41.689361+00:00",
+    "configuration_digest": "sha256:9f83c75984096e13c7bed943443976d25e425cc835217f54be3a5ea6bdb82430",
+    "archive_sha256": "18ce746567068fa667b4abf808e3603c4ef3b2ccf0d9c4afc156d874ff0156e0",
+    "observed_at": "2026-10-01T11:19:46.061944+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:686d2b973b690199386d27340e71011f60dcaf4d32d5036819b44d70d1d12026"
+    "previous_digest": "sha256:7098287e3832a8e7020eaf38bfe09a93c1f86b2ef99ee4308b098eb524f42ebf",
+    "mobile_acceptance_recipes_active": true,
+    "initial_mobile_baselines_bound": true,
+    "validation_tests": 73
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -38,7 +41,9 @@
       "linux-x86_64",
       "windows-x86_64",
       "macos-aarch64",
-      "macos-x86_64"
+      "macos-x86_64",
+      "android",
+      "ios"
     ],
     "retained_signed_artifacts_only": true,
     "current_baseline_current_rollback": false,
@@ -49,19 +54,19 @@
     "lost_dispatch_reply_reconciled": true,
     "completed_receipts_refresh_without_discarding_evidence": true,
     "actual_native_run_qualified": false,
-    "mobile_producers_complete": false,
+    "mobile_producers_complete": true,
     "baseline_current_baseline_current_rollback": true
   },
   "component_validation": {
-    "python_tests": 623,
-    "python_skipped": 5
+    "python_tests": 632,
+    "python_skipped": 5,
+    "controller_validation_tests": 73
   },
   "open": [
-    "Native SDK contact file recovery failed on all four platforms; diagnostic run 36835572270 executing; unchanged 5% size gate remains open",
-    "actual native desktop acceptance",
-    "mobile acceptance producers",
-    "qualified fleet and app activation",
-    "subsequent unattended release",
+    "SDK native Mac recovery qualification and unchanged 5% size ceiling",
+    "Actual native desktop and mobile installed acceptance",
+    "Qualified fleet and app activation",
+    "Subsequent unattended release",
     "SDK 1.0 declaration"
   ],
   "evidence": [
@@ -154,5 +159,56 @@
       36823321752
     ],
     "handoff_negative_controls": 8
+  },
+  "controller_history": [
+    {
+      "gchat_commit": "dfd65d4b62cc567285a688a8b7e553cccf762f94",
+      "image": "sha256:7098287e3832a8e7020eaf38bfe09a93c1f86b2ef99ee4308b098eb524f42ebf",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-01T07:48:07Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:7e5e8169144b0f0b3b4b8dd34b31ab09e149b55dd228c3108e40a1cdc5040dd5",
+      "archive_sha256": "db98dd18b5680a7b7c158d1f68ab72cf66b1f73982ba21292064b3bed575542b",
+      "observed_at": "2026-10-01T07:48:41.689361+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:686d2b973b690199386d27340e71011f60dcaf4d32d5036819b44d70d1d12026"
+    }
+  ],
+  "mobile_baselines": {
+    "android": {
+      "run": 36835844297,
+      "artifact": 11150064889,
+      "archive": "a54747dad70bcd19147925a007c715b0bf2ee097bea00777dcdc286ddd66b454",
+      "controller": "78a1302414bd674aa57e527542ff253e6b2547c6",
+      "sources": {
+        "gchat": "78a1302414bd674aa57e527542ff253e6b2547c6",
+        "gcoms": "9d1fce0a9f5ad9224504573c27e459f5ca37d09f"
+      },
+      "manifest": "build.json",
+      "conclusion": "success"
+    },
+    "ios": {
+      "run": 36823844458,
+      "artifact": 11144914798,
+      "archive": "a43edf080b08fa26a220c8857643e4948cd8df8c6a92aa1b86ea83a73f84921e",
+      "controller": "f160d97e7101d1d85789986dad56400149d1e0b7",
+      "sources": {
+        "gchat": "f160d97e7101d1d85789986dad56400149d1e0b7",
+        "gcoms": "7108837419b16b529278db03982174533fb81a0c"
+      },
+      "manifest": "ios-output/build.json",
+      "conclusion": "success"
+    }
+  },
+  "retained_failures": {
+    "controller_validation_first_attempt": "73 tests passed; rollback retention failed because the validation pod could not reach the registry. Second attempt succeeds with scoped egress/ingress.",
+    "ios_run_36837842309": "Original lifecycle XCTest fails the 10-second populated-passphrase observation at line 64; retained original verified archive and earlier successful baseline remain distinct."
   }
 }

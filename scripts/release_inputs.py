@@ -42,6 +42,24 @@ CONTROL_FILES = frozenset({
     'scripts/tests/windows_release_test.py', 'scripts/tests/ios_lifecycle_test.py',
     'scripts/tests/ios_retained_test.py',
     'release/automation/qualification/windows36-4mib.json',
+    'scripts/release_acceptance.py', 'scripts/test-native-upgrade.py',
+    '.github/workflows/native-acceptance.yml',
+    'scripts/mobile_acceptance_inputs.py', 'scripts/mobile_android_ui.py',
+    'scripts/mobile_installed_journey.py', 'scripts/mobile_ios_ui.py',
+    'scripts/test-mobile-upgrade.py', 'scripts/tests/mobile_acceptance_test.py',
+    'scripts/fixtures/ios-acceptance/AcceptanceTests.swift',
+    '.github/workflows/mobile-acceptance.yml',
+    'docs/evidence/stabilization-20261001/mobile-acceptance.json',
+    'docs/evidence/stabilization-20261001/live-controller-and-acceptance.json',
+    'docs/evidence/stabilization-20261001/image-retention.json',
+    'docs/evidence/stabilization-20261001/contract-checkpoint.json',
+})
+
+# Reviewed status/validation documents do not enter GComs application code or
+# packaging. Rust, locks and unclassified evidence remain artifact inputs.
+GCOMS_STATUS_FILES = frozenset({
+    'PLAN.md', 'README.md', 'TESTPLAN.md',
+    'docs/evidence/stabilization-20261001/durable-reopen.json',
 })
 
 
@@ -99,8 +117,9 @@ STORE_LISTING_FILES = frozenset({
 
 
 def qualification_only(project, path):
-    return project == 'gchat' and (path in CONTROL_FILES or path in STORE_LISTING_FILES or
-        (path.startswith('scripts/tests/release_') and path.endswith('_test.py')))
+    return (project == 'gcoms' and path in GCOMS_STATUS_FILES or
+        project == 'gchat' and (path in CONTROL_FILES or path in STORE_LISTING_FILES or
+            (path.startswith('scripts/tests/release_') and path.endswith('_test.py'))))
 
 
 def fingerprints(repositories, sources):
