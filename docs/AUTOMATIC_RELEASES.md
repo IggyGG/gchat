@@ -102,6 +102,26 @@ finishes. `poll_interval_seconds` may be set to an integer from 10 to 300 in its
 configuration. This removes the former five-minute delay between completed
 stages without overlapping workers or resubmitting an unknown external result.
 
+Desktop acceptance uses `native-acceptance.yml` on the matching native runner.
+The controller binds current and baseline provider runs, immutable archive hashes,
+source pairs and the protected worker ref before dispatch. The worker downloads
+and checks signed retained applications, performs current → baseline → current
+profile/history/cache recovery, and runs the original bounded network journey.
+The controller refreshes eight native relay observations before publishing the
+platform-specific receipt. No application is compiled in acceptance. This does
+not qualify rendered GUI interaction or personal installations.
+
+`acceptance.json` references the restricted grant and deployment policies and
+optionally pins initial native `baselines` by platform. Later runs can select the
+latest available normally retained provider for that platform. A failed historical
+provider or missing baseline cannot be relabelled as a successful native run.
+Only a short-lived repository secret carries bootstrap canary authority; deployment
+and signing credentials stay in the coordinator. Grant revocation and owned secret
+removal precede collection of completed evidence. Lost dispatch replies reconcile
+the same request. Completed receipts refresh after their freshness window without
+removing earlier evidence; unresolved attempts never expire into duplicate work.
+Mobile acceptance producers and actual native execution remain tracked in PLAN.md.
+
 There is no 24-hour campaign, physical-device requirement or statistical privacy
 release gate. This does not claim traffic-analysis privacy qualification. The
 remaining privacy work remains described in `PRODUCTION_RELEASE.md`.

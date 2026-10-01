@@ -20,6 +20,10 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
         workers[target]={'build':build,
             'verify':recipe('release_verify.py','--state',state,'--android-tools','/usr/bin',timeout=600),
             'compatibility':recipe('release_compatibility.py','--receipts',state/'acceptance'/target)}
+        if target not in ('android', 'ios'):
+            acceptance = recipe('release_acceptance.py', '--state', state, '--config', config/'acceptance.json', timeout=900)
+            acceptance['max_age_seconds'] = 3000
+            workers[target]['acceptance'] = acceptance
         if target in ('android','ios'):
             workers[target].update({stage:recipe('release_store_worker.py','--state',state,'--config',config/'stores.json',timeout=600) for stage in ('submit','observe')})
         else:workers[target]['publish']=recipe('release_publish.py','--state',state,'--config',config/'publisher.json',timeout=900)
@@ -36,6 +40,8 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
     atomic_json(a.output/'controller.json',configuration())
+    atomic_json(a.output/'acceptance.json', {'schema':1,'grant_config':'/config/grant.json',
+        'deployment_file':'/config/deployment.json','baselines':{}})
     policy=json.loads((Path(__file__).resolve().parents[1]/'release/automation/policy.json').read_text())
     atomic_json(a.output/'publisher.json',{'public_root':'/state/public/updates','public_url':'https://gchat.boo/updates',
         'public_key':policy['updater_public_key'],'signer':['python3','/opt/gchat/automation/sign-update'],

@@ -1,0 +1,102 @@
+name: Retained native acceptance
+run-name: Native acceptance ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+      target:
+        required: true
+        type: choice
+        options: [linux-x86_64, windows-x86_64, macos-aarch64, macos-x86_64]
+      gchat_commit:
+        required: true
+        type: string
+      release_manifest:
+        required: true
+        type: string
+      artifacts:
+        required: true
+        type: string
+      invitation_secret:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  acceptance:
+    runs-on: ${{ fromJSON('{"linux-x86_64":"ubuntu-24.04","windows-x86_64":"windows-2022","macos-aarch64":"macos-15","macos-x86_64":"macos-15-intel"}')[inputs.target] }}
+    environment: release-signing
+    timeout-minutes: 45
+    steps:
+      - name: Preserve source bytes
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Bind immutable native inputs
+        shell: bash
+        env:
+          RELEASE_MANIFEST: ${{ inputs.release_manifest }}
+          ARTIFACTS: ${{ inputs.artifacts }}
+          REQUEST: ${{ inputs.request_id }}
+          INVITATION_SECRET: ${{ inputs.invitation_secret }}
+          EXPECTED_COMMIT: ${{ inputs.gchat_commit }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          python - <<'PY'
+          import base64,json,os,re,subprocess,sys
+          from pathlib import Path
+          sys.path.insert(0,'scripts')
+          from release_pair import canonical,validate
+          assert re.fullmatch('[0-9a-f]{64}',os.environ['REQUEST'])
+          assert re.fullmatch('GCHAT_ACCEPTANCE_[0-9A-F]{64}',os.environ['INVITATION_SECRET'])
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==os.environ['EXPECTED_COMMIT']
+          manifest=validate(json.loads(base64.b64decode(os.environ['RELEASE_MANIFEST'],validate=True)))
+          assert manifest['sources']['gchat']['commit']==os.environ['EXPECTED_COMMIT']
+          inputs=json.loads(base64.b64decode(os.environ['ARTIFACTS'],validate=True))
+          assert inputs['target']==os.environ['TARGET']
+          Path('acceptance-manifest.json').write_bytes(canonical(manifest))
+          Path('acceptance-inputs.json').write_bytes(canonical(inputs))
+          PY
+      - name: Prepare Linux installed application dependencies
+        if: inputs.target == 'linux-x86_64'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebkit2gtk-4.1-0 libayatana-appindicator3-1 librsvg2-2 xvfb xauth gnupg
+      - name: Test retained applications without rebuilding
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GCHAT_NETWORK_INVITATION: ${{ secrets[inputs.invitation_secret] }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          if [ "$TARGET" = linux-x86_64 ]; then
+            gpg --batch --import release/signers/linux-release.asc
+            xvfb-run -a python scripts/test-native-upgrade.py --inputs acceptance-inputs.json --manifest acceptance-manifest.json --output acceptance
+          else
+            python scripts/test-native-upgrade.py --inputs acceptance-inputs.json --manifest acceptance-manifest.json --output acceptance
+          fi
+          git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: acceptance-${{ inputs.request_id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            acceptance/report.json
+            acceptance/*.stdout
+            acceptance/*.stderr
+            acceptance/cleanup-*/*.stdout
+            acceptance/cleanup-*/*.stderr
+            acceptance/rollback/*.json
+            acceptance/rollback/*.log
+            acceptance/network/*.json
+            acceptance/network/*.log

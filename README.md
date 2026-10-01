@@ -15,11 +15,11 @@ features do not require coordinated client and daemon upgrades.
 
 ## Automatic deployment and activation work
 
-The release coordinator can gate publication on a fresh, exact-source deployment
-observation. Serial native-service and Kubernetes workers retain rollback artifacts
-and preserve service configuration and relay identities. The operator inventory,
-artifact producer and real installed-network acceptance must be configured before
-this is operational; see [current work](PLAN.md).
+The live Kubernetes release coordinator gates publication on a fresh, exact-source
+deployment observation. Its configured 17-target inventory serializes native and
+Kubernetes services, retains rollback artifacts, and preserves configuration and
+relay identities. New client/relay activation and native acceptance remain subject
+to their qualification gates; see [current work](PLAN.md).
 
 The Linux release workflow also builds a retained native-service/OCI bundle.
 The release controller uses `skopeo` to publish digest-pinned images from the
@@ -56,6 +56,16 @@ native relays, both bootstraps, hosted channels, three Kubernetes anchors, catal
 push and controller from the operator's installed policies. Each target requires
 a real canary; controller activation follows the other services. The recovery job
 shares the controller's node and volume without repeatedly changing file ownership.
+
+`release_acceptance.py` dispatches platform-specific desktop acceptance from
+retained signed current and baseline archives. It checks identity, history and
+encrypted cache through rollback and restoration, then runs the same 16 MiB
+network recovery gate and refreshes all eight relay observations. Only a private
+expiring bootstrap invitation reaches that worker. Completed receipts can refresh
+without discarding evidence; an unknown dispatch is reconciled before another
+worker can run. Initial baselines may be pinned in `/config/acceptance.json`;
+otherwise the controller selects the platform's latest normally published native
+provider. Missing baselines or native/mobile evidence keep publication waiting.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer

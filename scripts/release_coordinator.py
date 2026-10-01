@@ -164,6 +164,25 @@ class Coordinator:
             if shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
                 raise ValueError('release storage is below reserved headroom; export retained artifacts before retrying')
         effect_kind = stage if stage != 'observe' else 'observe-' + str(time.time_ns())
+        if stage == 'acceptance' and 'max_age_seconds' in recipe:
+            age = recipe['max_age_seconds']
+            if type(age) is not int or not 60 <= age <= 3000:
+                raise ValueError('acceptance max_age_seconds must be an integer from 60 to 3000')
+            pointer = self.state / 'acceptance-effects' / manifest['release_id'] / (platform + '.json')
+            if pointer.exists(): effect_kind = json.loads(pointer.read_text())['kind']
+            previous = self.ledger.effect(manifest['release_id'], platform, effect_kind)
+            receipt = self.state / 'jobs' / previous['id'] / 'receipt.json'
+            if receipt.exists():
+                proof, retained_digest = read_receipt(receipt, manifest, platform, stage)
+                completed = proof.get('completed_at')
+                if type(completed) is not int or completed > time.time():
+                    raise ValueError('native acceptance completion time is invalid')
+                if time.time() - completed > age:
+                    # Only a completed attempt may expire. Unknown dispatches
+                    # retain their request ID and reconcile. Old evidence stays.
+                    self.ledger.complete_effect(previous['id'], str(proof.get('external_id', previous['id'])), retained_digest)
+                    effect_kind = 'acceptance-after-' + previous['id']
+                    atomic_json(pointer, {'kind': effect_kind})
         effect = self.ledger.effect(manifest['release_id'], platform, effect_kind)
         work = self.state / 'jobs' / effect['id']
         work.mkdir(parents=True, exist_ok=True)

@@ -1,3 +1,36 @@
+## Live controller and native acceptance (2026-10-01, in progress)
+
+The source-bound `bc8a622` controller is now active on Kubernetes with both
+containers ready, scoped workload permissions and an independent successful
+minute watchdog. The complete inventory has 17 serial targets; all eight native
+relays pass restricted observations. The previous controller image and layers
+are retained and registry repair passes. This is controller activation, not a
+claim that the new clients or relay binaries have completed rollout.
+
+Desktop acceptance automation now dispatches matching Linux, Windows and both
+Mac workers with an expiring bootstrap-only grant. It downloads retained signed
+current/baseline artifacts without rebuilding, checks actual identity/history/
+encrypted-cache recovery through current → baseline → current, runs the original
+16 MiB interrupted journey, and observes all eight relays before writing a
+platform-specific compatibility receipt. Lost dispatch replies are reconciled;
+only completed receipts expire into new work and earlier evidence is retained.
+Oversized invitations revoke their grant before any worker is dispatched.
+Validation passes 611 Python tests with five retained skips. Paired GChat Rust
+tests and strict Clippy pass against GComs `500b305`; no wire version changes.
+
+The old 18 owned 500-member test rooms were archived as 46 unchanged signed
+files. Their private hash manifest is retained; the active 64-member room and
+unrelated rooms remain intact, and the hosted service is healthy. Local launch
+and service configuration now prefer the managed package while retaining the
+qualified fallback; initial activation of the new binary remains separately
+recorded. See [operational checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
+
+Native SDK run `36814943114` fails the unchanged contact file reopen check on
+all four platforms. The original logs are retained and a scheduling fix is under
+validation. Native baseline binding, actual desktop and mobile acceptance,
+qualified fleet/client rollout, a subsequent unattended release and SDK 1.0
+declaration remain required. Component checks do not satisfy those gates.
+
 ## Stable contracts and released clients (2026-10-01, in progress)
 
 Keep API 3 and typed service 1 stable while compatible features continue. API 2

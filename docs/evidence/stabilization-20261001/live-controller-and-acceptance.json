@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "scope": "live controller bootstrap and desktop acceptance implementation; full release still open",
+  "controller": {
+    "gchat_commit": "bc8a6223e75f2c776715f955ef7e22ab650723e0",
+    "image": "sha256:e7c70dc257cdaeb0253250da75c586b6f12406d121bfe414c9997962b6ccbc8c",
+    "ready": true,
+    "containers": 2,
+    "restarts": 0,
+    "serial_targets": 17,
+    "native_hosts_observed": 8,
+    "scoped_role_enforced": true,
+    "watchdog_last_success": "2026-10-01T05:05:05Z",
+    "previous_digest_retained_and_repaired": true
+  },
+  "hosted_test_retention": {
+    "rooms": 18,
+    "files": 46,
+    "original_signed_bytes_preserved": true,
+    "active_64_room_unchanged": true,
+    "service_healthy_after_restart": true,
+    "manifest_sha256": "985af1db75e0e824e6c6d1462b34407d46df86cb08086112d23e44814dcf5412"
+  },
+  "local_activation": {
+    "managed_package_preferred": true,
+    "old_process_preserved": true,
+    "new_binary_activated": false
+  },
+  "acceptance_implementation": {
+    "native_targets": [
+      "linux-x86_64",
+      "windows-x86_64",
+      "macos-aarch64",
+      "macos-x86_64"
+    ],
+    "retained_signed_artifacts_only": true,
+    "current_baseline_current_rollback": true,
+    "file_bytes": 16777216,
+    "completion_seconds": 360,
+    "total_seconds": 600,
+    "fresh_eight_relay_observations": true,
+    "lost_dispatch_reply_reconciled": true,
+    "completed_receipts_refresh_without_discarding_evidence": true,
+    "actual_native_run_qualified": false,
+    "mobile_producers_complete": false
+  },
+  "component_validation": {
+    "python_tests": 611,
+    "python_skipped": 5
+  },
+  "open": [
+    "native SDK run 36814943114 contact-file recovery failure under investigation",
+    "native baseline binding and actual desktop acceptance",
+    "mobile acceptance producers",
+    "qualified fleet and app activation",
+    "subsequent unattended release",
+    "SDK 1.0 declaration"
+  ],
+  "evidence": [
+    {
+      "path": "test-evidence/stabilization-20261001/controller-native-observe-01.log",
+      "sha256": "03be113c67044fab15e5dab6fe392cfa69ab3c6332a316ae140fa8080940e02c"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-baseline-retention-03.log",
+      "sha256": "c3b3e0c50a8915ef74464399dac82e568f639013204fdd99262a3081c1c9921f"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/python-11.log",
+      "sha256": "f06392667f89cbea6a55aad46b07e61adfe23abd463b69aff025911147e73833"
+    }
+  ]
+}

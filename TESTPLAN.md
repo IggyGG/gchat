@@ -16,6 +16,16 @@ single mutation admission and optional-method capability selection.
 
 ## Deployment reconciliation and idle activation (2026-09-30)
 
+Run `release_acceptance_test.py` for exact native source/archive/platform
+bindings, current → baseline → current identity/history/cache preservation,
+covered ACKs, unchanged 16 MiB/360-second/600-second bounds, cleanup, lost dispatch
+replies and oversized invitation revocation. Only completed acceptance receipts
+can refresh; unknown effects cannot create another worker. Retain the old receipt
+and logs. Actual completion requires matching native workers executing retained
+signed applications without rebuilding or touching personal profiles, followed by
+fresh observations of all eight running relays. A desktop pass cannot qualify a
+mobile platform. Component tests are not native acceptance evidence.
+
 Run `release_deployment_test.py`, `release_host_install_test.py`,
 `release_kubernetes_worker_test.py` and `release_coordinator_test.py` through
 unittest discovery. Cover interruption after activation, serial canaries,
