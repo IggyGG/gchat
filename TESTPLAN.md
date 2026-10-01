@@ -35,6 +35,11 @@ The live canary producer must use the hash-bound provider archive and exact nati
 CLI receipt. Missing ACKs, smaller files, late or non-finite measurements, changed
 inputs and incomplete cleanup cannot pass. Interrupted cleanup must be limited to
 its recorded temporary root, with original logs and failures retained.
+`release_rollout_watchdog_test.py` must restore a failed controller independently,
+preserve the prior rollout intent across a lost reply, respect backoff and refuse
+unrelated workloads or changed source bindings. `release_rollback_image_test.py`
+requires pinned previous images, retains their manifest/layers before mutation and
+repairs missing remote layers before rollback; changed retained bytes must fail.
 UI `idle-updates.test.ts` must reject new activity while native status is pending,
 wait for saved drafts/actions, and back off after native deferral. Run the UI type
 checks/build and all unit tests. Rust `fleet_host` must reject invalid bootstrap

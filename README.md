@@ -43,6 +43,11 @@ recipient acknowledgments, 16 MiB interrupted recovery and the same identities
 after reopen. Interrupted canaries revoke their grant and stop only their recorded
 disposable processes before retrying. These service checks do not qualify rendered
 UI behavior or application upgrade/rollback on another platform.
+Before a Kubernetes mutation, the worker retains the previous pinned images and
+their layers. Rollback repairs those layers from storage. A separate minute-based
+recovery job watches controller updates, restores the previous image after a
+failed start and resumes interrupted rollback. Keep its last healthy image pinned
+when updating the main controller.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer

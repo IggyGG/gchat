@@ -37,6 +37,11 @@ archive and retains real covered delivery/file/reopen evidence. Interrupted gran
 and disposable processes are reconciled before a retry. The operator inventory
 and production bootstrap activation remain the next step; platform-specific
 upgrade/rollback acceptance remains separate.
+Component validation now passes 599 Python tests with five retained skips. All
+eight native hosts accept restricted observations; a live bootstrap-only grant
+reconciles a repeated request and is revoked. Independent controller recovery and
+retained prior-image layer repair pass their failure/interruption controls.
+Activation of the production controller and inventory remains open.
 
 ## Automatic deployment and idle activation (2026-09-30, in progress)
 

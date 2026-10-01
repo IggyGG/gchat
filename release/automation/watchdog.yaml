@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: gchat-release-watchdog, namespace: ghost-com}
+spec:
+  schedule: '* * * * *'
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 180
+      backoffLimit: 0
+      template:
+        metadata: {labels: {app: gchat-release-watchdog}}
+        spec:
+          serviceAccountName: gchat-release-operator
+          automountServiceAccountToken: true
+          restartPolicy: Never
+          affinity:
+            podAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector: {matchLabels: {app: gchat-release}}
+                    topologyKey: kubernetes.io/hostname
+          securityContext: {fsGroup: 10001}
+          containers:
+            - name: watchdog
+              # Keep the last healthy recovery implementation when the
+              # coordinator advances. A failed image cannot replace this job.
+              image: GCHAT_RECOVERY_IMAGE
+              command: [python3, /opt/gchat/scripts/release_rollout_watchdog.py, --state, /state]
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                allowPrivilegeEscalation: false
+                capabilities: {drop: [ALL]}
+              resources:
+                requests: {cpu: 20m, memory: 64Mi}
+                limits: {cpu: 200m, memory: 256Mi}
+              volumeMounts: [{name: state, mountPath: /state}]
+          volumes:
+            - name: state
+              persistentVolumeClaim: {claimName: gchat-release-state-hel}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: gchat-release-watchdog, namespace: ghost-com}
+spec:
+  podSelector: {matchLabels: {app: gchat-release-watchdog}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock: {cidr: 10.96.0.1/32}
+      ports: [{protocol: TCP, port: 443}]
+    - to:
+        - ipBlock: {cidr: 116.202.84.152/32}
+        - ipBlock: {cidr: 49.12.172.59/32}
+        - ipBlock: {cidr: 78.46.219.146/32}
+      ports: [{protocol: TCP, port: 6443}]

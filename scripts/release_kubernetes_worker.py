@@ -158,6 +158,11 @@ def run(target, manifest, stage, output):
                                   'partition': current['spec'].get('updateStrategy', {}).get('rollingUpdate', {}).get('partition', 0),
                                   'identities': identities(target),
                                   'volume_claims': current['spec'].get('volumeClaimTemplates', [])})
+        if target.get('rollback_image_root'):
+            from release_rollback_image import retain
+            before = json.loads(journal.read_text())
+            for image in set([*before['images'].values(), *before.get('pod_images', {}).values()]):
+                retain(image, target)
         # An Always-pull probe catches a digest missing from the registry before
         # any working replica is replaced. The Job is deterministic after a crash.
         attempts_path = output.parent / 'pull-attempts.json'
@@ -201,6 +206,10 @@ def run(target, manifest, stage, output):
             raise ValueError('canary does not bind this rollout')
         return value
     if stage not in ('activate', 'rollback'): raise ValueError('unsupported rollout stage')
+    if stage == 'rollback' and target.get('rollback_image_root'):
+        from release_rollback_image import repair
+        for image in set([*before['images'].values(), *before.get('pod_images', {}).values()]):
+            repair(image, target)
     desired = {name: expected for name in target['containers']} if stage == 'activate' else before['images']
     actual = images(current['spec'], target['containers'])
     if any(actual[name] not in (before['images'][name], before.get('pod_images', {}).get(name), expected) for name in actual):

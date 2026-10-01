@@ -25,7 +25,7 @@ rules:
   - apiGroups: ['']
     resources: [pods/exec]
     resourceNames: [gc-anchor-0, gc-anchor-1, gc-anchor-2]
-    verbs: [create]
+    verbs: [get, create]
   - apiGroups: ['']
     resources: [configmaps]
     verbs: [get, create]
