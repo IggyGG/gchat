@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "scope": "stable-contract component checks; not a live deployment or SDK 1.0 release",
+  "gchat_commit": "4899423",
+  "gcoms_commit": "41d630f",
+  "checks": {
+    "gchat_workspace": {
+      "passed": 201,
+      "failed": 0,
+      "ignored": 3
+    },
+    "strict_workspace_clippy": true,
+    "ui_tests": 70,
+    "svelte_check": true,
+    "python_tests": 583,
+    "python_skips": 5,
+    "compiled_released_api_2_client_real_server": true,
+    "retained_contracts": {
+      "original_methods": 18,
+      "optional_methods": 3,
+      "original_source_hashes_unchanged": true
+    }
+  },
+  "evidence": {
+    "stable-contract-tests-03.log": {
+      "path": "test-evidence/stabilization-20261001/stable-contract-tests-03.log",
+      "sha256": "c7907b122c51f4d4f36608cbdeb4ee725669add60d2be5d9a54d94ab395c7f54"
+    },
+    "stable-clippy-01.log": {
+      "path": "test-evidence/stabilization-20261001/stable-clippy-01.log",
+      "sha256": "60a37863b50f765c8e018d47d9de3e23329f9220d9b76bc1ed97d0b8c38b8e49"
+    },
+    "stable-ui-01.log": {
+      "path": "test-evidence/stabilization-20261001/stable-ui-01.log",
+      "sha256": "5e8363774e307da6a16aee79def927e1d818d012bb37070bf97589191ed0ec60"
+    },
+    "stable-released-client-02.log": {
+      "path": "test-evidence/stabilization-20261001/stable-released-client-02.log",
+      "sha256": "872928c047f7aa0ff1a2df1a454f50b615a6dff29a06009f832ba92a715dbde1"
+    },
+    "python-01.log": {
+      "path": "test-evidence/stabilization-20261001/python-01.log",
+      "sha256": "bec99f6727b346f14d9b0b88c9027d0c222374f3657beb54dc7c10393e64b6ee"
+    }
+  }
+}

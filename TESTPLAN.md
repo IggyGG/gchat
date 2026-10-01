@@ -21,6 +21,11 @@ Run `release_deployment_test.py`, `release_host_install_test.py`,
 unittest discovery. Cover interruption after activation, serial canaries,
 rollback, unchanged identity/configuration, concurrent operator changes, missing
 image availability, disabled workloads and stale deployment observations.
+A lower ordinal rollback must use its recorded pod image, freeze automatic rolling,
+replace only the failed pod, preserve higher ordinals and resume after a lost reply.
+Restricted SSH uploads must reject changed/partial/oversized bytes and cannot select
+unlisted units, executable names or protected paths. Controller-only source changes
+must not reuse an infrastructure image from an older source pair.
 UI `idle-updates.test.ts` must reject new activity while native status is pending,
 wait for saved drafts/actions, and back off after native deferral. Run the UI type
 checks/build and all unit tests. Rust `fleet_host` must reject invalid bootstrap

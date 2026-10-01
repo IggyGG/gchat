@@ -104,7 +104,7 @@ def qualification_only(project, path):
 
 
 def fingerprints(repositories, sources):
-    artifacts, qualification = {}, {}
+    artifacts, qualification, infrastructure = {}, {}, {}
     for project in ('gchat', 'gcoms'):
         raw = subprocess.check_output(['git', '-C', str(repositories[project]),
             'ls-tree', '-rz', '--full-tree', sources[project]['commit']])
@@ -117,8 +117,14 @@ def fingerprints(repositories, sources):
             entries.append([path.decode('utf-8'), mode, kind, oid])
         entries.sort()
         qualification[project] = entries
+        # The controller is now a retained infrastructure artifact. A reviewed
+        # controller-only edit may keep application bytes equivalent, but its
+        # image must receive fresh exact-source qualification and deployment.
+        infrastructure[project] = [entry for entry in entries if project == 'gcoms' or
+            entry[0].startswith(('scripts/', 'release/')) or entry[0] == '.dockerignore']
         artifacts[project] = [entry for entry in entries
                               if not qualification_only(project, entry[0])]
     return {'schema': 1,
             'artifacts': hashlib.sha256(canonical(artifacts)).hexdigest(),
+            'infrastructure': hashlib.sha256(canonical(infrastructure)).hexdigest(),
             'qualification': hashlib.sha256(canonical(qualification)).hexdigest()}

@@ -16,10 +16,12 @@ class InfrastructureBundleTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.manifest = {'release_id': 'a' * 64, 'sources': {'gcoms': {'commit': 'b' * 40, 'tree': 'c' * 40}}}
+        self.manifest = {'release_id': 'a' * 64, 'sources': {'gcoms': {'commit': 'b' * 40, 'tree': 'c' * 40},
+            'gchat': {'commit': 'd' * 40, 'tree': 'e' * 40}}}
         self.files = {name: name.encode() for name in
-                      (*bundle.BINARIES, 'Dockerfile', 'image.tar', 'ca-certificates.crt')}
+                      (*bundle.BINARIES, 'Dockerfile', 'image.tar', 'controller.tar', 'ca-certificates.crt')}
         self.build = {'release_id': self.manifest['release_id'],
+                      'sources': self.manifest['sources'],
                       'gcoms_source': self.manifest['sources']['gcoms'],
                       'sha256': {name: hashlib.sha256(data).hexdigest() for name, data in self.files.items()}}
 
@@ -38,7 +40,7 @@ class InfrastructureBundleTests(unittest.TestCase):
         self.assertEqual(bundle.retain_archive(self.archive(), directory, self.manifest), self.build)
 
     def test_wrong_source_cannot_be_promoted(self):
-        self.build['gcoms_source'] = {'commit': 'd' * 40, 'tree': 'e' * 40}
+        self.build['sources'] = {**self.manifest['sources'], 'gchat': {'commit': 'f' * 40, 'tree': '0' * 40}}
         with self.assertRaisesRegex(ValueError, 'frozen CI source'):
             bundle.retain_archive(self.archive(), self.root / 'retained', self.manifest)
 

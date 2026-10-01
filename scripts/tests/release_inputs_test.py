@@ -82,6 +82,7 @@ class InputTests(unittest.TestCase):
             commit('gchat', 'scripts/release_coordinator.py', '# new controller')
             second = fingerprints(roots, sources)
             self.assertEqual(first['artifacts'], second['artifacts'])
+            self.assertNotEqual(first['infrastructure'], second['infrastructure'])
             self.assertNotEqual(first['qualification'], second['qualification'])
             for path in ('release/downloads.json', 'scripts/website.py',
                          '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py',

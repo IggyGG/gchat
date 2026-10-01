@@ -31,9 +31,9 @@ def retain_archive(archive, root, manifest):
         if len(reports) != 1 or len(names) != len(set(names)):
             raise ValueError('qualified worker has no unambiguous infrastructure bundle')
         original = json.loads(bundle.read(reports[0]))
-        if original.get('gcoms_source') != manifest['sources']['gcoms'] or original.get('release_id') != manifest['release_id']:
+        if original.get('sources') != manifest['sources'] or original.get('release_id') != manifest['release_id']:
             raise ValueError('infrastructure bundle does not bind the frozen CI source')
-        required = {*BINARIES, 'image.tar', 'Dockerfile', 'ca-certificates.crt'}
+        required = {*BINARIES, 'image.tar', 'controller.tar', 'Dockerfile', 'ca-certificates.crt'}
         if set(original['sha256']) != required:
             raise ValueError('infrastructure bundle has unexpected or missing files')
         prefix = reports[0].rsplit('/', 1)[0] + '/'
@@ -57,23 +57,25 @@ def retain_archive(archive, root, manifest):
         return original
 
 
-def publish(directory, config, tag):
+def publish(directory, config, tag, image='services'):
     directory = Path(directory)
-    oci = directory / 'oci'
+    oci = directory / ('oci' if image == 'services' else 'controller-oci')
     # An interrupted conversion is disposable derived data; source archives are
     # immutable and retained. A complete index is verified by skopeo on every use.
     if not (oci / 'index.json').exists():
-        subprocess.run(['skopeo', 'copy', 'docker-archive:' + str(directory / 'image.tar'),
+        archive = 'image.tar' if image == 'services' else 'controller.tar'
+        subprocess.run(['skopeo', 'copy', 'docker-archive:' + str(directory / archive),
                         'oci:' + str(oci) + ':release'], check=True, timeout=300,
                        stdout=subprocess.DEVNULL)
     source = 'oci:' + str(oci) + ':release'
     raw = subprocess.check_output(['skopeo', 'inspect', '--raw', source], timeout=30)
     manifest = json.loads(raw)
     build = json.loads((directory / 'source-build.json').read_text())
-    if manifest['config']['digest'] != build['image_config']:
+    expected_config = build['image_config' if image == 'services' else 'controller_config']
+    if manifest['config']['digest'] != expected_config:
         raise ValueError('OCI conversion changed the qualified image configuration')
     sha = 'sha256:' + hashlib.sha256(raw).hexdigest()
-    destination = config['registry_repository']
+    destination = config['registry_repository' if image == 'services' else 'controller_registry_repository']
     tls = [] if config.get('registry_tls', True) else ['--tls-verify=false']
     observed = subprocess.run(['skopeo', 'inspect', '--raw', *tls, 'docker://' + destination + '@' + sha],
                               capture_output=True, timeout=30)
@@ -85,12 +87,12 @@ def publish(directory, config, tag):
         actual = subprocess.check_output(['skopeo', 'inspect', '--raw', *tls,
                                           'docker://' + destination + '@' + sha], timeout=30)
         if actual != raw: raise ValueError('registry read-back changed the image manifest')
-    return config['pull_repository'] + '@' + sha
+    return config['pull_repository' if image == 'services' else 'controller_pull_repository'] + '@' + sha
 
 
 def collect(state, manifest, config):
     state = Path(state)
-    root = state / 'infrastructure' / manifest['sources']['gcoms']['commit']
+    root = state / 'infrastructure' / manifest['release_id']
     ready = root / 'build.json'
     if not ready.exists():
         jobs = {stage: state / 'jobs' / hashlib.sha256(canonical(
@@ -106,19 +108,21 @@ def collect(state, manifest, config):
         atomic_json(root / 'qualification.json', {'release_id': manifest['release_id'], 'sources': manifest['sources'],
             'receipts': {stage: {'path': str(path / 'receipt.json'), 'sha256': digest(path / 'receipt.json')}
                          for stage, path in jobs.items()}})
-        image = publish(root, config, 'source-' + manifest['sources']['gcoms']['commit'])
-        atomic_json(ready, {**original, 'qualified': True, 'images': {'services': image},
+        images = {name: publish(root, config, name + '-' + manifest['release_id'], name)
+                  for name in ('services', 'controller')}
+        atomic_json(ready, {**original, 'qualified': True, 'images': images,
                            'qualification_sha256': digest(root / 'qualification.json')})
     value = json.loads(ready.read_text())
-    if value.get('gcoms_source') != manifest['sources']['gcoms'] or value.get('qualified') is not True:
+    if value.get('sources') != manifest['sources'] or value.get('qualified') is not True:
         raise ValueError('retained bundle has the wrong qualification identity')
     if digest(root / 'qualification.json') != value['qualification_sha256']:
         raise ValueError('retained qualification changed')
     for name, expected in value['sha256'].items():
         if digest(root / name) != expected: raise ValueError('retained infrastructure artifact changed')
-    image = publish(root, config, 'source-' + manifest['sources']['gcoms']['commit'])
-    if value['images']['services'] != image:
-        raise ValueError('retained OCI image changed; refusing to relabel its deployment')
+    for name in ('services', 'controller'):
+        image = publish(root, config, name + '-' + manifest['release_id'], name)
+        if value['images'][name] != image:
+            raise ValueError('retained OCI image changed; refusing to relabel its deployment')
     return ready
 
 

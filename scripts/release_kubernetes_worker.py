@@ -80,7 +80,7 @@ def identities(target):
     return result
 
 
-def patch_images(target, current, replacement, partition=None):
+def patch_images(target, current, replacement, partition=None, on_delete=False):
     # Strategic merge updates only named images. Environment, commands, volumes,
     # identities, services, limits and replica counts retain their current values.
     pod = {}
@@ -90,15 +90,48 @@ def patch_images(target, current, replacement, partition=None):
         if selected: pod[group] = selected
     patch = {'metadata': {'resourceVersion': current['metadata']['resourceVersion']},
              'spec': {'template': {'spec': pod}}}
-    if partition is not None:
+    if on_delete:
+        patch['spec']['updateStrategy'] = {'type': 'OnDelete', 'rollingUpdate': None}
+    elif partition is not None:
         patch['spec']['updateStrategy'] = {'type': 'RollingUpdate', 'rollingUpdate': {'partition': partition}}
     kubectl(target, 'patch', target['kind'], target['name'], '--type=strategic', '-p', json.dumps(patch))
 
 
+def rollback_stateful(target, current, before, journal):
+    # A lower ordinal's previous template may already be the new image from
+    # the higher ordinal. Its own running image is the rollback authority.
+    # Freeze automatic rolling while replacing just the failed pod, then
+    # restore the preceding template/partition so healthy ordinals stay put.
+    pod = json.loads(kubectl(target, 'get', 'pod', target['pod'], '-o', 'json'))
+    if 'rollback' not in before:
+        before['rollback'] = {'pod_uid': pod['metadata']['uid'], 'state': 'replacing'}
+        atomic_json(journal, before)
+    if before['rollback']['state'] != 'complete':
+        if (current['spec'].get('updateStrategy', {}).get('type') != 'OnDelete'
+                or images(current['spec'], target['containers']) != before['pod_images']):
+            patch_images(target, current, before['pod_images'], on_delete=True)
+        if pod['metadata']['uid'] == before['rollback']['pod_uid']:
+            kubectl(target, 'delete', 'pod', target['pod'], '--wait=false')
+            return None
+        observed = observe(target, next(iter(before['pod_images'].values())))
+        if not observed['healthy'] or not observed['matches']: return None
+        if identities(target) != before['identities']:
+            raise ValueError('relay identities changed during rollback')
+        current = resource(target)
+        patch_images(target, current, before['images'], before['partition'])
+        before['rollback']['state'] = 'complete'
+        atomic_json(journal, before)
+    observed = observe(target, next(iter(before['pod_images'].values())))
+    if not observed['healthy'] or not observed['matches']: return None
+    if identities(target) != before['identities']:
+        raise ValueError('relay identities changed during rollback')
+    return {'passed': True, **observed}
+
+
 def run(target, manifest, stage, output):
-    directory = Path(target['artifact_root']) / manifest['sources']['gcoms']['commit']
+    directory = Path(target['artifact_root']) / manifest['release_id']
     build = json.loads((directory / 'build.json').read_text())
-    if build.get('gcoms_source') != manifest['sources']['gcoms'] or build.get('qualified') is not True:
+    if build.get('sources') != manifest['sources'] or build.get('qualified') is not True:
         raise ValueError('image bundle is not qualified on this exact source')
     expected = build['images'][target['image']]
     if not re.fullmatch(r'[^\s]+@sha256:[0-9a-f]{64}', expected):
@@ -107,15 +140,29 @@ def run(target, manifest, stage, output):
     journal = output.parent / 'kubernetes-before.json'
     current = resource(target)
     if stage == 'prepare':
+        # A cached successful artifact receipt cannot prove registry availability.
+        # Re-publish retained qualified OCI blobs before the cold pull check.
+        if target.get('infrastructure_config'):
+            from release_infrastructure_bundle import collect
+            config = json.loads(Path(target['infrastructure_config']).read_text())
+            if collect(Path(target['artifact_root']).parent, manifest, config) is None:
+                return None
         if not journal.exists():
+            pod_images = {}
+            if target['kind'] == 'statefulset':
+                pod = json.loads(kubectl(target, 'get', 'pod', target['pod'], '-o', 'json'))
+                pod_images = images({'template': {'spec': pod['spec']}}, target['containers'])
             atomic_json(journal, {'uid': current['metadata']['uid'],
                                   'images': images(current['spec'], target['containers']),
+                                  'pod_images': pod_images,
                                   'partition': current['spec'].get('updateStrategy', {}).get('rollingUpdate', {}).get('partition', 0),
                                   'identities': identities(target),
                                   'volume_claims': current['spec'].get('volumeClaimTemplates', [])})
         # An Always-pull probe catches a digest missing from the registry before
         # any working replica is replaced. The Job is deterministic after a crash.
-        job = 'gchat-pull-' + hashlib.sha256(expected.encode()).hexdigest()[:24]
+        attempts_path = output.parent / 'pull-attempts.json'
+        attempts = json.loads(attempts_path.read_text()) if attempts_path.exists() else {'generation': 0}
+        job = 'gchat-pull-' + hashlib.sha256((expected + ':' + str(attempts['generation'])).encode()).hexdigest()[:24]
         probe = {'apiVersion': 'batch/v1', 'kind': 'Job', 'metadata': {'name': job}, 'spec': {
             'backoffLimit': 0, 'activeDeadlineSeconds': 180, 'ttlSecondsAfterFinished': 86400,
             'template': {'spec': {'automountServiceAccountToken': False, 'restartPolicy': 'Never',
@@ -129,6 +176,9 @@ def run(target, manifest, stage, output):
                        input=json.dumps(probe).encode(), check=True, stdout=subprocess.DEVNULL, timeout=30)
         state = json.loads(kubectl(target, 'get', 'job', job, '-o', 'json'))['status']
         if state.get('failed') or any(c['type'] == 'Failed' and c['status'] == 'True' for c in state.get('conditions', [])):
+            if target.get('infrastructure_config') and attempts['generation'] < 3:
+                atomic_json(attempts_path, {'generation': attempts['generation'] + 1})
+                return None
             raise ValueError('candidate image cannot be pulled; working replicas retained')
         if not state.get('succeeded'): return None
         return {'passed': True, 'pull_job': job, 'image': expected}
@@ -152,8 +202,10 @@ def run(target, manifest, stage, output):
     if stage not in ('activate', 'rollback'): raise ValueError('unsupported rollout stage')
     desired = {name: expected for name in target['containers']} if stage == 'activate' else before['images']
     actual = images(current['spec'], target['containers'])
-    if any(actual[name] not in (before['images'][name], expected) for name in actual):
+    if any(actual[name] not in (before['images'][name], before.get('pod_images', {}).get(name), expected) for name in actual):
         raise ValueError('another operator changed the target image')
+    if stage == 'rollback' and target['kind'] == 'statefulset':
+        return rollback_stateful(target, current, before, journal)
     partition = (target['ordinal'] if stage == 'activate' else before['partition']) if target['kind'] == 'statefulset' else None
     current_partition = current['spec'].get('updateStrategy', {}).get('rollingUpdate', {}).get('partition', 0)
     if actual != desired or (partition is not None and current_partition != partition):

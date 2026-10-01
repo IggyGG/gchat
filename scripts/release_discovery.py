@@ -33,7 +33,8 @@ def coalesce_equivalent_queued(config, ledger):
             return None  # Manually frozen sources are never inferred equivalent.
         key = canonical(upstream)
         if key not in cache:
-            cache[key] = fingerprints(repositories, upstream)['artifacts']
+            value = fingerprints(repositories, upstream)
+            cache[key] = (value['artifacts'], value.get('infrastructure'))
         return cache[key]
     retained = {'building', 'verifying', 'verified', 'publishing', 'submitting',
                 'processing', 'in_review', 'available'}
@@ -108,7 +109,8 @@ def discover(config, state, ledger):
     if latest:
         baseline = json.loads(latest[0])
         prior_inputs = fingerprints(repositories, baseline.get('upstream', baseline['sources']))
-        if baseline['policy'] == policy and prior_inputs['artifacts'] == current_inputs['artifacts']:
+        if (baseline['policy'] == policy and prior_inputs['artifacts'] == current_inputs['artifacts']
+                and prior_inputs.get('infrastructure') == current_inputs.get('infrastructure')):
             atomic_json(Path(state) / 'qualification-needed.json', {
                 'schema': 1, 'artifact_release_id': baseline['release_id'],
                 'sources': upstream, 'inputs': current_inputs,

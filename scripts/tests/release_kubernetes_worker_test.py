@@ -2,6 +2,7 @@ import copy
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -61,6 +62,36 @@ class KubernetesWorkerTests(unittest.TestCase):
         with patch.object(worker, 'kubectl', return_value=(('a' * 64) + '  /var/lib/gc/ks.bin\n').encode()):
             with self.assertRaisesRegex(ValueError, 'incomplete'):
                 worker.identities(self.target)
+
+    def test_lower_ordinal_rollback_replaces_only_failed_pod_and_restores_prior_partition(self):
+        old = 'registry/gcnode@sha256:' + 'b' * 64
+        before = {'images': {name: self.image for name in self.target['containers']},
+                  'pod_images': {name: old for name in self.target['containers']},
+                  'partition': 2, 'identities': {'identity': 'unchanged'}}
+        self.target.update(pod='gc-anchor-1', ordinal=1)
+        failed = {'metadata': {'uid': 'failed-pod'}}
+        replacement = {'metadata': {'uid': 'restored-pod'}}
+        healthy = {'healthy': True, 'matches': True, 'running': {}}
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(worker, 'kubectl', return_value=json.dumps(failed).encode()) as kubectl, \
+                patch.object(worker, 'patch_images') as patch_images, \
+                patch.object(worker, 'observe', return_value=healthy), \
+                patch.object(worker, 'identities', return_value=before['identities']), \
+                patch.object(worker, 'resource', return_value=self.current):
+            journal = Path(tmp) / 'before.json'
+            self.assertIsNone(worker.rollback_stateful(self.target, self.current, before, journal))
+            self.assertTrue(journal.is_file())
+            self.assertEqual(patch_images.call_args.kwargs, {'on_delete': True})
+            self.assertEqual(patch_images.call_args.args[2], before['pod_images'])
+            self.assertEqual(kubectl.call_args.args[1:], ('delete', 'pod', 'gc-anchor-1', '--wait=false'))
+            # A lost delete reply resumes from the retained failed UID. The new
+            # pod and every healthy higher ordinal must survive reconciliation.
+            kubectl.reset_mock(); kubectl.return_value = json.dumps(replacement).encode()
+            resumed = json.loads(journal.read_text())
+            self.assertTrue(worker.rollback_stateful(self.target, self.current, resumed, journal)['passed'])
+            self.assertEqual(patch_images.call_args.args[2:], (before['images'], 2))
+            self.assertFalse(any('delete' in call.args for call in kubectl.call_args_list))
+            self.assertEqual(json.loads(journal.read_text())['rollback']['state'], 'complete')
 
 
 if __name__ == '__main__': unittest.main()

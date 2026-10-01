@@ -4,7 +4,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shlex
 import subprocess
 import time
 
@@ -18,10 +17,11 @@ def digest(path):
 
 
 def artifact(target, manifest):
-    # Each source commit has an immutable, CI-qualified infrastructure bundle.
-    directory = Path(target['artifact_root']) / manifest['sources']['gcoms']['commit']
+    # The bundle binds both sources; controller-only updates cannot reuse an
+    # older controller merely because its protocol companion is unchanged.
+    directory = Path(target['artifact_root']) / manifest['release_id']
     proof = json.loads((directory / 'build.json').read_text())
-    if (proof.get('gcoms_source') != manifest['sources']['gcoms'] or proof.get('qualified') is not True):
+    if (proof.get('sources') != manifest['sources'] or proof.get('qualified') is not True):
         raise ValueError('infrastructure artifact has no exact qualified source binding')
     name = target['binary_name']
     if not re.fullmatch(r'[a-zA-Z0-9_-]+', name):
@@ -32,11 +32,15 @@ def artifact(target, manifest):
     return path, proof['sha256'][name]
 
 
-def ssh(host, code, payload, timeout=120):
+def ssh(target, command, payload, timeout=120):
+    host = target['host']
     if not re.fullmatch(r'[a-zA-Z0-9_.@-]+', host) or host.startswith('-'):
         raise ValueError('invalid operator SSH destination')
-    return subprocess.run(['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
-                           '-o', 'ConnectTimeout=10', host, shlex.join(['python3', '-c', code])],
+    if command != 'install' and not re.fullmatch(r'upload [0-9a-f]{64}', command):
+        raise ValueError('unsupported restricted service command')
+    return subprocess.run(['ssh', '-F', target['ssh_config'],
+                           '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+                           '-o', 'ConnectTimeout=10', host, command],
                           input=payload, capture_output=True, check=True, timeout=timeout).stdout
 
 
@@ -46,7 +50,6 @@ def main():
     stage = os.environ['GCHAT_DEPLOYMENT_STAGE']
     output = Path(os.environ['GCHAT_DEPLOYMENT_RECEIPT'])
     binary, sha = artifact(target, manifest)
-    host = target['host']
     if stage == 'check':
         # The operator recipe must run the actual network journey. A service
         # process or TCP listener alone never qualifies relay compatibility.
@@ -67,26 +70,12 @@ def main():
         if stage == 'prepare':
             # The remote path is content-addressed and written atomically. Never
             # execute or overwrite it until the complete upload verifies.
-            upload = '''import hashlib,os,sys,tempfile
-from pathlib import Path
-sha=sys.argv[1]; path=Path('/var/tmp')/('gchat-release-'+sha)
-with tempfile.NamedTemporaryFile(dir='/var/tmp',delete=False) as f:
- try:
-  h=hashlib.sha256()
-  while data:=sys.stdin.buffer.read(1024*1024): f.write(data); h.update(data)
-  f.flush();os.fsync(f.fileno());f.close()
-  if h.hexdigest()!=sha: raise ValueError('upload digest mismatch')
-  os.chmod(f.name,0o600);os.replace(f.name,path)
- finally: Path(f.name).unlink(missing_ok=True)
-'''
             # Bound memory; binaries have already been hashed and are operator-built.
             if binary.stat().st_size > 256 * 1024 * 1024:
                 raise ValueError('infrastructure binary exceeds transfer limit')
-            ssh(host, 'import sys\nsys.argv=["upload",' + repr(sha) + ']\n' + upload,
-                binary.read_bytes(), timeout=180)
+            ssh(target, 'upload ' + sha, binary.read_bytes(), timeout=180)
         request = {**target, 'stage': stage, 'release_id': manifest['release_id'], 'sha256': sha}
-        code = Path(__file__).with_name('release_host_install.py').read_text()
-        value = json.loads(ssh(host, code, json.dumps(request).encode(), timeout=180))
+        value = json.loads(ssh(target, 'install', json.dumps(request).encode(), timeout=180))
     evidence = output.with_suffix('.observation.json')
     atomic_json(evidence, value)
     atomic_json(output, {**value, 'schema': 1, 'release_id': manifest['release_id'],

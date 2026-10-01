@@ -13,7 +13,18 @@ the unchanged released client against the current local server and checks reopen
 and message deduplication. Pair preparation also freezes that consumer's graph
 and lock. The fast retained-contract workflow runs on pushes and pull requests.
 UI checks pass with 70 tests; Python passes 583 tests with five retained skips.
-Current native qualification, live deployment and SDK 1.0 declaration remain open.
+The compiled released client passes its actual-server identity/deduplication/reopen
+journey. Full GChat Rust checks pass 201 tests with three retained ignores and
+strict workspace Clippy; generated artifacts agree. Live deployment, complete
+platform qualification and the SDK 1.0 declaration remain open.
+
+The deployment follow-up retains the controller image with the service binaries,
+binds both to the complete source pair, and keys the infrastructure bundle by
+release ID. The controller includes a checksum-pinned Kubernetes client. Native
+workers use a restricted SSH command with root-owned unit/path policy. Stateful
+rollback records each ordinal's actual image and replaces only the failed pod;
+registry repair re-publishes retained OCI images before fresh bounded pull jobs.
+These changes pass their component regressions; production wiring remains open.
 
 ## Automatic deployment and idle activation (2026-09-30, in progress)
 

@@ -25,6 +25,10 @@ The Linux release workflow also builds a retained native-service/OCI bundle.
 The release controller uses `skopeo` to publish digest-pinned images from the
 verified provider archive; the build worker requires Docker. These infrastructure
 steps remain subject to live deployment and installed-network qualification.
+The bundle retains both service and controller images and binds their exact source
+pair. The controller includes checksum-pinned kubectl 1.35.2. Native deployment
+uses a forced SSH command and a root-owned service inventory; the controller key
+can upload verified binaries and operate only those installed units.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer

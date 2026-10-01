@@ -22,7 +22,8 @@ def main():
     args = parser.parse_args()
     manifest = validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
     root = args.gcoms.resolve(); output = args.output.resolve()
-    if identity(root) != manifest['sources']['gcoms']:
+    chat = Path(__file__).resolve().parents[1]
+    if identity(root) != manifest['sources']['gcoms'] or identity(chat) != manifest['sources']['gchat']:
         raise ValueError('infrastructure checkout differs from frozen candidate')
     subprocess.run(['cargo', 'build', '--locked', '--release', '-p', 'gcoms-node',
                     '-p', 'gcoms-catalog', '-p', 'gcoms-channel-service', '--features',
@@ -44,12 +45,21 @@ def main():
     subprocess.run(['docker', 'build', '--platform', 'linux/amd64', '-t', tag, str(output)], check=True)
     image_id = subprocess.check_output(['docker', 'image', 'inspect', tag, '--format', '{{.Id}}'], text=True).strip()
     subprocess.run(['docker', 'save', '-o', str(output / 'image.tar'), tag], check=True)
-    if identity(root) != manifest['sources']['gcoms']:
+    controller = 'gchat-controller:' + manifest['sources']['gchat']['commit']
+    subprocess.run(['docker', 'build', '--platform', 'linux/amd64', '-t', controller,
+        '--build-arg', 'GCHAT_CONTROLLER_REVISION=' + manifest['sources']['gchat']['commit'],
+        '-f', str(chat / 'release/automation/Dockerfile'), str(chat)], check=True)
+    controller_id = subprocess.check_output(['docker', 'image', 'inspect', controller,
+        '--format', '{{.Id}}'], text=True).strip()
+    subprocess.run(['docker', 'save', '-o', str(output / 'controller.tar'), controller], check=True)
+    if identity(root) != manifest['sources']['gcoms'] or identity(chat) != manifest['sources']['gchat']:
         raise ValueError('infrastructure source changed during build')
-    atomic_json(output / 'build.json', {'schema': 1, 'gcoms_source': manifest['sources']['gcoms'],
+    atomic_json(output / 'build.json', {'schema': 1, 'sources': manifest['sources'],
+        'gcoms_source': manifest['sources']['gcoms'],
         'release_id': manifest['release_id'], 'runtime_base': BASE, 'image_tag': tag,
-        'image_config': image_id, 'sha256': {name: digest(output / name) for name in
-            (*BINARIES, 'image.tar', 'Dockerfile', 'ca-certificates.crt')}})
+        'image_config': image_id, 'controller_config': controller_id,
+        'sha256': {name: digest(output / name) for name in
+            (*BINARIES, 'image.tar', 'controller.tar', 'Dockerfile', 'ca-certificates.crt')}})
 
 
 if __name__ == '__main__': main()

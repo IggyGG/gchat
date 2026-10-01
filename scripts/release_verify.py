@@ -37,7 +37,7 @@ def verify(manifest, platform, directory, output, tools=None):
         return verify_ios(manifest, directory, output)
     expected = {p: v['commit'] for p, v in manifest['sources'].items()}
     reports = list(directory.rglob('build.json'))
-    reports = [p for p in reports if not any(part in ('inputs', 'build', 'native-tests') for part in p.relative_to(directory).parts[:-1])]
+    reports = [p for p in reports if not any(part in ('inputs', 'build', 'native-tests', 'infrastructure') for part in p.relative_to(directory).parts[:-1])]
     if len(reports) != 1: raise ValueError('native build receipt missing or ambiguous')
     report = reports[0]; build = json.loads(report.read_text()); root = report.parent
     recovered_windows = False
