@@ -50,6 +50,10 @@ failed start and resumes interrupted rollback. Keep its last healthy image pinne
 when updating the main controller.
 Image configuration digests come from the retained Docker archive. This supports
 Docker installations that return an attested image index from `image inspect`.
+Archives with native OCI layouts use that representation so configuration bytes
+are preserved; classic Docker archives explicitly convert their manifest. Previous
+images are retained with their original Docker or OCI manifest digest in directory
+transport. Previously recorded valid OCI rollback receipts remain supported.
 The gateway build uses GComs' reviewed, hash-bound context. Its initialization and
 runtime containers advance together. `release_inventory.py` renders all eight
 native relays, both bootstraps, hosted channels, three Kubernetes anchors, catalog,

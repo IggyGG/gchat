@@ -1,5 +1,15 @@
 ## Live controller and native acceptance (2026-10-01, in progress)
 
+The next upgrade's real-image check exposed two archive interoperability issues.
+Containerd Docker exports preserve their configuration bytes through the native
+OCI archive reader; the Docker compatibility reader reserializes those bytes.
+Classic Docker archives explicitly convert their manifest for an OCI layout while
+still requiring the qualified configuration hash. Rollback retention now uses
+directory transport, which retains Docker and OCI manifests verbatim; earlier
+valid OCI receipts keep their transport. The running controller's exact Docker
+manifest and layers have been retained and registry repair passes without changing
+its digest. The first configuration/retention failures remain recorded.
+
 The source-bound `bc8a622` controller is now active on Kubernetes with both
 containers ready, scoped workload permissions and an independent successful
 minute watchdog. The complete inventory has 17 serial targets; all eight native

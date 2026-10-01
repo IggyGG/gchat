@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
+import tarfile
+import io
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import release_infrastructure_bundle as bundle
@@ -65,6 +67,21 @@ class InfrastructureBundleTests(unittest.TestCase):
         with patch.object(bundle, 'publish') as publish:
             self.assertIsNone(bundle.collect(self.root, self.manifest, {}))
             publish.assert_not_called()
+
+    def test_native_oci_archive_keeps_configuration_bytes_and_classic_docker_converts_manifest(self):
+        path = self.root / 'image.tar'
+        for names, expected, flags in [(('oci-layout', 'index.json'), 'oci-archive:', []),
+                                       (('manifest.json',), 'docker-archive:', ['--format', 'oci'])]:
+            with tarfile.open(path, 'w') as archive:
+                for name in names:
+                    member = tarfile.TarInfo(name); member.size = 2; archive.addfile(member, io.BytesIO(b'{}'))
+            self.assertEqual(bundle.archive_transport(path), (expected + str(path), flags))
+        for names in [('oci-layout',), ('index.json',), ('oci-layout', 'index.json', 'index.json')]:
+            with tarfile.open(path, 'w') as archive:
+                for name in names:
+                    member = tarfile.TarInfo(name); member.size = 2; archive.addfile(member, io.BytesIO(b'{}'))
+            with self.assertRaisesRegex(ValueError, 'incomplete or ambiguous'):
+                bundle.archive_transport(path)
 
     def test_push_image_uses_its_own_qualified_configuration_and_repository(self):
         directory = self.root / 'retained'

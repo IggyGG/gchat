@@ -20,15 +20,17 @@ def retain(image, target):
     source, tls = address(image, target)
     expected = image.rsplit('@', 1)[1]
     root = Path(target['rollback_image_root']) / expected.split(':', 1)[1]
-    oci = root / 'oci'; root.mkdir(parents=True, exist_ok=True)
-    if not (oci / 'index.json').is_file():
+    directory = root / 'image'; root.mkdir(parents=True, exist_ok=True)
+    # The directory transport retains Docker and OCI manifest media types
+    # verbatim. An OCI layout cannot reliably read a preserved Docker manifest.
+    if not (directory / 'manifest.json').is_file():
         subprocess.run(['skopeo', 'copy', '--preserve-digests',
             *([] if tls else ['--src-tls-verify=false']), 'docker://' + source,
-            'oci:' + str(oci) + ':rollback'], check=True, timeout=300, stdout=subprocess.DEVNULL)
-    raw = subprocess.check_output(['skopeo', 'inspect', '--raw', 'oci:' + str(oci) + ':rollback'], timeout=30)
+            'dir:' + str(directory)], check=True, timeout=300, stdout=subprocess.DEVNULL)
+    raw = subprocess.check_output(['skopeo', 'inspect', '--raw', 'dir:' + str(directory)], timeout=30)
     if 'sha256:' + hashlib.sha256(raw).hexdigest() != expected:
         raise ValueError('retained rollback image differs from the running digest')
-    atomic_json(root / 'retained.json', {'schema': 1, 'image': image, 'manifest_sha256': expected})
+    atomic_json(root / 'retained.json', {'schema': 1, 'image': image, 'manifest_sha256': expected, 'transport': 'dir'})
     return root
 
 
@@ -38,10 +40,13 @@ def repair(image, target):
     if not (root / 'retained.json').is_file():
         raise ValueError('rollback image was not retained before activation')
     proof = json.loads((root / 'retained.json').read_text())
-    raw = subprocess.check_output(['skopeo', 'inspect', '--raw', 'oci:' + str(root / 'oci') + ':rollback'], timeout=30)
+    # Receipts made before directory retention keep their exact OCI identity.
+    source = 'dir:' + str(root / 'image') if proof.get('transport') == 'dir' else 'oci:' + str(root / 'oci') + ':rollback'
+    if proof.get('transport') not in (None, 'dir'): raise ValueError('unknown rollback image transport')
+    raw = subprocess.check_output(['skopeo', 'inspect', '--raw', source], timeout=30)
     expected = image.rsplit('@', 1)[1]
     if proof['manifest_sha256'] != expected or 'sha256:' + hashlib.sha256(raw).hexdigest() != expected:
         raise ValueError('rollback image changed on retained storage')
     subprocess.run(['skopeo', 'copy', '--preserve-digests',
-        *([] if tls else ['--dest-tls-verify=false']), 'oci:' + str(root / 'oci') + ':rollback',
+        *([] if tls else ['--dest-tls-verify=false']), source,
         'docker://' + destination], check=True, timeout=300, stdout=subprocess.DEVNULL)

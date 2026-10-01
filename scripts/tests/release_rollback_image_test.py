@@ -21,11 +21,22 @@ class RollbackImageTests(unittest.TestCase):
                 root = rollback.retain(image, target)
                 self.assertIn('docker://registry.ghost-com:5000/old-repository@sha256:', copy.call_args.args[0][-2])
                 self.assertIn('--src-tls-verify=false', copy.call_args.args[0])
-                (root / 'oci').mkdir(); (root / 'oci/index.json').write_text('{}')
+                (root / 'image').mkdir(); (root / 'image/manifest.json').write_bytes(raw)
                 copy.reset_mock(); rollback.retain(image, target); copy.assert_not_called()
                 rollback.repair(image, target)
                 self.assertIn('--dest-tls-verify=false', copy.call_args.args[0])
                 self.assertIn('--preserve-digests', copy.call_args.args[0])
+                self.assertEqual(copy.call_args.args[0][-2], 'dir:' + str(root / 'image'))
+
+    def test_original_oci_receipts_keep_their_transport_and_exact_digest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            raw = b'{"mediaType":"application/vnd.oci.image.manifest.v1+json"}'
+            digest = 'sha256:' + hashlib.sha256(raw).hexdigest(); image = 'registry/old@' + digest
+            root = Path(temporary) / digest.split(':')[1]; root.mkdir()
+            (root / 'retained.json').write_text(json.dumps({'schema': 1, 'image': image, 'manifest_sha256': digest}))
+            with patch.object(rollback.subprocess, 'check_output', return_value=raw), patch.object(rollback.subprocess, 'run') as copy:
+                rollback.repair(image, {'rollback_image_root': temporary})
+                self.assertEqual(copy.call_args.args[0][-2], 'oci:' + str(root / 'oci') + ':rollback')
 
     def test_mutable_tags_missing_retention_and_changed_bytes_cannot_rollback(self):
         with tempfile.TemporaryDirectory() as temporary:

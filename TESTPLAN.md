@@ -41,6 +41,12 @@ expiry without renewal, idempotent revocation and grant-store permissions.
 Registry tests require layer repair even when a manifest survives. Image builds
 must derive configuration digests from retained archive bytes even when
 Docker reports an image index ID. A different or ambiguous archive tag must fail.
+Native OCI exports must preserve the exact archived configuration digest; reject
+partial or duplicate OCI layout members. Classic Docker archives must produce a
+readable OCI manifest. Rollback must retain and restore actual Docker and OCI
+manifest media types without changing their running digest. Earlier OCI receipts
+keep their original identity. Require real-image round-trip evidence in addition
+to component controls before controller activation.
 Linux packaging must reject a missing or changed CLI; the native worker runs both packaged binaries
 through isolated unlock, wrong-passphrase refusal, disconnect and reopen.
 The push image must use its own qualified configuration/repository; a service-image

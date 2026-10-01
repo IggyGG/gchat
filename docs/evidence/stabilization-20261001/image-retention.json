@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "scope": "actual image archive and rollback interoperability; no new fleet/client activation",
+  "passed": true,
+  "running_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:e7c70dc257cdaeb0253250da75c586b6f12406d121bfe414c9997962b6ccbc8c",
+  "running_digest_unchanged": true,
+  "rollback_transport": "dir",
+  "original_oci_receipts_supported": true,
+  "native_oci_archive_configuration": "sha256:c00249e5ef108d2af8c1f1451d0f985d9625bf8a8fa2bcc677dbad6cec9d4bbf",
+  "preserved_oci_manifest": "sha256:29382fbb6401cf0f45dee823d96ce2ac0388a9d6430e324bb4bb9a08aee14b89",
+  "docker_compatibility_config_rewrite_retained_as_failure": true,
+  "docker_manifest_in_oci_retention_failure_retained": true,
+  "evidence": [
+    {
+      "path": "test-evidence/stabilization-20261001/controller-oci-preservation-13.log",
+      "sha256": "3ff43e2f6af063775e55ff38335a1c5a3926b87bc26166d9751ea75e954b34d3"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-prior-retention-13.log",
+      "sha256": "c907b522e56281e928cc004992ceeca43d60787644b2efd0c724d65bb51d1325"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/release-image-13.log",
+      "sha256": "258a45a31c6696431ce5a27e3f18c4b068c80211e099306089d38f79eda47de3"
+    }
+  ]
+}

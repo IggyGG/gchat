@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import tarfile
 import zipfile
 
 from release_coordinator import atomic_json, read_receipt
@@ -25,6 +26,22 @@ IMAGES = {
     'controller': ('controller.tar', 'controller-oci', 'controller_config', 'controller_registry_repository', 'controller_pull_repository'),
     'push': ('push.tar', 'push-oci', 'push_config', 'push_registry_repository', 'push_pull_repository'),
 }
+
+
+def archive_transport(path):
+    # Docker's containerd store exports OCI blobs alongside its compatibility
+    # manifest. Reading that archive through docker-archive reserializes config
+    # JSON and changes its digest. Read the native OCI representation instead.
+    with tarfile.open(path) as archive:
+        members = archive.getmembers()
+        selected = {name: [m for m in members if m.name == name] for name in ('oci-layout', 'index.json')}
+        if any(selected.values()):
+            if any(len(items) != 1 or not items[0].isfile() for items in selected.values()):
+                raise ValueError('image archive has an incomplete or ambiguous OCI layout')
+            return 'oci-archive:' + str(path), []
+    # Traditional Docker manifests must be converted to an OCI manifest for
+    # the OCI layout reader. The qualified configuration hash is still checked.
+    return 'docker-archive:' + str(path), ['--format', 'oci']
 
 
 def retain_archive(archive, root, manifest):
@@ -70,7 +87,8 @@ def publish(directory, config, tag, image='services'):
     # An interrupted conversion is disposable derived data; source archives are
     # immutable and retained. A complete index is verified by skopeo on every use.
     if not (oci / 'index.json').exists():
-        subprocess.run(['skopeo', 'copy', 'docker-archive:' + str(directory / archive),
+        transport, flags = archive_transport(directory / archive)
+        subprocess.run(['skopeo', 'copy', *flags, transport,
                         'oci:' + str(oci) + ':release'], check=True, timeout=300,
                        stdout=subprocess.DEVNULL)
     source = 'oci:' + str(oci) + ':release'
