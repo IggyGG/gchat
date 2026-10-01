@@ -65,3 +65,8 @@ spec:
         - ipBlock: {cidr: 49.12.172.59/32}
         - ipBlock: {cidr: 78.46.219.146/32}
       ports: [{protocol: TCP, port: 6443}]
+    # Recovery repairs the exact retained digest before asking Kubernetes to
+    # restore it. Keep registry access independent of the failed controller.
+    - to:
+        - podSelector: {matchLabels: {app: registry}}
+      ports: [{protocol: TCP, port: 5000}]

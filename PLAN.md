@@ -17,15 +17,17 @@ Component tests pass nine controls, including a real loopback XCTest bridge and
 unrelated-delivery-marker rejection. Full Python validation and actual native UI
 execution remain separately recorded in the
 [mobile checkpoint](docs/evidence/stabilization-20261001/mobile-acceptance.json).
-Controller `6a7a8bf` is now active with two ready containers and no restarts. Its
-73 deployment/acceptance checks pass in an independent Kubernetes Job, the prior
+Controller `d7e3e8d` is now active with two ready containers and no restarts. Its
+75 deployment/acceptance checks pass in an independent Kubernetes Job, the prior
 image is retained and registry repair passes, and the independent minute watchdog
 continues succeeding. The first validation attempt's registry-policy failure is
 retained separately from the scoped correction. Signed Android/iOS baselines were
 verified from retained provider archives and bound with both mobile acceptance
 recipes. This activates the producers; actual native UI, fleet/client rollout and
 the subsequent unattended release remain required. SDK source `7c4af27` passes
-native Linux and Windows recovery; Mac and the unchanged 5% size gate remain open.
+native Linux and Windows recovery; fresh native qualification remains open. The
+owner approved 20% size growth for this feature release and automatic restoration
+of the 5% regression cap at SDK 1.0; original failed workflows remain failures.
 The source mirror retained a secret-audit false positive in a plain test instruction.
 The wording is corrected and only that exact historical finding is allowlisted;
 the full reachable-history audit remains mandatory.
@@ -34,14 +36,21 @@ now change qualification identity without reserving another application version.
 Unknown files, Android/iOS build scripts and application workflows still invalidate
 artifacts; the original qualified source pair is never rewritten.
 
+The actual pinned watchdog failed a registry connection under its original network
+policy. The scoped correction now permits only registry pods on TCP 5000 in the
+same namespace. The same pinned recovery image then repaired the exact retained
+previous controller digest in a separate successful Kubernetes Job. Both results
+are retained; routine no-op watchdog success alone cannot prove registry recovery.
+
 Linux runs `36813732641` and `36823321752` passed qualification, then reached
 the 120-minute job limit during signed bundle building. Qualification and
 packaging now use separate native jobs with the original job limits. Packaging
 requires both successful repository CI gates from the same workflow run, the
 qualifying job's exact artifact ID/digest, clean matching source objects and
 unchanged retained dependency inputs before signing access. Attempt-specific
-qualification/failure artifacts preserve earlier failures. Native execution of
-this split remains required. Android release artifacts now retain the existing
+qualification/failure artifacts preserve earlier failures. Native run `36844555101`
+now passes both qualification and signed packaging; its original immutable pair
+remains separate from the newer release candidates. Android release artifacts now retain the existing
 shell-error log so a keyboard/ADB failure can be diagnosed from its original
 stderr; the smoke assertions and retry policy are unchanged. Validation passes
 623 Python tests with the five existing skips, including eight handoff controls;

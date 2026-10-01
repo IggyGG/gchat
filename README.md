@@ -20,18 +20,21 @@ deployment observation. Its configured 17-target inventory serializes native and
 Kubernetes services, retains rollback artifacts, and preserves configuration and
 relay identities. New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
-Controller source `6a7a8bf` is active with 73 deployment/acceptance checks, a
+Controller source `d7e3e8d` is active with 75 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile
 acceptance recipes and verified retained Android/iOS baselines are configured.
-Native SDK Linux and Windows recovery pass; Mac, the 5% size ceiling and installed acceptance
+The pinned watchdog also repairs the exact retained controller digest through
+scoped registry access; the original blocked connection is retained as a control.
+Native SDK Linux and Windows recovery pass; fresh native size/Mac and installed acceptance
 remain open in the [operational checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
 
 The Linux release workflow also builds a retained native-service/OCI bundle.
 It runs full paired qualification separately from signing and packaging. The
 packaging job verifies the same-run qualification archive and both source/dependency
 bindings before accessing signing keys. Failed attempts retain separate evidence;
-an incomplete qualification cannot start packaging. Native execution of this
-workflow split remains pending.
+an incomplete qualification cannot start packaging. Native run `36844555101`
+passes qualification and packaging. Its retained source pair is not relabeled as
+a newer release.
 The release controller uses `skopeo` to publish digest-pinned images from the
 verified provider archive; the build worker requires Docker. These infrastructure
 steps remain subject to live deployment and installed-network qualification.

@@ -2,26 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "6a7a8bfe22c57e64ef9e7ac3162fae1bf183056c",
-    "image": "sha256:a0463b3c43a6cb588d8597a9ecd672810ffdb4dbbcdbff9d82f69c22b3df7c84",
+    "gchat_commit": "d7e3e8d96e8d8c65fc0851be90faf4fa3e147ddd",
+    "image": "sha256:80235f5f68c91ee9c4bfd660de1e518eb30bc2c08c6c8e38aa3e6fa802a78ff6",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-01T11:19:05Z",
+    "watchdog_last_success": "2026-10-01T12:03:04Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:9f83c75984096e13c7bed943443976d25e425cc835217f54be3a5ea6bdb82430",
-    "archive_sha256": "18ce746567068fa667b4abf808e3603c4ef3b2ccf0d9c4afc156d874ff0156e0",
-    "observed_at": "2026-10-01T11:19:46.061944+00:00",
+    "configuration_digest": "sha256:6d2f7e7d95c894d46a3ca3ef04fc7bbbf579a66fe2cb8f3fc1d215d65f97dda9",
+    "archive_sha256": "5b10a03aa827542470b94c3af8b395c4bfdddb9efac890c10139372a4903d2d5",
+    "observed_at": "2026-10-01T12:04:40.148185+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:7098287e3832a8e7020eaf38bfe09a93c1f86b2ef99ee4308b098eb524f42ebf",
+    "previous_digest": "sha256:a0463b3c43a6cb588d8597a9ecd672810ffdb4dbbcdbff9d82f69c22b3df7c84",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 73
+    "validation_tests": 75,
+    "deployment_generation": 47
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -60,10 +61,10 @@
   "component_validation": {
     "python_tests": 632,
     "python_skipped": 5,
-    "controller_validation_tests": 73
+    "controller_validation_tests": 75
   },
   "open": [
-    "SDK native Mac recovery qualification and unchanged 5% size ceiling",
+    "Fresh SDK native desktop/mobile qualification with the approved 20% feature allowance and automatic 5% cap at SDK 1.0",
     "Actual native desktop and mobile installed acceptance",
     "Qualified fleet and app activation",
     "Subsequent unattended release",
@@ -121,6 +122,14 @@
     {
       "path": "test-evidence/stabilization-20261001/native-linux-36823321752-job.log",
       "sha256": "c4ce75f9914951f61d0112f6c156c4118c65c9fc4259bad60711b611709fde94"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/watchdog-registry-negative-85.log",
+      "sha256": "babb953edb185d7f724d14575d7b56e8d5787421f0aacf7f27265cd219d454b6"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/watchdog-registry-repair-85.log",
+      "sha256": "0caf0a9a3726895d00a72767f2e09ebf91a6c4f560ef6bbc668f65efdb6c73bb"
     }
   ],
   "native_progress": {
@@ -179,6 +188,28 @@
       "observed_at": "2026-10-01T07:48:41.689361+00:00",
       "independent_validation_complete": true,
       "previous_digest": "sha256:686d2b973b690199386d27340e71011f60dcaf4d32d5036819b44d70d1d12026"
+    },
+    {
+      "gchat_commit": "6a7a8bfe22c57e64ef9e7ac3162fae1bf183056c",
+      "image": "sha256:a0463b3c43a6cb588d8597a9ecd672810ffdb4dbbcdbff9d82f69c22b3df7c84",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-01T11:19:05Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:9f83c75984096e13c7bed943443976d25e425cc835217f54be3a5ea6bdb82430",
+      "archive_sha256": "18ce746567068fa667b4abf808e3603c4ef3b2ccf0d9c4afc156d874ff0156e0",
+      "observed_at": "2026-10-01T11:19:46.061944+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:7098287e3832a8e7020eaf38bfe09a93c1f86b2ef99ee4308b098eb524f42ebf",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 73
     }
   ],
   "mobile_baselines": {
@@ -210,5 +241,16 @@
   "retained_failures": {
     "controller_validation_first_attempt": "73 tests passed; rollback retention failed because the validation pod could not reach the registry. Second attempt succeeds with scoped egress/ingress.",
     "ios_run_36837842309": "Original lifecycle XCTest fails the 10-second populated-passphrase observation at line 64; retained original verified archive and earlier successful baseline remain distinct."
+  },
+  "watchdog_registry_recovery": {
+    "scope": "Actual pinned watchdog image and workload labels; no production failure injection",
+    "pinned_image": "127.0.0.1:30444/ghost/gchat-release@sha256:7098287e3832a8e7020eaf38bfe09a93c1f86b2ef99ee4308b098eb524f42ebf",
+    "source": "dfd65d4b62cc567285a688a8b7e553cccf762f94",
+    "negative_connection_blocked": true,
+    "scoped_registry_pods_tcp_5000_allowed": true,
+    "retained_exact_digest_repaired": true,
+    "negative_job": "gchat-watchdog-registry-negative-85",
+    "positive_job": "gchat-watchdog-registry-repair-85",
+    "completed_at": "2026-10-01T11:59:31Z"
   }
 }

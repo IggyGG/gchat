@@ -50,10 +50,14 @@ rendered history and encrypted cache across all three replacements, genuine pick
 export hashes, covered ACKs, the original 16 MiB/360-second/600-second interrupted
 network check and verified owned-device/process cleanup. Compile only the XCTest
 runner. No application debug API, re-signing or personal-device state can qualify
-this gate. Native UI execution is pending. Controller `6a7a8bf` passes 73 checks
+this gate. Native UI execution is pending. Controller `d7e3e8d` passes 75 checks
 in an independent Kubernetes Job and is active with both mobile recipes and
 verified retained baselines. Retain its first registry-policy failure, corrected
 retention/repair result, ready-image observation and independent watchdog success.
+Also probe registry access using the real pinned watchdog image and labels: the
+original policy must fail, and the scoped registry-pod TCP 5000 correction must
+allow actual repair of the exact retained previous digest. Preserve both Jobs and
+their logs. A successful routine no-op watchdog is insufficient for this check.
 Run `release_config_test.py` to require a reconcilable acceptance recipe and its
 freshness limit for every installed platform, with SDK qualification separate.
 Run `release_inputs_test.py`: reviewed acceptance/status files change qualification
