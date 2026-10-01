@@ -10,7 +10,7 @@ valid OCI receipts keep their transport. The running controller's exact Docker
 manifest and layers have been retained and registry repair passes without changing
 its digest. The first configuration/retention failures remain recorded.
 
-The source-bound `5c8cca8` controller is now active on Kubernetes with both
+The source-bound `dfd65d4` controller is now active on Kubernetes with both
 containers ready, scoped workload permissions and an independent successful
 minute watchdog. The complete inventory has 17 serial targets; all eight native
 relays pass restricted observations. The previous controller image and layers
@@ -49,6 +49,14 @@ portable authority guards still run everywhere, while POSIX ownership/locking te
 run on their actual controller platform. Actual desktop and mobile acceptance,
 qualified fleet/client rollout, a subsequent unattended release and SDK 1.0
 declaration remain required. Component checks do not satisfy those gates.
+
+The corrected Windows run `36824009006` passes GChat's native checks, including
+the portable fixtures; its paired GComs stage still fails. Android's ordinary
+profile/picker/no-listener run `36824016393` passes and does not qualify network
+acceptance. SDK run `36827922107` against the four-record legacy window fails
+contact recovery on Linux, Windows and Intel Mac. The independent controller
+validation Job succeeds, its prior digest remains retained, and the live minute
+watchdog continues to succeed. Client/fleet activation remains gated.
 
 ## Stable contracts and released clients (2026-10-01, in progress)
 

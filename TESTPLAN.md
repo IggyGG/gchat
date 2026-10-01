@@ -32,6 +32,11 @@ Windows fixture cleanup must close SQLite and temporary upload handles before
 removal. Linux grant-store ownership and Kubernetes rollout locks require their
 POSIX host; portable invalid-authority guards still execute on every platform.
 The first Windows Python failure and corrected native results remain separate.
+Windows run `36824009006` passes GChat checks and fails the paired GComs stage;
+Android run `36824016393` passes the ordinary profile/picker/no-listener lifecycle.
+Neither satisfies the installed network acceptance gate. Controller `dfd65d4`
+passes independent watchdog validation, digest-preserving retention and live
+readiness with its scoped role; retain those results separately from app rollout.
 
 Run `release_deployment_test.py`, `release_host_install_test.py`,
 `release_kubernetes_worker_test.py` and `release_coordinator_test.py` through

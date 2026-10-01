@@ -20,6 +20,10 @@ deployment observation. Its configured 17-target inventory serializes native and
 Kubernetes services, retains rollback artifacts, and preserves configuration and
 relay identities. New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
+Controller source `dfd65d4` is active with a successful independent minute
+watchdog and retained previous image. The corrected Windows GChat checks and
+ordinary Android lifecycle pass; SDK recovery and full installed acceptance
+remain open in the [operational checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
 
 The Linux release workflow also builds a retained native-service/OCI bundle.
 The release controller uses `skopeo` to publish digest-pinned images from the

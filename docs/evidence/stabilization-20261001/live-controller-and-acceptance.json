@@ -2,18 +2,23 @@
   "schema": 1,
   "scope": "live controller bootstrap and desktop acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "5c8cca8d528a17872041de5b9379043c5b118e17",
-    "image": "sha256:686d2b973b690199386d27340e71011f60dcaf4d32d5036819b44d70d1d12026",
+    "gchat_commit": "dfd65d4b62cc567285a688a8b7e553cccf762f94",
+    "image": "sha256:7098287e3832a8e7020eaf38bfe09a93c1f86b2ef99ee4308b098eb524f42ebf",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-01T06:05:13Z",
+    "watchdog_last_success": "2026-10-01T07:48:07Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
-    "initial_native_baselines_bound": true
+    "initial_native_baselines_bound": true,
+    "configuration_digest": "sha256:7e5e8169144b0f0b3b4b8dd34b31ab09e149b55dd228c3108e40a1cdc5040dd5",
+    "archive_sha256": "db98dd18b5680a7b7c158d1f68ab72cf66b1f73982ba21292064b3bed575542b",
+    "observed_at": "2026-10-01T07:48:41.689361+00:00",
+    "independent_validation_complete": true,
+    "previous_digest": "sha256:686d2b973b690199386d27340e71011f60dcaf4d32d5036819b44d70d1d12026"
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -52,7 +57,7 @@
     "python_skipped": 5
   },
   "open": [
-    "native SDK run 36820878112 Windows failure under investigation; Mac workers incomplete",
+    "Native SDK contact file recovery fails on Linux, Windows and Intel Mac; ARM worker queued; unchanged 5% size gate remains open",
     "actual native desktop acceptance",
     "mobile acceptance producers",
     "qualified fleet and app activation",
@@ -83,6 +88,45 @@
     {
       "path": "test-evidence/stabilization-20261001/python-21.log",
       "sha256": "b8b4f06a01f7a8ea8cfd194bd6e913343b4337e0095f4c772ec4b2e2dea1fea3"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-build-43.log",
+      "sha256": "081703966049f77c1215506a24574b84bd375009435fd3d223d7719660482b69"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-preserve-publish-45.log",
+      "sha256": "29035e5a92fac7e0ab2dffff3104a02cbe7e140ff163fbb5adc44f29ccc11eee"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-prior-retention-47.log",
+      "sha256": "f3da7086f666b962efa40c7f2e069a7c1b695180c9c42dad713071b872cf778f"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-observed-49.json",
+      "sha256": "ed757b86a8fff1dcdd4d71268a0ce38e5cb7af3af64fcbad77001fc242e9a2c7"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/native-windows-36824009006-job.log",
+      "sha256": "f84bebf45b9d6f464ae7454c5b0462786e3eea0ae8b428762512b179d73daa7d"
     }
-  ]
+  ],
+  "native_progress": {
+    "gchat_windows": {
+      "run": 36824009006,
+      "source": "334853f662c2f19195574a335e7c0ccb6bf9a57c",
+      "verdict": "GChat checks passed; paired GComs checks failed"
+    },
+    "android": {
+      "run": 36824016393,
+      "verdict": "normal profile/picker/no-listener lifecycle passed; network acceptance remains open"
+    },
+    "sdk": {
+      "run": 36827922107,
+      "gcoms_commit": "e18810e7e585433fa5874aa87db18d139466c565",
+      "linux": "contact recovery failed",
+      "windows": "contact recovery failed",
+      "macos_intel": "contact recovery failed",
+      "macos_arm": "queued"
+    }
+  }
 }
