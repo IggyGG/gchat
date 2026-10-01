@@ -50,6 +50,7 @@ if sys.platform=='win32':
 run(['cargo','fmt','--all','--','--check'])
 run(['cargo','clippy','--workspace','--all-targets','--all-features','--locked','--','-D','warnings'])
 run(['cargo','test','--workspace','--all-features','--locked','--','--test-threads=1'])
+run([sys.executable,'scripts/check-released-client.py'])
 run([NPM,'ci','--ignore-scripts'])
 run([NPM,'run','check'])
 run([NPM,'test'])

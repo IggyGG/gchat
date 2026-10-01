@@ -466,11 +466,27 @@ impl ChatService {
                 .chain(self.command_extension.as_ref().map(|_| "cmd".into()))
                 .chain(std::iter::once(gchat_api::files::CAPABILITY.into()))
                 .chain(self.runtime.network_client().map(|_| "networks.v1".into()))
+                .chain(gchat_api::compat::capabilities())
                 .collect(),
         }
     }
 
     pub async fn dispatch(&self, envelope: RequestEnvelope) -> ResponseEnvelope {
+        let version = envelope.version;
+        if !gchat_api::compat::accepts(version, &envelope.request) {
+            return ResponseEnvelope {
+                version: VERSION,
+                instance_id: self.id.clone(),
+                response: Response::Error {
+                    code: "version".into(),
+                    message: "This request requires a supported GChat API dialect".into(),
+                },
+            };
+        }
+        let envelope = RequestEnvelope {
+            version: VERSION,
+            ..envelope
+        };
         let response = if envelope.version != VERSION {
             Response::Error {
                 code: "version".into(),
@@ -504,11 +520,14 @@ impl ChatService {
                 message,
             })
         };
-        ResponseEnvelope {
-            version: VERSION,
-            instance_id: self.id.clone(),
-            response,
-        }
+        gchat_api::compat::response(
+            version,
+            ResponseEnvelope {
+                version: VERSION,
+                instance_id: self.id.clone(),
+                response,
+            },
+        )
     }
 
     async fn handle(&self, request: Request) -> Result<Response, String> {

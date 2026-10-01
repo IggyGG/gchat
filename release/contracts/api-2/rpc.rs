@@ -80,46 +80,6 @@ impl From<SubmitOutcome> for Response {
 
 #[gcoms::rpc::service(name = "ghost.chat", version = 1)]
 pub trait Chat {
-    /// Optional rich delivery states; original history/search methods retain
-    /// their released two-state delivery dialect for older generated clients.
-    #[rpc(id = "history_details", kind = "query")]
-    async fn history_details(
-        &self,
-        conversation: String,
-        before: Option<String>,
-        limit: u16,
-    ) -> Result<HistoryPage, ChatError> {
-        let _ = (conversation, before, limit);
-        Err(ChatError {
-            code: "unsupported".into(),
-            message: "Detailed history is unavailable on this service".into(),
-        })
-    }
-    #[rpc(id = "search_details", kind = "query")]
-    async fn search_details(
-        &self,
-        conversation: String,
-        text: String,
-        before: Option<String>,
-        limit: u16,
-    ) -> Result<HistoryPage, ChatError> {
-        let _ = (conversation, text, before, limit);
-        Err(ChatError {
-            code: "unsupported".into(),
-            message: "Detailed search is unavailable on this service".into(),
-        })
-    }
-    #[rpc(id = "networks_details", kind = "session")]
-    async fn networks_details(
-        &self,
-        request: crate::NetworkRequest,
-    ) -> Result<crate::NetworkResponse, ChatError> {
-        let _ = request;
-        Err(ChatError {
-            code: "unsupported".into(),
-            message: "Detailed network calls are unavailable on this service".into(),
-        })
-    }
     /// Controls a profile-owned enrollment; a view timeout never cancels it.
     #[rpc(id = "enrollment", kind = "session")]
     async fn enrollment(&self, id: String, action: String) -> Result<SubmitOutcome, ChatError>;

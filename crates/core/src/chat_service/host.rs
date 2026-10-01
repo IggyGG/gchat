@@ -247,7 +247,11 @@ impl InstanceHost {
             profile_exists: self.config.profile.exists(),
             archive_exists: self.config.archive.exists(),
             safety_number: String::new(),
-            capabilities: capabilities().iter().map(|c| format!("{c:?}")).collect(),
+            capabilities: capabilities()
+                .iter()
+                .map(|c| format!("{c:?}"))
+                .chain(gchat_api::compat::capabilities())
+                .collect(),
         }
     }
     fn locked_snapshot(&self) -> Snapshot {
@@ -425,6 +429,31 @@ impl ChatEndpoint for InstanceHost {
             .map(|r| r.service.clone())
     }
     async fn dispatch(&self, mut envelope: RequestEnvelope) -> ResponseEnvelope {
+        let version = envelope.version;
+        if !gchat_api::compat::accepts(version, &envelope.request) {
+            return ResponseEnvelope {
+                version: VERSION,
+                instance_id: self.id.clone(),
+                response: Response::Error {
+                    code: "version".into(),
+                    message: "This request requires a supported GChat API dialect".into(),
+                },
+            };
+        }
+        envelope.version = VERSION;
+        gchat_api::compat::response(version, self.dispatch_current(envelope).await)
+    }
+    async fn flush(&self) -> Result<(), String> {
+        if let Some(running) = self.running.lock().await.take() {
+            self.stop(running).await
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl InstanceHost {
+    async fn dispatch_current(&self, mut envelope: RequestEnvelope) -> ResponseEnvelope {
         let error = |code: &str, message| ResponseEnvelope {
             version: VERSION,
             instance_id: self.id.clone(),
@@ -569,13 +598,6 @@ impl ChatEndpoint for InstanceHost {
             version: VERSION,
             instance_id: self.id.clone(),
             response,
-        }
-    }
-    async fn flush(&self) -> Result<(), String> {
-        if let Some(running) = self.running.lock().await.take() {
-            self.stop(running).await
-        } else {
-            Ok(())
         }
     }
 }

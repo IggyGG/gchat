@@ -334,6 +334,18 @@ impl<S: ChatEndpoint> Chat for Handlers<S> {
         &self,
         request: gchat_api::NetworkRequest,
     ) -> Result<gchat_api::NetworkResponse, ChatError> {
+        let response = self.networks_details(request).await?;
+        let Response::Networks { response } =
+            gchat_api::compat::legacy_response(Response::Networks { response })
+        else {
+            unreachable!()
+        };
+        Ok(response)
+    }
+    async fn networks_details(
+        &self,
+        request: gchat_api::NetworkRequest,
+    ) -> Result<gchat_api::NetworkResponse, ChatError> {
         expect_response!(self, Request::Networks { request }, Networks, response)
     }
     async fn network_operation(
@@ -404,6 +416,16 @@ impl<S: ChatEndpoint> Chat for Handlers<S> {
         before: Option<String>,
         limit: u16,
     ) -> Result<HistoryPage, ChatError> {
+        self.history_details(conversation, before, limit)
+            .await
+            .map(gchat_api::compat::legacy_history)
+    }
+    async fn history_details(
+        &self,
+        conversation: String,
+        before: Option<String>,
+        limit: u16,
+    ) -> Result<HistoryPage, ChatError> {
         expect_response!(
             self,
             Request::History {
@@ -416,6 +438,17 @@ impl<S: ChatEndpoint> Chat for Handlers<S> {
         )
     }
     async fn search(
+        &self,
+        conversation: String,
+        text: String,
+        before: Option<String>,
+        limit: u16,
+    ) -> Result<HistoryPage, ChatError> {
+        self.search_details(conversation, text, before, limit)
+            .await
+            .map(gchat_api::compat::legacy_history)
+    }
+    async fn search_details(
         &self,
         conversation: String,
         text: String,

@@ -3,7 +3,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-pub mod compat;
 pub mod files;
 #[cfg(feature = "native")]
 pub mod fleet;
@@ -13,27 +12,10 @@ pub use files::{FileInfo, FileRequest, FileSnapshot, FileState};
 pub use networks::{InvitationPreview, JoinedNetwork, NetworkRequest, NetworkResponse};
 pub use updates::{BuildInfo, PrepareUpdateResult, UpdateRequest};
 
-pub const VERSION: u16 = 3;
+pub const VERSION: u16 = 2;
 pub const MAX_FRAME_BYTES: usize = 16 * 1024 * 1024;
 /// Complete submitted text, including slash-command arguments, measured in UTF-8 bytes.
 pub const MAX_INPUT_BYTES: usize = 12_000;
-/// Signed post-quantum contact cards have a separate bounded command envelope.
-pub const MAX_CONTACT_INPUT_BYTES: usize = 192 * 1024;
-pub fn command_input_limit(text: &str) -> usize {
-    let mut words = text.split_whitespace();
-    if words
-        .next()
-        .is_some_and(|w| w.eq_ignore_ascii_case("/contact"))
-        && words
-            .next()
-            .is_some_and(|w| w.eq_ignore_ascii_case("add") || w.eq_ignore_ascii_case("update"))
-    {
-        MAX_CONTACT_INPUT_BYTES
-    } else {
-        MAX_INPUT_BYTES
-    }
-}
-
 /// Bound of the base64url network-invitation envelope accepted by GComs.
 pub const MAX_NETWORK_INVITATION_BYTES: usize = 128 * 1024 * 4 / 3 + 16;
 
@@ -104,9 +86,6 @@ pub struct InstanceInfo {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Member {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub presence: Option<MemberPresence>,
     pub id: String,
     pub nickname: String,
     pub is_self: bool,
@@ -120,16 +99,6 @@ pub struct Member {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Conversation {
-    /// Transient progress; absent once an empty recovery page confirms catch-up.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub catch_up: Option<ChannelCatchUp>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub muted: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub policy: Option<ChannelPolicy>,
     #[serde(default)]
     pub provider: Option<String>,
     pub id: String,
@@ -154,13 +123,6 @@ pub struct Conversation {
     pub commands: Vec<CommandSpec>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ChannelCatchUp {
-    #[ts(type = "number")]
-    pub applied_records: u64,
-}
-
 fn default_input_limit() -> usize {
     MAX_INPUT_BYTES
 }
@@ -176,12 +138,6 @@ pub enum ConversationKind {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Message {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub highlighted: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub message_kind: Option<MessageKind>,
     pub id: String,
     pub conversation_id: String,
     pub member_id: Option<String>,
@@ -223,8 +179,6 @@ pub struct Artifact {
 pub enum Delivery {
     LocalAccepted,
     Delivered,
-    ServiceAccepted,
-    Failed,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
@@ -349,33 +303,6 @@ pub struct ProviderStatus {
     pub code: String,
     pub message: String,
     pub retryable: bool,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum MessageKind {
-    Text,
-    Action,
-    Notice,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(tag = "state", rename_all = "snake_case")]
-pub enum MemberPresence {
-    Available,
-    Away { reason: String },
-    Unknown,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ChannelPolicy {
-    pub profile: String,
-    pub capacity: u32,
-    pub moderated: bool,
-    pub invite_only: bool,
-    pub topic_operators: bool,
-    pub presence_enabled: bool,
 }
 
 /// Authenticated state changes observed by this profile, retained before publication.
@@ -614,10 +541,6 @@ pub fn typescript() -> String {
         UpdateRequest::decl(),
         PrepareUpdateResult::decl(),
         InstanceInfo::decl(),
-        MessageKind::decl(),
-        MemberPresence::decl(),
-        ChannelPolicy::decl(),
-        ChannelCatchUp::decl(),
         Member::decl(),
         Conversation::decl(),
         ConversationKind::decl(),
@@ -642,6 +565,6 @@ pub fn typescript() -> String {
         RequestEnvelope::decl(),
         ResponseEnvelope::decl(),
     ];
-    format!("// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = {VERSION};\nexport const MAX_INPUT_BYTES = {MAX_INPUT_BYTES};\nexport const MAX_CONTACT_INPUT_BYTES = {MAX_CONTACT_INPUT_BYTES};\nexport const MAX_NETWORK_INVITATION_BYTES = {MAX_NETWORK_INVITATION_BYTES};\n{}\n",
+    format!("// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = {VERSION};\nexport const MAX_INPUT_BYTES = {MAX_INPUT_BYTES};\nexport const MAX_NETWORK_INVITATION_BYTES = {MAX_NETWORK_INVITATION_BYTES};\n{}\n",
         declarations.into_iter().map(|s| format!("export {s}").lines().map(str::trim_end).collect::<Vec<_>>().join("\n")).collect::<Vec<_>>().join("\n"))
 }

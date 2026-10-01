@@ -53,7 +53,7 @@ describe('chat typed attachment', () => {
     expect(handles.list()).toHaveLength(0);
   });
   it('generated contracts validate every error and reject wrong result shapes', () => {
-    expect(Object.keys(methods)).toHaveLength(18);
+    expect(Object.keys(methods)).toHaveLength(21);
     expect(methods.enrollment.args({id:'ab'.repeat(16),action:'status'})).toBe(true);
     expect(methods.enrollment.args({id:12,action:'status'})).toBe(false);
     expect(methods.files.args({ request: { action: "list", conversation: null } })).toBe(true);
@@ -74,6 +74,29 @@ describe('chat typed attachment', () => {
     const malformed: RpcTransport = { destination: '/rpc', limit: 16000, async exchange(r) { return reply(r, { id: instance.id }); } };
     await expect(attachRpc(legacy, malformed, instance.id)).rejects.toMatchObject({ code: 'protocol' });
   });
+});
+
+it('uses rich delivery states only through advertised detail methods', async () => {
+  const calls: RpcRequest[] = [];
+  const capable = { ...instance, capabilities: ['chat.method.history_details'] };
+  const row = { id: 'message', conversationId: 'channel/a', memberId: null, nickname: 'peer', body: 'retained', timestamp: 1, mine: true, delivery: 'service_accepted', result: null };
+  const transport: RpcTransport = { destination: '/rpc', limit: 262144, async exchange(r) {
+    calls.push(r); return reply(r, r.method === 'identify' ? capable : { messages: [row], before: null });
+  } };
+  const client = await attachRpc(async () => ({ version: API_VERSION, instance_id: instance.id, response: { kind: 'instance', instance: capable } }), transport);
+  await expect(client.request({ kind: 'history', conversation: 'channel/a', before: null, limit: 20 })).resolves.toMatchObject({ page: { messages: [{ delivery: 'service_accepted' }] } });
+  expect(calls.at(-1)?.method).toBe('history_details');
+});
+
+it('uses released history methods when detail capabilities are absent', async () => {
+  const calls: RpcRequest[] = [];
+  const transport: RpcTransport = { destination: '/rpc', limit: 262144, async exchange(r) {
+    calls.push(r); return reply(r, r.method === 'identify' ? instance : { messages: [], before: null });
+  } };
+  const client = await attachRpc(legacy, transport);
+  await client.request({ kind: 'history', conversation: 'channel/a', before: null, limit: 20 });
+  expect(calls.at(-1)?.method).toBe('history');
+  expect(calls.some(r => r.method.endsWith('_details'))).toBe(false);
 });
 
 it('imports network invitations through a transient session without operation handles', async () => {

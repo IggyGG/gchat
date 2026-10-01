@@ -28,14 +28,8 @@ pub(super) fn error(error: CallError<ChatError>) -> ChatError {
 pub(super) async fn request<T: gcoms::rpc::Transport>(
     client: Client<T>,
     request: Request,
-    capabilities: &[String],
 ) -> Result<Response, ChatError> {
     let client = rpc::ChatClient::new(client);
-    let supports = |method: &str| {
-        capabilities
-            .iter()
-            .any(|v| v == &format!("chat.method.{method}"))
-    };
     Ok(match request {
         Request::Enrollment { id, action } => {
             client.enrollment(id, action).await.map_err(error)?.into()
@@ -65,11 +59,7 @@ pub(super) async fn request<T: gcoms::rpc::Transport>(
             snapshot: client.snapshot().await.map_err(error)?,
         },
         Request::Networks { request } => Response::Networks {
-            response: if supports("networks_details") {
-                client.networks_details(request).await.map_err(error)?
-            } else {
-                client.networks(request).await.map_err(error)?
-            },
+            response: client.networks(request).await.map_err(error)?,
         },
         Request::NetworkStatus => Response::NetworkStatus {
             status: client.network_status().await.map_err(error)?,
@@ -88,17 +78,10 @@ pub(super) async fn request<T: gcoms::rpc::Transport>(
             before,
             limit,
         } => Response::History {
-            page: if supports("history_details") {
-                client
-                    .history_details(conversation, before, limit)
-                    .await
-                    .map_err(error)?
-            } else {
-                client
-                    .history(conversation, before, limit)
-                    .await
-                    .map_err(error)?
-            },
+            page: client
+                .history(conversation, before, limit)
+                .await
+                .map_err(error)?,
         },
         Request::Search {
             conversation,
@@ -106,17 +89,10 @@ pub(super) async fn request<T: gcoms::rpc::Transport>(
             before,
             limit,
         } => Response::History {
-            page: if supports("search_details") {
-                client
-                    .search_details(conversation, text, before, limit)
-                    .await
-                    .map_err(error)?
-            } else {
-                client
-                    .search(conversation, text, before, limit)
-                    .await
-                    .map_err(error)?
-            },
+            page: client
+                .search(conversation, text, before, limit)
+                .await
+                .map_err(error)?,
         },
         Request::Submit {
             operation_id,

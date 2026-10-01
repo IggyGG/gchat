@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/chat-api", "crates/core", "crates/tui"]
-exclude = ["apps/client/src-tauri"]
+exclude = ["apps/client/src-tauri", "release/contracts/api-2", "release/contracts/consumer"]
 
 [workspace.package]
 version = "0.1.0"

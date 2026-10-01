@@ -1,0 +1,16 @@
+[package]
+name = "gchat-released-client-check"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.98"
+publish = false
+
+[workspace]
+
+[dependencies]
+gchat-core = { version = "0.1.0", path = "../../../crates/core" }
+gchat-api = { version = "0.1.0", path = "../../../crates/chat-api" }
+released-chat = { package = "gchat-api-v2", version = "0.1.0", path = "../api-2" }
+gcoms = { version = "0.1.0", default-features = false, features = ["embedded", "ipc"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "sync"] }
+tempfile = "3"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Compare generated Rust contracts and checked-in schema/client artifacts."""
-import argparse,json,subprocess
+import argparse,json,subprocess,sys
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--cargo-config');a=p.parse_args()
 root=Path(__file__).resolve().parents[1]
@@ -12,3 +12,4 @@ service=json.loads(export(['-p','gchat-api','--bin','gchat-types','--','--rpc'])
 assert service==json.loads((root/'ui/schemas/chat-rpc.json').read_text()), 'Rust chat schema drift'
 subprocess.run(['node','ui/scripts/generate-rpc.mjs','--check'],cwd=root,check=True)
 print('Rust schemas and generated clients agree')
+subprocess.run([sys.executable,str(root/'scripts/check_contracts.py')],cwd=root,check=True)

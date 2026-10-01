@@ -63,6 +63,43 @@ fn invalid_bootstrap_registration_is_rejected_before_profile_startup() {
     assert!(InstanceHost::new(config).is_ok());
 }
 
+#[tokio::test]
+async fn api_2_attachment_preserves_instance_and_rejects_wrong_owner_before_unlock() {
+    let dir = tempfile::tempdir().unwrap();
+    gcoms::sdk::private_fs::make_private(dir.path(), true).unwrap();
+    let config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    let profile = config.profile.clone();
+    let host = InstanceHost::new(config).unwrap();
+    let identified = host
+        .dispatch(RequestEnvelope {
+            version: 2,
+            instance_id: None,
+            request: Request::Identify,
+        })
+        .await;
+    let old: gchat_api::compat::v2::ResponseEnvelope =
+        serde_json::from_value(serde_json::to_value(&identified).unwrap()).unwrap();
+    assert_eq!(old.version, 2);
+    assert_eq!(old.instance_id, host.instance_id());
+    assert!(matches!(
+        old.response,
+        gchat_api::compat::v2::Response::Instance { .. }
+    ));
+    let refused = host
+        .dispatch(RequestEnvelope {
+            version: 2,
+            instance_id: Some("other-instance".into()),
+            request: Request::Unlock {
+                passphrase: "fixture only".into(),
+                create: true,
+            },
+        })
+        .await;
+    assert_eq!(refused.version, 2);
+    assert!(matches!(refused.response, Response::Error { code, .. } if code == "instance"));
+    assert!(!profile.exists());
+}
+
 async fn attach(endpoint: &Path, credentials: &ComponentCredentials) -> SdkClient {
     tokio::time::timeout(Duration::from_secs(15), async {
         loop {

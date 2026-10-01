@@ -159,12 +159,14 @@ def prepare_pair(chat, protocol, output, triple, environment=None):
 
     graphs = {}
     for name, manifest in [('workspace', 'Cargo.toml'),
-                           ('desktop', 'apps/client/src-tauri/Cargo.toml')]:
+                           ('desktop', 'apps/client/src-tauri/Cargo.toml'),
+                           ('released-client', 'release/contracts/consumer/Cargo.toml')]:
         command = ['cargo', 'metadata', '--manifest-path', manifest, '--all-features',
                    '--filter-platform', triple, '--format-version=1']
         metadata = json.loads(subprocess.check_output(command, cwd=chat, env=environment))
         graphs[name] = verify_resolved_protocol(metadata, protocol)
-    locks = ['Cargo.lock', 'apps/client/src-tauri/Cargo.lock', 'package-lock.json']
+    locks = ['Cargo.lock', 'apps/client/src-tauri/Cargo.lock', 'package-lock.json',
+             'release/contracts/consumer/Cargo.lock']
     report = {'schema': 1, 'kind': 'frozen_source_pair', 'sources': sources,
               'source_archive_sha256': archives, 'rust_sources_verified': True,
               'rust_graphs': graphs, 'target': triple,

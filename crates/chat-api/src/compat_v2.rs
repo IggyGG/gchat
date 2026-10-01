@@ -1,44 +1,25 @@
-//! Shared application API. It contains no archive, command parser or GC runtime.
-use schemars::JsonSchema;
+// Frozen API 2 DTOs derived from release/contracts/api-2/lib.rs.
+// Keep the released serde shapes; do not extend this compatibility dialect.
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
-
-pub mod compat;
+#[path = "compat_v2_files.rs"]
 pub mod files;
-#[cfg(feature = "native")]
-pub mod fleet;
+#[path = "compat_v2_networks.rs"]
 pub mod networks;
+#[path = "compat_v2_updates.rs"]
 pub mod updates;
 pub use files::{FileInfo, FileRequest, FileSnapshot, FileState};
 pub use networks::{InvitationPreview, JoinedNetwork, NetworkRequest, NetworkResponse};
 pub use updates::{BuildInfo, PrepareUpdateResult, UpdateRequest};
 
-pub const VERSION: u16 = 3;
+pub const VERSION: u16 = 2;
 pub const MAX_FRAME_BYTES: usize = 16 * 1024 * 1024;
 /// Complete submitted text, including slash-command arguments, measured in UTF-8 bytes.
 pub const MAX_INPUT_BYTES: usize = 12_000;
-/// Signed post-quantum contact cards have a separate bounded command envelope.
-pub const MAX_CONTACT_INPUT_BYTES: usize = 192 * 1024;
-pub fn command_input_limit(text: &str) -> usize {
-    let mut words = text.split_whitespace();
-    if words
-        .next()
-        .is_some_and(|w| w.eq_ignore_ascii_case("/contact"))
-        && words
-            .next()
-            .is_some_and(|w| w.eq_ignore_ascii_case("add") || w.eq_ignore_ascii_case("update"))
-    {
-        MAX_CONTACT_INPUT_BYTES
-    } else {
-        MAX_INPUT_BYTES
-    }
-}
-
 /// Bound of the base64url network-invitation envelope accepted by GComs.
 pub const MAX_NETWORK_INVITATION_BYTES: usize = 128 * 1024 * 4 / 3 + 16;
 
 /// Public connection progress; never contains invitations or private routing cards.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum NetworkState {
     Locked,
@@ -51,7 +32,7 @@ pub enum NetworkState {
     Unavailable,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkStatus {
     pub state: NetworkState,
@@ -84,11 +65,10 @@ impl NetworkStatus {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
     pub build: Option<BuildInfo>,
     pub id: String,
     pub label: String,
@@ -101,35 +81,21 @@ pub struct InstanceInfo {
     pub capabilities: Vec<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Member {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub presence: Option<MemberPresence>,
     pub id: String,
     pub nickname: String,
     pub is_self: bool,
     #[serde(default)]
-    #[ts(optional)]
     pub recently_active: Option<bool>,
     #[serde(default)]
     pub capabilities: Vec<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Conversation {
-    /// Transient progress; absent once an empty recovery page confirms catch-up.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub catch_up: Option<ChannelCatchUp>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub muted: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub policy: Option<ChannelPolicy>,
     #[serde(default)]
     pub provider: Option<String>,
     pub id: String,
@@ -140,10 +106,8 @@ pub struct Conversation {
     pub active: bool,
     pub owner: bool,
     #[serde(default)]
-    #[ts(optional)]
     pub visibility: Option<String>,
     #[serde(default)]
-    #[ts(optional)]
     pub directory: Option<String>,
     pub members: Vec<Member>,
     pub unread: u32,
@@ -154,18 +118,11 @@ pub struct Conversation {
     pub commands: Vec<CommandSpec>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ChannelCatchUp {
-    #[ts(type = "number")]
-    pub applied_records: u64,
-}
-
 fn default_input_limit() -> usize {
     MAX_INPUT_BYTES
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ConversationKind {
     Channel,
@@ -173,25 +130,18 @@ pub enum ConversationKind {
     Archive,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Message {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub highlighted: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub message_kind: Option<MessageKind>,
     pub id: String,
     pub conversation_id: String,
     pub member_id: Option<String>,
     pub nickname: String,
     pub body: String,
-    #[ts(type = "number")]
+
     pub timestamp: u64,
     pub mine: bool,
     #[serde(default)]
-    #[ts(optional)]
     pub operation_id: Option<String>,
     /// Delivered is an authenticated recipient acknowledgement, never a read receipt.
     pub delivery: Option<Delivery>,
@@ -199,7 +149,7 @@ pub struct Message {
     pub result: Option<ActionResult>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionResult {
     pub id: String,
@@ -212,22 +162,20 @@ pub struct ActionResult {
     pub details: Vec<String>,
     pub artifacts: Vec<Artifact>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Artifact {
     pub name: String,
     pub url: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Delivery {
     LocalAccepted,
     Delivered,
-    ServiceAccepted,
-    Failed,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandSpec {
     pub name: String,
@@ -238,7 +186,7 @@ pub struct CommandSpec {
     pub available: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DirectoryEntry {
     pub name: String,
@@ -246,7 +194,7 @@ pub struct DirectoryEntry {
     pub conversation: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecoveryMember {
     pub id: String,
@@ -256,21 +204,21 @@ pub struct RecoveryMember {
     pub pending_messages: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InvitationRecord {
     pub id: String,
-    #[ts(type = "number | null")]
+
     pub expires: Option<u64>,
-    #[ts(type = "number | null")]
+
     pub limit: Option<u64>,
-    #[ts(type = "number")]
+
     pub admitted: u64,
     pub pending: u32,
     pub revoked: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum CommandOutput {
     InvitationOptions {
@@ -284,9 +232,9 @@ pub enum CommandOutput {
         channel: String,
         link: String,
         id: String,
-        #[ts(type = "number | null")]
+
         expires: Option<u64>,
-        #[ts(type = "number | null")]
+
         limit: Option<u64>,
         #[serde(rename = "localOnly")]
         local_only: bool,
@@ -310,7 +258,7 @@ pub enum CommandOutput {
     Invitation {
         channel: String,
         link: String,
-        #[ts(type = "number")]
+
         expires: u64,
         #[serde(default, rename = "localOnly")]
         local_only: bool,
@@ -335,14 +283,14 @@ pub enum CommandOutput {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InputHistoryEntry {
     pub conversation: Option<String>,
     pub text: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderStatus {
     pub id: String,
@@ -351,64 +299,36 @@ pub struct ProviderStatus {
     pub retryable: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum MessageKind {
-    Text,
-    Action,
-    Notice,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(tag = "state", rename_all = "snake_case")]
-pub enum MemberPresence {
-    Available,
-    Away { reason: String },
-    Unknown,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ChannelPolicy {
-    pub profile: String,
-    pub capacity: u32,
-    pub moderated: bool,
-    pub invite_only: bool,
-    pub topic_operators: bool,
-    pub presence_enabled: bool,
-}
-
 /// Authenticated state changes observed by this profile, retained before publication.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Activity {
     pub id: String,
     pub conversation: String,
     pub kind: String,
     pub text: String,
-    #[ts(type = "number")]
+
     pub timestamp: u64,
 }
 
 /// Safe metadata plus the protected result retained in the encrypted operation journal.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OperationDetail {
     #[serde(default)]
-    #[ts(optional)]
     pub network: Option<String>,
     pub id: String,
     pub instance: String,
     pub conversation: Option<String>,
     pub action: String,
-    #[ts(type = "number")]
+
     pub started: u64,
     pub state: String,
     pub output: Option<CommandOutput>,
     pub message: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub instance: InstanceInfo,
@@ -419,30 +339,27 @@ pub struct Snapshot {
     #[serde(default)]
     pub provider_errors: Vec<ProviderStatus>,
     #[serde(default)]
-    #[ts(optional)]
     pub operations: Option<Vec<OperationDetail>>,
     #[serde(default)]
-    #[ts(optional)]
     pub activity: Option<Vec<Activity>>,
     #[serde(default)]
-    #[ts(optional)]
     pub presence_enabled: Option<bool>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryPage {
     pub messages: Vec<Message>,
     pub before: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Completion {
     pub text: String,
     pub description: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Request {
     Enrollment {
@@ -503,7 +420,7 @@ pub enum Request {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Response {
     Update {
@@ -554,7 +471,7 @@ pub enum Response {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RequestEnvelope {
     pub version: u16,
@@ -562,14 +479,14 @@ pub struct RequestEnvelope {
     pub request: Request,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ResponseEnvelope {
     pub version: u16,
     pub instance_id: String,
     pub response: Response,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChatError {
     pub code: String,
@@ -586,62 +503,3 @@ impl std::fmt::Display for ChatError {
     }
 }
 impl std::error::Error for ChatError {}
-
-#[cfg(feature = "native")]
-mod legacy;
-#[cfg(feature = "native")]
-mod native_files;
-#[cfg(feature = "native")]
-mod rpc_compat;
-#[cfg(feature = "native")]
-pub use legacy::ChatClient;
-pub mod rpc;
-
-pub fn typescript() -> String {
-    let declarations = [
-        JoinedNetwork::decl(),
-        InvitationPreview::decl(),
-        NetworkRequest::decl(),
-        NetworkResponse::decl(),
-        files::FilePublication::decl(),
-        FileInfo::decl(),
-        FileRequest::decl(),
-        FileSnapshot::decl(),
-        FileState::decl(),
-        NetworkState::decl(),
-        NetworkStatus::decl(),
-        BuildInfo::decl(),
-        UpdateRequest::decl(),
-        PrepareUpdateResult::decl(),
-        InstanceInfo::decl(),
-        MessageKind::decl(),
-        MemberPresence::decl(),
-        ChannelPolicy::decl(),
-        ChannelCatchUp::decl(),
-        Member::decl(),
-        Conversation::decl(),
-        ConversationKind::decl(),
-        Message::decl(),
-        ActionResult::decl(),
-        Artifact::decl(),
-        Delivery::decl(),
-        CommandSpec::decl(),
-        DirectoryEntry::decl(),
-        RecoveryMember::decl(),
-        InvitationRecord::decl(),
-        CommandOutput::decl(),
-        InputHistoryEntry::decl(),
-        ProviderStatus::decl(),
-        Activity::decl(),
-        OperationDetail::decl(),
-        Snapshot::decl(),
-        HistoryPage::decl(),
-        Completion::decl(),
-        Request::decl(),
-        Response::decl(),
-        RequestEnvelope::decl(),
-        ResponseEnvelope::decl(),
-    ];
-    format!("// Generated by cargo run -p gchat-api --bin gchat-types. Do not edit.\nexport const API_VERSION = {VERSION};\nexport const MAX_INPUT_BYTES = {MAX_INPUT_BYTES};\nexport const MAX_CONTACT_INPUT_BYTES = {MAX_CONTACT_INPUT_BYTES};\nexport const MAX_NETWORK_INVITATION_BYTES = {MAX_NETWORK_INVITATION_BYTES};\n{}\n",
-        declarations.into_iter().map(|s| format!("export {s}").lines().map(str::trim_end).collect::<Vec<_>>().join("\n")).collect::<Vec<_>>().join("\n"))
-}

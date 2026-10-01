@@ -1,3 +1,20 @@
+## Stable contracts and released clients (2026-10-01, in progress)
+
+Keep API 3 and typed service 1 stable while compatible features continue. API 2
+remains supported for the full stable major through a server adapter. Legacy
+history maps service acceptance to local acceptance and failed status to unknown;
+neither becomes a recipient delivery receipt. Detailed history/search/network
+methods are optional and advertised in instance capabilities. Version negotiation
+only repeats the read-only identify request and retains the instance binding.
+
+Retained source fixtures and the service contract reject removal, changed method
+lifecycle, changed requests and incompatible output variants. Native CI compiles
+the unchanged released client against the current local server and checks reopen
+and message deduplication. Pair preparation also freezes that consumer's graph
+and lock. The fast retained-contract workflow runs on pushes and pull requests.
+UI checks pass with 70 tests; Python passes 583 tests with five retained skips.
+Current native qualification, live deployment and SDK 1.0 declaration remain open.
+
 ## Automatic deployment and idle activation (2026-09-30, in progress)
 
 The local qualified IRC-parity pair is now installed in the launcher, CLI and

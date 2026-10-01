@@ -6,14 +6,12 @@ use std::path::{Path, PathBuf};
 pub struct ChatClient {
     endpoint: PathBuf,
     instance: String,
-    api_version: u16,
-    capabilities: Vec<String>,
     handles: std::sync::Arc<gcoms::rpc::file_store::FileHandles>,
 }
 
 impl ChatClient {
     pub async fn connect(endpoint: &Path, expected: Option<&str>) -> Result<Self, String> {
-        let mut envelope = exchange(
+        let envelope = exchange(
             endpoint,
             &RequestEnvelope {
                 version: VERSION,
@@ -22,35 +20,13 @@ impl ChatClient {
             },
         )
         .await?;
-        let mut api_version = VERSION;
-        if envelope.version == crate::compat::LEGACY_VERSION
-            && matches!(&envelope.response, Response::Error { code, .. } if code == "version")
-        {
-            let original = envelope.instance_id.clone();
-            api_version = crate::compat::LEGACY_VERSION;
-            envelope = exchange(
-                endpoint,
-                &RequestEnvelope {
-                    version: api_version,
-                    instance_id: None,
-                    request: Request::Identify,
-                },
-            )
-            .await?;
-            if envelope.instance_id != original {
-                return Err("chat instance changed during version negotiation".into());
-            }
-        }
-        if envelope.version != api_version || expected.is_some_and(|id| id != envelope.instance_id)
-        {
+        if envelope.version != VERSION || expected.is_some_and(|id| id != envelope.instance_id) {
             return Err("chat instance or API version does not match this attachment".into());
         }
-        let capabilities = match &envelope.response {
-            Response::Instance { instance } if instance.id == envelope.instance_id => {
-                instance.capabilities.clone()
-            }
+        match &envelope.response {
+            Response::Instance { instance } if instance.id == envelope.instance_id => {}
             _ => return Err("invalid chat instance handshake".into()),
-        };
+        }
         let mut handle_path = endpoint.as_os_str().to_owned();
         handle_path.push(".handles");
         let handles = gcoms::rpc::file_store::FileHandles::open(Path::new(&handle_path))
@@ -58,8 +34,6 @@ impl ChatClient {
         Ok(Self {
             endpoint: endpoint.into(),
             instance: envelope.instance_id,
-            api_version,
-            capabilities,
             handles: std::sync::Arc::new(handles),
         })
     }
@@ -103,7 +77,7 @@ impl ChatClient {
     }
 
     pub async fn request_typed(&self, request: Request) -> Result<Response, ChatError> {
-        super::rpc_compat::request(self.service_client(), request, &self.capabilities).await
+        super::rpc_compat::request(self.service_client(), request).await
     }
 
     pub fn service_client(&self) -> gcoms::rpc::Client<gcoms::rpc::local::LocalTransport> {
@@ -146,7 +120,7 @@ impl ChatClient {
         let envelope = exchange(
             &self.endpoint,
             &RequestEnvelope {
-                version: self.api_version,
+                version: VERSION,
                 instance_id: Some(self.instance.clone()),
                 request,
             },
@@ -156,9 +130,9 @@ impl ChatClient {
             code: "transport".into(),
             message,
         })?;
-        if envelope.version != self.api_version || envelope.instance_id != self.instance {
+        if envelope.version != VERSION || envelope.instance_id != self.instance {
             return Err(ChatError {
-                code: if envelope.version != self.api_version {
+                code: if envelope.version != VERSION {
                     "version"
                 } else {
                     "instance"

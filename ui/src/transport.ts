@@ -23,14 +23,23 @@ export function chatError(error: unknown): ChatError {
 }
 /** An attachment never discovers another instance when its selected endpoint fails. */
 export async function attach(exchange: Exchange, expectedInstance?: string): Promise<Transport> {
-  const first = await exchange({ version: API_VERSION, instance_id: null, request: { kind: 'identify' } });
-  if (first.version !== API_VERSION) throw new ChatError('version', 'Selected instance API version does not match this client');
+  let version = API_VERSION;
+  let first = await exchange({ version, instance_id: null, request: { kind: 'identify' } });
+  // Only a read-only handshake can negotiate the retained API 2 dialect. An
+  // uncertain mutation is never sent again under another version or instance.
+  if (first.version === 2 && first.response.kind === 'error' && first.response.code === 'version') {
+    const original = first.instance_id;
+    version = 2;
+    first = await exchange({ version, instance_id: null, request: { kind: 'identify' } });
+    if (first.instance_id !== original) throw new ChatError('instance', 'Selected instance changed during version negotiation');
+  }
+  if (first.version !== version) throw new ChatError('version', 'Selected instance API version does not match this client');
   if (first.response.kind === 'error') throw new ChatError(first.response.code, first.response.message);
   if (first.response.kind !== 'instance' || first.instance_id !== first.response.instance.id || (expectedInstance && first.instance_id !== expectedInstance)) throw new ChatError('instance', 'Selected instance does not match this attachment');
   const instance_id = first.instance_id;
   return { async request(request) {
-    const result = await exchange({ version: API_VERSION, instance_id, request });
-    if (result.version !== API_VERSION) throw new ChatError('version', 'Selected instance API version does not match this client');
+    const result = await exchange({ version, instance_id, request });
+    if (result.version !== version) throw new ChatError('version', 'Selected instance API version does not match this client');
     if (result.instance_id !== instance_id) throw new ChatError('instance', 'Selected instance changed; reopen this attachment explicitly');
     if (result.response.kind === 'error') throw new ChatError(result.response.code, result.response.message);
     return result.response;

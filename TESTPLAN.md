@@ -1,3 +1,19 @@
+## Stable contracts and released clients (2026-10-01)
+
+Run `scripts/check_contracts.py`, the `contracts_test.py` negative controls,
+`scripts/check-generated.py` and `scripts/check-released-client.py`. The retained
+consumer must use unchanged API 2 client/RPC source, attach to the current real
+local endpoint, unlock, send the same operation twice, observe one message and
+reopen the profile with identical instance and safety number. Wrong-instance
+attachment must fail. Pair preparation binds this consumer graph and lock to
+the same companion source used by the application.
+
+Run the API compatibility tests: legacy decoders reject unprojected modern states;
+the adapter never promotes service acceptance or failure to delivered, preserves
+IDs/text/cursors, handles nested network history and rejects unsupported versions
+before admission. UI tests cover identify-only version negotiation, pinned identity,
+single mutation admission and optional-method capability selection.
+
 ## Deployment reconciliation and idle activation (2026-09-30)
 
 Run `release_deployment_test.py`, `release_host_install_test.py`,

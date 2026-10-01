@@ -1,3 +1,18 @@
+## Stable client contracts
+
+The service retains GChat API 2 attachments alongside API 3 for the stable major.
+Typed RPC service 1 retains its original methods. Optional methods are advertised
+as `chat.method.<id>` in instance capabilities; clients select detailed history,
+search and network replies only when advertised. Advertisements grant no permissions.
+Older clients receive their original delivery states: service acceptance is local
+acceptance, failure is unknown, and only a verified recipient receipt is delivered.
+
+`scripts/check_contracts.py` checks retained contracts and released source hashes.
+`scripts/check-released-client.py` compiles the frozen API 2 client and exercises
+the current local server. Both are required by native CI. Breaking wire changes
+need a separate major service and coexistence with the stable service; compatible
+features do not require coordinated client and daemon upgrades.
+
 ## Automatic deployment and activation work
 
 The release coordinator can gate publication on a fresh, exact-source deployment

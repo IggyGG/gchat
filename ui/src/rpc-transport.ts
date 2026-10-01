@@ -26,6 +26,7 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
   if (hello.kind !== 'instance') throw new ChatError('protocol', 'Invalid instance handshake');
   const rpc = new RpcClient(transport, hello.instance.id, SERVICE, SERVICE_VERSION, handles);
   const client = createChatClient(rpc);
+  const supports = (method: string) => hello.instance.capabilities.includes(`chat.method.${method}`);
   try {
     const instance = await client.identify({});
     if (instance.id !== hello.instance.id) throw new ChatError('instance', 'Selected instance changed');
@@ -71,7 +72,7 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
         case 'networks': {
           const inner = request.request;
           const mutating = inner.kind === 'join' || (inner.kind === 'call' && ['submit', 'mark_read'].includes(inner.request.kind));
-          if (!mutating) return { kind: 'networks', response: await client.networks({ request: inner }) };
+          if (!mutating) return { kind: 'networks', response: supports('networks_details') ? await client.networks_details({ request: inner }) : await client.networks({ request: inner }) };
           const p = client.prepare_network_operation({ request: inner });
           const operationId = inner.kind === 'join' ? inner.operation_id : inner.kind === 'call' && inner.request.kind === 'submit' ? inner.request.operation_id : undefined;
           if (operationId) {
@@ -90,8 +91,8 @@ export async function attachRpc(legacy: Exchange, transport: RpcTransport, expec
         case 'network_status': return { kind: 'network_status', status: await client.network_status({}) };
         case 'import_network_invitation': return { kind: 'network_status', status: await client.import_network_invitation({ code: request.code }) };
         case 'catalogue': return { kind: 'catalogue', commands: await client.catalogue({ conversation: request.conversation }) };
-        case 'history': return { kind: 'history', page: await client.history({ conversation: request.conversation, before: request.before, limit: request.limit }) };
-        case 'search': return { kind: 'history', page: await client.search({ conversation: request.conversation, text: request.text, before: request.before, limit: request.limit }) };
+        case 'history': return { kind: 'history', page: supports('history_details') ? await client.history_details({ conversation: request.conversation, before: request.before, limit: request.limit }) : await client.history({ conversation: request.conversation, before: request.before, limit: request.limit }) };
+        case 'search': return { kind: 'history', page: supports('search_details') ? await client.search_details({ conversation: request.conversation, text: request.text, before: request.before, limit: request.limit }) : await client.search({ conversation: request.conversation, text: request.text, before: request.before, limit: request.limit }) };
         case 'complete': return { kind: 'completed', items: await client.complete({ conversation: request.conversation, text: request.text }) };
         case 'events': return { kind: 'changed', revision: await client.events({ after: request.after, wait_ms: request.wait_ms }) };
         case 'mark_read': {

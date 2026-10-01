@@ -5,6 +5,26 @@ import type { InstanceInfo, RequestEnvelope } from './api';
 import { API_VERSION } from './api';
 const instance: InstanceInfo = { id: 'selected', label: 'selected', bootId: 'boot', locked: false, protocolLocked: false, profileExists: true, archiveExists: true, safetyNumber: 'safety', capabilities: [] };
 describe('instance attachment boundary', () => {
+  it('negotiates API 2 only during identify and pins mutations to that dialect', async () => {
+    const received: RequestEnvelope[] = [];
+    const client = await attach(async envelope => {
+      received.push(envelope);
+      return { version: 2, instance_id: instance.id, response: envelope.version === API_VERSION
+        ? { kind: 'error', code: 'version', message: 'Use API 2' }
+        : envelope.request.kind === 'identify' ? { kind: 'instance', instance }
+        : { kind: 'applied', conversation: null, notice: null } };
+    });
+    await client.request({ kind: 'submit', operation_id: 'retained-operation', conversation: null, text: 'text' });
+    expect(received.map(row => row.version)).toEqual([3, 2, 2]);
+    expect(received.filter(row => row.request.kind === 'submit')).toHaveLength(1);
+    expect(received[2].instance_id).toBe(instance.id);
+  });
+  it('rejects changing the instance during version negotiation', async () => {
+    let calls = 0;
+    await expect(attach(async () => ({ version: 2, instance_id: calls++ ? 'other' : instance.id,
+      response: calls === 1 ? { kind: 'error', code: 'version', message: 'old service' } : { kind: 'instance', instance } })))
+      .rejects.toMatchObject({ code: 'instance' });
+  });
   it('preserves service codes and separates blocked states from transient recovery', async () => {
     const client = await attach(async envelope => ({ version: API_VERSION, instance_id: instance.id, response: envelope.request.kind === 'identify' ? { kind: 'instance', instance } : { kind: 'error', code: 'rejected', message: 'Invalid command' } }));
     await expect(client.request({ kind: 'snapshot' })).rejects.toMatchObject({ code: 'rejected', message: 'Invalid command', retryable: false });

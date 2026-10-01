@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "commit": "195642f74f31e1c263cc4c68e07ab86791e8c0c0",
+  "api_version": 2,
+  "sha256": {
+    "Cargo.toml": "83976973f8832b50b12129707dd180146a3e33a5c31e38e570bc25933d3e5089",
+    "files.rs": "8f6abbff7e12c7e5e3d00702494ef7d71699840081a752b7400f9f6aa57dbedb",
+    "fleet.rs": "a2808aa0a999442e4954c83b3a1ecebae27833f0a13e33713857b5d1b8361a06",
+    "legacy.rs": "5b775e8590566027557dc5d098acf0278db5230e9408ab70152dc7b1414c0ed1",
+    "lib.rs": "8c01b61ddadbbe90e529d0b70f3595707bf70b6c7f7a1862d995b7079440d0f9",
+    "native_files.rs": "247093c680950d38e3a38d7d49c3122f67aff99a846653cacccacecac4d8bae2",
+    "networks.rs": "f5c532651ef442d3e82c8568ab0b92ed26c855af6d42fb9c7bd0ef5baec73b29",
+    "rpc.rs": "c6a56b3808e6c0b370ad98ad12d428ec89110f80148d175dee9a53a8f942a1e2",
+    "rpc_compat.rs": "70510aba81e201eed0d2313abdbfabd5523db61785fcedddbed8d6bda12538f0",
+    "updates.rs": "8f20b55568586908d83e627ead20597e09a0b3d4f42642263dc2a34360cb168d"
+  },
+  "compiled_fixture": "The released client sources are unchanged. Only Cargo package identity and workspace fields are adapted for independent compilation."
+}
