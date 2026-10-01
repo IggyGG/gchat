@@ -25,6 +25,18 @@ workers use a restricted SSH command with root-owned unit/path policy. Stateful
 rollback records each ordinal's actual image and replaces only the failed pod;
 registry repair re-publishes retained OCI images before fresh bounded pull jobs.
 These changes pass their component regressions; production wiring remains open.
+The next operational checkpoint adds scoped Kubernetes roles, coordinator-only
+credentials, a separate cold-pull namespace and missing-layer registry repair.
+The Linux package includes a source-bound CLI and requires its lifecycle receipt.
+Root-owned canary grants are bootstrap-only, expire within one hour, reconcile a
+lost reply and retain revocation. Native package execution and activation of this
+controller still require their own evidence; configuration files alone are not a
+deployment pass.
+The installed-network canary producer now uses the qualified Linux provider
+archive and retains real covered delivery/file/reopen evidence. Interrupted grants
+and disposable processes are reconciled before a retry. The operator inventory
+and production bootstrap activation remain the next step; platform-specific
+upgrade/rollback acceptance remains separate.
 
 ## Automatic deployment and idle activation (2026-09-30, in progress)
 

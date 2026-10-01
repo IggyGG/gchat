@@ -67,5 +67,31 @@ class InfrastructureBundleTests(unittest.TestCase):
             self.assertIsNone(bundle.collect(self.root, self.manifest, {}))
             publish.assert_not_called()
 
+    def test_surviving_manifest_repairs_missing_layers_before_readback(self):
+        directory = self.root / 'retained'
+        (directory / 'oci').mkdir(parents=True)
+        (directory / 'oci/index.json').write_text('{}')
+        (directory / 'source-build.json').write_text(json.dumps({'image_config': 'sha256:' + 'f' * 64}))
+        raw = json.dumps({'config': {'digest': 'sha256:' + 'f' * 64}}).encode()
+        copied = False
+
+        def copy(command, **kwargs):
+            nonlocal copied
+            self.assertIn('--preserve-digests', command)
+            self.assertIn('oci:' + str(directory / 'oci') + ':release', command)
+            copied = True  # Missing remote layers are restored by this copy.
+
+        def inspect(command, **kwargs):
+            if command[-1].startswith('docker://'):
+                self.assertTrue(copied, 'manifest inspection alone cannot establish blob availability')
+            return raw
+
+        config = {'registry_repository': 'registry/services', 'pull_repository': 'node/services'}
+        with patch.object(bundle.subprocess, 'run', side_effect=copy), \
+             patch.object(bundle.subprocess, 'check_output', side_effect=inspect):
+            expected = 'node/services@sha256:' + hashlib.sha256(raw).hexdigest()
+            self.assertEqual(bundle.publish(directory, config, 'retained'), expected)
+        self.assertTrue(copied)
+
 
 if __name__ == '__main__': unittest.main()

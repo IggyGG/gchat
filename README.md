@@ -29,6 +29,20 @@ The bundle retains both service and controller images and binds their exact sour
 pair. The controller includes checksum-pinned kubectl 1.35.2. Native deployment
 uses a forced SSH command and a root-owned service inventory; the controller key
 can upload verified binaries and operate only those installed units.
+The operator's Kubernetes account is scoped to the managed workloads. Only the
+coordinator mounts its rotating token and restricted SSH key. Cold pull jobs run
+in the separate test namespace. Linux installers now carry both `gchat-desktop`
+and `gchat`; the worker checks their hashes and isolated service lifecycle before
+publication. The controller uses the same Ubuntu 24.04 runtime as the Linux worker.
+An optional root-owned canary policy issues bootstrap-only invitations lasting at
+most one hour; retries reuse the same grant and cleanup revokes it. Canaries cannot
+allocate public names or select caller-supplied authority.
+`release_network_canary.py` extracts its CLI from the provider archive bound by
+the successful build and verification receipts. It requires bidirectional covered
+recipient acknowledgments, 16 MiB interrupted recovery and the same identities
+after reopen. Interrupted canaries revoke their grant and stop only their recorded
+disposable processes before retrying. These service checks do not qualify rendered
+UI behavior or application upgrade/rollback on another platform.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer

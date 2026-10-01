@@ -77,16 +77,16 @@ def publish(directory, config, tag, image='services'):
     sha = 'sha256:' + hashlib.sha256(raw).hexdigest()
     destination = config['registry_repository' if image == 'services' else 'controller_registry_repository']
     tls = [] if config.get('registry_tls', True) else ['--tls-verify=false']
-    observed = subprocess.run(['skopeo', 'inspect', '--raw', *tls, 'docker://' + destination + '@' + sha],
-                              capture_output=True, timeout=30)
-    if observed.returncode or observed.stdout != raw:
-        flags = [] if config.get('registry_tls', True) else ['--dest-tls-verify=false']
-        subprocess.run(['skopeo', 'copy', '--preserve-digests', *flags, source,
-                        'docker://' + destination + ':' + tag], check=True, timeout=300,
-                       stdout=subprocess.DEVNULL)
-        actual = subprocess.check_output(['skopeo', 'inspect', '--raw', *tls,
-                                          'docker://' + destination + '@' + sha], timeout=30)
-        if actual != raw: raise ValueError('registry read-back changed the image manifest')
+    # A surviving manifest does not prove its layers survived registry loss.
+    # Skopeo checks every blob and uploads only missing content even when the
+    # manifest already exists. Keep this repair ahead of each cold pull probe.
+    flags = [] if config.get('registry_tls', True) else ['--dest-tls-verify=false']
+    subprocess.run(['skopeo', 'copy', '--preserve-digests', *flags, source,
+                    'docker://' + destination + ':' + tag], check=True, timeout=300,
+                   stdout=subprocess.DEVNULL)
+    actual = subprocess.check_output(['skopeo', 'inspect', '--raw', *tls,
+                                      'docker://' + destination + '@' + sha], timeout=30)
+    if actual != raw: raise ValueError('registry read-back changed the image manifest')
     return config['pull_repository' if image == 'services' else 'controller_pull_repository'] + '@' + sha
 
 

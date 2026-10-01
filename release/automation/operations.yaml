@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: gchat-release-operator, namespace: ghost-com}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: gchat-release-operator, namespace: ghost-com}
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [gc-catalog, gchat-push, gchat-release, gchat-site]
+    verbs: [get, patch]
+  - apiGroups: [apps]
+    resources: [statefulsets]
+    resourceNames: [gc-anchor]
+    verbs: [get, patch]
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: ['']
+    resources: [pods]
+    resourceNames: [gc-anchor-0, gc-anchor-1, gc-anchor-2]
+    verbs: [delete]
+  - apiGroups: ['']
+    resources: [pods/exec]
+    resourceNames: [gc-anchor-0, gc-anchor-1, gc-anchor-2]
+    verbs: [create]
+  - apiGroups: ['']
+    resources: [configmaps]
+    verbs: [get, create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: gchat-release-operator, namespace: ghost-com}
+subjects: [{kind: ServiceAccount, name: gchat-release-operator, namespace: ghost-com}]
+roleRef: {kind: Role, name: gchat-release-operator, apiGroup: rbac.authorization.k8s.io}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: gchat-release-pulls, namespace: ghost-bench}
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list, create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: gchat-release-pulls, namespace: ghost-bench}
+subjects: [{kind: ServiceAccount, name: gchat-release-operator, namespace: ghost-com}]
+roleRef: {kind: Role, name: gchat-release-pulls, apiGroup: rbac.authorization.k8s.io}

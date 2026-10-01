@@ -24,6 +24,7 @@ spec:
       labels: {app: gchat-release}
     spec:
       automountServiceAccountToken: false
+      serviceAccountName: gchat-release-operator
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -58,6 +59,8 @@ spec:
             - {name: state, mountPath: /state}
             - {name: config, mountPath: /config, readOnly: true}
             - {name: keys, mountPath: /keys, readOnly: true}
+            - {name: operations, mountPath: /ops, readOnly: true}
+            - {name: operator-token, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true}
         - name: public
           image: nginx:1.29-alpine
           ports: [{containerPort: 8080}]
@@ -78,6 +81,17 @@ spec:
           configMap: {name: gchat-release-nginx}
         - name: keys
           secret: {secretName: gchat-release-keys, defaultMode: 288}
+        - name: operations
+          secret: {secretName: gchat-release-operations, defaultMode: 288}
+        - name: operator-token
+          projected:
+            sources:
+              - serviceAccountToken: {path: token, expirationSeconds: 3600}
+              - configMap:
+                  name: kube-root-ca.crt
+                  items: [{key: ca.crt, path: ca.crt}]
+              - downwardAPI:
+                  items: [{path: namespace, fieldRef: {fieldPath: metadata.namespace}}]
 ---
 apiVersion: v1
 kind: Service
@@ -107,4 +121,16 @@ spec:
         - ipBlock:
             cidr: 0.0.0.0/0
             except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+      ports: [{protocol: TCP, port: 443}, {protocol: TCP, port: 22}]
+    - to:
+        - podSelector: {matchLabels: {app: registry}}
+      ports: [{protocol: TCP, port: 5000}]
+    - to:
+        - ipBlock: {cidr: 10.96.0.1/32}
       ports: [{protocol: TCP, port: 443}]
+    # Calico may evaluate egress after the API service has been translated.
+    - to:
+        - ipBlock: {cidr: 116.202.84.152/32}
+        - ipBlock: {cidr: 49.12.172.59/32}
+        - ipBlock: {cidr: 78.46.219.146/32}
+      ports: [{protocol: TCP, port: 6443}]

@@ -263,6 +263,17 @@ def bundle(target, output, environment, identity, policy, checkout):
         if build_root.exists():
             raise ValueError('use a new output directory for each build')
         environment['CARGO_TARGET_DIR'] = str(build_root)
+        if system == 'Linux':
+            # The same signed installer owns the CLI and desktop service code.
+            # A retained repair binary must not keep the fleet daemon on an old
+            # release after the desktop package advances.
+            run(['cargo', 'build', '--locked', '--release', '--target', triple,
+                 '-p', 'gchat-tui', '--features', 'gc2-carrier'], env=environment, cwd=checkout)
+            cli = build_root / triple / 'release/gchat'
+            sidecar = build_root / ('gchat-' + triple)
+            shutil.copy2(cli, sidecar)
+            config['bundle']['externalBin'] = [str(build_root / 'gchat')]
+            config_path.write_text(json.dumps(config))
         run([sys.executable, 'scripts/collect-notices.py'], env=environment, cwd=checkout)
         npm = 'npm.cmd' if system == 'Windows' else 'npm'
         # A DMG implicitly builds then removes its .app. Tauri only retains
@@ -310,8 +321,12 @@ def bundle(target, output, environment, identity, policy, checkout):
             extracted = Path(temp) / 'deb-extracted'
             run(['dpkg-deb', '--extract', str(packages[0]), str(extracted)])
             executable = extracted / 'usr/bin/gchat-desktop'
+            cli = extracted / 'usr/bin/gchat'
+            if not cli.is_file() or cli.is_symlink(): raise ValueError('Linux installer is missing its qualified CLI')
+            if sha(cli) != sha(sidecar): raise ValueError('packaged Linux CLI differs from its source build')
             if not executable.is_file() or executable.is_symlink(): raise ValueError('packaged Linux executable is missing')
             executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
+            executables.append({'name': cli.name, 'sha256': sha(cli), 'size': cli.stat().st_size})
         patterns = {'deb':'deb/*.deb', 'appimage':'appimage/*.AppImage', 'nsis':'nsis/*.exe', 'dmg':'dmg/*.dmg'}
         files = []
         for kind in bundles:

@@ -16,6 +16,7 @@
   ],
   "activation": "when_idle",
   "deployment_required": true,
+  "linux_cli_required": true,
   "android_package": "boo.gchat.app",
   "android_certificate_sha256": "ad7a7a315b2b76162de0a61f1acc651886c2f697e93089364cf9f6ed992a1f06",
   "ios_certificate_sha256": "575c69108062e8a523117b57785563dba10a2265ee72df4771701813e5cbfbb7",

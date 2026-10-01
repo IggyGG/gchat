@@ -330,6 +330,46 @@ class DiskImageApplicationTest(unittest.TestCase):
                 self.assertFalse(self.mount.parent.exists())
 
 
+class LinuxApplicationTest(unittest.TestCase):
+    def test_linux_bundle_requires_the_shipped_cli_to_match_its_build(self):
+        for shipped in (b'qualified cli', b'changed cli', None):
+            with self.subTest(shipped=shipped), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                output = root / 'output'; output.mkdir()
+                target = output / 'build/x86_64-unknown-linux-gnu/release'
+
+                def execute(command, **kwargs):
+                    if command[:2] == ['cargo', 'build']:
+                        target.mkdir(parents=True)
+                        (target / 'gchat').write_bytes(b'qualified cli')
+                    elif command[:3] == ['npm', 'run', 'tauri']:
+                        config = json.loads(Path(command[command.index('--config') + 1]).read_text())
+                        sidecar = Path(config['bundle']['externalBin'][0] + '-x86_64-unknown-linux-gnu')
+                        self.assertEqual(sidecar.read_bytes(), b'qualified cli')
+                        (target / 'bundle/deb').mkdir(parents=True)
+                        (target / 'bundle/deb/GChat.deb').write_bytes(b'signed deb')
+                        (target / 'bundle/appimage').mkdir()
+                        (target / 'bundle/appimage/GChat.AppImage').write_bytes(b'signed appimage')
+                    elif command[:2] == ['dpkg-deb', '--extract']:
+                        binaries = Path(command[-1]) / 'usr/bin'; binaries.mkdir(parents=True)
+                        (binaries / 'gchat-desktop').write_bytes(b'packaged desktop')
+                        if shipped is not None: (binaries / 'gchat').write_bytes(shipped)
+                    return subprocess.CompletedProcess(command, 0)
+
+                with patch.object(installer, 'run', side_effect=execute), \
+                     patch.object(installer, 'required', return_value='test-key'), \
+                     patch.object(installer, 'fingerprint', return_value='A' * 40), \
+                     patch.object(installer, 'verify'), patch.object(installer, 'verify_resolved_protocol'), \
+                     patch.object(installer.subprocess, 'check_output', return_value=b'{}'):
+                    if shipped == b'qualified cli':
+                        _, entries = installer.bundle('linux-x86_64', output, {}, {'name': 'Gh0st'}, 'self-signed', root)
+                        self.assertEqual([e['name'] for e in entries], ['gchat-desktop', 'gchat'])
+                        self.assertEqual(entries[1]['sha256'], hashlib.sha256(shipped).hexdigest())
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'CLI'):
+                            installer.bundle('linux-x86_64', output, {}, {'name': 'Gh0st'}, 'self-signed', root)
+
+
 class NsisApplicationTest(unittest.TestCase):
     def test_bundle_uses_shipped_signed_executable_instead_of_restored_unsigned_copy(self):
         with tempfile.TemporaryDirectory() as temporary:

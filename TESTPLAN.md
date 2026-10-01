@@ -26,6 +26,15 @@ replace only the failed pod, preserve higher ordinals and resume after a lost re
 Restricted SSH uploads must reject changed/partial/oversized bytes and cannot select
 unlisted units, executable names or protected paths. Controller-only source changes
 must not reuse an infrastructure image from an older source pair.
+`release_canary_grant_test.py` checks lost replies, fixed bootstrap authority,
+expiry without renewal, idempotent revocation and grant-store permissions.
+Registry tests require layer repair even when a manifest survives. Linux packaging
+must reject a missing or changed CLI; the native worker runs both packaged binaries
+through isolated unlock, wrong-passphrase refusal, disconnect and reopen.
+The live canary producer must use the hash-bound provider archive and exact native
+CLI receipt. Missing ACKs, smaller files, late or non-finite measurements, changed
+inputs and incomplete cleanup cannot pass. Interrupted cleanup must be limited to
+its recorded temporary root, with original logs and failures retained.
 UI `idle-updates.test.ts` must reject new activity while native status is pending,
 wait for saved drafts/actions, and back off after native deferral. Run the UI type
 checks/build and all unit tests. Rust `fleet_host` must reject invalid bootstrap

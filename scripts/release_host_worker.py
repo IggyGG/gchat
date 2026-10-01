@@ -36,7 +36,7 @@ def ssh(target, command, payload, timeout=120):
     host = target['host']
     if not re.fullmatch(r'[a-zA-Z0-9_.@-]+', host) or host.startswith('-'):
         raise ValueError('invalid operator SSH destination')
-    if command != 'install' and not re.fullmatch(r'upload [0-9a-f]{64}', command):
+    if command != 'install' and not re.fullmatch(r'(?:upload|canary (?:grant|revoke)) [0-9a-f]{64}', command):
         raise ValueError('unsupported restricted service command')
     return subprocess.run(['ssh', '-F', target['ssh_config'],
                            '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',

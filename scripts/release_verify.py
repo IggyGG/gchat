@@ -108,6 +108,14 @@ def verify(manifest, platform, directory, output, tools=None):
             smoke = json.loads((root / 'application-smoke/report.json').read_text())
             if smoke.get('passed') is not True or smoke.get('inputs_unchanged') is not True or smoke.get('children_stopped') is not True:
                 raise ValueError('packaged Linux lifecycle/cleanup did not pass')
+            if manifest['policy'].get('linux_cli_required'):
+                cli = json.loads((root / 'cli-smoke/report.json').read_text())
+                executables = [e for e in build['executables'] if e['name'] == 'gchat']
+                if (len(executables) != 1 or cli.get('passed') is not True
+                        or cli.get('inputs_unchanged') is not True or cli.get('children_stopped') is not True
+                        or cli['inputs']['binary']['sha256'] != executables[0]['sha256']
+                        or cli['inputs']['sources'] != inputs['sources']):
+                    raise ValueError('packaged Linux CLI lifecycle or source binding did not pass')
             from release_signatures import verify as verify_gpg
             for item in build['files']:
                 verify_gpg(root / (item['name'] + '.asc'), root / item['name'], 'F4F6F8550D2AA952A189640D58430838AA3230BB')

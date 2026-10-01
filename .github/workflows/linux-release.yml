@@ -99,6 +99,7 @@ jobs:
         run: |
           dpkg-deb --extract signed/*.deb extracted
           python3 gchat/scripts/test-native-application.py --binary extracted/usr/bin/gchat-desktop --build-manifest signed/build.json --native-receipt signed/provenance/native-ci.json --output signed/application-smoke
+          python3 gchat/scripts/test-native-cli.py --binary extracted/usr/bin/gchat --build-manifest signed/build.json --native-receipt signed/provenance/native-ci.json --output signed/cli-smoke
           python3 gchat/scripts/release_attest.py --output signed --platform linux-x86_64
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
@@ -115,6 +116,7 @@ jobs:
             signed/updater/**
             signed/updater-artifacts.json
             signed/application-smoke/**
+            signed/cli-smoke/**
             signed/infrastructure/**
             native-evidence/**
           if-no-files-found: error

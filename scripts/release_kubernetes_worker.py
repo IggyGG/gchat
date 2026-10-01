@@ -172,9 +172,10 @@ def run(target, manifest, stage, output):
                                         'capabilities': {'drop': ['ALL']}},
                     'resources': {'requests': {'cpu': '10m', 'memory': '16Mi'},
                                   'limits': {'cpu': '100m', 'memory': '64Mi'}}}]}}}}
-        subprocess.run(['kubectl', '-n', target['namespace'], 'apply', '-f', '-'],
+        probe_target = {'namespace': target.get('probe_namespace', target['namespace'])}
+        subprocess.run(['kubectl', '-n', probe_target['namespace'], 'apply', '-f', '-'],
                        input=json.dumps(probe).encode(), check=True, stdout=subprocess.DEVNULL, timeout=30)
-        state = json.loads(kubectl(target, 'get', 'job', job, '-o', 'json'))['status']
+        state = json.loads(kubectl(probe_target, 'get', 'job', job, '-o', 'json'))['status']
         if state.get('failed') or any(c['type'] == 'Failed' and c['status'] == 'True' for c in state.get('conditions', [])):
             if target.get('infrastructure_config') and attempts['generation'] < 3:
                 atomic_json(attempts_path, {'generation': attempts['generation'] + 1})

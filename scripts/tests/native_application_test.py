@@ -105,6 +105,14 @@ class BindingFixture:
 
 
 class BindingTests(BindingFixture, unittest.TestCase):
+    def test_packaged_cli_uses_its_daemon_command_and_same_isolated_arguments(self):
+        spec = importlib.util.spec_from_file_location('native_cli', SCRIPTS / 'test-native-cli.py')
+        cli_smoke = importlib.util.module_from_spec(spec); spec.loader.exec_module(cli_smoke)
+        desktop = smoke.service_command(Path('/package/gchat-desktop'), self.root, self.root / 'stop')
+        cli = cli_smoke.service_command(Path('/package/gchat'), self.root, self.root / 'stop')
+        self.assertEqual(cli[1], 'daemon')
+        self.assertEqual(cli[2:], desktop[1:])
+
     def test_exact_native_and_executable_are_required(self):
         actual = smoke.validate_artifacts(self.binary, self.manifest, self.native)
         self.assertEqual(actual["sources"], self.inputs["sources"])
