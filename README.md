@@ -62,9 +62,12 @@ a real canary; controller activation follows the other services. The recovery jo
 shares the controller's node and volume without repeatedly changing file ownership.
 
 `release_acceptance.py` dispatches platform-specific desktop acceptance from
-retained signed current and baseline archives. It checks identity, history and
-encrypted cache through rollback and restoration, then runs the same 16 MiB
-network recovery gate and refreshes all eight relay observations. Only a private
+distinct retained releases. It creates disposable state with the baseline, then
+upgrades, rolls back and restores the current application, requiring identity,
+history, encrypted cache and covered delivery throughout. Its current/baseline
+source, archive and installed binary identities must differ. Failed cleanup still
+stops the remaining owned children and retains a failed report. It runs the same
+16 MiB network recovery gate and refreshes all eight relay observations. Only a private
 expiring bootstrap invitation reaches that worker. Completed receipts can refresh
 without discarding evidence; an unknown dispatch is reconciled before another
 worker can run. Initial baselines may be pinned in `/config/acceptance.json`;

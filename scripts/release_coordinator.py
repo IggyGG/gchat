@@ -256,8 +256,10 @@ class Coordinator:
                      'publishing': 'publish', 'submitting': 'submit',
                      'processing': 'observe', 'in_review': 'observe'}[state]
             if state == 'verified' and 'acceptance' in self.config['workers'][platform]:
-                if self.execute(manifest, platform, 'acceptance') is None:
+                stage = 'acceptance'
+                if self.execute(manifest, platform, stage) is None:
                     return
+                stage = 'compatibility'
             completed = self.execute(manifest, platform, stage)
             if completed is None:
                 return

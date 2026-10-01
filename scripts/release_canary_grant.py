@@ -26,7 +26,6 @@ def invitation(path):
 
 
 def operate(policy, action, ident, *, state_root=Path('/var/lib/gchat-release/canaries'), now=None):
-    import fcntl
     if action not in ('grant', 'revoke') or not re.fullmatch('[0-9a-f]{64}', ident):
         raise ValueError('invalid canary operation')
     configured = policy.get('canary')
@@ -34,6 +33,10 @@ def operate(policy, action, ident, *, state_root=Path('/var/lib/gchat-release/ca
         raise ValueError('canary invitations are not enabled on this host')
     if not {'operator', 'grants_file', 'network_id', 'provider_urls'} <= configured.keys():
         raise ValueError('canary host policy is incomplete')
+    ttl = configured.get('ttl_seconds', 3600)
+    if action == 'grant' and (type(ttl) is not int or not 600 <= ttl <= 3600):
+        raise ValueError('canary duration must be between 600 and 3600 seconds')
+    import fcntl  # The grant operator preserves a Linux service store's owner/mode.
     now = int(time.time()) if now is None else now
     work = state_root / ident
     work.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -45,9 +48,6 @@ def operate(policy, action, ident, *, state_root=Path('/var/lib/gchat-release/ca
         if not intent.exists():
             if action == 'revoke': return {'revoked': True, 'created': False}
             # Every authority and duration comes from the root-owned policy.
-            ttl = configured.get('ttl_seconds', 3600)
-            if type(ttl) is not int or not 600 <= ttl <= 3600:
-                raise ValueError('canary duration must be between 600 and 3600 seconds')
             write(intent, {'network_id': configured['network_id'],
                 'provider_urls': configured['provider_urls'], 'expires_at': now + ttl,
                 'scopes': ['bootstrap'], 'max_names': 0})

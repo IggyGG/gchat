@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -10,6 +11,7 @@ import release_rollout_watchdog as watchdog
 from release_coordinator import atomic_json
 
 
+@unittest.skipUnless(os.name == 'posix', 'Kubernetes recovery controller requires POSIX rollout locking')
 class WatchdogTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(); self.addCleanup(self.temporary.cleanup)

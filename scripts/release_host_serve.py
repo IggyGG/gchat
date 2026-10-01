@@ -16,20 +16,21 @@ LIMIT = 256 * 1024 * 1024
 def upload(sha, source, directory):
     if not re.fullmatch('[0-9a-f]{64}', sha): raise ValueError('invalid upload digest')
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=directory, delete=False) as stream:
-        path = Path(stream.name)
-        try:
+    stream = tempfile.NamedTemporaryFile(dir=directory, delete=False)
+    path = Path(stream.name)
+    try:
+        with stream:
             digest = hashlib.sha256(); total = 0
             while data := source.read(1024 * 1024):
                 total += len(data)
                 if total > LIMIT: raise ValueError('upload exceeds service binary limit')
                 digest.update(data); stream.write(data)
-            stream.flush(); os.fsync(stream.fileno()); stream.close()
-            if not total or digest.hexdigest() != sha: raise ValueError('upload digest mismatch')
-            path.chmod(0o600)
-            os.replace(path, directory / ('gchat-release-' + sha))
-        finally:
-            path.unlink(missing_ok=True)
+            stream.flush(); os.fsync(stream.fileno())
+        if not total or digest.hexdigest() != sha: raise ValueError('upload digest mismatch')
+        path.chmod(0o600)
+        os.replace(path, directory / ('gchat-release-' + sha))
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def request(value, policy):

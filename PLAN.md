@@ -10,7 +10,7 @@ valid OCI receipts keep their transport. The running controller's exact Docker
 manifest and layers have been retained and registry repair passes without changing
 its digest. The first configuration/retention failures remain recorded.
 
-The source-bound `bc8a622` controller is now active on Kubernetes with both
+The source-bound `5c8cca8` controller is now active on Kubernetes with both
 containers ready, scoped workload permissions and an independent successful
 minute watchdog. The complete inventory has 17 serial targets; all eight native
 relays pass restricted observations. The previous controller image and layers
@@ -22,10 +22,14 @@ Mac workers with an expiring bootstrap-only grant. It downloads retained signed
 current/baseline artifacts without rebuilding, checks actual identity/history/
 encrypted-cache recovery through current → baseline → current, runs the original
 16 MiB interrupted journey, and observes all eight relays before writing a
-platform-specific compatibility receipt. Lost dispatch replies are reconciled;
+platform-specific compatibility receipt. The initial native baselines and all four
+desktop acceptance recipes are active in the controller. New acceptance starts
+with the older release, then upgrades, rolls back and restores the current release;
+each phase must preserve identity, history, cache and authenticated delivery.
+Identical releases or installed binaries cannot qualify an upgrade. Lost dispatch replies are reconciled;
 only completed receipts expire into new work and earlier evidence is retained.
 Oversized invitations revoke their grant before any worker is dispatched.
-Validation passes 611 Python tests with five retained skips. Paired GChat Rust
+Validation passes 615 Python tests with five retained skips. Paired GChat Rust
 tests and strict Clippy pass against GComs `500b305`; no wire version changes.
 
 The old 18 owned 500-member test rooms were archived as 46 unchanged signed
@@ -35,9 +39,14 @@ and service configuration now prefer the managed package while retaining the
 qualified fallback; initial activation of the new binary remains separately
 recorded. See [operational checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
 
-Native SDK run `36814943114` fails the unchanged contact file reopen check on
-all four platforms. The original logs are retained and a scheduling fix is under
-validation. Native baseline binding, actual desktop and mobile acceptance,
+Native SDK run `36814943114` failed the unchanged contact file reopen check on
+all four platforms. The first scheduling fix passes Linux's native runtime check,
+but corrected run `36820878112` still fails Windows recovery; its original logs
+are retained and further investigation is required. Native Windows GChat run
+`36820159187` also exposed fixture cleanup before SQLite/file handles closed and
+Linux-only controller tests running on Windows. Cleanup now closes handles first;
+portable authority guards still run everywhere, while POSIX ownership/locking tests
+run on their actual controller platform. Actual desktop and mobile acceptance,
 qualified fleet/client rollout, a subsequent unattended release and SDK 1.0
 declaration remain required. Component checks do not satisfy those gates.
 

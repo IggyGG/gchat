@@ -17,7 +17,7 @@ single mutation admission and optional-method capability selection.
 ## Deployment reconciliation and idle activation (2026-09-30)
 
 Run `release_acceptance_test.py` for exact native source/archive/platform
-bindings, current → baseline → current identity/history/cache preservation,
+bindings, baseline → current → baseline → current identity/history/cache preservation,
 covered ACKs, unchanged 16 MiB/360-second/600-second bounds, cleanup, lost dispatch
 replies and oversized invitation revocation. Only completed acceptance receipts
 can refresh; unknown effects cannot create another worker. Retain the old receipt
@@ -25,6 +25,13 @@ and logs. Actual completion requires matching native workers executing retained
 signed applications without rebuilding or touching personal profiles, followed by
 fresh observations of all eight running relays. A desktop pass cannot qualify a
 mobile platform. Component tests are not native acceptance evidence.
+Reject identical baseline/current provider runs, archives, sources or installed
+binaries. Cleanup failure must still stop other owned children and retain a failed
+report. Attribute acceptance failures to their own recovery stage.
+Windows fixture cleanup must close SQLite and temporary upload handles before
+removal. Linux grant-store ownership and Kubernetes rollout locks require their
+POSIX host; portable invalid-authority guards still execute on every platform.
+The first Windows Python failure and corrected native results remain separate.
 
 Run `release_deployment_test.py`, `release_host_install_test.py`,
 `release_kubernetes_worker_test.py` and `release_coordinator_test.py` through

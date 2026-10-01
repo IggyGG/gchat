@@ -107,6 +107,12 @@ The controller binds current and baseline provider runs, immutable archive hashe
 source pairs and the protected worker ref before dispatch. The worker downloads
 and checks signed retained applications, performs current → baseline → current
 profile/history/cache recovery, and runs the original bounded network journey.
+New acceptance creates the profile and cached file with the baseline before
+current → baseline → current replacement. All three replacements require retained
+history, the same identity and cache hash, and fresh covered bidirectional ACKs.
+An identical provider, source pair, archive or installed binary cannot stand in
+for an upgrade or rollback. The initial native baseline bindings are installed
+alongside the four desktop recipes in the live controller.
 The controller refreshes eight native relay observations before publishing the
 platform-specific receipt. No application is compiled in acceptance. This does
 not qualify rendered GUI interaction or personal installations.

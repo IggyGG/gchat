@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -12,6 +13,7 @@ import release_canary_grant as grants
 
 
 class CanaryGrantTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'posix', 'Linux grant operator requires POSIX locking and store ownership')
     def test_private_grant_reconciles_lost_reply_and_revocation_without_renewal(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

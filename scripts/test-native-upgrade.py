@@ -2,7 +2,7 @@
 """Qualify retained desktop applications on disposable native network profiles.
 
 No application is compiled. Current/baseline archives, signatures and native
-receipts are checked before current -> baseline -> current profile/cache recovery
+receipts are checked before baseline -> current -> baseline -> current recovery
 and the original bounded current-binary interrupted-file journey.
 """
 import argparse
@@ -46,6 +46,10 @@ def validate_inputs(value):
                           and type(executable['size']) is int and executable['size'] > 0
                           and re.fullmatch('[0-9a-f]{64}', executable['sha256']),
                           'invalid retained Windows executable identity')
+    current, previous = value['current'], value['baseline']
+    smoke.require(current['run'] != previous['run'] and current['artifact'] != previous['artifact']
+                  and current['archive'] != previous['archive'] and current['sources'] != previous['sources'],
+                  'upgrade acceptance requires distinct current and baseline releases')
     return value
 
 
@@ -90,13 +94,14 @@ def linux_acquire(name, spec, output):
 
 def rollback(current, baseline, invitation, output):
     report = {'schema': 1, 'passed': False, 'phases': []}
-    args = argparse.Namespace(binary=current['binary'], build_manifest=current['build_manifest'],
-        native_receipt=current['native_receipt'], invitation=invitation, output=output,
-        bytes=network.PIECE, binary_sha256=smoke.digest(current['binary']))
+    args = argparse.Namespace(binary=baseline['binary'], build_manifest=baseline['build_manifest'],
+        native_receipt=baseline['native_receipt'], invitation=invitation, output=output,
+        bytes=network.PIECE, binary_sha256=smoke.digest(baseline['binary']))
     journey = network.Journey(args)
     binaries = {name: smoke.digest(item['binary']) for name, item in (('current', current), ('baseline', baseline))}
     try:
         smoke.require(current['build']['publisher'] == baseline['build']['publisher'], 'rollback publisher changed')
+        smoke.require(binaries['current'] != binaries['baseline'], 'upgrade acceptance needs different installed binaries')
         for i in (0, 1): journey.start_client(i, True)
         journey.channel = journey.submit(0, '/create #upgrade sender')['conversation']
         code = journey.until(lambda: journey.submit(0, '/invite')['output'].get('link'))
@@ -105,7 +110,7 @@ def rollback(current, baseline, invitation, output):
         joined = journey.call(1, 'networks', request={'kind': 'join', 'code': code, 'nickname': 'receiver',
             'accepted_network': preview['preview']['network']['id'], 'operation_id': uuid.uuid4().hex})['response']
         smoke.require(joined['kind'] == 'result' and joined['response']['conversation'] == journey.channel, 'fixture join differs')
-        journey.chat('current')
+        journey.chat('baseline-initial')
         ident = uuid.uuid4().hex; data = hashlib.shake_256(b'release-rollback-cache').digest(network.PIECE)
         expected = hashlib.sha256(data).hexdigest()
         journey.files(0, 'prepare', id=ident, conversation=journey.channel, name='rollback.bin', size_bytes=str(network.PIECE))
@@ -113,7 +118,7 @@ def rollback(current, baseline, invitation, output):
         journey.until(lambda: journey.row(1, ident)); journey.files(1, 'accept', id=ident)
         journey.until(lambda: journey.row(1, ident)['state'] == 'complete')
         smoke.require(journey.export(ident) == expected, 'initial cached export differs')
-        for name, item in (('baseline', baseline), ('restored', current)):
+        for name, item in (('upgraded', current), ('baseline', baseline), ('restored', current)):
             before = {i: journey.history(i) for i in (0, 1)}
             for i in (0, 1): journey.stop(i)
             args.binary = item['binary']
@@ -131,10 +136,19 @@ def rollback(current, baseline, invitation, output):
     finally:
         results = []
         for _, process, stop, log in reversed(journey.children):
-            if process.poll() is None: results.append(smoke.stop_service(process, stop, 10))
-            log.close()
+            try:
+                if process.poll() is None: results.append(smoke.stop_service(process, stop, 10))
+            except Exception as error:
+                report.setdefault('cleanup_errors', []).append(type(error).__name__)
+                try:
+                    if process.poll() is None: process.kill()
+                    process.wait(timeout=10)
+                except Exception as cleanup_error:
+                    report['cleanup_errors'].append(type(cleanup_error).__name__)
+            finally:
+                log.close()
         report['cleanup_complete'] = all(process.poll() == 0 for _, process, _, _ in journey.children) and all(
-            r['stopped'] and not r['forced'] and r['exit_code'] == 0 for r in results)
+            r['stopped'] and not r['forced'] and r['exit_code'] == 0 for r in results) and not report.get('cleanup_errors')
         report['children_stopped'] = all(process.poll() is not None for _, process, _, _ in journey.children)
         if report['children_stopped']:
             for i in journey.clients:

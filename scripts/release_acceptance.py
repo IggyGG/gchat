@@ -22,7 +22,7 @@ from release_coordinator import atomic_json, read_receipt
 from release_deployment import inventory, invoke
 from release_host_worker import ssh
 from release_jobs import gh, extract
-from release_network_canary import verify_journey
+from release_network_canary import module, verify_journey
 from release_pair import canonical, validate
 from release_publish import job
 from release_compatibility import verify as verify_compatibility
@@ -89,6 +89,8 @@ def cleanup(marker, intent, grant):
 
 
 def qualify_native(report, rollback, network, manifest, target, specs, now):
+    driver = module('test-native-upgrade')
+    driver.validate_inputs(specs)
     if (report.get('schema') != 1 or report.get('passed') is not True
             or report.get('platform') != target or report.get('sources') != manifest['sources']
             or report.get('release_id') != manifest['release_id']
@@ -108,15 +110,17 @@ def qualify_native(report, rollback, network, manifest, target, specs, now):
     if (rollback.get('passed') is not True or rollback.get('cleanup_complete') is not True
             or rollback.get('profiles_removed') is not True or rollback.get('binaries_unchanged') is not True
             or type(elapsed) not in (int, float) or not math.isfinite(elapsed) or not 0 < elapsed <= 600
-            or [phase.get('phase') for phase in phases] != ['baseline', 'restored']
-            or len(acknowledgments) < 6 or {e.get('sender') for e in acknowledgments} != {0, 1}):
+            or [phase.get('phase') for phase in phases] != ['upgraded', 'baseline', 'restored']
+            or len(acknowledgments) < 8 or {e.get('sender') for e in acknowledgments} != {0, 1}):
         raise ValueError('actual native rollback and authenticated delivery did not pass')
-    for phase, name in zip(phases, ('baseline', 'current')):
+    if report['artifacts']['current']['binary_sha256'] == report['artifacts']['baseline']['binary_sha256']:
+        raise ValueError('native upgrade used the same installed binary for both releases')
+    for phase, name in zip(phases, ('current', 'baseline', 'current')):
         if phase.get('binary_sha256') != report['artifacts'][name]['binary_sha256'] or any(
                 phase.get(field) is not True for field in ('same_identity', 'history_retained', 'authenticated_bidirectional_ack')):
             raise ValueError('rollback phase changed identity, history or installed binary')
     if (not re.fullmatch('[0-9a-f]{64}', phases[0].get('cache_sha256', ''))
-            or phases[0]['cache_sha256'] != phases[1].get('cache_sha256')):
+            or any(phase.get('cache_sha256') != phases[0]['cache_sha256'] for phase in phases[1:])):
         raise ValueError('retained encrypted cache hash changed across rollback')
     if network.get('inputs', {}).get('sources') != manifest['sources'] or network.get('binary_sha256') != report['artifacts']['current']['binary_sha256']:
         raise ValueError('installed-network journey used a different native application')

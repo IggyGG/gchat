@@ -2,16 +2,18 @@
   "schema": 1,
   "scope": "live controller bootstrap and desktop acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "bc8a6223e75f2c776715f955ef7e22ab650723e0",
-    "image": "sha256:e7c70dc257cdaeb0253250da75c586b6f12406d121bfe414c9997962b6ccbc8c",
+    "gchat_commit": "5c8cca8d528a17872041de5b9379043c5b118e17",
+    "image": "sha256:686d2b973b690199386d27340e71011f60dcaf4d32d5036819b44d70d1d12026",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-01T05:05:05Z",
-    "previous_digest_retained_and_repaired": true
+    "watchdog_last_success": "2026-10-01T06:05:13Z",
+    "previous_digest_retained_and_repaired": true,
+    "desktop_acceptance_recipes_active": true,
+    "initial_native_baselines_bound": true
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -34,7 +36,7 @@
       "macos-x86_64"
     ],
     "retained_signed_artifacts_only": true,
-    "current_baseline_current_rollback": true,
+    "current_baseline_current_rollback": false,
     "file_bytes": 16777216,
     "completion_seconds": 360,
     "total_seconds": 600,
@@ -42,15 +44,16 @@
     "lost_dispatch_reply_reconciled": true,
     "completed_receipts_refresh_without_discarding_evidence": true,
     "actual_native_run_qualified": false,
-    "mobile_producers_complete": false
+    "mobile_producers_complete": false,
+    "baseline_current_baseline_current_rollback": true
   },
   "component_validation": {
-    "python_tests": 611,
+    "python_tests": 615,
     "python_skipped": 5
   },
   "open": [
-    "native SDK run 36814943114 contact-file recovery failure under investigation",
-    "native baseline binding and actual desktop acceptance",
+    "native SDK run 36820878112 Windows failure under investigation; Mac workers incomplete",
+    "actual native desktop acceptance",
     "mobile acceptance producers",
     "qualified fleet and app activation",
     "subsequent unattended release",
@@ -68,6 +71,18 @@
     {
       "path": "test-evidence/stabilization-20261001/python-11.log",
       "sha256": "f06392667f89cbea6a55aad46b07e61adfe23abd463b69aff025911147e73833"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-native-observe-20.log",
+      "sha256": "fef71e1aa37dc7640915768c16bfcba5901f731f3aecb77c1ec36b0e8297f8ff"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-scoped-rbac-24.log",
+      "sha256": "be52658045017aaa081f47ce0f064433bc8aeeec43246d643ad4f426bb0f4bca"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/python-21.log",
+      "sha256": "b8b4f06a01f7a8ea8cfd194bd6e913343b4337e0095f4c772ec4b2e2dea1fea3"
     }
   ]
 }
