@@ -64,7 +64,12 @@ their logs. A successful routine no-op watchdog is insufficient for this check.
 Run `release_config_test.py` to require a reconcilable acceptance recipe and its
 freshness limit for every installed platform, with SDK qualification separate.
 Run `release_inputs_test.py`: reviewed acceptance/status files change qualification
-identity while preserving artifact identity. Unclassified mobile files, application
+identity while preserving artifact identity. Reviewed GComs status documents
+must also preserve infrastructure identity, so discovery can retain the original
+artifact without reserving another app version. Require real-ledger baseline
+rotation to the latest available predecessor before seed fallback; current/newer
+candidates and identical source pairs cannot qualify. Missing historical archives
+may fall back; corrupt source-bound receipts must fail. Unclassified mobile files, application
 build scripts/workflows and unreviewed GComs evidence must still change artifacts.
 Windows fixture cleanup must close SQLite and temporary upload handles before
 removal. Linux grant-store ownership and Kubernetes rollout locks require their

@@ -6,6 +6,7 @@ repository secret. Deployment SSH/signing credentials remain in the coordinator.
 Platform receipts require that platform's current/baseline and actual journey.
 """
 import argparse
+from contextlib import closing
 import base64
 import hashlib
 import json
@@ -72,18 +73,22 @@ def provider(state, manifest, target):
     return result
 
 
-def baseline(state, target, config):
-    if target in config.get('baselines', {}): return config['baselines'][target]
-    # Prefer its most recent available release with a normal retained provider
-    # archive. Historical recovery formats need an explicit operator binding;
-    # they cannot be inferred or relabelled as a successful provider run.
-    with sqlite3.connect('file:' + str(state / 'ledger.sqlite') + '?mode=ro', uri=True) as database:
-        rows = database.execute("SELECT c.manifest FROM platforms p JOIN candidates c ON c.id=p.candidate WHERE p.platform=? AND p.state='available' ORDER BY c.seq DESC", (target,)).fetchall()
+def baseline(state, target, config, current):
+    # Initial operator-bound seeds are a fallback. Each successful release can
+    # supply the next baseline; do not pin every future upgrade to an old seed
+    # or select this candidate/a newer release as its own predecessor.
+    with closing(sqlite3.connect('file:' + str(state / 'ledger.sqlite') + '?mode=ro', uri=True)) as database:
+        rows = database.execute("""SELECT c.manifest FROM platforms p JOIN candidates c ON c.id=p.candidate
+            WHERE p.platform=? AND p.state='available'
+              AND c.seq < (SELECT seq FROM candidates WHERE id=?) ORDER BY c.seq DESC""",
+            (target, current['release_id'])).fetchall()
+    expected = {key: value['commit'] for key, value in current['sources'].items()}
     for row in rows:
         try: result = provider(state, validate(json.loads(row[0])), target)
         except (KeyError, FileNotFoundError): continue
-        if result is not None: return result
-    return None
+        if result is not None and result['sources'] != expected: return result
+    seed = config.get('baselines', {}).get(target)
+    return seed if seed is not None and seed['sources'] != expected else None
 
 
 def cleanup(marker, intent, grant):
@@ -155,7 +160,7 @@ def collect(state, config, manifest, target, work, request):
     grant = json.loads(Path(config['grant_config']).read_text())
     intent = json.loads(marker.read_text()) if marker.exists() else None
     if intent is None:
-        current = provider(state, manifest, target); previous = baseline(state, target, config)
+        current = provider(state, manifest, target); previous = baseline(state, target, config, manifest)
         if current is None or previous is None: return None
         driver = module('test-mobile-upgrade' if target in ('android', 'ios') else 'test-native-upgrade')
         inputs = {'target': target, 'current': current, 'baseline': previous}

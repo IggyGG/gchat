@@ -1,4 +1,5 @@
 import copy
+from contextlib import closing
 import hashlib
 import importlib.util
 import json
@@ -15,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import release_acceptance as acceptance
 from release_automation_test import candidate
 from release_coordinator import Coordinator, atomic_json
+from release_ledger import Ledger
 
 
 def fixture():
@@ -48,6 +50,44 @@ def fixture():
 
 
 class NativeAcceptanceTests(unittest.TestCase):
+    def test_baseline_rotates_to_available_predecessor_and_keeps_seed_as_fallback(self):
+        with tempfile.TemporaryDirectory() as temporary, closing(Ledger(Path(temporary) / 'ledger.sqlite')) as ledger:
+            root = Path(temporary)
+            manifests = [candidate(i) for i in range(1, 5)]
+            target = 'linux-x86_64'
+            for manifest in manifests:
+                release = ledger.add(manifest)
+                for state in ('building', 'verifying', 'verified', 'publishing', 'available'):
+                    ledger.transition(release, target, state, evidence='a'*64)
+            current = manifests[2]
+            specs = {m['release_id']: {'sources': {k:v['commit'] for k,v in m['sources'].items()},
+                                     'archive': str(i)*64}
+                     for i,m in enumerate(manifests, 1)}
+            seed = {'sources': {'gchat':'5'*40,'gcoms':'6'*40},'archive':'e'*64}
+            config = {'baselines': {target: seed}}
+            with patch.object(acceptance, 'provider', side_effect=lambda _,m,t: specs[m['release_id']]) as provider:
+                self.assertEqual(acceptance.baseline(root,target,config,current), specs[manifests[1]['release_id']])
+                self.assertEqual([call.args[1]['release_id'] for call in provider.call_args_list],
+                                 [manifests[1]['release_id']])
+            # A historical provider without a normal retained archive cannot be
+            # relabelled. An older valid provider still precedes the seed.
+            def historical(_, manifest, _target):
+                if manifest['release_id'] == manifests[1]['release_id']: raise FileNotFoundError('retained archive absent')
+                return specs[manifest['release_id']]
+            with patch.object(acceptance,'provider',side_effect=historical):
+                self.assertEqual(acceptance.baseline(root,target,config,current), specs[manifests[0]['release_id']])
+            with patch.object(acceptance,'provider',return_value=None):
+                self.assertEqual(acceptance.baseline(root,target,config,current),seed)
+                self.assertIsNone(acceptance.baseline(root,target,{},current))
+            # Neither an identical source pair nor a corrupt receipt can become
+            # an upgrade baseline, including in the operator-bound seed.
+            same = specs[current['release_id']]
+            with patch.object(acceptance,'provider',return_value=same):
+                self.assertIsNone(acceptance.baseline(root,target,{'baselines':{target:same}},current))
+            with patch.object(acceptance,'provider',side_effect=ValueError('corrupt source binding')):
+                with self.assertRaisesRegex(ValueError,'corrupt source binding'):
+                    acceptance.baseline(root,target,config,current)
+
     def test_cleanup_failure_still_stops_other_children_and_retains_failed_report(self):
         driver = acceptance.module('test-native-upgrade')
 

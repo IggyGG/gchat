@@ -18,7 +18,11 @@ features do not require coordinated client and daemon upgrades.
 The live Kubernetes release coordinator gates publication on a fresh, exact-source
 deployment observation. Its configured 17-target inventory serializes native and
 Kubernetes services, retains rollback artifacts, and preserves configuration and
-relay identities. New client/relay activation and native acceptance remain subject
+relay identities. Acceptance automatically rotates to the most recent available predecessor; the
+initial operator-bound baseline remains a fallback. Reviewed GComs status documents
+preserve both application and infrastructure identity; unknown inputs still
+require fresh artifacts. Activation of these controller changes is pending.
+New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
 Controller source `d7e3e8d` is active with 75 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile

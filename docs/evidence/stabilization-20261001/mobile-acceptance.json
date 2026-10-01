@@ -3,7 +3,7 @@
   "scope": "Retained installed mobile UI acceptance producers; component evidence only",
   "parent": "47264a3b8a7b49b4e09ee4699090b5e1ed3aafe2",
   "source_sha256": {
-    "scripts/release_acceptance.py": "a59e3c5d457bed8bdd67929495712da552ff3892ded13b84df1f4174d42ddab8",
+    "scripts/release_acceptance.py": "60271aa9a8efbaed2e0000a72c5b62d3b684cea1bb1e2abc8113c737d7f21616",
     "scripts/android-build.py": "a2b07a7a366536e58fe87aa2836bb03c549f147192ecc6acc717fdac4176a47e",
     "scripts/mobile_acceptance_inputs.py": "6923354d51436703f59052c43579522404e2ddca5aee2803cc197487586307cc",
     "scripts/mobile_android_ui.py": "1b936c73b901e22dd047a4bb7af1124f00a213b13edc79408f9238290feab091",
@@ -14,7 +14,10 @@
     ".github/workflows/mobile-acceptance.yml": "31e76a00889918fe2fac8d4edbb3067f61cdd259f4bfaa4438b11b1d71f02f44",
     "scripts/tests/mobile_acceptance_test.py": "570755c270d2f2da7cddedbaf924cdee8cd9e34cd37f7e2f24cc8fd8e825a6d1",
     "scripts/release_config.py": "3d6633f3f80fc30880fae63aedaefa09032b35be4e06b31b339debef55ee022f",
-    "scripts/fixtures/ios-lifecycle/LifecycleTests.swift": "575e2e41dcfd0624dad7a83337c0993dd5e618a9595ccdcd05253461a8d6b77d"
+    "scripts/fixtures/ios-lifecycle/LifecycleTests.swift": "575e2e41dcfd0624dad7a83337c0993dd5e618a9595ccdcd05253461a8d6b77d",
+    "scripts/release_inputs.py": "b92137119b33326e55d1c20007cc58a2339b970cd89b0ce038299bb717a397ed",
+    "scripts/tests/release_acceptance_test.py": "f233366bdde361270e8f623c177f929440f8a6f10fad1f50dc139766e123d951",
+    "scripts/tests/release_inputs_test.py": "4744a242675d31cb61e51c2c093ad8fd051f73fbff2575aaf71e6980aad7970a"
   },
   "checks": {
     "mobile_component_passed": 9,
@@ -91,6 +94,22 @@
       "path": "test-evidence/stabilization-20261001/ios-exact-input-python-short-89.log",
       "sha256": "c825783b431367dedbd7365e640b33b154c22cc011a554f934a8172566116b3c",
       "scope": "short-89 passes; earlier attempts fail due to the workstation Unix socket temporary-path bound"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-input-baseline-python-91.log",
+      "sha256": "2fe4227441cd8aba2e5f6b625c4b98b84913337366324daa3cda5a825937cd69",
+      "scope": "633 tests pass with five existing skips"
     }
-  ]
+  ],
+  "automatic_followup": {
+    "reviewed_gcoms_status_documents_preserve_artifact_and_infrastructure_identity": true,
+    "unknown_inputs_still_require_new_artifacts": true,
+    "most_recent_available_predecessor_is_next_baseline": true,
+    "initial_seeds_are_fallback_only": true,
+    "identical_and_newer_candidates_rejected": true,
+    "corrupt_receipts_not_skipped": true,
+    "component_python_tests": 633,
+    "existing_skips": 5,
+    "activated_on_controller": false
+  }
 }

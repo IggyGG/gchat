@@ -39,6 +39,14 @@ The wording is corrected and only that exact historical finding is allowlisted;
 the full reachable-history audit remains mandatory.
 The exact reviewed acceptance drivers and GComs status/reopen-validation documents
 now change qualification identity without reserving another application version.
+The same reviewed GComs status documents now preserve infrastructure identity as
+well as application artifact identity; the former infrastructure hash caused
+status-only updates to reserve needless builds. Acceptance now selects the most
+recent available predecessor automatically and uses initial seeds only as fallback.
+It excludes the current/newer candidates and identical source pairs; missing
+historical provider archives are skipped, while corrupt receipts still fail.
+The real-ledger rotation and fingerprint controls pass, with 633 full Python
+checks and five existing skips. Activation of these controller fixes is pending.
 Unknown files, Android/iOS build scripts and application workflows still invalidate
 artifacts; the original qualified source pair is never rewritten.
 

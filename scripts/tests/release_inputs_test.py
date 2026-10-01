@@ -118,13 +118,18 @@ class InputTests(unittest.TestCase):
                 after=fingerprints(roots,sources)
                 self.assertEqual(before['artifacts'],after['artifacts'])
                 self.assertNotEqual(before['qualification'],after['qualification'])
+                if project == 'gcoms':
+                    self.assertEqual(before['infrastructure'],after['infrastructure'])
             for project,path in [('gchat','scripts/mobile-build-new.py'),
                                  ('gchat','.github/workflows/ios-release.yml'),
                                  ('gchat','scripts/android-build.py'),
                                  ('gcoms','docs/evidence/unreviewed.json')]:
                 before=fingerprints(roots,sources)
                 commit(project,path,'unclassified or packaging change')
-                self.assertNotEqual(before['artifacts'],fingerprints(roots,sources)['artifacts'])
+                after=fingerprints(roots,sources)
+                self.assertNotEqual(before['artifacts'],after['artifacts'])
+                if project == 'gcoms':
+                    self.assertNotEqual(before['infrastructure'],after['infrastructure'])
             if os.name != 'nt':
                 before = fingerprints(roots, sources)
                 subprocess.run(['git', '-C', str(roots['gchat']), 'update-index', '--chmod=+x',
