@@ -25,3 +25,8 @@ d6c02355938c20cce529311ce07cce3d483c83a3:docs/evidence/irc-contacts-20260929/sum
 # Exact reviewed generated-public-source SHA-256 fingerprints (not API keys).
 95d5227ae3732bd0951655475af0f0b37c3ecc4e:docs/evidence/irc-trunk-integration-20260930/limit-64-merged-qualified.json:generic-api-key:21
 95d5227ae3732bd0951655475af0f0b37c3ecc4e:docs/evidence/irc-trunk-integration-20260930/limit-64-merged-qualified.json:generic-api-key:23
+
+# Reviewed public Cargo registry checksum beside the libcrux-secrets dependency,
+# and the existing PUBLIC GPG signer fingerprint in the release configuration.
+48994231b8c77f22b973e468afbfb0f842283cb7:release/contracts/consumer/Cargo.lock:generic-api-key:2096
+050078ff82f9a6a0f368d00f6235c326d1d3ea64:scripts/release_config.py:generic-api-key:28

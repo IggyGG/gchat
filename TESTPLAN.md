@@ -28,8 +28,10 @@ unlisted units, executable names or protected paths. Controller-only source chan
 must not reuse an infrastructure image from an older source pair.
 `release_canary_grant_test.py` checks lost replies, fixed bootstrap authority,
 expiry without renewal, idempotent revocation and grant-store permissions.
-Registry tests require layer repair even when a manifest survives. Linux packaging
-must reject a missing or changed CLI; the native worker runs both packaged binaries
+Registry tests require layer repair even when a manifest survives. Image builds
+must derive configuration digests from retained archive bytes even when
+Docker reports an image index ID. A different or ambiguous archive tag must fail.
+Linux packaging must reject a missing or changed CLI; the native worker runs both packaged binaries
 through isolated unlock, wrong-passphrase refusal, disconnect and reopen.
 The live canary producer must use the hash-bound provider archive and exact native
 CLI receipt. Missing ACKs, smaller files, late or non-finite measurements, changed

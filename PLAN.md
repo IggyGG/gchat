@@ -42,6 +42,10 @@ eight native hosts accept restricted observations; a live bootstrap-only grant
 reconciles a repeated request and is revoked. Independent controller recovery and
 retained prior-image layer repair pass their failure/interruption controls.
 Activation of the production controller and inventory remains open.
+The live bridge caught two secret-audit false positives: a public Cargo checksum
+and the existing public GPG fingerprint. Only those exact historical findings are
+allowlisted. Archive-derived image configuration hashes fix Docker's index-ID
+behavior without weakening the source/configuration verification gate.
 
 ## Automatic deployment and idle activation (2026-09-30, in progress)
 

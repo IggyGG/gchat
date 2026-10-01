@@ -48,6 +48,8 @@ their layers. Rollback repairs those layers from storage. A separate minute-base
 recovery job watches controller updates, restores the previous image after a
 failed start and resumes interrupted rollback. Keep its last healthy image pinned
 when updating the main controller.
+Image configuration digests come from the retained Docker archive. This supports
+Docker installations that return an attested image index from `image inspect`.
 
 Desktop updates activate after 30 seconds without input when drafts, sends, files
 and foreground work have cleared. Other windows and daemon activity can defer
