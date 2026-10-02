@@ -1,14 +1,16 @@
-Release storage now has an independent compaction worker and hourly CronJob
-recipe. It verifies the completed build receipt and original provider ZIP, checks
-duplicate extracted artifacts against the archive, then shares identical files
-with hard links. Paths, bytes, permissions, source receipts and original archives
-remain; unfinished builds, changed files, symlinks and replacement races fail.
-Only completed extraction copies are eligible. The live read-only inventory finds
-3.00 GiB duplicated signed installers across 123 completed builds. Five meaningful
-controls pass. Live compaction and permanent scheduling still require activation;
-this is not an application or fleet qualification receipt. A requested 128-to-160
-GiB expansion was refused by Longhorn's disk limits; actual capacity remains 128
-GiB, with the expansion pending and the release headroom gate retained.
+Release storage compaction is active in controller generation 53 (`aca844a`).
+It verifies completed source receipts and original provider ZIPs before sharing
+identical extraction and verification copies with hard links. The first live run
+retains every path, byte, permission and original archive across 123 builds while
+reclaiming 15.62 GiB. All seven platform builds resumed after headroom recovered.
+The hourly CronJob (`17 * * * *`, no concurrent runs) passed its first live recipe
+check. The actual image passes 92 independent tests and all 215 source hashes;
+both controller containers are ready with zero restarts, rollback is retained and
+repaired, and the independent watchdog succeeds. Five compaction refusal and
+retention controls pass. See the [live receipt](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
+Actual storage remains 128 GiB; a requested 160 GiB expansion is pending after
+Longhorn refused it under existing disk limits. The headroom gate remains in force.
+Installed acceptance and qualified fleet/client activation remain required.
 
 ## Live controller and native acceptance (2026-10-02, in progress)
 
