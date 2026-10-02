@@ -24,8 +24,11 @@ still need their own acceptance. See the
 Status updates to reviewed iOS/SDK receipts no longer reserve application versions
 or infrastructure images. Exact file names are classified; unknown evidence, Rust,
 locks and packaging changes still invalidate artifacts. The real Git classification
-controls and 637 Python tests pass with five existing skips. Live controller
-activation of this classification refinement remains required.
+controls and 637 Python tests pass with five existing skips. The refinement is
+active in controller generation 51 (`421be37`): 82 independent checks pass, both
+containers are ready with no restarts, the previous image is retained and repaired,
+and the independent minute watchdog succeeds. Client and fleet activation remain
+subject to the native and installed acceptance gates.
 
 The service retains GChat API 2 attachments alongside API 3 for the stable major.
 Typed RPC service 1 retains its original methods. Optional methods are advertised
@@ -48,10 +51,10 @@ Kubernetes services, retains rollback artifacts, and preserves configuration and
 relay identities. Acceptance automatically rotates to the most recent available predecessor; the
 initial operator-bound baseline remains a fallback. Reviewed GComs status documents
 preserve both application and infrastructure identity; unknown inputs still
-require fresh artifacts. These controller changes are active in generation 50.
+require fresh artifacts. These controller changes are active in generation 51.
 New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
-Controller source `defc0e1` is active with 82 deployment/acceptance checks, a
+Controller source `421be37` is active with 82 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile
 acceptance recipes and verified retained Android/iOS baselines are configured.
 iOS passphrase qualification uses the native visibility Switch and normal Show/Hide

@@ -2,27 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "defc0e12d4a4585c6f87148c337b4dcd617d38d4",
-    "image": "sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
+    "gchat_commit": "421be3764ada4eec00d1cf6f86c47abd39c70445",
+    "image": "sha256:f2f4dd530b83d1e9e15b5e6670ff342860c27796605b553d12cb09fa62a99bad",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-02T14:14:05Z",
+    "watchdog_last_success": "2026-10-02T14:51:06Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:0abb23e71cc7362a082ac2bb2dad9c8ad6f0960b15a194d3e641699224c7646b",
-    "archive_sha256": "d1272a89f464693d064e42e2d2855446b0de6a6ac31635157f542c911ff7ee18",
-    "observed_at": "2026-10-02T14:15:11.447679+00:00",
+    "configuration_digest": "sha256:b436fe119e3f8f7e27616b9c2c4d834d31ddcf1f2b183ec3fff73263c47b1996",
+    "archive_sha256": "cae4ad1f7e52c0c9997c545c00931ac1024d590005fd1b219c9e94bc74f0388f",
+    "observed_at": "2026-10-02T14:51:23.868131+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:f9e7890599db7100955e4908fc8cdceaaba0fe9a1b0f023daeafae42720c1e16",
+    "previous_digest": "sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
     "validation_tests": 82,
-    "deployment_generation": 50
+    "deployment_generation": 51
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -178,6 +178,18 @@
     {
       "path": "test-evidence/stabilization-20261001/status-receipts-all-python-114.log",
       "sha256": "fae6273b2a68f667fdf2286af6594955ad3ade8b10dcb5dbd90a60afc74e8e44"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-421be37-validation.log",
+      "sha256": "fa2d75cebf6db0d03cc3fc5a1dd324041b98c2a4ea8f2af643e4ec9f9ac0b87c"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-421be37-validation.json",
+      "sha256": "36b52accf5b282d6aec7534baba8b7bfe296c2d710c588c6675e2794c44915ef"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-421be37-observed-115.json",
+      "sha256": "41df31b70b08a3740b0d0791949696f58a9236b7e68a48af8c5127d8d6e6a486"
     }
   ],
   "native_progress": {
@@ -337,6 +349,29 @@
       "initial_mobile_baselines_bound": true,
       "validation_tests": 81,
       "deployment_generation": 49
+    },
+    {
+      "gchat_commit": "defc0e12d4a4585c6f87148c337b4dcd617d38d4",
+      "image": "sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-02T14:14:05Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:0abb23e71cc7362a082ac2bb2dad9c8ad6f0960b15a194d3e641699224c7646b",
+      "archive_sha256": "d1272a89f464693d064e42e2d2855446b0de6a6ac31635157f542c911ff7ee18",
+      "observed_at": "2026-10-02T14:15:11.447679+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:f9e7890599db7100955e4908fc8cdceaaba0fe9a1b0f023daeafae42720c1e16",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 82,
+      "deployment_generation": 50
     }
   ],
   "mobile_baselines": {
@@ -408,6 +443,7 @@
     "original_invalid_reservation_preserved": true,
     "component_python_tests": 637,
     "reviewed_status_receipts_preserve_artifact_and_infrastructure_identity": true,
-    "classification_activation": "pending"
+    "classification_activation": "active",
+    "classification_controller_source": "421be3764ada4eec00d1cf6f86c47abd39c70445"
   }
 }

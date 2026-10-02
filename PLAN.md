@@ -24,8 +24,11 @@ still need their own acceptance. See the
 Status updates to reviewed iOS/SDK receipts no longer reserve application versions
 or infrastructure images. Exact file names are classified; unknown evidence, Rust,
 locks and packaging changes still invalidate artifacts. The real Git classification
-controls and 637 Python tests pass with five existing skips. Live controller
-activation of this classification refinement remains required.
+controls and 637 Python tests pass with five existing skips. The refinement is
+active in controller generation 51 (`421be37`): 82 independent checks pass, both
+containers are ready with no restarts, the previous image is retained and repaired,
+and the independent minute watchdog succeeds. Client and fleet activation remain
+subject to the native and installed acceptance gates.
 
 Android and iOS now have retained-app acceptance producers and a separate native
 workflow. They install distinct signed releases on a fresh owned AVD/Simulator,

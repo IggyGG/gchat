@@ -10,7 +10,10 @@ row/ref, idempotent lost publication recovery, and rejection of a corrupted orig
 manifest even when its iOS number overflows.
 Use the signing worker's existing numeric constraints throughout. Retain the
 original failed `1.0.100` worker and require a fresh native build with the automatically reserved valid `1.1.0`
-reservation. Controller generation 50 passes 82 independent checks; these controls
+reservation. Controller generation 51 (`421be37`) passes 82 independent checks, retains and
+repairs generation 50, and has two ready containers and a successful independent
+minute watchdog. Exact reviewed status-receipt updates preserve application and
+infrastructure identity; unknown evidence still invalidates them. These controls
 do not qualify the signed application.
 
 For retained iOS lifecycle qualification, use the exact labelled visibility
