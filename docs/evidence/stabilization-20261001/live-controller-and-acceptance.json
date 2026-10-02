@@ -1222,6 +1222,33 @@
       "physical_device_qualified": false,
       "raw_evidence": "operations/ios-mac-lifecycle-evidence-258/native-lifecycle-proof-258.json",
       "raw_evidence_sha256": "a2f7031b338c5fca03a4c4cc36ce04d987110b9ab75b5162ed241977ba13a6dc"
+    },
+    "intel_original_source_cold_reopen_diagnostic": {
+      "run": 37061419277,
+      "artifact": 11255076767,
+      "archive_sha256": "31623b49d75427caa9c3f743a1e11f7616eddc490834cf0b5bf258c8a3dd5069",
+      "archive_bytes": 6653,
+      "diagnostic_source": "138b071ec76ad8470a64b6965f1e5411e931d568",
+      "diagnostic_tree": "8c7e64009901f4b09bf1cc5ef8887ecc66e186cc",
+      "worker_source": "3a11347bd6d2dd4410e73549fdfb34246057f2c3",
+      "original_failed_provider_run": 37039388341,
+      "original_failure_verdict_unchanged": true,
+      "original_timeout_seconds": 15,
+      "consecutive_checks_passed": 5,
+      "cold_reopen_test_seconds": [
+        5.8,
+        5.61,
+        6.27,
+        6.81,
+        6.45
+      ],
+      "original_assertion_source_sha256": "9d434862895cb59c468eba212203964860050e11ab00f70231224fe991569d30",
+      "original_assertion_source_path": "crates/node/src/node/persist/machine_scope_tests.rs",
+      "original_failed_source_binding_verified": true,
+      "passed": true,
+      "full_current_source_native_qualification": false,
+      "raw_evidence": "operations/intel-reopen-verified-270.json",
+      "raw_evidence_sha256": "38e85193c6061651d2c51a208003cee8af5e2ee7e18f357944817d5a1d8bf9ef"
     }
   },
   "rollback_image_compaction": {
@@ -1368,22 +1395,22 @@
   "current_android_native_build": {
     "scope": "Independent original Android provider archive, native binaries and installed lifecycle verification",
     "passed": true,
-    "provider_run": 37065245633,
-    "provider_artifact": 11252894848,
-    "archive_sha256": "00a25f852f350bc8d7a2cd505b6187b27fd3703d7c1cbb2116953ad67c62bb39",
-    "archive_bytes": 161577773,
+    "provider_run": 37069516647,
+    "provider_artifact": 11254924873,
+    "archive_sha256": "e7cf51054854d647d7e642c901cc5b82435c7293abe22ed41f6ce01019f69826",
+    "archive_bytes": 161556865,
     "source_bindings": {
       "gchat": {
-        "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
-        "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+        "commit": "e9de6580a519d43d52bb4581a53f511354ff1e11",
+        "tree": "5a6f77e0507cecaf5cf4fb3241b15ba77b393e10"
       },
       "gcoms": {
         "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
         "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
       }
     },
-    "release_id": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
-    "version_code": 1113,
+    "release_id": "a75630a656c24b957df1b5a9158c501381c3741d50dd37d8e7db290f17940659",
+    "version_code": 1115,
     "native_jvm_tests": 8,
     "source_archives_independently_verified": 2,
     "minimum_elf_alignment": 16384,
@@ -1395,8 +1422,137 @@
     "physical_device_qualified": false,
     "retained_references_verified": 23,
     "native_elf_entries_verified": 8,
-    "raw_evidence": "operations/native-android-independent-260.json",
-    "raw_evidence_sha256": "fd1180739a3ed9d7d35514ce1f050f5483d8396171454cf75c5cb4746327c764",
+    "raw_evidence": "operations/native-android-independent-272.json",
+    "raw_evidence_sha256": "0f00635e558c82cbb2b3f9160fe331c474bf2812748ad2be8089538c1bc97aed",
     "fleet_acceptance_complete": false
-  }
+  },
+  "original_linux_native_qualification": {
+    "scope": "Both full native workspace CI gates in original protected Linux qualification job",
+    "passed": true,
+    "original_workflow_run": 37065209078,
+    "original_job": 111031242429,
+    "original_artifact": 11255988101,
+    "archive_sha256": "4e6421add8c027d7059362b4da320aacd73a26d70bcf20142de77e0a16347d09",
+    "archive_bytes": 225178,
+    "report": {
+      "inputs": {
+        "path": "paired-gchat/inputs.json",
+        "sha256": "826c57b94c6ffadd3e24913e154149063a77f4f7d53ba9cd1edffeea8e92cdda"
+      },
+      "kind": "linux_native_qualification",
+      "manifest_sha256": "d157fe2335047dd20eadb5f923e6fd3f75af61a2fc60841d3e3d64b6ffb73969",
+      "native_ci": {
+        "path": "paired-gchat/native-ci.json",
+        "sha256": "7d2d5ddd7bd303ac3e9b1efb5976d73e0720ff865f4daa5399d4792d5585ded8"
+      },
+      "native_target": "x86_64-unknown-linux-gnu",
+      "passed": true,
+      "platform": "linux-x86_64",
+      "provider": {
+        "repository": "IggyGG/gchat",
+        "run_attempt": 1,
+        "run_id": "37065209078",
+        "workflow_commit": "52d28d733cfef44df5e5e6db984d51178955f5ab"
+      },
+      "release_id": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+      "schema": 1,
+      "source_unchanged": true,
+      "sources": {
+        "gchat": {
+          "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+          "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+        },
+        "gcoms": {
+          "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+          "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+        }
+      },
+      "steps": [
+        {
+          "command": [
+            "python3",
+            "gchat/scripts/ci.py",
+            "--gcoms",
+            "gcoms",
+            "--provenance-output",
+            "native-evidence/paired-gchat"
+          ],
+          "exit_code": 0,
+          "log": {
+            "path": "native-0.log",
+            "sha256": "23030eb98f327f50e18438eebce125b96d87f2ef8f824db07691a7280fe7294a"
+          }
+        },
+        {
+          "command": [
+            "python3",
+            "gcoms/scripts/ci.py"
+          ],
+          "exit_code": 0,
+          "log": {
+            "path": "native-1.log",
+            "sha256": "af9b168a3694404b6a24808186f60e56a480ea5c3a5744e730d0c22a3b85b7dd"
+          }
+        }
+      ]
+    },
+    "verified_by_original_source_qualification_handler": true,
+    "retained_rust_npm_input_archives_verified": true,
+    "whole_workflow_complete": false,
+    "signing_infrastructure_and_native_acceptance_pending": true,
+    "rust_test_log_counts": {
+      "native-0.log": {
+        "passed": 227,
+        "failed": 0,
+        "ignored": 3
+      },
+      "native-1.log": {
+        "passed": 1155,
+        "failed": 0,
+        "ignored": 13
+      }
+    },
+    "gchat_python_tests": 680,
+    "gchat_python_skipped": 1,
+    "gcoms_python_tests": 211,
+    "gcoms_python_skipped": 0,
+    "raw_evidence": "operations/linux-qualification-independent-274.json",
+    "raw_evidence_sha256": "a93896b6cc9389072ee577dca74fb91278ad48eafa897104b4387f391bdc78f4"
+  },
+  "previous_android_native_builds": [
+    {
+      "scope": "Independent original Android provider archive, native binaries and installed lifecycle verification",
+      "passed": true,
+      "provider_run": 37065245633,
+      "provider_artifact": 11252894848,
+      "archive_sha256": "00a25f852f350bc8d7a2cd505b6187b27fd3703d7c1cbb2116953ad67c62bb39",
+      "archive_bytes": 161577773,
+      "source_bindings": {
+        "gchat": {
+          "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+          "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+        },
+        "gcoms": {
+          "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+          "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+        }
+      },
+      "release_id": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+      "version_code": 1113,
+      "native_jvm_tests": 8,
+      "source_archives_independently_verified": 2,
+      "minimum_elf_alignment": 16384,
+      "installed_profile_lifecycle_passed": true,
+      "picker_lifecycle_passed": true,
+      "owned_emulator_cleanup_passed": true,
+      "network_delivery_qualified": false,
+      "push_qualified": false,
+      "physical_device_qualified": false,
+      "retained_references_verified": 23,
+      "native_elf_entries_verified": 8,
+      "raw_evidence": "operations/native-android-independent-260.json",
+      "raw_evidence_sha256": "fd1180739a3ed9d7d35514ce1f050f5483d8396171454cf75c5cb4746327c764",
+      "fleet_acceptance_complete": false
+    }
+  ]
 }

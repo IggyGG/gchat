@@ -18,12 +18,26 @@ XCTest with no failures or skips (98.556 seconds); owned-device cleanup passes.
 The original failed provider verdict remains retained. Native messaging,
 fleet/client activation and a subsequent unattended release remain required.
 
-Android build 1113 passes its original provider run. Independent verification
-checks the complete 161,577,773-byte archive, both exact Git source archives,
+Android build 1115 passes its original provider run automatically; the prior
+1113 result remains retained. Independent verification checks the complete
+161,556,865-byte archive and both exact Git source archives,
 23 retained references, eight native ELF entries with 16 KiB alignment, eight
 JVM tests and the installed profile/background/reopen and invitation-picker
 journeys. Signing and owned-emulator cleanup pass. Live delivery acceptance is
 still required. No SDK 1.0 qualification or whole-fleet activation is claimed.
+
+The original Linux qualification job for release 0.1.98 passes both full native
+workspace CI commands on frozen sources `52d28d7`/`8f8fdb3`. Its original provider
+ZIP, source pair, derived Rust/npm inputs and every linked log hash verify with
+the unchanged qualification handler. The logs record zero failed Rust checks,
+680 GChat Python checks with one existing skip, 211 GComs Python checks and both
+successful dependency audits. Signing and the infrastructure bundle are building.
+
+The original Intel cold-reopen diagnostic passes five consecutive runs on
+unchanged GComs `138b071`, under the original 15-second assertion. Each unskipped
+native test completes in 5.61–6.81 seconds; its source/test hash matches the
+original failed provider build. That earlier failure remains failed, and current
+Mac application qualification is still required. No application or API changed.
 
 Earlier controller implementation checkpoints retain their original observations.
 
