@@ -5,16 +5,17 @@ without network access, keys or state mounts. Failed or skipped tests prevent
 bundle completion and retain their log. New schema 2 infrastructure archives
 include `controller-runtime.json` and `controller-runtime.log`, bound to the
 original source and image configuration; original schema 1 bundles remain readable.
-All 655 Python tests pass with five existing skips. Actual-image qualification
-for this new gate remains pending; the existing qualified controller stays active.
+All 655 Python tests pass with five existing skips. The exact image passes 101 runtime checks
+and 217 source hashes. The gate is active in controller generation 54; rollback
+retention/repair and the independent watchdog pass.
 
-Release storage compaction is active in controller generation 53 (`aca844a`).
+Release storage compaction is active in controller generation 54 (`ea4fdf8`).
 It verifies completed source receipts and original provider ZIPs before sharing
 identical extraction and verification copies with hard links. The first live run
 retains every path, byte, permission and original archive across 123 builds while
 reclaiming 15.62 GiB. All seven platform builds resumed after headroom recovered.
 The hourly CronJob (`17 * * * *`, no concurrent runs) passed its first live recipe
-check. The actual image passes 92 independent tests and all 215 source hashes;
+check. The actual image passes 101 independent tests and all 217 source hashes;
 both controller containers are ready with zero restarts, rollback is retained and
 repaired, and the independent watchdog succeeds. Five compaction refusal and
 retention controls pass. See the [live receipt](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).

@@ -7,16 +7,17 @@ no network, a read-only root and a disposable `/tmp`; do not mount keys or relea
 state. Schema 2 infrastructure must retain the runtime receipt/log and verify both;
 legacy schema 1 source-bound archives remain readable without relabelling them as
 having passed the new gate. Seven runtime and eleven infrastructure controls pass;
-all 655 Python tests pass with five existing skips. Actual-image gate execution
-remains pending for this new source.
+all 655 Python tests pass with five existing skips. Actual-image execution passes 101 tests and
+217 source hashes, with independent Kubernetes validation and previous-image
+restoration. Generation 54 and the updated hourly compaction recipe are active.
 
-Release storage compaction is active in controller generation 53 (`aca844a`).
+Release storage compaction is active in controller generation 54 (`ea4fdf8`).
 It verifies completed source receipts and original provider ZIPs before sharing
 identical extraction and verification copies with hard links. The first live run
 retains every path, byte, permission and original archive across 123 builds while
 reclaiming 15.62 GiB. All seven platform builds resumed after headroom recovered.
 The hourly CronJob (`17 * * * *`, no concurrent runs) passed its first live recipe
-check. The actual image passes 92 independent tests and all 215 source hashes;
+check. The actual image passes 101 independent tests and all 217 source hashes;
 both controller containers are ready with zero restarts, rollback is retained and
 repaired, and the independent watchdog succeeds. Five compaction refusal and
 retention controls pass. See the [live receipt](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).

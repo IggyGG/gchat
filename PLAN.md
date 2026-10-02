@@ -7,16 +7,18 @@ the source/image-bound runtime receipt and diagnostic log; schema 1 archives kee
 their original identity and remain readable for historical qualification/rollback.
 Seven runtime controls, eleven infrastructure controls and all 655 Python tests
 pass with five existing skips. L0 checks 800 paths; 18 stable and three optional
-methods remain, with API 2 fixtures unchanged. Actual-image execution for this
-new gate is pending; generation 53 continues serving while it qualifies.
+methods remain, with API 2 fixtures unchanged. The exact image passes 101 runtime
+checks and 217 source hashes, plus independent Kubernetes validation and rollback
+retention/repair. Generation 54 is active with both containers ready, zero restarts,
+a successful independent watchdog and the current compaction recipe.
 
-Release storage compaction is active in controller generation 53 (`aca844a`).
+Release storage compaction is active in controller generation 54 (`ea4fdf8`).
 It verifies completed source receipts and original provider ZIPs before sharing
 identical extraction and verification copies with hard links. The first live run
 retains every path, byte, permission and original archive across 123 builds while
 reclaiming 15.62 GiB. All seven platform builds resumed after headroom recovered.
 The hourly CronJob (`17 * * * *`, no concurrent runs) passed its first live recipe
-check. The actual image passes 92 independent tests and all 215 source hashes;
+check. The actual image passes 101 independent tests and all 217 source hashes;
 both controller containers are ready with zero restarts, rollback is retained and
 repaired, and the independent watchdog succeeds. Five compaction refusal and
 retention controls pass. See the [live receipt](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
