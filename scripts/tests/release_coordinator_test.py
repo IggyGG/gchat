@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from release_coordinator import Coordinator, atomic_json, read_receipt
+from release_pair import canonical
 from release_jobs import extract
 from release_compatibility import verify
 from release_automation_test import candidate
@@ -55,6 +56,76 @@ class CoordinatorTests(unittest.TestCase):
         atomic_json(inventory,{'targets':[],'revision':2})
         with patch('release_coordinator.time.time',return_value=150):
             self.assertFalse(c.deployment_ready(manifest))
+
+    def deployment_candidates(self):
+        inventory=self.root/'inventory.json';atomic_json(inventory,{'targets':[]})
+        c=Coordinator(self.root,{'deployment_file':str(inventory),
+            'workers':{'linux-x86_64':{'infrastructure':{}}}})
+        self.addCleanup(c.ledger.close)
+        manifests=[]
+        for number in (1,2):
+            m=candidate(number);m['policy']['deployment_required']=True
+            m['release_id']=hashlib.sha256(canonical({k:v for k,v in m.items() if k!='release_id'})).hexdigest()
+            c.ledger.add(m);manifests.append(m)
+        return c,manifests
+
+    def mark_verified(self,c,manifest,platform):
+        for state in ('building','verifying','verified'):
+            c.ledger.transition(manifest['release_id'],platform,state,evidence='a'*64)
+
+    def test_newer_mobile_artifact_does_not_stall_qualified_linux_rollout(self):
+        c,(first,second)=self.deployment_candidates()
+        self.mark_verified(c,first,'linux-x86_64')
+        self.mark_verified(c,second,'android')
+        with patch.object(c,'execute',return_value=({},'a'*64)) as execute, \
+                patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        execute.assert_called_once_with(first,'linux-x86_64','infrastructure')
+        self.assertEqual(reconcile.call_args.args[1],first)
+        self.assertEqual(json.loads((self.root/'deployment/desired.json').read_text()),
+                         {'release_id':first['release_id'],'sequence':1})
+
+    def test_missing_infrastructure_receipt_cannot_advance_desired_release(self):
+        c,(first,second)=self.deployment_candidates()
+        self.mark_verified(c,second,'linux-x86_64')
+        desired=self.root/'deployment/desired.json'
+        previous={'release_id':first['release_id'],'sequence':1};atomic_json(desired,previous)
+        with patch.object(c,'execute',return_value=None),patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        reconcile.assert_not_called()
+        self.assertEqual(json.loads(desired.read_text()),previous)
+        self.assertEqual(json.loads((self.root/'public/deployment.json').read_text())['state'],'waiting_artifacts')
+
+    def test_invalid_infrastructure_receipt_cannot_advance_desired_release(self):
+        c,(first,second)=self.deployment_candidates()
+        self.mark_verified(c,second,'linux-x86_64')
+        with patch.object(c,'execute',side_effect=ValueError('changed source')), \
+                patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        reconcile.assert_not_called()
+        self.assertFalse((self.root/'deployment/desired.json').exists())
+        self.assertEqual(json.loads((self.root/'public/deployment.json').read_text())['state'],'blocked')
+
+    def test_late_qualified_linux_cannot_downgrade_desired_release(self):
+        c,(first,second)=self.deployment_candidates()
+        self.mark_verified(c,first,'linux-x86_64')
+        previous={'release_id':second['release_id'],'sequence':2}
+        atomic_json(self.root/'deployment/desired.json',previous)
+        with patch.object(c,'execute') as execute,patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        execute.assert_not_called();reconcile.assert_not_called()
+        self.assertEqual(json.loads((self.root/'deployment/desired.json').read_text()),previous)
+
+    def test_active_rollout_retains_owner_before_newer_ready_linux(self):
+        c,(first,second)=self.deployment_candidates()
+        self.mark_verified(c,first,'linux-x86_64');self.mark_verified(c,second,'linux-x86_64')
+        atomic_json(self.root/'deployment/owner.json',{'release_id':first['release_id']})
+        atomic_json(self.root/'deployment/desired.json',{'release_id':first['release_id'],'sequence':1})
+        with patch.object(c,'execute',return_value=({},'a'*64)) as execute, \
+                patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        execute.assert_called_once_with(first,'linux-x86_64','infrastructure')
+        self.assertEqual(reconcile.call_args.args[1],first)
 
     @unittest.skipUnless(os.name == 'posix', 'coordinator daemon uses POSIX flock')
     def test_daemon_polling_uses_configured_interval_and_releases_lock(self):

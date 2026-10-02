@@ -1,3 +1,11 @@
+Rollout selection now requires a qualified Linux target when the production
+inventory needs its infrastructure bundle. A newer verified mobile artifact
+cannot replace the desired deployment while that bundle is missing; the pointer
+advances only after the exact-source infrastructure receipt passes. Active
+rollout ownership and monotonic versions remain unchanged. Five regression cases
+and the full 672-test Python suite pass with five existing skips. The corrected
+controller image still requires its actual-image gate before activation.
+
 Controller generation 56 (`29bd39f`) activates complete worker copy cleanup.
 The actual image and independent Kubernetes job pass 113 checks and all 219 source
 hashes. Both containers are ready with zero restarts; the previous digest is

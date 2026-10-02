@@ -101,7 +101,11 @@ change does not qualify an existing installer. The artifact-specific Windows 36
    SDK checks. It **does not manufacture that receipt**
    from CI. Missing acceptance keeps publication waiting. Manifests requiring deployment also wait for the explicit operator inventory
    to pass serial native/Kubernetes rollout, canaries and fresh running-image
-   observations. The controller never infers topology or discards retained state.
+   observations. Production rollout selects qualified Linux targets and advances
+   the desired release only after its exact infrastructure receipt is ready. A newer
+   mobile artifact cannot supersede that selection while Linux is queued. Active
+   rollouts retain ownership; late older builds cannot downgrade the desired version.
+   The controller never infers topology or discards retained state.
 5. Desktop feeds and the GChat-only APT repository advance after verification.
    Public bytes are read back. Android commits one retained Play edit and polls
    the actual lifecycle API. iOS waits for the France-inclusive encryption

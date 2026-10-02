@@ -128,28 +128,32 @@ class Coordinator:
         previous = json.loads(desired_path.read_text()) if desired_path.exists() else None
         owner_path = self.state / 'deployment/owner.json'
         active = json.loads(owner_path.read_text()) if owner_path.exists() else None
+        infrastructure_required = 'infrastructure' in self.config.get('workers', {}).get('linux-x86_64', {})
         if active:
             selected = self.ledger.db.execute('SELECT id,seq FROM candidates WHERE id=?',
                                               (active['release_id'],)).fetchone()
         else:
             selected = self.ledger.db.execute('''SELECT c.id,c.seq FROM candidates c
                 WHERE EXISTS (SELECT 1 FROM platforms p WHERE p.candidate=c.id
-                    AND p.platform!='sdk' AND p.state IN
+                    AND ((? AND p.platform='linux-x86_64') OR (NOT ? AND p.platform!='sdk')) AND p.state IN
                     ('verified','publishing','submitting','processing','in_review','available'))
-                ORDER BY c.seq DESC LIMIT 1''').fetchone()
+                ORDER BY c.seq DESC LIMIT 1''', (infrastructure_required, infrastructure_required)).fetchone()
         if selected is None or (previous and selected['seq'] < previous['sequence']):
             return
         manifest = self.ledger.manifest(selected['id'])
         if not manifest['policy'].get('deployment_required', False):
             return
-        atomic_json(desired_path, {'release_id': selected['id'], 'sequence': selected['seq']})
         try:
-            if 'infrastructure' in self.config.get('workers', {}).get('linux-x86_64', {}):
+            if infrastructure_required:
                 if self.execute(manifest, 'linux-x86_64', 'infrastructure') is None:
                     atomic_json(self.state / 'public/deployment.json', {
                         'schema': 1, 'release_id': selected['id'], 'state': 'waiting_artifacts',
                         'reason': 'Waiting for the qualified infrastructure bundle'})
                     return
+            # Selecting a mobile artifact is not a deployment intent. Advance
+            # the monotonic pointer only after its exact infrastructure receipt
+            # is available, so queued/superseded Linux work cannot stall rollout.
+            atomic_json(desired_path, {'release_id': selected['id'], 'sequence': selected['seq']})
             reconcile(self.state, manifest, json.loads(Path(configured).read_text()))
         except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
             atomic_json(self.state / 'public/deployment.json', {
