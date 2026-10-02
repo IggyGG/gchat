@@ -1,3 +1,20 @@
+The original signed Linux 0.1.98 workflow passes both full native CI gates,
+signed packaging, actual infrastructure image tests and packaged desktop/CLI
+profile lifecycle and cleanup. Its complete 875,492,915-byte provider ZIP verifies
+independently against the original provider digest; the unchanged release handler
+checks GPG/updater signatures, source inputs and lifecycle receipts. All 12
+infrastructure file hashes and 125 actual-image tests verify. The automatic
+rollout reaches relay 1, rejects activation and restores the previous binary;
+all 17 targets remain healthy. Installed-network acceptance is still required.
+
+The host installer fixes that activation failure: its private umask had created
+binary directories with mode 0700, denying traversal to the service's gc-relay
+user. Preparation now repairs those executable directories to 0755 while keeping
+installer state private; symlinked binary directories fail closed. Seven host
+installer tests and 687 full Python checks pass with five existing skips. The
+corrected helper still needs installation on the eight native hosts before the
+original rollout resumes. No application API or protocol changed.
+
 Controller generation 59 (`3792ae8`) is active with two ready containers, zero
 restarts, 130 actual-image/Kubernetes runtime checks and 219 verified source
 hashes. Storage recovery, recent-candidate polling and unique worker logs are

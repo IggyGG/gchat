@@ -1554,5 +1554,140 @@
       "raw_evidence_sha256": "fd1180739a3ed9d7d35514ce1f050f5483d8396171454cf75c5cb4746327c764",
       "fleet_acceptance_complete": false
     }
-  ]
+  ],
+  "original_linux_signed_package_qualification": {
+    "scope": "Original signed Linux package and infrastructure verification; fleet/client acceptance remains required",
+    "source_pair": {
+      "gchat": {
+        "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+        "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+      },
+      "gcoms": {
+        "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+        "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+      }
+    },
+    "release_id": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+    "provider_run": 37065209078,
+    "original_artifact": 11256842108,
+    "archive_sha256": "sha256:0429ae6bcb324e55adfc17a2d003d7a6a76c8030c6002a039d90f025f9c92237",
+    "archive_bytes": 875492915,
+    "original_provider_passed": true,
+    "independent_release_handler_passed": true,
+    "infrastructure_files_verified": [
+      {
+        "name": "Dockerfile",
+        "sha256": "f16adf33bbce6b907485d3b915afada33ceb564b2cc710d8f560110a3b27ef56",
+        "bytes": 333
+      },
+      {
+        "name": "ca-certificates.crt",
+        "sha256": "ecd9dc38bc3efb7dbd6431f57e29d2f8d6a0f0d211e1464b3fef2cbfe266fcd2",
+        "bytes": 182140
+      },
+      {
+        "name": "controller-runtime.json",
+        "sha256": "6f08fd70c735da47f357dfde63a4e528420060373ef223133a0fa2f5f40902f1",
+        "bytes": 1105
+      },
+      {
+        "name": "controller-runtime.log",
+        "sha256": "46109dc6892e3b1bea828d318fd78d284f5c00a1ae757be1ca86cf2ffb9d0399",
+        "bytes": 1118
+      },
+      {
+        "name": "controller.tar",
+        "sha256": "2a4871da3617fcb67c51087e5936b3acb6fee0fac501655dc3355c3cfc2e1237",
+        "bytes": 1377021952
+      },
+      {
+        "name": "gc-network-operator",
+        "sha256": "36ee7e1fd719b183fd8818521c4ab8d6790a0207aa4733e092213bb183bcf1ad",
+        "bytes": 1099496
+      },
+      {
+        "name": "gcnode",
+        "sha256": "f951a62251f0a5a54de53d454d567c1bec480fc37f55da19939f5f24e9ee5b76",
+        "bytes": 18802800
+      },
+      {
+        "name": "gcoms-catalog",
+        "sha256": "6b58784ac3790e957398529d53fc964dc5b90f9a6935658fac54ef92cee12bf5",
+        "bytes": 9172792
+      },
+      {
+        "name": "gcoms-channel-service",
+        "sha256": "2010e2438a040af8c94b0e3e3ae0559c5189018da3b5c68cf9e99e96deb48e54",
+        "bytes": 3257488
+      },
+      {
+        "name": "image.tar",
+        "sha256": "5b4e2104aeff00aa377beb75184ff251343c2a2a764101a4d460b90530a76b0b",
+        "bytes": 122409472
+      },
+      {
+        "name": "push-context.json",
+        "sha256": "3020ebe5aec6c5d130e5ccf92096a25f814ade27d52ae7987014984ff89a0fdb",
+        "bytes": 1050
+      },
+      {
+        "name": "push.tar",
+        "sha256": "237a09712d66d599870777edde5493d7f23ffaa6296e7128529d843283108e78",
+        "bytes": 146684416
+      }
+    ],
+    "actual_image_runtime": {
+      "schema": 1,
+      "passed": true,
+      "source": {
+        "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+        "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+      },
+      "inventory_sha256": "4e2f4fab481696ee78df29f5c48fa3bc54cc55482e858b4c71bf8fea30dc8616",
+      "source_files_verified": 220,
+      "tests": 125,
+      "suites": [
+        "release_config_test",
+        "release_acceptance_test",
+        "mobile_acceptance_test",
+        "release_coordinator_test",
+        "release_deployment_test",
+        "release_rollback_image_test",
+        "release_infrastructure_bundle_test",
+        "release_kubernetes_worker_test",
+        "release_host_install_test",
+        "release_rollout_watchdog_test",
+        "release_inputs_test",
+        "release_ios_versions_test",
+        "release_prepare_test",
+        "release_compaction_test",
+        "controller_runtime_test",
+        "infrastructure_build_test"
+      ],
+      "source_unchanged": true,
+      "production_controller_revision_tested": true,
+      "configuration_digest": "sha256:2525a91310ec6a59c0505af85919d4c9c8bacabf285a89b90c412ebefacac3f8",
+      "log_sha256": "46109dc6892e3b1bea828d318fd78d284f5c00a1ae757be1ca86cf2ffb9d0399"
+    },
+    "fleet_activation_qualified": false,
+    "installed_network_acceptance_qualified": false,
+    "packaged_desktop_and_cli_lifecycle_passed": true
+  },
+  "native_installer_directory_permissions": {
+    "cause": "Root worker umask 077 made binary directories mode 0700, preventing the gc-relay service user from executing the qualified binary",
+    "original_failure_retained": true,
+    "original_release_id": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+    "target": "relay-1",
+    "original_stage": "activate",
+    "automatic_rollback_passed": true,
+    "all_17_targets_healthy_after_rollback": true,
+    "fix": "Prepare and repair the public binary directories with mode 0755; retain private installer state and receipts",
+    "host_installer_tests_passed": 7,
+    "full_python_tests_passed": 687,
+    "existing_skips": 5,
+    "installed_host_fix_activated": false,
+    "api_changed": false,
+    "raw_failure": "operations/relay1-activation-diagnostic-281.log",
+    "raw_tests": "operations/host-install-tests-282.log"
+  }
 }

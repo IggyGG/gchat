@@ -95,7 +95,14 @@ def run(request, *, state_root=Path("/var/lib/gchat-release"),
             source = upload_root / ('gchat-release-' + sha)
             if digest(source) != sha:
                 raise ValueError('uploaded artifact differs from its source receipt')
-            dest.parent.mkdir(parents=True, exist_ok=True)
+            # The SSH worker keeps a private umask, while systemd runs these
+            # public executables as its existing unprivileged service user.
+            # Repair earlier private directories as well as fresh installs.
+            for directory in (binary_root, dest.parent):
+                if directory.is_symlink():
+                    raise ValueError('installed binary directory cannot be a symlink')
+                directory.mkdir(parents=True, exist_ok=True)
+                directory.chmod(0o755)
             if not dest.exists():
                 temporary = dest.with_suffix('.new')
                 shutil.copyfile(source, temporary); temporary.chmod(0o755)

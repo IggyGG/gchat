@@ -70,6 +70,34 @@ class HostInstallTests(unittest.TestCase):
         self.run_stage('activate')
         self.assertEqual(self.pid, pid)
 
+    def test_private_worker_umask_allows_service_traversal_without_exposing_state(self):
+        previous = os.umask(0o077)
+        try:
+            self.run_stage('prepare')
+            binary = self.paths['binary_root'] / self.sha / 'gcnode'
+            for path in (self.paths['binary_root'], binary.parent, binary):
+                self.assertEqual(path.stat().st_mode & 0o777, 0o755)
+            state = self.paths['state_root'] / self.request['unit']
+            self.assertEqual(state.stat().st_mode & 0o777, 0o700)
+            self.assertEqual((state / self.request['release_id'] / 'before.json').stat().st_mode & 0o777, 0o600)
+            self.paths['binary_root'].chmod(0o700)
+            binary.parent.chmod(0o700)
+            self.run_stage('prepare')
+            self.assertEqual(self.paths['binary_root'].stat().st_mode & 0o777, 0o755)
+            self.assertEqual(binary.parent.stat().st_mode & 0o777, 0o755)
+            self.run_stage('activate')
+            self.run_stage('rollback')
+        finally:
+            os.umask(previous)
+
+    def test_symlinked_binary_directory_is_rejected_before_installation(self):
+        outside = self.root / 'outside'
+        outside.mkdir()
+        self.paths['binary_root'].symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'directory cannot be a symlink'):
+            self.run_stage('prepare')
+        self.assertEqual(list(outside.iterdir()), [])
+
     def test_changed_key_blocks_activation_without_mutation(self):
         self.run_stage('prepare'); self.key.write_bytes(b'changed by another owner')
         with self.assertRaisesRegex(ValueError, 'protected'):
