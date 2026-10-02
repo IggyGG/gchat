@@ -9,7 +9,7 @@ from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from release_compaction import compact_build
+from release_compaction import compact_build, compact_rollback_images, checked_metadata
 
 
 @unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
@@ -117,6 +117,110 @@ class CompactionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'changed before replacement'):
                 compact_build(self.root, minimum_bytes=1)
         self.assertFalse(list(self.native.rglob('.compact-*')))
+
+
+@unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
+class RollbackImageCompactionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.state = Path(self.temp.name)
+        self.content = b'original compressed image layer' * 100
+        self.paths = []
+        for number in (1, 2, 3):
+            config = ('original image configuration ' + str(number)).encode()
+            config_sha = hashlib.sha256(config).hexdigest()
+            layer_sha = hashlib.sha256(self.content).hexdigest()
+            manifest = {'schemaVersion': 2, 'config': {'digest': 'sha256:' + config_sha, 'size': len(config)},
+                        'layers': [{'digest': 'sha256:' + layer_sha, 'size': len(self.content)}]}
+            raw = json.dumps(manifest).encode();sha = hashlib.sha256(raw).hexdigest()
+            directory = self.state / 'rollback-images' / sha
+            image = directory / ('oci' if number == 3 else 'image')
+            blobs = image / 'blobs/sha256' if number == 3 else image;blobs.mkdir(parents=True)
+            (blobs / config_sha).write_bytes(config);layer = blobs / layer_sha;layer.write_bytes(self.content)
+            self.paths.append(layer)
+            if number == 3:
+                (blobs / sha).write_bytes(raw)
+                (image / 'index.json').write_text(json.dumps({'manifests': [{'digest': 'sha256:' + sha}]}))
+            else:
+                (image / 'manifest.json').write_bytes(raw)
+            proof = {'schema': 1, 'image': '127.0.0.1:30444/ghost/gchat-release@sha256:' + sha,
+                     'manifest_sha256': 'sha256:' + sha}
+            if number != 3:proof['transport'] = 'dir'
+            (directory / 'retained.json').write_text(json.dumps(proof))
+
+    def compact(self):
+        return compact_rollback_images(self.state, minimum_bytes=1)
+
+    def test_directory_and_legacy_oci_images_keep_every_byte_and_path(self):
+        files = {p: (p.read_bytes(), p.stat().st_mode) for p in (self.state / 'rollback-images').rglob('*') if p.is_file()}
+        report = self.compact()
+        self.assertEqual(len(report['images']), 3);self.assertEqual(len(report['changes']), 2)
+        self.assertTrue(report['all_image_manifests_and_blobs_verified'])
+        for path, (content, mode) in files.items():
+            self.assertEqual(path.read_bytes(), content);self.assertEqual(path.stat().st_mode, mode)
+        self.assertEqual(len({p.stat().st_ino for p in self.paths}), 1)
+        self.assertEqual(self.compact()['changes'], [])
+
+    def test_changed_large_layer_and_small_configuration_prevent_every_link(self):
+        for victim in (self.paths[-1], next(p for p in self.paths[0].parent.iterdir()
+                                          if p != self.paths[0] and p.name != 'manifest.json')):
+            before = victim.read_bytes();inodes = [p.stat().st_ino for p in self.paths]
+            victim.write_bytes(b'x' * len(before))
+            with self.assertRaisesRegex(ValueError, 'digest or size differs'):self.compact()
+            self.assertEqual([p.stat().st_ino for p in self.paths], inodes)
+            victim.write_bytes(before)
+
+    def test_changed_manifest_or_oci_index_prevents_every_link(self):
+        for victim in (self.paths[0].parent / 'manifest.json', self.paths[-1].parents[2] / 'index.json'):
+            before = victim.read_bytes();inodes = [p.stat().st_ino for p in self.paths]
+            if victim.name == 'index.json':victim.write_text('{"manifests":[]}')
+            else:victim.write_bytes(before + b' ')
+            with self.assertRaises(ValueError):self.compact()
+            self.assertEqual([p.stat().st_ino for p in self.paths], inodes)
+            victim.write_bytes(before)
+
+    def test_permission_and_unrelated_workload_boundaries_are_preserved(self):
+        self.paths[0].chmod(0o600)
+        directory = self.paths[-1].parents[3]
+        receipt = directory / 'retained.json';proof = json.loads(receipt.read_text())
+        proof['image'] = proof['image'].replace('/ghost/gchat-release@', '/other/workload@')
+        receipt.write_text(json.dumps(proof))
+        inodes = [p.stat().st_ino for p in self.paths]
+        self.assertEqual(self.compact()['changes'], [])
+        self.assertEqual([p.stat().st_ino for p in self.paths], inodes)
+
+    def test_symlink_layer_and_nonregular_metadata_fail_without_following(self):
+        victim = self.paths[1];victim.unlink();victim.symlink_to(self.paths[0])
+        with self.assertRaisesRegex(ValueError, 'unsafe.*layer'):self.compact()
+        victim.unlink();victim.write_bytes(self.content)
+        fifo = self.state / 'metadata.pipe';os.mkfifo(fifo)
+        with self.assertRaisesRegex(ValueError, 'regular file'):checked_metadata(fifo, 65536)
+
+    def test_preexisting_aliases_can_merge_without_false_race_or_byte_changes(self):
+        self.paths[2].unlink();os.link(self.paths[1], self.paths[2])
+        report = self.compact()
+        self.assertTrue(report['all_paths_retained'])
+        self.assertEqual(len({p.stat().st_ino for p in self.paths}), 1)
+        self.assertTrue(all(p.read_bytes() == self.content for p in self.paths))
+
+    def test_layer_replacement_race_refuses_success_and_removes_temporary_links(self):
+        original = os.link
+        def race(source, destination, **kwargs):
+            original(source, destination, **kwargs)
+            path = destination.parent / source.name
+            path.write_bytes(b'x' * len(self.content))
+        with patch('release_compaction.os.link', side_effect=race), self.assertRaisesRegex(ValueError, 'changed before replacement'):
+            self.compact()
+        self.assertFalse(list(self.state.rglob('.compact-*')))
+        for path in self.paths:
+            path.write_bytes(self.content)
+        receipt = next((self.state / 'rollback-images').glob('*/retained.json'))
+        def provenance_race(source, destination, **kwargs):
+            original(source, destination, **kwargs)
+            receipt.write_bytes(receipt.read_bytes() + b' ')
+        with patch('release_compaction.os.link', side_effect=provenance_race), self.assertRaisesRegex(ValueError, 'provenance changed'):
+            self.compact()
+        self.assertFalse(list(self.state.rglob('.compact-*')))
 
 
 if __name__ == '__main__':

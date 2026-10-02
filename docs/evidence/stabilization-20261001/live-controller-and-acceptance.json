@@ -1093,6 +1093,46 @@
         "archive_bytes": 153726,
         "reason": "Two encryption test modules failed to import because native Python lacked cryptography"
       }
-    ]
+    ],
+    "portability_permission_correction": {
+      "run": 37061423522,
+      "gchat_commit": "3a11347bd6d2dd4410e73549fdfb34246057f2c3",
+      "windows_original_failure_retained": true,
+      "linux_passed": true,
+      "windows_corrected_rerun_pending": true,
+      "encryption_replay_cleanup_required_on_both_hosts": true,
+      "publisher_permission_assertions_posix_only": true,
+      "original_provider_archives": [
+        {
+          "artifact": 11251285722,
+          "bytes": 6837,
+          "sha256": "8d960856b88eb59558ef939317ba41d0f72855e49930de1b360a1f8bb9456afb"
+        },
+        {
+          "artifact": 11250376986,
+          "bytes": 6681,
+          "sha256": "78c830fe7b2a4a0617fe7cc87b932cc1eb0d7299957ed5438df0b3efa7ba9688"
+        }
+      ]
+    }
+  },
+  "rollback_image_compaction": {
+    "implemented": true,
+    "activated": false,
+    "controls": 12,
+    "full_python_tests": 680,
+    "existing_skips": 5,
+    "original_paths_bytes_permissions_retained": true,
+    "all_manifests_and_blobs_authenticated": true,
+    "maximum_images_per_run": 32,
+    "transports": [
+      "dir",
+      "legacy-oci"
+    ],
+    "actual_image_qualification_pending": true,
+    "kubernetes_maintenance_pending": true,
+    "hourly_activation_pending": true,
+    "evidence": "test-evidence/stabilization-20261001/python-220.log",
+    "codematch": "unreachable"
   }
 }

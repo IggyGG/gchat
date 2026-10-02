@@ -2,6 +2,13 @@ The release publisher preserves original provider archives and source receipts.
 `release_compaction.py --state /state` verifies each completed build's original
 archive before sharing identical extraction files. It preserves every path and
 byte, checks ownership/mode compatibility and refuses changed files or links.
+The same job verifies retained controller image receipts, immutable manifest
+digests and every configuration/layer blob before sharing large identical layers.
+It checks up to 32 images per run, supports directory and legacy OCI transports,
+and retains every image path and rollback receipt. Other workloads keep their
+own storage policy. Changed metadata, bytes, symlinks, nonregular files and
+replacement races prevent a successful maintenance receipt. Existing hard links
+remain safe to retry; no image is removed or relabelled as newly qualified.
 Receipts under `maintenance/compaction/` retain the archive and build proof hashes.
 An uncertain run can be retried; already shared files are unchanged. Compaction
 never removes archives, profiles, unpublished work, signatures or evidence.

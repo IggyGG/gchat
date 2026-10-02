@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Share identical extracted artifacts while retaining their original archives."""
+"""Share verified artifact copies and image layers while retaining every path."""
 import argparse
 import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import stat
 import time
 import uuid
@@ -18,8 +19,13 @@ def identity(value):
             value.st_ctime_ns, stat.S_IMODE(value.st_mode), value.st_uid, value.st_gid)
 
 
+def artifact_stream(path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, 'O_NOFOLLOW', 0))
+    return os.fdopen(descriptor, 'rb')
+
+
 def file_digest(path):
-    with path.open('rb') as stream:
+    with artifact_stream(path) as stream:
         before = os.fstat(stream.fileno())
         if not stat.S_ISREG(before.st_mode):
             raise ValueError('compaction requires regular artifacts')
@@ -29,6 +35,180 @@ def file_digest(path):
     if path.is_symlink() or identity(before) != identity(path.stat()):
         raise ValueError('artifact path changed during compaction')
     return result, before
+
+
+def share_files(duplicates, relative_root):
+    """Atomically share already authenticated files with identical ownership/mode."""
+    changes, reclaimed, unlinked = [], 0, set()
+    for key, items in duplicates.items():
+        first, before = items[0]
+        for path, previous in items[1:]:
+            if first.is_symlink() or identity(first.stat()) != identity(before):
+                raise ValueError('canonical artifact changed during compaction')
+            current = path.stat()
+            if path.is_symlink():
+                raise ValueError('duplicate artifact path changed during compaction')
+            if (before.st_dev, before.st_ino) == (current.st_dev, current.st_ino):
+                continue
+            if identity(current) != identity(previous):
+                # Replacing one pre-existing alias changes the old inode's
+                # ctime. Reauthenticate another alias before accepting only
+                # that metadata change caused by our own replacement.
+                stable = lambda v: identity(v)[:4] + identity(v)[5:]
+                if (current.st_dev, current.st_ino) not in unlinked or stable(current) != stable(previous):
+                    raise ValueError('duplicate artifact changed during compaction')
+                digest, previous = file_digest(path)
+                if digest != key[-1]:
+                    raise ValueError('duplicate artifact bytes changed during compaction')
+            temporary = path.parent / ('.compact-' + uuid.uuid4().hex)
+            try:
+                os.link(first, temporary, follow_symlinks=False)
+                linked = first.stat()
+                if (linked.st_dev, linked.st_ino, linked.st_size, linked.st_mtime_ns,
+                        stat.S_IMODE(linked.st_mode), linked.st_uid, linked.st_gid) != (
+                        before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+                        stat.S_IMODE(before.st_mode), before.st_uid, before.st_gid):
+                    raise ValueError('canonical artifact changed while linking')
+                if identity(path.stat()) != identity(previous) or path.is_symlink():
+                    raise ValueError('duplicate artifact changed before replacement')
+                os.replace(temporary, path)
+                unlinked.add((previous.st_dev, previous.st_ino))
+                before = first.stat()
+                directory = os.open(path.parent, os.O_RDONLY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
+                if previous.st_nlink == 1:
+                    reclaimed += previous.st_blocks * 512
+                changes.append({'path': path.relative_to(relative_root).as_posix(),
+                                'canonical': first.relative_to(relative_root).as_posix(),
+                                'sha256': key[-1], 'bytes': previous.st_size})
+            finally:
+                temporary.unlink(missing_ok=True)
+    return changes, reclaimed
+
+
+def checked_metadata(path, maximum_bytes):
+    if path.is_symlink():
+        raise ValueError('rollback image metadata cannot be a symlink')
+    with artifact_stream(path) as stream:
+        before = os.fstat(stream.fileno())
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError('rollback image metadata must be a regular file')
+        raw = stream.read(maximum_bytes + 1)
+        if identity(before) != identity(os.fstat(stream.fileno())):
+            raise ValueError('rollback image metadata changed while reading')
+    if len(raw) > maximum_bytes:
+        raise ValueError('rollback image metadata exceeds its bound')
+    if path.is_symlink() or identity(before) != identity(path.stat()):
+        raise ValueError('rollback image metadata changed while reading')
+    digest = hashlib.sha256(raw).hexdigest()
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise ValueError('rollback image metadata must be an object')
+    return value, (digest, before)
+
+
+def compact_rollback_images(state, maximum_images=32, minimum_bytes=16 * 1024**2):
+    """Retain every image path while sharing digest-authenticated controller layers."""
+    import fcntl
+    if type(maximum_images) is not int or not 1 <= maximum_images <= 256:
+        raise ValueError('rollback image compaction limit must be between 1 and 256')
+    state = Path(state).resolve()
+    root = state / 'rollback-images'
+    if not root.exists():
+        return None
+    if root.is_symlink():
+        raise ValueError('rollback image root cannot be a symlink')
+    retained = state / 'maintenance/compaction'
+    retained.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (retained / 'lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        duplicates, controls, images = {}, [], []
+        for directory in sorted(root.iterdir()):
+            if len(images) >= maximum_images:
+                break
+            receipt = directory / 'retained.json'
+            if not receipt.is_file():
+                continue  # An incomplete image is never inferred qualified.
+            if directory.is_symlink() or receipt.is_symlink() or receipt.stat().st_size > 65536:
+                raise ValueError('unsafe rollback image receipt')
+            proof, receipt_binding = checked_metadata(receipt, 65536)
+            image_name = proof.get('image', '')
+            if not isinstance(image_name, str):
+                raise ValueError('rollback image identity must be text')
+            match = re.fullmatch(r'[^\s]+/ghost/gchat-release@sha256:([0-9a-f]{64})', image_name)
+            if not match:
+                continue  # Other workloads retain their independent storage policy.
+            expected = match[1]
+            if (directory.name != expected or type(proof.get('schema')) is not int or proof.get('schema') != 1
+                    or proof.get('manifest_sha256') != 'sha256:' + expected
+                    or proof.get('transport') not in (None, 'dir')):
+                raise ValueError('rollback image receipt identity differs')
+            controls.append((receipt, receipt_binding))
+            if proof.get('transport') == 'dir':
+                image = directory / 'image'
+                manifest_path = image / 'manifest.json'
+                blob_root = image
+            else:
+                image = directory / 'oci'
+                if image.is_symlink():
+                    raise ValueError('rollback image directory cannot be a symlink')
+                blob_root = image / 'blobs/sha256'
+                manifest_path = blob_root / expected
+                index_path = image / 'index.json'
+                if index_path.is_symlink() or index_path.stat().st_size > 65536:
+                    raise ValueError('unsafe rollback image index')
+                index, index_binding = checked_metadata(index_path, 65536)
+                entries = index.get('manifests', [])
+                if (not isinstance(entries, list) or len(entries) != 1 or not isinstance(entries[0], dict)
+                        or entries[0].get('digest') != 'sha256:' + expected):
+                    raise ValueError('rollback image index identity differs')
+                controls.append((index_path, index_binding))
+            if (image.is_symlink() or manifest_path.is_symlink()
+                    or not manifest_path.resolve().is_relative_to(directory)
+                    or manifest_path.stat().st_size > 2 * 1024**2):
+                raise ValueError('unsafe rollback image manifest')
+            manifest, (actual, before) = checked_metadata(manifest_path, 2 * 1024**2)
+            if actual != expected:
+                raise ValueError('rollback image manifest digest differs')
+            controls.append((manifest_path, (actual, before)))
+            layers = manifest.get('layers')
+            if not isinstance(layers, list) or len(layers) > 128 or not isinstance(manifest.get('config'), dict):
+                raise ValueError('rollback image manifest has no bounded layer inventory')
+            for descriptor in [manifest['config'], *layers]:
+                if not isinstance(descriptor, dict):
+                    raise ValueError('invalid rollback image layer descriptor')
+                digest = descriptor.get('digest', '')
+                size = descriptor.get('size')
+                if (not isinstance(digest, str) or not re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
+                        or type(size) is not int or not 0 < size <= 12 * 1024**3):
+                    raise ValueError('invalid rollback image layer digest or size')
+                path = blob_root / digest.removeprefix('sha256:')
+                if path.is_symlink() or not path.resolve().is_relative_to(directory):
+                    raise ValueError('unsafe rollback image layer path')
+                actual, before = file_digest(path)
+                if actual != digest.removeprefix('sha256:') or before.st_size != size:
+                    raise ValueError('rollback image layer digest or size differs')
+                if size >= minimum_bytes:
+                    key = (before.st_dev, size, stat.S_IMODE(before.st_mode), before.st_uid, before.st_gid, actual)
+                    duplicates.setdefault(key, []).append((path, before))
+            images.append({'image': proof['image'], 'manifest_sha256': expected})
+        # Authenticate every image before the first link, including small blobs.
+        for path, (digest, before) in controls:
+            if identity(path.stat()) != identity(before) or path.is_symlink():
+                raise ValueError('rollback image provenance changed during compaction')
+        changes, reclaimed = share_files(duplicates, state)
+        for path, (digest, before) in controls:
+            if path.is_symlink() or identity(path.stat()) != identity(before):
+                raise ValueError('rollback image provenance changed during compaction')
+        report = {'schema': 1, 'images': images, 'all_paths_retained': True,
+                  'all_image_manifests_and_blobs_verified': True,
+                  'estimated_reclaimed_bytes': reclaimed, 'changes': changes,
+                  'completed_at': int(time.time())}
+        atomic_json(retained / ('rollback-images-' + str(time.time_ns()) + '.json'), report)
+        return report
 
 
 def compact_build(work, minimum_bytes=16 * 1024**2, verified_work=None):
@@ -53,8 +233,6 @@ def compact_build(work, minimum_bytes=16 * 1024**2, verified_work=None):
         raise ValueError('compaction requires the original extraction directory')
     native = native.resolve()
     groups = {}
-    changes = []
-    reclaimed = 0
     extras = []
     if verified_work is not None:
         verified_work = Path(verified_work).resolve()
@@ -110,44 +288,7 @@ def compact_build(work, minimum_bytes=16 * 1024**2, verified_work=None):
                 duplicates.setdefault((*key, expected), []).append((path, before))
         if identity(archive.stat()) != archive_before or hashlib.sha256(receipt.read_bytes()).hexdigest() != receipt_sha:
             raise ValueError('native archive or receipt changed during compaction')
-        for key, items in duplicates.items():
-            first, before = items[0]
-            for path, previous in items[1:]:
-                if first.is_symlink() or identity(first.stat()) != identity(before):
-                    raise ValueError('canonical artifact changed during compaction')
-                current = path.stat()
-                if path.is_symlink():
-                    raise ValueError('duplicate artifact path changed during compaction')
-                if (before.st_dev, before.st_ino) == (current.st_dev, current.st_ino):
-                    continue
-                if identity(current) != identity(previous):
-                    raise ValueError('duplicate artifact changed during compaction')
-                temporary = path.parent / ('.compact-' + uuid.uuid4().hex)
-                try:
-                    os.link(first, temporary, follow_symlinks=False)
-                    # link() changes the canonical inode's ctime and link count.
-                    linked = first.stat()
-                    if (linked.st_dev, linked.st_ino, linked.st_size, linked.st_mtime_ns,
-                            stat.S_IMODE(linked.st_mode), linked.st_uid, linked.st_gid) != (
-                            before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
-                            stat.S_IMODE(before.st_mode), before.st_uid, before.st_gid):
-                        raise ValueError('canonical artifact changed while linking')
-                    if identity(path.stat()) != identity(previous) or path.is_symlink():
-                        raise ValueError('duplicate artifact changed before replacement')
-                    os.replace(temporary, path)
-                    before = first.stat()
-                    directory = os.open(path.parent, os.O_RDONLY)
-                    try:
-                        os.fsync(directory)
-                    finally:
-                        os.close(directory)
-                    if previous.st_nlink == 1:
-                        reclaimed += previous.st_blocks * 512
-                    changes.append({'path': path.relative_to(work.parent).as_posix(),
-                                    'canonical': first.relative_to(work.parent).as_posix(),
-                                    'sha256': key[-1], 'bytes': previous.st_size})
-                finally:
-                    temporary.unlink(missing_ok=True)
+        changes, reclaimed = share_files(duplicates, work.parent)
     return {'schema': 1, 'release_id': proof['release_id'], 'sources': proof['sources'],
             'platform': proof['platform'], 'receipt_sha256': receipt_sha,
             'archive_sha256': references[0]['sha256'], 'original_archive_retained': True,
@@ -201,7 +342,8 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.maximum_builds <= 256:
         parser.error('maximum builds must be between 1 and 256')
-    print(json.dumps({'completed': compact(args.state, args.maximum_builds)}), flush=True)
+    print(json.dumps({'completed': compact(args.state, args.maximum_builds),
+                      'rollback_images': compact_rollback_images(args.state)}), flush=True)
 
 
 if __name__ == '__main__':

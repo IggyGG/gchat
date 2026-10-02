@@ -16,6 +16,18 @@ provider archives remain retained. API 3/API 2 coexistence, RPC 1, IPC 26, the
 a subsequent unattended release are still required before SDK 1.0.
 See `docs/evidence/stabilization-20261001/live-controller-and-acceptance.json`.
 
+Rollback image compaction now authenticates retained controller receipts, pinned
+manifests and every configuration/layer blob before sharing identical large
+layers. It retains every rollback path, byte and permission, supports directory
+and legacy OCI archives, and rejects changed provenance, symlinks, nonregular
+files and replacement races. All 12 compaction controls and 680 Python checks
+pass with five existing skips; L0 checks 802 paths and stable contracts remain
+unchanged. The actual image, Kubernetes maintenance run and hourly activation
+remain pending. A native Windows portability failure was isolated to POSIX mode
+assertions; encryption, replay and cleanup still run on both platforms, while
+publisher permissions remain mandatory on POSIX. Original provider archives and
+failed reports are retained; the corrected native Windows rerun is still required.
+
 Earlier controller checkpoints below retain their original observations; current
 activation and pending work are described above.
 

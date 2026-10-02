@@ -434,10 +434,13 @@ class EncryptedAcceptanceDeliveryTests(unittest.TestCase):
             finally:
                 os.umask(previous_umask)
             response = root / 'public/updates/acceptance' / intent['request'] / 'response.json'
-            for directory in (response.parent, response.parent.parent, root / 'public', root / 'public/updates'):
-                self.assertEqual(directory.stat().st_mode & 0o777, 0o755)
-            for file in response.parent.iterdir(): self.assertEqual(file.stat().st_mode & 0o777, 0o644)
-            self.assertEqual((work / 'sealed-response.json').stat().st_mode & 0o777, 0o600)
+            # The publisher runs on POSIX; Windows does not represent these
+            # permissions in st_mode. All transport/replay checks run there.
+            if os.name == 'posix':
+                for directory in (response.parent, response.parent.parent, root / 'public', root / 'public/updates'):
+                    self.assertEqual(directory.stat().st_mode & 0o777, 0o755)
+                for file in response.parent.iterdir(): self.assertEqual(file.stat().st_mode & 0o777, 0o644)
+                self.assertEqual((work / 'sealed-response.json').stat().st_mode & 0o777, 0o600)
             original = response.read_bytes(); response.unlink()
             self.assertEqual(delivery.ready(root, intent, work, run, api, issue, now=150), proof)
             self.assertEqual(response.read_bytes(), original); issue.assert_called_once()
