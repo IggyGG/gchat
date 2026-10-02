@@ -34,6 +34,95 @@ PREFIX = 'Native acceptance '
 TARGETS = ('linux-x86_64', 'windows-x86_64', 'macos-aarch64', 'macos-x86_64', 'android', 'ios')
 
 
+def qualification_revision(config, manifest):
+    value = config.get('qualification_commit', os.environ.get('GCHAT_CONTROLLER_REVISION'))
+    if value is None:
+        return None  # Reconcile workers dispatched before separate qualification sources.
+    if not isinstance(value, str) or not re.fullmatch('[0-9a-f]{40}', value):
+        raise ValueError('acceptance qualification needs a full immutable source object')
+    return value
+
+
+def qualification_ref(commit):
+    if not isinstance(commit, str) or not re.fullmatch('[0-9a-f]{40}', commit):
+        raise ValueError('acceptance qualification needs a full immutable source object')
+    name = 'release/qualification-' + commit
+    reference = 'refs/heads/' + name
+    matches = gh('git/matching-refs/heads/' + name)
+    if not matches:
+        try:
+            gh('git/refs', method='POST', body={'ref': reference, 'sha': commit})
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            # Publication can succeed before its response is lost. Read the same
+            # immutable reference; never update or force-push an existing one.
+            pass
+        matches = [gh('git/ref/heads/' + name)]
+    if (len(matches) != 1 or matches[0].get('ref') != reference
+            or matches[0].get('object', {}).get('type') != 'commit'
+            or matches[0]['object']['sha'] != commit):
+        raise ValueError('acceptance qualification reference differs from its frozen source')
+    return name
+
+
+def verify_worker(binding, intent, manifest, target):
+    if (binding.get('schema') != 1 or binding.get('request') != intent['request']
+            or binding.get('release_id') != manifest['release_id']
+            or binding.get('sources') != manifest['sources'] or binding.get('target') != target
+            or binding.get('commit') != intent['qualification_commit']
+            or binding.get('tree') != intent['qualification_tree']
+            or binding.get('source_unchanged') is not True):
+        raise ValueError('native acceptance qualification source or retained application binding differs')
+
+
+def failed_followup(state, config, manifest, target, work, request, intent, revision):
+    failed = work / 'acceptance-failed.json'
+    if not failed.exists():
+        return False, None
+    proof = json.loads(failed.read_text())
+    run_path, archive = work / 'acceptance-run.json', work / 'acceptance.zip'
+    run = json.loads(run_path.read_text())
+    expected = intent.get('qualification_commit', manifest['sources']['gchat']['commit'])
+    workflow = MOBILE_WORKFLOW if target in ('android', 'ios') else WORKFLOW
+    if (intent.get('request') != request or intent.get('sources') != manifest['sources']
+            or intent.get('target') != target
+            or proof.get('request') != request or proof.get('sources') != manifest['sources']
+            or proof.get('release_id') != manifest['release_id'] or proof.get('target') != target
+            or proof.get('qualification_commit') != expected or proof.get('passed') is not False
+            or proof.get('run_sha256') != digest(run_path) or proof.get('archive_sha256') != digest(archive)
+            or proof.get('intent_sha256') != digest(work / 'acceptance-intent.json')
+            or run.get('status') != 'completed' or run.get('head_sha') != expected
+            or run.get('conclusion') not in ('failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required')
+            or run.get('event') != 'workflow_dispatch' or run.get('path') != '.github/workflows/' + workflow
+            or run.get('display_title') != PREFIX + request
+            or run.get('head_repository', {}).get('full_name') != 'IggyGG/gchat'
+            or intent.get('cleaned') is not True):
+        raise ValueError('retained failed acceptance outcome changed; no follow-up may be dispatched')
+    pointer = work / 'acceptance-followup.json'
+    if pointer.exists():
+        followup = json.loads(pointer.read_text())
+    elif revision is not None and revision != expected:
+        followup = {'commit': revision, 'request': hashlib.sha256(canonical(
+            ['native-acceptance-followup', request, revision])).hexdigest()}
+        atomic_json(pointer, followup)
+    else:
+        raise ValueError('native acceptance failed; original reports retained')
+    commit = followup.get('commit', '')
+    if (not re.fullmatch('[0-9a-f]{40}', commit) or commit == expected
+            or followup.get('request') != hashlib.sha256(canonical(
+                ['native-acceptance-followup', request, commit])).hexdigest()):
+        raise ValueError('acceptance follow-up pointer differs')
+    directory = work / 'followups' / commit
+    directory.mkdir(parents=True, exist_ok=True)
+    # A recorded follow-up keeps its worker even if the controller changes while
+    # dispatch is unknown. collect() reconciles it before considering another one.
+    result = collect(state, dict(config, qualification_commit=revision), manifest,
+                     target, directory, followup['request'], frozen_revision=commit)
+    if result is not None:
+        result = dict(result, evidence=[dict(item, path='followups/' + commit + '/' + item['path'])
+                                       for item in result['evidence']])
+    return True, result
+
+
 def digest(path):
     with Path(path).open('rb') as stream: return hashlib.file_digest(stream, 'sha256').hexdigest()
 
@@ -153,12 +242,17 @@ def qualify_native(report, rollback, network, manifest, target, specs, now):
     return report
 
 
-def collect(state, config, manifest, target, work, request):
+def collect(state, config, manifest, target, work, request, *, frozen_revision=None):
     if target not in TARGETS: raise ValueError('native acceptance cannot qualify a different platform')
     marker = work / 'acceptance-intent.json'
     workflow = MOBILE_WORKFLOW if target in ('android', 'ios') else WORKFLOW
     grant = json.loads(Path(config['grant_config']).read_text())
     intent = json.loads(marker.read_text()) if marker.exists() else None
+    revision = qualification_revision(config, manifest)
+    if intent is not None:
+        handled, result = failed_followup(state, config, manifest, target, work, request, intent, revision)
+        if handled:
+            return result
     if intent is None:
         current = provider(state, manifest, target); previous = baseline(state, target, config, manifest)
         if current is None or previous is None: return None
@@ -172,6 +266,16 @@ def collect(state, config, manifest, target, work, request):
         operation = hashlib.sha256(canonical(['native-acceptance', request])).hexdigest()
         intent = {'request': request, 'sources': manifest['sources'], 'target': target, 'inputs': inputs,
                   'operation': operation, 'secret': 'GCHAT_ACCEPTANCE_' + operation.upper(), 'created_at': int(time.time())}
+        selected_revision = frozen_revision or revision
+        if selected_revision is not None:
+            reference = qualification_ref(selected_revision)
+            source = gh('git/commits/' + selected_revision)
+            tree = source.get('tree', {}).get('sha')
+            if (source.get('sha') != selected_revision or not isinstance(tree, str)
+                    or not re.fullmatch('[0-9a-f]{40}', tree)):
+                raise ValueError('acceptance qualification tree differs from its source object')
+            intent.update(qualification_commit=selected_revision,
+                          qualification_tree=tree, qualification_ref=reference)
         atomic_json(marker, intent)
     if intent['sources'] != manifest['sources'] or intent['target'] != target or intent['request'] != request:
         raise ValueError('native acceptance intent changed while its worker was active')
@@ -190,6 +294,11 @@ def collect(state, config, manifest, target, work, request):
                 cleanup(marker, intent, grant)
                 raise ValueError('native acceptance dispatch is still unknown; do not resubmit blindly')
             return None
+        reference = manifest['refs']['gchat'].removeprefix('refs/heads/')
+        if 'qualification_commit' in intent:
+            reference = intent['qualification_ref']
+            if qualification_ref(intent['qualification_commit']) != reference:
+                raise ValueError('acceptance qualification reference changed before dispatch')
         issued = json.loads(ssh(grant, 'canary grant ' + intent['operation'], b''))
         value = issued['invitation'].encode()
         if len(value) > 48000:
@@ -198,19 +307,23 @@ def collect(state, config, manifest, target, work, request):
             raise ValueError('bootstrap-only native invitation exceeds the private provider secret bound; grant revoked')
         subprocess.run(['gh', 'secret', 'set', intent['secret'], '--repo', 'IggyGG/gchat'],
                        input=value, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, timeout=60)
-        intent['dispatch_reserved'] = True; atomic_json(marker, intent)
         inputs = {'request_id': request, 'target': target, 'gchat_commit': manifest['sources']['gchat']['commit'],
                   'release_manifest': base64.b64encode(canonical(manifest)).decode(),
                   'artifacts': base64.b64encode(canonical(intent['inputs'])).decode(), 'invitation_secret': intent['secret']}
-        gh(f'actions/workflows/{workflow}/dispatches', method='POST', body={'ref': manifest['refs']['gchat'].removeprefix('refs/heads/'), 'inputs': inputs})
+        if 'qualification_commit' in intent:
+            inputs['qualification_commit'] = intent['qualification_commit']
+        intent['dispatch_reserved'] = True; atomic_json(marker, intent)
+        gh(f'actions/workflows/{workflow}/dispatches', method='POST', body={'ref': reference, 'inputs': inputs})
         return None
     run = runs[0]
-    if (run.get('head_sha') != manifest['sources']['gchat']['commit'] or run.get('event') != 'workflow_dispatch'
+    expected_worker = intent.get('qualification_commit', manifest['sources']['gchat']['commit'])
+    if (run.get('head_sha') != expected_worker or run.get('event') != 'workflow_dispatch'
             or run.get('path') != '.github/workflows/' + workflow
             or run.get('head_repository', {}).get('full_name') != 'IggyGG/gchat'):
         raise ValueError('native acceptance workflow/source differs')
     if run['status'] != 'completed': return None
     cleanup(marker, intent, grant)
+    atomic_json(work / 'acceptance-run.json', run)
     artifacts = gh(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']
     selected = [item for item in artifacts if item['name'] == 'acceptance-' + request and not item['expired']]
     if len(selected) != 1: raise ValueError('native acceptance report is missing or ambiguous')
@@ -231,10 +344,18 @@ def collect(state, config, manifest, target, work, request):
             import shutil
             shutil.rmtree(destination)  # derived report extraction only
         extract(archive, destination); atomic_json(work / 'acceptance-extracted.json', {'sha256': digest(archive)})
+    if run['conclusion'] != 'success':
+        atomic_json(work / 'acceptance-failed.json', {
+            'request': request, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+            'target': target, 'qualification_commit': expected_worker, 'passed': False,
+            'run_sha256': digest(work / 'acceptance-run.json'), 'archive_sha256': digest(archive),
+            'intent_sha256': digest(marker)})
+        raise ValueError('native acceptance failed; original reports retained')
+    if 'qualification_commit' in intent:
+        verify_worker(json.loads((destination / 'worker.json').read_text()), intent, manifest, target)
     report = json.loads((destination / 'report.json').read_text())
     rollback = json.loads((destination / 'rollback/report.json').read_text())
     network = json.loads((destination / 'network/report.json').read_text())
-    if run['conclusion'] != 'success': raise ValueError('native acceptance failed; original reports retained')
     qualify_native(report, rollback, network, manifest, target, intent['inputs'], int(time.time()))
     relays = []
     for relay in [item for item in inventory(json.loads(Path(config['deployment_file']).read_text())) if item.get('binary_name') == 'gcnode']:
@@ -260,6 +381,7 @@ def collect(state, config, manifest, target, work, request):
     atomic_json(receipts / (manifest['release_id'] + '.json'), proof)
     return {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'], 'platform': target,
             'stage': 'acceptance', 'passed': True, 'source_unchanged': True, 'completed_at': proof['completed_at'],
+            'qualification_commit': expected_worker, 'external_id': str(run['id']),
             'evidence': [{'path': 'acceptance.zip', 'sha256': digest(archive)}]}
 
 

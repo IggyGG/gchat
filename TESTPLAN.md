@@ -55,6 +55,15 @@ qualification job. Actual native execution remains required; original cancelled
 Linux runs retain their original conclusions. Android failure artifacts must
 retain `shell-errors.jsonl` without changing the installed smoke/retry policy.
 
+Run `release_acceptance_test.py` and `release_inputs_test.py` for separate immutable
+qualification workers. Require the actual Git tree, the original signed-app source
+manifest, and the matching request/target; reject changed refs, substituted trees
+and modified retained evidence. Reconcile lost ref publication and dispatch replies
+without another grant or POST. Only a completed failed run with a verified retained
+archive and revoked grant can start a corrected worker. An active follow-up keeps
+its request across another controller change. Preserve all original failure bytes.
+Acceptance workflow changes preserve app inputs but require new infrastructure.
+
 Run `release_acceptance_test.py` for exact native source/archive/platform
 bindings, baseline → current → baseline → current identity/history/cache preservation,
 covered ACKs, unchanged 16 MiB/360-second/600-second bounds, cleanup, lost dispatch

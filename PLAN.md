@@ -1,4 +1,4 @@
-## Live controller and native acceptance (2026-10-01, in progress)
+## Live controller and native acceptance (2026-10-02, in progress)
 
 The numeric iOS allocator is active in controller generation 49 (`e0e7fb9`),
 with 81 independent checks, both containers ready and the previous image retained.
@@ -9,8 +9,20 @@ a new valid version on a distinct immutable ref. Lost publication retries reuse
 that new reservation. The real Git/ledger regressions and 637 Python checks pass
 with five existing skips. The retry fix is active in generation 50 (`defc0e1`), with 82 independent
 checks, both containers ready, retained/repaired rollback and a successful minute
-watchdog. It automatically reserved build `1.1.0`; its native build remains open. The original `1.0.100` worker failure and later invalid rows are
+watchdog. It automatically reserved build `1.1.0`; that native run passed numeric
+validation and later failed its unchanged 60-second simulator launch limit. Its
+verified archive and successful owned-device cleanup are retained. The next
+automatic reservation, `1.1.2`, includes the latest SDK fixes and is building. The original `1.0.100` worker failure and later invalid rows are
 retained in the [allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
+
+Retained acceptance now binds the signed application and its qualification worker
+independently. The worker uses a full commit and a checked immutable reference;
+its report must match that commit's actual tree and the application's original
+source manifest. A corrected worker may follow only a completed failed attempt
+with its archive, run and revoked grant retained. An unknown dispatch keeps its
+original request and worker across controller updates. Acceptance workflow edits
+require fresh infrastructure qualification. Component controls pass; activation
+and actual installed execution remain required.
 
 Retained iOS lifecycle rerun `37017329318` passes using the exact native visibility
 Switch. The entire provider archive is verified; app `1.0.87` keeps the same binary
@@ -44,7 +56,8 @@ workers use the existing lost-reply, revocation and eight-relay observation gate
 The iOS UI runner now verifies the exact entered passphrase through the existing
 Show/Hide control within the original ten-second value assertion. This avoids
 relying on the masked secure-field value, which failed the retained lifecycle
-run; original assertions and failed verdicts remain, and native rerun is pending.
+run; original assertions and failed verdicts remain, and retained native rerun
+`37017329318` passes.
 Full Python validation passes 632 checks with five existing skips in a short SSD
 temporary directory. Earlier long-path harness failures are retained separately.
 Generated controller configurations require the acceptance stage for every

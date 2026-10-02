@@ -34,7 +34,7 @@
     "original_invalid_reservation_retained": true,
     "source": "defc0e12d4a4585c6f87148c337b4dcd617d38d4"
   },
-  "native_valid_number_build": "pending",
+  "native_valid_number_build": "Original valid 1.1.0 run failed the unchanged simulator launch bound after numeric validation; 1.1.2 is building",
   "source_sha256": {
     "scripts/release_pair.py": "68ce4991ca25be435dda21df139390dee92a314cd054bdee252e3081a9a2bfb7",
     "scripts/release_discovery.py": "cfd1b320eb856a9ac97b1aceeb67978b143e28080804b80faaa3ad3286833bc4",
@@ -88,6 +88,17 @@
         "tree": "2329c634eb145dd2f0523c793687eb6606e43dbc"
       }
     },
-    "original_invalid_release_id": "e3ff1e4183854687294107197cd684f2effac9b73e498f73019b77ea484b01c1"
+    "original_invalid_release_id": "e3ff1e4183854687294107197cd684f2effac9b73e498f73019b77ea484b01c1",
+    "native_execution": {
+      "run": 37018291740,
+      "passed": false,
+      "numeric_validation_passed": true,
+      "failure": "60-second simulator launch timeout",
+      "original_archive_verified": true,
+      "original_artifact": 11233563349,
+      "archive_sha256": "a7c9fd4f6cc7c662d51a42845792b80c46c6a3283e8aaa55c08046cc4d6d1e86",
+      "owned_device_removed": true,
+      "cleanup_errors": []
+    }
   }
 }

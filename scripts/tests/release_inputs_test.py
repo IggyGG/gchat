@@ -126,6 +126,8 @@ class InputTests(unittest.TestCase):
                 self.assertNotEqual(before['qualification'],after['qualification'])
                 if project == 'gcoms' or path.startswith('docs/'):
                     self.assertEqual(before['infrastructure'],after['infrastructure'])
+                elif path == '.github/workflows/mobile-acceptance.yml':
+                    self.assertNotEqual(before['infrastructure'],after['infrastructure'])
             for project,path in [('gchat','scripts/mobile-build-new.py'),
                                  ('gchat','.github/workflows/ios-release.yml'),
                                  ('gchat','scripts/android-build.py'),

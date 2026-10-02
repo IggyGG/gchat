@@ -9,8 +9,20 @@ a new valid version on a distinct immutable ref. Lost publication retries reuse
 that new reservation. The real Git/ledger regressions and 637 Python checks pass
 with five existing skips. The retry fix is active in generation 50 (`defc0e1`), with 82 independent
 checks, both containers ready, retained/repaired rollback and a successful minute
-watchdog. It automatically reserved build `1.1.0`; its native build remains open. The original `1.0.100` worker failure and later invalid rows are
+watchdog. It automatically reserved build `1.1.0`; that native run passed numeric
+validation and later failed its unchanged 60-second simulator launch limit. Its
+verified archive and successful owned-device cleanup are retained. The next
+automatic reservation, `1.1.2`, includes the latest SDK fixes and is building. The original `1.0.100` worker failure and later invalid rows are
 retained in the [allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
+
+Retained acceptance now binds the signed application and its qualification worker
+independently. The worker uses a full commit and a checked immutable reference;
+its report must match that commit's actual tree and the application's original
+source manifest. A corrected worker may follow only a completed failed attempt
+with its archive, run and revoked grant retained. An unknown dispatch keeps its
+original request and worker across controller updates. Acceptance workflow edits
+require fresh infrastructure qualification. Component controls pass; activation
+and actual installed execution remain required.
 
 Retained iOS lifecycle rerun `37017329318` passes using the exact native visibility
 Switch. The entire provider archive is verified; app `1.0.87` keeps the same binary

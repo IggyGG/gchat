@@ -56,10 +56,32 @@
     "completed_receipts_refresh_without_discarding_evidence": true,
     "actual_native_run_qualified": false,
     "mobile_producers_complete": true,
-    "baseline_current_baseline_current_rollback": true
+    "baseline_current_baseline_current_rollback": true,
+    "independent_qualification_worker": {
+      "implemented": true,
+      "source_tree_required": true,
+      "original_application_sources_retained": true,
+      "immutable_ref_checked": true,
+      "unknown_dispatch_preserved": true,
+      "confirmed_failed_attempt_retained_before_corrected_followup": true,
+      "activation": "pending",
+      "actual_installed_execution_qualified": false,
+      "focused_controls": 15,
+      "input_controls": 2,
+      "python_tests": 641,
+      "existing_skips": 5,
+      "source_sha256": {
+        "scripts/release_acceptance.py": "e462acf767af995b5da405df3e95160034709f849e9afc129c40328c0ba1517c",
+        "scripts/release_inputs.py": "e8353742b64a1b3e2a9cce9762f198080e6d2f25db17311f7d5b84f986dfe4a2",
+        ".github/workflows/native-acceptance.yml": "4a995965f1782bd70f2a6ce6d18431e8cbc169452de834dfb22690f078c94d0e",
+        ".github/workflows/mobile-acceptance.yml": "09ac5c2abb6b938008f0c1bfce6b83c07cff4af22fda982841debb4d1820a51d",
+        "scripts/tests/release_acceptance_test.py": "d26b7ecb113048836a7a3f4f5c9d30b3f198a0f2e5f985ee2cf912c481719c12",
+        "scripts/tests/release_inputs_test.py": "f28e15f4300fd1af7e14183aea06df19aef27fce4c2677f3b8d430f2505bc349"
+      }
+    }
   },
   "component_validation": {
-    "python_tests": 637,
+    "python_tests": 641,
     "python_skipped": 5,
     "controller_validation_tests": 82
   },
@@ -190,6 +212,34 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/controller-421be37-observed-115.json",
       "sha256": "41df31b70b08a3740b0d0791949696f58a9236b7e68a48af8c5127d8d6e6a486"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-build-1.1.0-37018291740-failed.log",
+      "sha256": "3b0958af946be8a81e88788598f36f935d540b543e7b60ecaa195d0f30d7804f"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-build-1.1.0-37018291740-ios-output-build.json",
+      "sha256": "1c52ed35a2191726ca02856ff21d189d9f8032b2fe784821f15f91b9019fcc73"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-build-1.1.0-37018291740-ios-output-simulator-smoke-report.json",
+      "sha256": "29de32f13ffc86e12e5c7d6fba86b1a574d6699d5702ef3447c64bc3f9936b0c"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/android-37017749073-build.json",
+      "sha256": "48f728e28d6fd125b009136e351d7a42b21ae2733516702c9c8cacd7d47862e1"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/acceptance-qualification-118.log",
+      "sha256": "e61e95d8e157501177731ba0307df84c58f4b3937aaf59b547502f88d7464f88"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/acceptance-inputs-118.log",
+      "sha256": "da722e734f268871238ffe71ddc634569c7fedfd5a6466e1c2d80cf417388ee8"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/acceptance-qualification-all-python-119.log",
+      "sha256": "dc6ad58742a1886acdc560370c6431c1c29a0baf5e70b38abe7dbadf65b7ceb7"
     }
   ],
   "native_progress": {
@@ -225,6 +275,38 @@
       "same_unmodified_application": true,
       "archive_verified": true,
       "installed_network_acceptance_qualified": false
+    },
+    "android_valid_reservation": {
+      "run": 37017749073,
+      "artifact": 11233671245,
+      "archive_sha256": "d851d6594f43c1500d658d553a74ee92b860e08767fca93776525de31be1595d",
+      "archive_bytes": 161565523,
+      "archive_verified": true,
+      "sources": {
+        "gchat": {
+          "commit": "91a4ca736a4a7e6d981808d3145d24892681192e",
+          "tree": "2ae9ce95177c4b7fcbe234fc49e711de43331b04"
+        },
+        "gcoms": {
+          "commit": "90d7eace5011a88068eb604aaf82149f9352c439",
+          "tree": "2329c634eb145dd2f0523c793687eb6606e43dbc"
+        }
+      },
+      "native_workflow_passed": true,
+      "automatic_controller_verification": "verified",
+      "installed_network_acceptance_qualified": false
+    },
+    "ios_valid_reservation": {
+      "run": 37018291740,
+      "artifact": 11233563349,
+      "build_number": "1.1.0",
+      "archive_sha256": "a7c9fd4f6cc7c662d51a42845792b80c46c6a3283e8aaa55c08046cc4d6d1e86",
+      "archive_bytes": 95109388,
+      "archive_verified": true,
+      "passed": false,
+      "verdict": "Original 60-second simulator launch timeout; owned device removed and cleanup errors empty",
+      "numeric_number_validation_passed": true,
+      "release_qualified": false
     }
   },
   "linux_workflow": {

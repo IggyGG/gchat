@@ -13,6 +13,9 @@ on:
       gchat_commit:
         required: true
         type: string
+      qualification_commit:
+        required: false
+        type: string
       release_manifest:
         required: true
         type: string
@@ -36,7 +39,7 @@ jobs:
         run: git config --global core.autocrlf false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: ${{ inputs.gchat_commit }}
+          ref: ${{ inputs.qualification_commit || inputs.gchat_commit }}
           persist-credentials: false
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
@@ -49,17 +52,20 @@ jobs:
           REQUEST: ${{ inputs.request_id }}
           INVITATION_SECRET: ${{ inputs.invitation_secret }}
           EXPECTED_COMMIT: ${{ inputs.gchat_commit }}
+          QUALIFICATION_COMMIT: ${{ inputs.qualification_commit || inputs.gchat_commit }}
           TARGET: ${{ inputs.target }}
         run: |
           python - <<'PY'
           import base64,json,os,re,subprocess,sys
           from pathlib import Path
           sys.path.insert(0,'scripts')
-          from release_pair import canonical,validate
+          from release_pair import canonical,validate,identity
           from mobile_acceptance_inputs import validate_inputs
           assert re.fullmatch('[0-9a-f]{64}',os.environ['REQUEST'])
           assert re.fullmatch('GCHAT_ACCEPTANCE_[0-9A-F]{64}',os.environ['INVITATION_SECRET'])
-          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==os.environ['EXPECTED_COMMIT']
+          source=identity(Path('.'))
+          assert source['commit']==os.environ['QUALIFICATION_COMMIT']
+          assert not subprocess.check_output(['git','status','--porcelain'],text=True).strip()
           manifest=validate(json.loads(base64.b64decode(os.environ['RELEASE_MANIFEST'],validate=True)))
           assert manifest['sources']['gchat']['commit']==os.environ['EXPECTED_COMMIT']
           inputs=validate_inputs(json.loads(base64.b64decode(os.environ['ARTIFACTS'],validate=True)))
@@ -67,6 +73,9 @@ jobs:
           assert inputs['current']['sources']=={k:v['commit'] for k,v in manifest['sources'].items()}
           Path('acceptance-manifest.json').write_bytes(canonical(manifest))
           Path('acceptance-inputs.json').write_bytes(canonical(inputs))
+          Path('acceptance-worker.json').write_bytes(canonical({
+              'schema':1,'request':os.environ['REQUEST'],'release_id':manifest['release_id'],
+              'sources':manifest['sources'],'target':inputs['target'],**source}))
           PY
       - name: Prepare Android and retained Linux peer tools
         if: inputs.target == 'android'
@@ -105,6 +114,24 @@ jobs:
         run: |
           python scripts/test-mobile-upgrade.py --inputs acceptance-inputs.json --manifest acceptance-manifest.json --output acceptance
           git diff --exit-code
+      - name: Retain the independent qualification source binding
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,subprocess,sys
+          from pathlib import Path
+          sys.path.insert(0,'scripts')
+          from release_pair import canonical,identity
+          source=Path('acceptance-worker.json')
+          if source.is_file():
+              binding=json.loads(source.read_text())
+              binding['source_unchanged']=(identity(Path('.'))=={k:binding[k] for k in ('commit','tree')}
+                  and subprocess.run(['git','diff','--quiet','HEAD']).returncode==0)
+              Path('acceptance').mkdir(exist_ok=True)
+              Path('acceptance/worker.json').write_bytes(canonical(binding))
+              assert binding['source_unchanged']
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -112,6 +139,7 @@ jobs:
           retention-days: 30
           if-no-files-found: error
           path: |
+            acceptance/worker.json
             acceptance/report.json
             acceptance/rollback/report.json
             acceptance/network/report.json

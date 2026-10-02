@@ -148,7 +148,9 @@ def fingerprints(repositories, sources):
         infrastructure[project] = [entry for entry in entries if
             (project == 'gcoms' and entry[0] not in GCOMS_STATUS_FILES) or
             (project == 'gchat' and (entry[0].startswith(('scripts/', 'release/')) or
-                                    entry[0] == '.dockerignore'))]
+                                    entry[0] in ('.dockerignore',
+                                        '.github/workflows/native-acceptance.yml',
+                                        '.github/workflows/mobile-acceptance.yml')))]
         artifacts[project] = [entry for entry in entries
                               if not qualification_only(project, entry[0])]
     return {'schema': 1,

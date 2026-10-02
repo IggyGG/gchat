@@ -50,6 +50,110 @@ def fixture():
 
 
 class NativeAcceptanceTests(unittest.TestCase):
+    def test_qualification_reference_reconciles_lost_publication_and_never_replaces_sources(self):
+        commit = '7' * 40
+        name = 'release/qualification-' + commit
+        reference = {'ref': 'refs/heads/' + name, 'object': {'type': 'commit', 'sha': commit}}
+        with patch.object(acceptance, 'gh', side_effect=[[], subprocess.TimeoutExpired('provider', 1), reference]) as api:
+            self.assertEqual(acceptance.qualification_ref(commit), name)
+            self.assertEqual(api.call_args_list[1].kwargs['body'], {'ref': reference['ref'], 'sha': commit})
+            self.assertFalse(any(call.kwargs.get('method') == 'PATCH' for call in api.call_args_list))
+        with patch.object(acceptance, 'gh', return_value=[reference]) as api:
+            self.assertEqual(acceptance.qualification_ref(commit), name)
+            api.assert_called_once()
+        for bad in ({**reference, 'object': {'type': 'commit', 'sha': '8'*40}},
+                    {**reference, 'ref': reference['ref'] + '-other'},
+                    {**reference, 'object': {'type': 'tag', 'sha': commit}}):
+            with self.subTest(bad=bad), patch.object(acceptance, 'gh', return_value=[bad]) as api:
+                with self.assertRaisesRegex(ValueError, 'frozen source'):
+                    acceptance.qualification_ref(commit)
+                api.assert_called_once()
+
+    def test_qualification_worker_keeps_exact_retained_application_and_request_binding(self):
+        manifest, specs, _, _, _ = fixture()
+        intent = {'request': '1'*64, 'qualification_commit': '7'*40, 'qualification_tree': '8'*40}
+        binding = {'schema': 1, 'request': intent['request'], 'release_id': manifest['release_id'],
+                   'sources': manifest['sources'], 'target': specs['target'], 'commit': '7'*40,
+                   'tree': '8'*40, 'source_unchanged': True}
+        acceptance.verify_worker(binding, intent, manifest, specs['target'])
+        for field, value in (('request', '2'*64), ('release_id', '3'*64), ('sources', {}),
+                             ('target', 'ios'), ('commit', manifest['sources']['gchat']['commit']),
+                             ('tree', 'main'), ('tree', '9'*40), ('tree', None), ('source_unchanged', False)):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                acceptance.verify_worker({**binding, field: value}, intent, manifest, specs['target'])
+
+    def test_new_qualification_dispatch_does_not_relabel_or_repeat_an_unknown_app_worker(self):
+        manifest, inputs, _, _, _ = fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary); grant = work / 'grant.json'; grant.write_text('{}')
+            config = {'grant_config': str(grant), 'qualification_commit': '7'*40}
+            request = '1'*64
+            def provider_api(path, **kwargs):
+                if path.startswith('git/commits/'):
+                    return {'sha': path.rsplit('/', 1)[-1], 'tree': {'sha': '8'*40}}
+                if path.endswith('/dispatches'):
+                    raise subprocess.TimeoutExpired('provider', 1)
+                return {'workflow_runs': []}
+            with patch.object(acceptance, 'provider', return_value=inputs['current']), \
+                 patch.object(acceptance, 'baseline', return_value=inputs['baseline']), \
+                 patch.object(acceptance, 'qualification_ref', side_effect=lambda c: 'release/qualification-' + c), \
+                 patch.object(acceptance, 'gh', side_effect=provider_api) as api, \
+                 patch.object(acceptance, 'ssh', return_value=b'{"invitation":"fixture-with-no-authority"}') as ssh, \
+                 patch.object(acceptance.subprocess, 'run') as command:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    acceptance.collect(work, config, manifest, inputs['target'], work, request)
+                marker = (work / 'acceptance-intent.json').read_bytes()
+                dispatched = next(call for call in api.call_args_list if call.args[0].endswith('/dispatches'))
+                self.assertEqual(dispatched.kwargs['body']['ref'], 'release/qualification-' + '7'*40)
+                self.assertEqual(dispatched.kwargs['body']['inputs']['gchat_commit'], manifest['sources']['gchat']['commit'])
+                self.assertEqual(dispatched.kwargs['body']['inputs']['qualification_commit'], '7'*40)
+                self.assertIsNone(acceptance.collect(work, {**config, 'qualification_commit': '8'*40},
+                                                    manifest, inputs['target'], work, request))
+                self.assertEqual((work / 'acceptance-intent.json').read_bytes(), marker)
+                self.assertEqual(sum(call.args[0].endswith('/dispatches') for call in api.call_args_list), 1)
+                ssh.assert_called_once(); command.assert_called_once()
+
+    def test_only_retained_confirmed_failure_can_create_a_corrected_followup(self):
+        manifest, inputs, _, _, _ = fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary); target = inputs['target']; request = '1'*64
+            intent = {'request': request, 'sources': manifest['sources'], 'target': target,
+                      'qualification_commit': '7'*40, 'cleaned': True}
+            atomic_json(work / 'acceptance-intent.json', intent)
+            run = {'status': 'completed', 'conclusion': 'failure', 'head_sha': '7'*40,
+                   'event': 'workflow_dispatch', 'path': '.github/workflows/native-acceptance.yml',
+                   'display_title': acceptance.PREFIX + request,
+                   'head_repository': {'full_name': 'IggyGG/gchat'}}
+            atomic_json(work / 'acceptance-run.json', run)
+            import zipfile
+            with zipfile.ZipFile(work / 'acceptance.zip', 'w') as archive:
+                archive.writestr('report.json', '{"passed":false}')
+            atomic_json(work / 'acceptance-failed.json', {
+                'request': request, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+                'target': target, 'qualification_commit': '7'*40, 'passed': False,
+                'run_sha256': acceptance.digest(work / 'acceptance-run.json'),
+                'archive_sha256': acceptance.digest(work / 'acceptance.zip'),
+                'intent_sha256': acceptance.digest(work / 'acceptance-intent.json')})
+            retained = {name: (work / name).read_bytes() for name in (
+                'acceptance-intent.json', 'acceptance-run.json', 'acceptance.zip', 'acceptance-failed.json')}
+            with self.assertRaisesRegex(ValueError, 'original reports retained'):
+                acceptance.failed_followup(work, {}, manifest, target, work, request, intent, '7'*40)
+            with patch.object(acceptance, 'collect', return_value=None) as collect:
+                self.assertEqual(acceptance.failed_followup(work, {}, manifest, target, work, request, intent, '8'*40), (True, None))
+                first = collect.call_args
+                pointer = (work / 'acceptance-followup.json').read_bytes()
+                acceptance.failed_followup(work, {}, manifest, target, work, request, intent, '9'*40)
+                self.assertEqual((work / 'acceptance-followup.json').read_bytes(), pointer)
+                self.assertEqual(collect.call_args.args[-1], first.args[-1])
+                self.assertEqual(collect.call_args.kwargs['frozen_revision'], '8'*40)
+                self.assertNotEqual(first.args[-1], request)
+            for name, content in retained.items():
+                self.assertEqual((work / name).read_bytes(), content)
+            (work / 'acceptance.zip').write_bytes(b'changed retained archive')
+            with patch.object(acceptance, 'collect') as collect, self.assertRaisesRegex(ValueError, 'outcome changed'):
+                acceptance.failed_followup(work, {}, manifest, target, work, request, intent, '9'*40)
+            collect.assert_not_called()
+
     def test_baseline_rotates_to_available_predecessor_and_keeps_seed_as_fallback(self):
         with tempfile.TemporaryDirectory() as temporary, closing(Ledger(Path(temporary) / 'ledger.sqlite')) as ledger:
             root = Path(temporary)
