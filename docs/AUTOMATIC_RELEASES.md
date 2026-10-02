@@ -17,6 +17,13 @@ immutable controller image and the release PVC, without signing keys or network
 access. Install that image only after its source and native compaction controls
 pass. Storage headroom still blocks new build stages when capacity is insufficient.
 
+Builds blocked solely by storage resume when the unchanged headroom threshold is
+met. This also recognizes retained blocks from older controller versions. An
+older candidate is superseded only if its build effect was never dispatched;
+original request markers, receipts and provider identities are retained. Existing
+builds and verifications keep their ownership. Recent candidates are polled first
+so old diagnostics cannot delay starting otherwise eligible current work.
+
 # Automatic releases
 
 A release is one immutable GChat/GComs source pair. A successful build, a submitted

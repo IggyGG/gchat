@@ -18,6 +18,13 @@ from release_ledger import Ledger
 from release_pair import canonical, validate
 
 
+STORAGE_HEADROOM_REASON = 'release storage is below reserved headroom; export retained artifacts before retrying'
+
+
+class StorageHeadroomError(ValueError):
+    """A build must wait for capacity; its frozen request remains authoritative."""
+
+
 def atomic_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,6 +107,34 @@ class Coordinator:
         path = self.recovery_path(release, platform)
         if not path.exists(): return False
         recovery = json.loads(path.read_text())
+        capacity = (target['resume_state'] == 'building' and recovery['stage'] == 'build'
+                    and (recovery.get('cause') == 'storage_headroom'
+                         or target.get('reason') == STORAGE_HEADROOM_REASON))
+        if capacity:
+            import shutil
+            if shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
+                return False
+            if self.config.get('automatic_recovery', False):
+                effect = self.ledger.db.execute('''SELECT id,state,external_id FROM effects
+                    WHERE candidate=? AND platform=? AND kind='build' ''', (release, platform)).fetchone()
+                untouched = effect is None or (
+                    effect['state'] == 'reserved' and effect['external_id'] is None
+                    and not (self.state / 'jobs' / effect['id'] / 'attempted.json').exists()
+                    and not (self.state / 'jobs' / effect['id'] / 'receipt.json').exists())
+                if untouched:
+                    newer = self.ledger.db.execute('''SELECT 1 FROM candidates c JOIN platforms p
+                        ON p.candidate=c.id WHERE p.platform=? AND p.state!='superseded'
+                        AND c.seq>(SELECT seq FROM candidates WHERE id=?) LIMIT 1''', (platform, release)).fetchone()
+                    if newer:
+                        self.ledger.transition(release, platform, 'superseded',
+                            reason='Newer candidate queued before build started; storage recovered')
+                        return True
+                    active = self.ledger.db.execute('''SELECT 1 FROM platforms WHERE platform=?
+                        AND candidate!=? AND state IN ('building','verifying') LIMIT 1''', (platform, release)).fetchone()
+                    if active:
+                        return False
+                self.ledger.transition(release, platform, 'building', evidence=target['evidence'])
+                return True
         changed = recovery['revision'] != self.worker_revision(platform, recovery['stage'])
         retry = (self.config.get('automatic_recovery', False) and recovery.get('transient')
                  and recovery['attempts'] <= 5 and time.time() >= recovery['retry_at'])
@@ -115,6 +150,7 @@ class Coordinator:
         revision = self.worker_revision(platform, stage)
         attempts = previous.get('attempts', 0) + 1 if previous.get('revision') == revision else 1
         atomic_json(path, {'stage': stage, 'revision': revision, 'attempts': attempts,
+                          'cause': 'storage_headroom' if isinstance(error, StorageHeadroomError) else 'worker',
                           'transient': isinstance(error, (TimeoutError, ConnectionError, subprocess.TimeoutExpired)),
                           'retry_at': int(time.time()) + min(300, 30 * 2 ** min(attempts - 1, 4))})
 
@@ -166,7 +202,7 @@ class Coordinator:
         if stage == 'build':
             import shutil
             if shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
-                raise ValueError('release storage is below reserved headroom; export retained artifacts before retrying')
+                raise StorageHeadroomError(STORAGE_HEADROOM_REASON)
         effect_kind = stage if stage != 'observe' else 'observe-' + str(time.time_ns())
         if stage == 'acceptance' and 'max_age_seconds' in recipe:
             age = recipe['max_age_seconds']
@@ -323,7 +359,8 @@ class Coordinator:
             except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
                 atomic_json(self.state / 'coalescing-blocked.json',
                             {'reason': type(error).__name__, 'at': int(time.time())})
-        rows = self.ledger.db.execute('SELECT candidate,platform FROM platforms ORDER BY rowid').fetchall()
+        rows = self.ledger.db.execute('''SELECT p.candidate,p.platform FROM platforms p
+            JOIN candidates c ON c.id=p.candidate ORDER BY c.seq DESC,p.rowid''').fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
         self.reconcile_deployment()

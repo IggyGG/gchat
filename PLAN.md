@@ -1,7 +1,18 @@
-Controller generation 57 (`7808a43`) is active with two ready containers, zero
-restarts, 118 actual-image/Kubernetes runtime checks and 219 verified source
-hashes. It selects qualified Linux infrastructure before advancing the desired
-rollout; the previous digest, independent watchdog and scheduled compaction pass.
+Controller generation 58 (`3fec49a`) is active with two ready containers, zero
+restarts, 125 actual-image/Kubernetes runtime checks and 219 verified source
+hashes. Its previous digest and five private baselines are verified; the
+independent watchdog succeeds. Retained-image compaction verified 15 images and
+recovered 4,894,228,480 bytes without removing any paths, bytes or permissions.
+The hourly recipe passed on 16 images, recovering another 453,869,568 bytes.
+Native Linux/Windows tooling portability passes with retained provider archives.
+
+Storage-blocked builds now have a readiness-based recovery path: sufficient
+capacity resumes the original request without a controller revision change.
+Older work can be superseded only before its external action; active requests
+and receipts remain authoritative. Polling visits recent candidates first while
+retaining older active work. All 26 focused recovery controls and 684 Python tests pass with five existing
+skips; L0 checks 802 paths and API 2/3 contracts remain unchanged. Actual-image
+qualification and activation remain pending.
 
 Native workers now install the pinned `cryptography==50.0.2` test dependency.
 Mac/Windows build qualification retains signatures and installed offline lifecycle;
@@ -15,18 +26,6 @@ provider archives remain retained. API 3/API 2 coexistence, RPC 1, IPC 26, the
 64-member limit and covered receipts are unchanged. Fleet/client activation and
 a subsequent unattended release are still required before SDK 1.0.
 See `docs/evidence/stabilization-20261001/live-controller-and-acceptance.json`.
-
-Rollback image compaction now authenticates retained controller receipts, pinned
-manifests and every configuration/layer blob before sharing identical large
-layers. It retains every rollback path, byte and permission, supports directory
-and legacy OCI archives, and rejects changed provenance, symlinks, nonregular
-files and replacement races. All 12 compaction controls and 680 Python checks
-pass with five existing skips; L0 checks 802 paths and stable contracts remain
-unchanged. The actual image, Kubernetes maintenance run and hourly activation
-remain pending. A native Windows portability failure was isolated to POSIX mode
-assertions; encryption, replay and cleanup still run on both platforms, while
-publisher permissions remain mandatory on POSIX. Original provider archives and
-failed reports are retained; the corrected native Windows rerun is still required.
 
 Earlier controller checkpoints below retain their original observations; current
 activation and pending work are described above.

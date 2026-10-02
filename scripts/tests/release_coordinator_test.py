@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from release_coordinator import Coordinator, atomic_json, read_receipt
+from release_coordinator import Coordinator, StorageHeadroomError, STORAGE_HEADROOM_REASON, atomic_json, read_receipt
 from release_pair import canonical
 from release_jobs import extract
 from release_compatibility import verify
@@ -230,6 +230,83 @@ class CoordinatorTests(unittest.TestCase):
             c.step(release,'android')
             self.assertEqual(worker.call_count,2)
             self.assertEqual(worker.call_args.args[0],['recover'])
+
+    def newer_candidate(self):
+        manifest=copy.deepcopy(self.manifest)
+        for platform, version in manifest['versions'].items():
+            pieces=version.split('.');pieces[-1]=str(int(pieces[-1])+1)
+            manifest['versions'][platform]='.'.join(pieces)
+        manifest['release_id']=hashlib.sha256(canonical({k:v for k,v in manifest.items() if k!='release_id'})).hexdigest()
+        return manifest
+
+    def test_storage_recovers_without_revision_change_and_preserves_legacy_block(self):
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy):
+                c=Coordinator(self.root/str(legacy),{'minimum_free_bytes':10,'automatic_recovery':True,
+                    'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})
+                self.addCleanup(c.ledger.close);release=c.ledger.add(self.manifest)
+                with patch('shutil.disk_usage',return_value=type('Disk',(),{'free':9})()),patch('release_coordinator.subprocess.run') as worker:
+                    c.step(release,'android');c.step(release,'android')
+                    self.assertEqual(c.ledger.target(release,'android')['state'],'blocked');worker.assert_not_called()
+                path=c.recovery_path(release,'android');recovery=json.loads(path.read_text())
+                self.assertEqual(recovery['cause'],'storage_headroom')
+                self.assertEqual(recovery['revision'],c.worker_revision('android','build'))
+                if legacy:
+                    recovery.pop('cause');atomic_json(path,recovery)
+                c.config['automatic_recovery']=False
+                with patch('shutil.disk_usage',return_value=type('Disk',(),{'free':10})()),patch('release_coordinator.subprocess.run',return_value=type('Result',(),{'returncode':75})()) as worker:
+                    c.step(release,'android');worker.assert_not_called()
+                    c.config['automatic_recovery']=True;c.step(release,'android')
+                    self.assertEqual(worker.call_args.args[0],['first'])
+                    effect=c.ledger.effect(release,'android','build');c.step(release,'android')
+                    self.assertEqual(worker.call_args.args[0],['recover'])
+                    self.assertEqual(c.ledger.effect(release,'android','build')['id'],effect['id'])
+
+    def test_capacity_coalesces_only_undispatched_work_and_keeps_frozen_request(self):
+        for ownership in ('none','reserved','attempted'):
+            with self.subTest(ownership=ownership):
+                c=Coordinator(self.root/ownership,{'minimum_free_bytes':10,'automatic_recovery':True,
+                    'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})
+                self.addCleanup(c.ledger.close);old=c.ledger.add(self.manifest)
+                with patch('shutil.disk_usage',return_value=type('Disk',(),{'free':9})()):c.step(old,'android')
+                effect=None
+                if ownership!='none':
+                    effect=c.ledger.effect(old,'android','build')
+                    if ownership=='attempted':atomic_json(c.state/'jobs'/effect['id']/'attempted.json',{'request_id':effect['id']})
+                latest=c.ledger.add(self.newer_candidate())
+                with patch('shutil.disk_usage',return_value=type('Disk',(),{'free':10})()),patch('release_coordinator.subprocess.run',return_value=type('Result',(),{'returncode':75})()) as worker:
+                    c.step(old,'android')
+                    if ownership=='attempted':
+                        self.assertEqual(worker.call_args.args[0],['recover'])
+                        self.assertEqual(c.ledger.target(old,'android')['state'],'building')
+                        c.step(latest,'android');self.assertEqual(worker.call_count,1)
+                    else:
+                        worker.assert_not_called();self.assertEqual(c.ledger.target(old,'android')['state'],'superseded')
+                        c.step(latest,'android');self.assertEqual(worker.call_args.args[0],['first'])
+                if effect:self.assertEqual(c.ledger.effect(old,'android','build')['id'],effect['id'])
+
+    def test_capacity_recovery_waits_for_another_active_build_or_verification(self):
+        c=Coordinator(self.root,{'minimum_free_bytes':10,'automatic_recovery':True,
+            'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})
+        self.addCleanup(c.ledger.close);old=c.ledger.add(self.manifest);latest=c.ledger.add(self.newer_candidate())
+        c.ledger.transition(old,'android','building');c.ledger.transition(latest,'android','building')
+        c.record_failure(latest,'android','build',StorageHeadroomError(STORAGE_HEADROOM_REASON))
+        c.ledger.transition(latest,'android','blocked',reason=STORAGE_HEADROOM_REASON)
+        with patch('shutil.disk_usage',return_value=type('Disk',(),{'free':10})()),patch('release_coordinator.subprocess.run',return_value=type('Result',(),{'returncode':75})()) as worker:
+            c.step(latest,'android');worker.assert_not_called()
+            c.ledger.transition(old,'android','verifying');c.step(latest,'android');worker.assert_not_called()
+            c.ledger.transition(old,'android','verified',evidence='a'*64);c.step(latest,'android')
+            self.assertEqual(worker.call_args.args[0],['first'])
+
+    def test_polling_prioritizes_new_candidates_and_retains_old_active_work(self):
+        c=Coordinator(self.root,{'workers':{}});self.addCleanup(c.ledger.close)
+        old=c.ledger.add(self.manifest);c.ledger.transition(old,'android','building')
+        latest=c.ledger.add(self.newer_candidate())
+        with patch.object(c,'step') as step:c.tick()
+        calls=[v.args[0] for v in step.call_args_list]
+        self.assertEqual(calls[:7],[latest]*7);self.assertEqual(calls[7:],[old]*7)
+        self.assertEqual(c.ledger.target(old,'android')['state'],'building')
+
     def test_archive_traversal_and_symlink_rejected(self):
         import zipfile
         for name in ('../escape','/absolute','C:/windows','back\\slash','file:stream','file\0hidden'):

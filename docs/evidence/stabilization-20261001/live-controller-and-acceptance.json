@@ -2,27 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "7808a43d4ee8b5af76cc075af5f6af0cbcde6cde",
-    "image": "sha256:1ede4419c93629a25c47fbff3a97ade19c21ed2538e95cb9619260fc0707d4d7",
+    "gchat_commit": "3fec49aa299685a7863ba311f9a88f647b7db0d5",
+    "image": "sha256:af8a802e9d3a2f0efacff69b700e9ba63fb3d4e3f2f3854de7489ba7af8aa1a5",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-02T20:23:07Z",
+    "watchdog_last_success": "2026-10-02T21:11:11Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:9261131c1dbbfab3e29cae5204aea746764131286e4800795d3cb8ebc37bcbca",
-    "archive_sha256": "fb98adf374bec8e597fe1d39a5100097585f7e14e8b94a79326e0b19d90d8c6a",
-    "observed_at": "2026-10-02T20:31:04.186427+00:00",
+    "configuration_digest": "sha256:e9d1cd08bf90f97ea89879b576765d85e7d4739c3c0441a0741a3bd01218eb58",
+    "archive_sha256": "7a2f49807c6424a2c17ad3c99a7ed8d8d50967ef626fbc0addfb6af57f7497d0",
+    "observed_at": "2026-10-02T21:11:23.920546+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:e8c3951c608207c65ecaa22c103d71d4b52083be563afca4dbe40c2c186e754b",
+    "previous_digest": "sha256:1ede4419c93629a25c47fbff3a97ade19c21ed2538e95cb9619260fc0707d4d7",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 118,
-    "deployment_generation": 57,
+    "validation_tests": 125,
+    "deployment_generation": 58,
     "source_files_verified": 219
   },
   "hosted_test_retention": {
@@ -1099,7 +1099,7 @@
       "gchat_commit": "3a11347bd6d2dd4410e73549fdfb34246057f2c3",
       "windows_original_failure_retained": true,
       "linux_passed": true,
-      "windows_corrected_rerun_pending": true,
+      "windows_corrected_rerun_pending": false,
       "encryption_replay_cleanup_required_on_both_hosts": true,
       "publisher_permission_assertions_posix_only": true,
       "original_provider_archives": [
@@ -1113,12 +1113,57 @@
           "bytes": 6681,
           "sha256": "78c830fe7b2a4a0617fe7cc87b932cc1eb0d7299957ed5438df0b3efa7ba9688"
         }
-      ]
+      ],
+      "corrected_run": 37063792988,
+      "corrected_source": "3fec49aa299685a7863ba311f9a88f647b7db0d5",
+      "original_provider_archives_after_correction": [
+        {
+          "artifact": 11252260491,
+          "name": "release-tools-windows-2022",
+          "sha256": "be6331cb5788b1635d780677388703fe0c6f39677c8cf65c3eb1595fba9eec3c",
+          "bytes": 7109,
+          "source": [
+            "3fec49aa299685a7863ba311f9a88f647b7db0d5",
+            "caef76f913e60ed80e2a17e9ca5d8914498af03b"
+          ],
+          "results": {
+            "release.log": [
+              "Ran 208 tests in 55.697s\r",
+              "OK (skipped=41)\r"
+            ],
+            "rollback.log": [
+              "Ran 3 tests in 0.054s\r",
+              "OK\r"
+            ]
+          }
+        },
+        {
+          "artifact": 11251578547,
+          "name": "release-tools-ubuntu-24.04",
+          "sha256": "16cdd4eedeea54ecf1806f9c563a204793824e1484a54fd48f64eb07a200e520",
+          "bytes": 6896,
+          "source": [
+            "3fec49aa299685a7863ba311f9a88f647b7db0d5",
+            "caef76f913e60ed80e2a17e9ca5d8914498af03b"
+          ],
+          "results": {
+            "release.log": [
+              "Ran 208 tests in 15.052s",
+              "OK (skipped=4)"
+            ],
+            "rollback.log": [
+              "Ran 3 tests in 0.022s",
+              "OK"
+            ]
+          }
+        }
+      ],
+      "linux_windows_verified": true
     }
   },
   "rollback_image_compaction": {
     "implemented": true,
-    "activated": false,
+    "activated": true,
     "controls": 12,
     "full_python_tests": 680,
     "existing_skips": 5,
@@ -1129,10 +1174,38 @@
       "dir",
       "legacy-oci"
     ],
-    "actual_image_qualification_pending": true,
-    "kubernetes_maintenance_pending": true,
-    "hourly_activation_pending": true,
+    "actual_image_qualification_pending": false,
+    "kubernetes_maintenance_pending": false,
+    "hourly_activation_pending": false,
     "evidence": "test-evidence/stabilization-20261001/python-220.log",
-    "codematch": "unreachable"
+    "codematch": "unreachable",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:af8a802e9d3a2f0efacff69b700e9ba63fb3d4e3f2f3854de7489ba7af8aa1a5",
+    "initial_images_verified": 15,
+    "initial_layer_shares": 52,
+    "initial_reclaimed_bytes": 4894228480,
+    "every_image_reauthenticated_after_sharing": true,
+    "second_run_idempotent": true,
+    "hourly_recipe_passed": true,
+    "recipe_images_verified": 16,
+    "recipe_reclaimed_bytes": 453869568,
+    "no_keys_or_network_in_hourly_recipe": true
+  },
+  "storage_recovery_automation": {
+    "implemented": true,
+    "activated": false,
+    "focused_controls": 26,
+    "legacy_storage_blocks_supported": true,
+    "existing_request_markers_and_receipts_preserved": true,
+    "undispatched_older_work_only_superseded": true,
+    "recent_candidates_polled_first": true,
+    "capacity_threshold_unchanged": true,
+    "codematch": "unreachable",
+    "actual_image_and_activation_pending": true,
+    "full_python_tests": 684,
+    "existing_skips": 5,
+    "l0_source_paths": 802,
+    "stable_methods": 18,
+    "optional_methods": 3,
+    "api_2_fixtures_unchanged": true
   }
 }
