@@ -8,13 +8,20 @@ recipe passes on the controller's node with 17 retained images. All 685 Python
 tests pass with five existing skips; L0 checks 802 paths, 18 stable/three optional
 methods remain, and API 2 fixtures are unchanged.
 
-The retained original iOS simulator app passes actual cold launch and relaunch
-on the available Apple Silicon Mac with Xcode 26.2. The executable hash is
-unchanged; both 15-second liveness checks, screenshots and owned-device cleanup
-pass under the original 60-second launch limit. This independently proves
-startup, while the original provider lifecycle, native messaging, fleet/client
-activation and a subsequent unattended release remain required. No SDK 1.0
-qualification or whole-fleet activation is claimed.
+The retained original iOS simulator app passes actual cold launch, relaunch
+and its native profile/background/reopen XCTest on the available Apple Silicon
+Mac with Xcode 26.2. Its executable is unchanged and is neither rebuilt nor
+re-signed. Both original 15-second liveness checks pass, followed by one native
+XCTest with no failures or skips (98.556 seconds); owned-device cleanup passes.
+The original failed provider verdict remains retained. Native messaging,
+fleet/client activation and a subsequent unattended release remain required.
+
+Android build 1113 passes its original provider run. Independent verification
+checks the complete 161,577,773-byte archive, both exact Git source archives,
+23 retained references, eight native ELF entries with 16 KiB alignment, eight
+JVM tests and the installed profile/background/reopen and invitation-picker
+journeys. Signing and owned-emulator cleanup pass. Live delivery acceptance is
+still required. No SDK 1.0 qualification or whole-fleet activation is claimed.
 
 Earlier controller implementation checkpoints retain their original observations.
 

@@ -98,9 +98,9 @@
     }
   },
   "component_validation": {
-    "python_tests": 673,
+    "python_tests": 685,
     "python_skipped": 5,
-    "controller_validation_tests": 118
+    "controller_validation_tests": 130
   },
   "open": [
     "Mobile SDK combinations; desktop native source 1654677 passes all four platforms and 40 size comparisons",
@@ -1189,6 +1189,39 @@
       "push_qualified": false,
       "physical_device_qualified": false,
       "raw_evidence": "operations/ios-mac-startup-evidence-242/native-proof.json"
+    },
+    "ios_original_app_lifecycle_diagnostic": {
+      "passed": true,
+      "scope": "ios_installed_simulator_profile_background_reopen",
+      "original_provider_run": 37039423503,
+      "original_provider_artifact": 11244692599,
+      "original_provider_verdict_unchanged": true,
+      "application_recompiled": false,
+      "application_resigned": false,
+      "simulator_executable_sha256": "1214f87b0757a8a0ef8f3f67687083a587c7cd078866af3cc08abf9cc146d89d",
+      "simulator_executable_bytes": 34640224,
+      "original_binary_unchanged": true,
+      "diagnostic_source": {
+        "commit": "3792ae8b907646df237feb2846f2f4f4b8f64742",
+        "tree": "2347ff11dce6257017c6f3a3334796794ffffd38"
+      },
+      "source_files_verified": 219,
+      "xcode": "Xcode 26.2\nBuild version 17C52",
+      "simulator_runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+      "native_xctest_passed": 1,
+      "native_xctest_failed": 0,
+      "native_xctest_skipped": 0,
+      "journey_seconds": 98.556,
+      "cleanup_complete": true,
+      "cleanup_errors": [],
+      "xctest_archive_sha256": "09d7738e2000082d47fcfe450ff8e3bc1b6ce55c8582cf7fdf769a6f6a0ec484",
+      "xctest_archive_bytes": 36688871,
+      "profile_journey_qualified": true,
+      "messaging_qualified": false,
+      "push_qualified": false,
+      "physical_device_qualified": false,
+      "raw_evidence": "operations/ios-mac-lifecycle-evidence-258/native-lifecycle-proof-258.json",
+      "raw_evidence_sha256": "a2f7031b338c5fca03a4c4cc36ce04d987110b9ab75b5162ed241977ba13a6dc"
     }
   },
   "rollback_image_compaction": {
@@ -1314,5 +1347,39 @@
       }
     ],
     "all_seven_retained_builds_resumed_observed": true
+  },
+  "current_android_native_build": {
+    "scope": "Independent original Android provider archive, native binaries and installed lifecycle verification",
+    "passed": true,
+    "provider_run": 37065245633,
+    "provider_artifact": 11252894848,
+    "archive_sha256": "00a25f852f350bc8d7a2cd505b6187b27fd3703d7c1cbb2116953ad67c62bb39",
+    "archive_bytes": 161577773,
+    "source_bindings": {
+      "gchat": {
+        "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+        "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+      },
+      "gcoms": {
+        "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+        "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+      }
+    },
+    "release_id": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+    "version_code": 1113,
+    "native_jvm_tests": 8,
+    "source_archives_independently_verified": 2,
+    "minimum_elf_alignment": 16384,
+    "installed_profile_lifecycle_passed": true,
+    "picker_lifecycle_passed": true,
+    "owned_emulator_cleanup_passed": true,
+    "network_delivery_qualified": false,
+    "push_qualified": false,
+    "physical_device_qualified": false,
+    "retained_references_verified": 23,
+    "native_elf_entries_verified": 8,
+    "raw_evidence": "operations/native-android-independent-260.json",
+    "raw_evidence_sha256": "fd1180739a3ed9d7d35514ce1f050f5483d8396171454cf75c5cb4746327c764",
+    "fleet_acceptance_complete": false
   }
 }
