@@ -1,3 +1,13 @@
+Controller image builds now include an automatic runtime gate. The build uses
+committed Git bytes, verifies the actual image's source inventory and baked
+controller revision, and runs the release/acceptance/rollback/compaction suites
+without network access, keys or state mounts. Failed or skipped tests prevent
+bundle completion and retain their log. New schema 2 infrastructure archives
+include `controller-runtime.json` and `controller-runtime.log`, bound to the
+original source and image configuration; original schema 1 bundles remain readable.
+All 655 Python tests pass with five existing skips. Actual-image qualification
+for this new gate remains pending; the existing qualified controller stays active.
+
 Release storage compaction is active in controller generation 53 (`aca844a`).
 It verifies completed source receipts and original provider ZIPs before sharing
 identical extraction and verification copies with hard links. The first live run

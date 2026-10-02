@@ -1,3 +1,15 @@
+Run `controller_runtime_test.py` and `release_infrastructure_bundle_test.py`.
+Require wrong production revisions, changed/symlinked/unsafe source paths,
+failed/skipped tests, test-time source mutations, incomplete inventories and
+source/image/log mismatches to fail before a success receipt. Failed images must
+retain their log. Execute the actual controller image with its baked revision,
+no network, a read-only root and a disposable `/tmp`; do not mount keys or release
+state. Schema 2 infrastructure must retain the runtime receipt/log and verify both;
+legacy schema 1 source-bound archives remain readable without relabelling them as
+having passed the new gate. Seven runtime and eleven infrastructure controls pass;
+all 655 Python tests pass with five existing skips. Actual-image gate execution
+remains pending for this new source.
+
 Release storage compaction is active in controller generation 53 (`aca844a`).
 It verifies completed source receipts and original provider ZIPs before sharing
 identical extraction and verification copies with hard links. The first live run

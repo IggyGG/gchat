@@ -305,6 +305,22 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/compaction-scheduled-143.log",
       "sha256": "55d4c99500e9503fe8d4f3e1e3d1cf72fddebefbf0b0e6cf791259b5837a41c0"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/python-147.log",
+      "sha256": "14432eaaa384523adeb2b40b506e4803d8ad6d35c40d8a085f1d538c43305419"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/l0-147.log",
+      "sha256": "7d90ab8144fe8f5c00590d0f5262e58e9c126b15f27459155ba8bcfb328c63dd"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/controller-runtime-146.log",
+      "sha256": "53a7fc351cee2f07cb5422365ba78000334f5f181c672afcf57a9dfb708f1674"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/infrastructure-runtime-146.log",
+      "sha256": "5ed82d91f9524bab30352b3cae18b7dc057c9416833c533a9a8c7e6fc333e1de"
     }
   ],
   "native_progress": {
@@ -659,5 +675,30 @@
     "expansion_pending": true,
     "build_headroom_gate_unchanged": true,
     "full_fleet_qualification": false
+  },
+  "controller_runtime_gate": {
+    "implemented": true,
+    "automatic_image_gate_activated": false,
+    "new_bundle_schema": 2,
+    "legacy_bundle_schema": 1,
+    "production_revision_required": true,
+    "committed_source_context": true,
+    "network_disabled": true,
+    "readonly_root": true,
+    "keys_and_state_unmounted": true,
+    "minimum_actual_image_tests": 101,
+    "runtime_controls": 7,
+    "infrastructure_controls": 11,
+    "python_tests": 655,
+    "existing_skips": 5,
+    "source_paths_checked": 800,
+    "actual_image_qualification_pending": true,
+    "source_sha256": {
+      "scripts/controller_runtime.py": "fa3b0c32a0ae9a29b9b6e4909fda3291e0786b11bb3900e0adad0b245a7f6396",
+      "scripts/tests/controller_runtime_test.py": "70cc79a41f2a872d7d90af5f3ed7b20280ef82bad3201ab8d803c3ea41434f51",
+      "scripts/build-infrastructure.py": "f25aa69b9266b7425d9bb7b6fdb9079db58a76e01a9072cb3412b0ecf1892e01",
+      "scripts/release_infrastructure_bundle.py": "a67d1edcec259a034b16f9f1961e19eb66c239df77713cb2ca512a7f32440d0b",
+      "scripts/tests/release_infrastructure_bundle_test.py": "5a73e3952d99df4ae60f1c87e559319c9e14be187aef7974acb55c18b618252a"
+    }
   }
 }

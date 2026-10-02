@@ -8,11 +8,13 @@ import shutil
 import subprocess
 import hashlib
 import tarfile
+import tempfile
 from pathlib import PurePosixPath
 
 from release_feed import digest
 from release_pair import identity, validate
 from release_coordinator import atomic_json
+from controller_runtime import qualify as qualify_controller
 
 BASE = 'ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3'
 BINARIES = ('gcnode', 'gcoms-catalog', 'gc-network-operator', 'gcoms-channel-service')
@@ -69,11 +71,23 @@ def main():
     subprocess.run(['docker', 'save', '-o', str(output / 'image.tar'), tag], check=True)
     image_id = archive_config(output / 'image.tar', tag)
     controller = 'gchat-controller:' + manifest['sources']['gchat']['commit']
-    subprocess.run(['docker', 'build', '--platform', 'linux/amd64', '-t', controller,
-        '--build-arg', 'GCHAT_CONTROLLER_REVISION=' + manifest['sources']['gchat']['commit'],
-        '-f', str(chat / 'release/automation/Dockerfile'), str(chat)], check=True)
+    # CI produces ignored caches in the checkout. Only committed bytes belong in
+    # the image; its actual runtime must also pass under the baked production ENV.
+    with tempfile.TemporaryDirectory(prefix='controller-source-') as temporary:
+        context = Path(temporary)
+        archive = context / 'source.tar'
+        with archive.open('wb') as stream:
+            subprocess.run(['git', 'archive', manifest['sources']['gchat']['commit'],
+                            'scripts', 'release'], cwd=chat, stdout=stream, check=True)
+        with tarfile.open(archive) as source:
+            source.extractall(context, filter='data')
+        archive.unlink()
+        subprocess.run(['docker', 'build', '--platform', 'linux/amd64', '-t', controller,
+            '--build-arg', 'GCHAT_CONTROLLER_REVISION=' + manifest['sources']['gchat']['commit'],
+            '-f', str(context / 'release/automation/Dockerfile'), str(context)], check=True)
     subprocess.run(['docker', 'save', '-o', str(output / 'controller.tar'), controller], check=True)
     controller_id = archive_config(output / 'controller.tar', controller)
+    qualify_controller(controller, chat, manifest['sources']['gchat'], controller_id, output)
     push_context = output / 'push-context'
     subprocess.run(['python3', str(root / 'mobile/push/deploy/build-context.py'),
                     '--output', str(push_context)], check=True, stdout=subprocess.DEVNULL)
@@ -85,12 +99,13 @@ def main():
     push_id = archive_config(output / 'push.tar', push)
     if identity(root) != manifest['sources']['gcoms'] or identity(chat) != manifest['sources']['gchat']:
         raise ValueError('infrastructure source changed during build')
-    atomic_json(output / 'build.json', {'schema': 1, 'sources': manifest['sources'],
+    atomic_json(output / 'build.json', {'schema': 2, 'sources': manifest['sources'],
         'gcoms_source': manifest['sources']['gcoms'],
         'release_id': manifest['release_id'], 'runtime_base': BASE, 'image_tag': tag,
         'image_config': image_id, 'controller_config': controller_id, 'push_config': push_id,
         'sha256': {name: digest(output / name) for name in
-            (*BINARIES, 'image.tar', 'controller.tar', 'push.tar', 'push-context.json', 'Dockerfile', 'ca-certificates.crt')}})
+            (*BINARIES, 'image.tar', 'controller.tar', 'push.tar', 'push-context.json', 'Dockerfile',
+             'ca-certificates.crt', 'controller-runtime.json', 'controller-runtime.log')}})
 
 
 if __name__ == '__main__': main()

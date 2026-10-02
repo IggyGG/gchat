@@ -68,6 +68,34 @@ class InfrastructureBundleTests(unittest.TestCase):
             self.assertIsNone(bundle.collect(self.root, self.manifest, {}))
             publish.assert_not_called()
 
+    def test_new_bundle_requires_runtime_proof_bound_to_its_source_image_and_log(self):
+        import controller_runtime
+        self.build['schema'] = 2
+        self.build['controller_config'] = 'sha256:' + 'f' * 64
+        proof = {'schema': 1, 'passed': True, 'source': self.manifest['sources']['gchat'],
+            'source_unchanged': True, 'production_controller_revision_tested': True,
+            'tests': controller_runtime.MINIMUM_TESTS, 'source_files_verified': 215,
+            'inventory_sha256': 'a' * 64, 'configuration_digest': self.build['controller_config'],
+            'suites': list(controller_runtime.SUITES),
+            'log_sha256': hashlib.sha256(b'actual image tests').hexdigest()}
+        def prepare():
+            self.files.update({'controller-runtime.json': json.dumps(proof).encode(),
+                               'controller-runtime.log': b'actual image tests'})
+            self.build['sha256'] = {name: hashlib.sha256(data).hexdigest() for name, data in self.files.items()}
+        prepare()
+        bundle.retain_archive(self.archive(), self.root / 'valid', self.manifest)
+        for name, value in [('passed', False), ('source', {'commit': '0' * 40, 'tree': '1' * 40}),
+                            ('configuration_digest', 'sha256:' + '0' * 64), ('log_sha256', '0' * 64)]:
+            with self.subTest(name=name):
+                changed = dict(proof); changed[name] = value
+                self.files['controller-runtime.json'] = json.dumps(changed).encode()
+                self.build['sha256']['controller-runtime.json'] = hashlib.sha256(self.files['controller-runtime.json']).hexdigest()
+                with self.assertRaisesRegex(ValueError, 'controller runtime'):
+                    bundle.retain_archive(self.archive(), self.root / name, self.manifest)
+        prepare(); self.files.pop('controller-runtime.log'); self.build['sha256'].pop('controller-runtime.log')
+        with self.assertRaisesRegex(ValueError, 'unexpected or missing'):
+            bundle.retain_archive(self.archive(), self.root / 'missing', self.manifest)
+
     def test_native_oci_archive_keeps_configuration_bytes_and_classic_docker_converts_manifest(self):
         path = self.root / 'image.tar'
         for names, expected, flags in [(('oci-layout', 'index.json'), 'oci-archive:', []),

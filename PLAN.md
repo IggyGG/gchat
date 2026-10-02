@@ -1,3 +1,15 @@
+Controller bundle builds now run their actual image under its baked production
+revision before producing a deployable bundle. The image is built from committed
+Git bytes and runs source hashes plus the controller, acceptance, rollback,
+deployment and compaction suites without network access, keys or state mounts.
+Failures and skips retain a log and prevent a success bundle. Schema 2 retains
+the source/image-bound runtime receipt and diagnostic log; schema 1 archives keep
+their original identity and remain readable for historical qualification/rollback.
+Seven runtime controls, eleven infrastructure controls and all 655 Python tests
+pass with five existing skips. L0 checks 800 paths; 18 stable and three optional
+methods remain, with API 2 fixtures unchanged. Actual-image execution for this
+new gate is pending; generation 53 continues serving while it qualifies.
+
 Release storage compaction is active in controller generation 53 (`aca844a`).
 It verifies completed source receipts and original provider ZIPs before sharing
 identical extraction and verification copies with hard links. The first live run

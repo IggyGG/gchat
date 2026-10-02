@@ -21,6 +21,7 @@ from release_pair import canonical, validate
 
 BINARIES = ('gcnode', 'gcoms-catalog', 'gc-network-operator', 'gcoms-channel-service')
 FILES = (*BINARIES, 'image.tar', 'controller.tar', 'push.tar', 'push-context.json', 'Dockerfile', 'ca-certificates.crt')
+RUNTIME_FILES = ('controller-runtime.json', 'controller-runtime.log')
 IMAGES = {
     'services': ('image.tar', 'oci', 'image_config', 'registry_repository', 'pull_repository'),
     'controller': ('controller.tar', 'controller-oci', 'controller_config', 'controller_registry_repository', 'controller_pull_repository'),
@@ -56,7 +57,10 @@ def retain_archive(archive, root, manifest):
         original = json.loads(bundle.read(reports[0]))
         if original.get('sources') != manifest['sources'] or original.get('release_id') != manifest['release_id']:
             raise ValueError('infrastructure bundle does not bind the frozen CI source')
-        required = set(FILES)
+        schema = original.get('schema', 1)
+        if schema not in (1, 2):
+            raise ValueError('infrastructure bundle schema is unsupported')
+        required = set(FILES + (RUNTIME_FILES if schema == 2 else ()))
         if set(original['sha256']) != required:
             raise ValueError('infrastructure bundle has unexpected or missing files')
         prefix = reports[0].rsplit('/', 1)[0] + '/'
@@ -77,6 +81,12 @@ def retain_archive(archive, root, manifest):
                     if name in BINARIES: destination.chmod(0o755)
                 finally:
                     temporary.unlink(missing_ok=True)
+        if schema == 2:
+            from controller_runtime import validate as validate_runtime
+            proof = json.loads((root / RUNTIME_FILES[0]).read_text())
+            validate_runtime(proof, manifest['sources']['gchat'], original['controller_config'])
+            if proof.get('log_sha256') != digest(root / RUNTIME_FILES[1]):
+                raise ValueError('controller runtime diagnostic log changed')
         return original
 
 
