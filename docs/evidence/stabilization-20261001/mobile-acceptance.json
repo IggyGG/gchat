@@ -75,13 +75,17 @@
     "exact_entered_value_required": true,
     "value_assertion_seconds": 10,
     "passphrase_hidden_after_check": true,
-    "native_execution": "in_progress",
+    "native_execution": "passed",
     "original_lifecycle_run": 36837842309,
     "original_lifecycle_passed": false,
     "original_assertion": "waitForPopulated at LifecycleTests.swift:64",
     "actual_native_role": "Switch",
     "failed_visibility_query_run": 36862393296,
-    "rerun_id": 37017329318
+    "rerun_id": 37017329318,
+    "same_application_sha256": "22d5dbaf4f83f08b0e341a70629b53f9f281f3b088c3b8ab5b1b118fd8b78682",
+    "archive_verified": true,
+    "application_recompiled": false,
+    "application_resigned": false
   },
   "additional_evidence": [
     {
@@ -114,6 +118,7 @@
     "corrupt_receipts_not_skipped": true,
     "component_python_tests": 637,
     "existing_skips": 5,
-    "activated_on_controller": true
+    "activated_on_controller": true,
+    "reviewed_status_receipts_preserve_artifact_and_infrastructure_identity": true
   }
 }

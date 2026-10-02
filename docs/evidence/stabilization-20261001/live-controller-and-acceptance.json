@@ -162,6 +162,22 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/controller-ios-reservations-111.json",
       "sha256": "72e559185db7242c1f7f54160ccd09a1bb46493e521396851c45535df0d1f0db"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-switch-report.json",
+      "sha256": "a0d9a7b87239715ab6c126acfac2413ed4db29be4f845db551850de07381008e"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-switch-xctest.log",
+      "sha256": "c32023c2293f1e86623641753577f779d514f27df7dff83437642bded23543c3"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/status-inputs-113.log",
+      "sha256": "5e7a5215275078e85c4a6ef8668bba17142bf993af6f5462bc0afb0c8fef9507"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/status-receipts-all-python-114.log",
+      "sha256": "fae6273b2a68f667fdf2286af6594955ad3ade8b10dcb5dbd90a60afc74e8e44"
     }
   ],
   "native_progress": {
@@ -187,6 +203,16 @@
       "artifact_id": 11147068885,
       "archive_sha256": "cf7a41b7105e517258bb55847ae0ad2f4e288f3fb2908b3b16978a7510ba12a3",
       "verdict": "installed keyboard smoke failed; original shell stderr was omitted from the archive; future archives retain it"
+    },
+    "retained_ios_lifecycle": {
+      "run_id": 37017329318,
+      "passed": true,
+      "app_source": "78a1302414bd674aa57e527542ff253e6b2547c6",
+      "protocol_source": "9d1fce0a9f5ad9224504573c27e459f5ca37d09f",
+      "app_build": "1.0.87",
+      "same_unmodified_application": true,
+      "archive_verified": true,
+      "installed_network_acceptance_qualified": false
     }
   },
   "linux_workflow": {
@@ -380,6 +406,8 @@
     "active": true,
     "valid_ios_number_automatically_reserved": "1.1.0",
     "original_invalid_reservation_preserved": true,
-    "component_python_tests": 637
+    "component_python_tests": 637,
+    "reviewed_status_receipts_preserve_artifact_and_infrastructure_identity": true,
+    "classification_activation": "pending"
   }
 }

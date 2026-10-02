@@ -111,18 +111,26 @@ class InputTests(unittest.TestCase):
             for project,path in [('gchat','scripts/mobile_installed_journey.py'),
                                  ('gchat','.github/workflows/mobile-acceptance.yml'),
                                  ('gchat','scripts/fixtures/ios-acceptance/AcceptanceTests.swift'),
+                                 ('gchat','docs/evidence/stabilization-20261001/ios-build-allocation.json'),
+                                 ('gchat','docs/evidence/stabilization-20261001/ios-passphrase-control.json'),
                                  ('gcoms','PLAN.md'),
-                                 ('gcoms','docs/evidence/stabilization-20261001/durable-reopen.json')]:
+                                 ('gcoms','docs/evidence/stabilization-20261001/durable-reopen.json'),
+                                 ('gcoms','docs/evidence/stabilization-20261001/contact-request-window.json'),
+                                 ('gcoms','docs/evidence/stabilization-20261001/windows-locked-storage-tests.json'),
+                                 ('gcoms','docs/evidence/stabilization-20261001/sdk-size-policy.json'),
+                                 ('gcoms','docs/evidence/stabilization-20261001/sdk-native-90d7eac.json')]:
                 before=fingerprints(roots,sources)
                 commit(project,path,'reviewed qualification change')
                 after=fingerprints(roots,sources)
                 self.assertEqual(before['artifacts'],after['artifacts'])
                 self.assertNotEqual(before['qualification'],after['qualification'])
-                if project == 'gcoms':
+                if project == 'gcoms' or path.startswith('docs/'):
                     self.assertEqual(before['infrastructure'],after['infrastructure'])
             for project,path in [('gchat','scripts/mobile-build-new.py'),
                                  ('gchat','.github/workflows/ios-release.yml'),
                                  ('gchat','scripts/android-build.py'),
+                                 ('gchat','docs/evidence/stabilization-20261001/new-unreviewed.json'),
+                                 ('gcoms','docs/evidence/stabilization-20261001/new-unreviewed.json'),
                                  ('gcoms','docs/evidence/unreviewed.json')]:
                 before=fingerprints(roots,sources)
                 commit(project,path,'unclassified or packaging change')

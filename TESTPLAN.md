@@ -19,6 +19,13 @@ through normal Show/Hide actions within ten seconds, restore secure entry, and
 retain the original 45-second joint unlocked-state assertion. Rerun the same
 unmodified application; fixture checks alone cannot qualify its lifecycle.
 
+Retained iOS run `37017329318` passes without rebuilding or re-signing the app or
+using a Keychain signing fixture; preserve its exact provider archive and binary
+hash alongside the original failed run. This does not qualify network messaging
+or mobile upgrade acceptance. Run `release_inputs_test.py` after reviewing status
+receipt exclusions; both fingerprints must remain stable for those exact files,
+while an unreviewed receipt in the same directory still requires new artifacts.
+
 Run `scripts/check_contracts.py`, the `contracts_test.py` negative controls,
 `scripts/check-generated.py` and `scripts/check-released-client.py`. The retained
 consumer must use unchanged API 2 client/RPC source, attach to the current real

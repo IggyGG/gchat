@@ -12,14 +12,20 @@ checks, both containers ready, retained/repaired rollback and a successful minut
 watchdog. It automatically reserved build `1.1.0`; its native build remains open. The original `1.0.100` worker failure and later invalid rows are
 retained in the [allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
 
-Retained iOS lifecycle run `36862393296` fails while querying the passphrase
-visibility toggle as a Button. The independently exported XCTest hierarchy and
-screenshot show the same labelled control exposed as a Switch by WKWebView.
-Both lifecycle and acceptance fixtures now select that exact native Switch;
-the normal Show/Hide actions, exact populated-value assertion and original
-10/45-second budgets remain. The 27 affected harness checks pass. A fresh native
-rerun uses the same unmodified `1.0.87` application; the original failure remains
-in the [control checkpoint](docs/evidence/stabilization-20261001/ios-passphrase-control.json).
+Retained iOS lifecycle rerun `37017329318` passes using the exact native visibility
+Switch. The entire provider archive is verified; app `1.0.87` keeps the same binary
+hash, is neither rebuilt nor re-signed, and uses no Keychain signing fixture. Normal
+Show/Hide, exact input, background/manual unlock, remembered reopen, original timing
+and cleanup checks pass. Original run `36862393296` remains failed. This verifies
+retained profile lifecycle; network messaging, upgrades, push and physical devices
+still need their own acceptance. See the
+[control checkpoint](docs/evidence/stabilization-20261001/ios-passphrase-control.json).
+
+Status updates to reviewed iOS/SDK receipts no longer reserve application versions
+or infrastructure images. Exact file names are classified; unknown evidence, Rust,
+locks and packaging changes still invalidate artifacts. The real Git classification
+controls and 637 Python tests pass with five existing skips. Live controller
+activation of this classification refinement remains required.
 
 Android and iOS now have retained-app acceptance producers and a separate native
 workflow. They install distinct signed releases on a fresh owned AVD/Simulator,

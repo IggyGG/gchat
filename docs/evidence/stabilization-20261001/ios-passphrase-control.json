@@ -16,7 +16,24 @@
   "populated_value_timeout_seconds": 10,
   "reopen_timeout_seconds": 45,
   "component_tests_passed": 27,
-  "native_rerun": "pending",
+  "native_rerun": {
+    "run_id": 37017329318,
+    "runner_source": "49e65f928ea40838ba630bcb2f09927a247e0e05",
+    "passed": true,
+    "artifact_id": 11232695639,
+    "archive_sha256": "99dfaaa916e05dae46ab75dbb1603245c102697a158751e644b40877174e9d79",
+    "archive_size": 217320291,
+    "application_sha256": "22d5dbaf4f83f08b0e341a70629b53f9f281f3b088c3b8ab5b1b118fd8b78682",
+    "application_recompiled": false,
+    "application_resigned": false,
+    "simulator_keychain_fixture": false,
+    "cleanup_complete": true,
+    "network_onboarding_qualified": false,
+    "cryptographic_identity_comparison": false,
+    "messaging_qualified": false,
+    "push_qualified": false,
+    "physical_device_qualified": false
+  },
   "source_sha256": {
     "scripts/fixtures/ios-lifecycle/LifecycleTests.swift": "60c4fa5a4ba469a2c9091fffe8cbd2ae3a187ec71fd4a93644cdb1e768630b32",
     "scripts/fixtures/ios-acceptance/AcceptanceTests.swift": "82804a3565d9945f681a0a3723169b377722f1a3d77389a6801d0d53b0c96963"
@@ -41,6 +58,14 @@
     {
       "path": "test-evidence/stabilization-20261001/ios-switch-fixture-107.log",
       "sha256": "9f6b675cd7afbc5e84d1d9a38b70b5ff5ec77b3bda5c41036b9ab54fae38b6f6"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-switch-report.json",
+      "sha256": "a0d9a7b87239715ab6c126acfac2413ed4db29be4f845db551850de07381008e"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-switch-xctest.log",
+      "sha256": "c32023c2293f1e86623641753577f779d514f27df7dff83437642bded23543c3"
     }
   ]
 }

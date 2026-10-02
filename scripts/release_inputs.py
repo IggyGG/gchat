@@ -53,6 +53,8 @@ CONTROL_FILES = frozenset({
     'docs/evidence/stabilization-20261001/live-controller-and-acceptance.json',
     'docs/evidence/stabilization-20261001/image-retention.json',
     'docs/evidence/stabilization-20261001/contract-checkpoint.json',
+    'docs/evidence/stabilization-20261001/ios-build-allocation.json',
+    'docs/evidence/stabilization-20261001/ios-passphrase-control.json',
 })
 
 # Reviewed status/validation documents do not enter GComs application code or
@@ -60,6 +62,10 @@ CONTROL_FILES = frozenset({
 GCOMS_STATUS_FILES = frozenset({
     'PLAN.md', 'README.md', 'TESTPLAN.md',
     'docs/evidence/stabilization-20261001/durable-reopen.json',
+    'docs/evidence/stabilization-20261001/contact-request-window.json',
+    'docs/evidence/stabilization-20261001/windows-locked-storage-tests.json',
+    'docs/evidence/stabilization-20261001/sdk-size-policy.json',
+    'docs/evidence/stabilization-20261001/sdk-native-90d7eac.json',
 })
 
 
