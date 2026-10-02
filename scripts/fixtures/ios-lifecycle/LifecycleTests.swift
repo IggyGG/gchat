@@ -72,20 +72,21 @@ final class GChatLifecycleTests: XCTestCase {
     }
 
     func tapPassphraseVisibility(_ title: String) {
-        let button = app.webViews.buttons[title].firstMatch
+        // WKWebView exposes the aria-pressed visibility toggle as a Switch.
+        let control = app.webViews.switches.matching(NSPredicate(format: "label == %@", title)).firstMatch
         let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: 10))
+        XCTAssertTrue(control.waitForExistence(timeout: 10))
         let deadline = ProcessInfo.processInfo.systemUptime + 10
-        while button.exists && (!button.isHittable || !main.frame.contains(button.frame))
+        while control.exists && (!control.isHittable || !main.frame.contains(control.frame))
                 && ProcessInfo.processInfo.systemUptime < deadline {
-            if button.frame.midY < main.frame.minY {
+            if control.frame.midY < main.frame.minY {
                 app.webViews.firstMatch.swipeDown()
             } else {
                 app.webViews.firstMatch.swipeUp()
             }
         }
-        XCTAssertTrue(button.isHittable && main.frame.contains(button.frame))
-        button.tap()
+        XCTAssertTrue(control.isHittable && main.frame.contains(control.frame))
+        control.tap()
     }
 
     func focusField(_ field: XCUIElement) {

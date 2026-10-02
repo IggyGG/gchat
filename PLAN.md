@@ -11,6 +11,15 @@ with five existing skips. Activation of this retry fix and a native valid-number
 build remain open. The original `1.0.100` worker failure and later invalid rows are
 retained in the [allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
 
+Retained iOS lifecycle run `36862393296` fails while querying the passphrase
+visibility toggle as a Button. The independently exported XCTest hierarchy and
+screenshot show the same labelled control exposed as a Switch by WKWebView.
+Both lifecycle and acceptance fixtures now select that exact native Switch;
+the normal Show/Hide actions, exact populated-value assertion and original
+10/45-second budgets remain. The 27 affected harness checks pass. A fresh native
+rerun uses the same unmodified `1.0.87` application; the original failure remains
+in the [control checkpoint](docs/evidence/stabilization-20261001/ios-passphrase-control.json).
+
 Android and iOS now have retained-app acceptance producers and a separate native
 workflow. They install distinct signed releases on a fresh owned AVD/Simulator,
 create state with the baseline, then upgrade, roll back and restore through normal

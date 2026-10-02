@@ -11,6 +11,15 @@ with five existing skips. Activation of this retry fix and a native valid-number
 build remain open. The original `1.0.100` worker failure and later invalid rows are
 retained in the [allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
 
+Retained iOS lifecycle run `36862393296` fails while querying the passphrase
+visibility toggle as a Button. The independently exported XCTest hierarchy and
+screenshot show the same labelled control exposed as a Switch by WKWebView.
+Both lifecycle and acceptance fixtures now select that exact native Switch;
+the normal Show/Hide actions, exact populated-value assertion and original
+10/45-second budgets remain. The 27 affected harness checks pass. A fresh native
+rerun uses the same unmodified `1.0.87` application; the original failure remains
+in the [control checkpoint](docs/evidence/stabilization-20261001/ios-passphrase-control.json).
+
 The service retains GChat API 2 attachments alongside API 3 for the stable major.
 Typed RPC service 1 retains its original methods. Optional methods are advertised
 as `chat.method.<id>` in instance capabilities; clients select detailed history,
@@ -38,8 +47,8 @@ to their qualification gates; see [current work](PLAN.md).
 Controller source `5b89c81` is active with 76 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile
 acceptance recipes and verified retained Android/iOS baselines are configured.
-iOS passphrase qualification uses normal Show/Hide controls to check the exact
-entered value within the original ten-second assertion; native rerun is pending.
+iOS passphrase qualification uses the native visibility Switch and normal Show/Hide
+actions to check the exact entered value within the original ten-second assertion.
 The pinned watchdog also repairs the exact retained controller digest through
 scoped registry access; the original blocked connection is retained as a control.
 Native SDK Linux and Windows recovery pass; fresh native size/Mac and installed acceptance

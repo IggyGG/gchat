@@ -12,6 +12,12 @@ Use the signing worker's existing numeric constraints throughout. Retain the
 original failed `1.0.100` worker and require a fresh native build with a valid new
 reservation; component controls do not qualify the signed application.
 
+For retained iOS lifecycle qualification, use the exact labelled visibility
+Switch exposed in the real XCTest hierarchy. Verify the exact plaintext input
+through normal Show/Hide actions within ten seconds, restore secure entry, and
+retain the original 45-second joint unlocked-state assertion. Rerun the same
+unmodified application; fixture checks alone cannot qualify its lifecycle.
+
 Run `scripts/check_contracts.py`, the `contracts_test.py` negative controls,
 `scripts/check-generated.py` and `scripts/check-released-client.py`. The retained
 consumer must use unchanged API 2 client/RPC source, attach to the current real

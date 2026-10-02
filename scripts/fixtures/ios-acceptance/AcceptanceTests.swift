@@ -79,20 +79,21 @@ final class GChatAcceptanceTests: XCTestCase {
     }
 
     func passphraseVisibility(_ title: String) throws {
-        let button = app.webViews.buttons[title].firstMatch
+        // WKWebView exposes the aria-pressed visibility toggle as a Switch.
+        let control = app.webViews.switches.matching(NSPredicate(format: "label == %@", title)).firstMatch
         let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
-        try wait(10) { button.exists && main.exists }
+        try wait(10) { control.exists && main.exists }
         let deadline = ProcessInfo.processInfo.systemUptime + 10
-        while button.exists && (!button.isHittable || !main.frame.contains(button.frame))
+        while control.exists && (!control.isHittable || !main.frame.contains(control.frame))
                 && ProcessInfo.processInfo.systemUptime < deadline {
-            if button.frame.midY < main.frame.minY {
+            if control.frame.midY < main.frame.minY {
                 app.webViews.firstMatch.swipeDown()
             } else {
                 app.webViews.firstMatch.swipeUp()
             }
         }
-        try require(button.isHittable && main.frame.contains(button.frame))
-        button.tap()
+        try require(control.isHittable && main.frame.contains(control.frame))
+        control.tap()
     }
 
     func unlock(_ create: Bool, _ value: String) throws {

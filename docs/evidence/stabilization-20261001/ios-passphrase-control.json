@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "scope": "Native passphrase toggle selection; actual retained lifecycle rerun required",
+  "original_run": 36862393296,
+  "original_result": "failed",
+  "original_app_source": "78a1302414bd674aa57e527542ff253e6b2547c6",
+  "original_protocol_source": "9d1fce0a9f5ad9224504573c27e459f5ca37d09f",
+  "original_build_number": "1.0.87",
+  "original_app_sha256": "22d5dbaf4f83f08b0e341a70629b53f9f281f3b088c3b8ab5b1b118fd8b78682",
+  "archive_sha256": "ec0f48c656e2ac4181f43e0859da73dea8fc44581d501a55d1330e9d80f78b4b",
+  "archive_size": 259275033,
+  "actual_native_role": "Switch",
+  "exact_label": "Show passphrase",
+  "application_recompiled": false,
+  "application_resigned": false,
+  "populated_value_timeout_seconds": 10,
+  "reopen_timeout_seconds": 45,
+  "component_tests_passed": 27,
+  "native_rerun": "pending",
+  "source_sha256": {
+    "scripts/fixtures/ios-lifecycle/LifecycleTests.swift": "60c4fa5a4ba469a2c9091fffe8cbd2ae3a187ec71fd4a93644cdb1e768630b32",
+    "scripts/fixtures/ios-acceptance/AcceptanceTests.swift": "82804a3565d9945f681a0a3723169b377722f1a3d77389a6801d0d53b0c96963"
+  },
+  "evidence": [
+    {
+      "path": "test-evidence/stabilization-20261001/ios-field-rerun-report.json",
+      "sha256": "a5d852206648146ab8832bff4899e7afd57f852a598423e963b0627d9fe06359"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-field-rerun-xctest.log",
+      "sha256": "5e9113c444a1c8ab512a1ca661d5b043f04404952fa0d25e21a2e3ea5bede468"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/ios-field-attachments/3C87D9C4-33B6-4E8C-8B7B-77DA94FFC5B1.txt",
+      "sha256": "8910ad1a57e12cf14b596d2dc798a0f0fa776c2a6b2904e80bb2345d4099f802"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/ios-field-attachments/802B34E0-1E36-41F5-89BA-ABA1BFB0C01D.png",
+      "sha256": "5bbeecd956d89f8c96646ce4e0b48bbb95beded7204e5bbbb031b0c3668ae056"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-switch-fixture-107.log",
+      "sha256": "9f6b675cd7afbc5e84d1d9a38b70b5ff5ec77b3bda5c41036b9ab54fae38b6f6"
+    }
+  ]
+}
