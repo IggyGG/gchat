@@ -93,8 +93,31 @@ def discover(config, state, ledger):
             subprocess.run(['git', '-C', config['gcoms']['mirror'], 'push', destination,
                             candidate['sources']['gcoms']['commit'] + ':' + candidate['refs']['gcoms']],
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+    def reusable(candidate):
+        try:
+            validate(candidate)
+        except ValueError:
+            # Earlier controllers reserved overflowing iOS versions. Preserve
+            # those rows and refs, but never replay them as new build inputs.
+            # Verify the original digest and every other field before accepting
+            # this one historical validation exception.
+            from release_feed import version
+            major, minor, patch = version(candidate['versions']['ios'])
+            if major < 1 or not (major > 9999 or minor > 99 or patch > 99):
+                raise
+            unsigned = {k: v for k, v in candidate.items() if k != 'release_id'}
+            if candidate['release_id'] != hashlib.sha256(canonical(unsigned)).hexdigest():
+                raise ValueError('release manifest digest mismatch')
+            checked = dict(unsigned, versions=dict(candidate['versions'], ios='1.0.1'))
+            checked['release_id'] = hashlib.sha256(canonical(checked)).hexdigest()
+            validate(checked)
+            return False
+        return True
+
     for row in ledger.db.execute('SELECT manifest FROM candidates'):
         previous = json.loads(row[0])
+        if not reusable(previous):
+            continue
         if previous.get('upstream') == upstream and previous['policy'] == policy:
             push(previous)
             atomic_json(Path(state) / 'incoming' / (previous['release_id'] + '.json'), previous)
@@ -109,7 +132,7 @@ def discover(config, state, ledger):
     if latest:
         baseline = json.loads(latest[0])
         prior_inputs = fingerprints(repositories, baseline.get('upstream', baseline['sources']))
-        if (baseline['policy'] == policy and prior_inputs['artifacts'] == current_inputs['artifacts']
+        if (reusable(baseline) and baseline['policy'] == policy and prior_inputs['artifacts'] == current_inputs['artifacts']
                 and prior_inputs.get('infrastructure') == current_inputs.get('infrastructure')):
             atomic_json(Path(state) / 'qualification-needed.json', {
                 'schema': 1, 'artifact_release_id': baseline['release_id'],
@@ -136,7 +159,9 @@ def discover(config, state, ledger):
     ios = next_ios_build_number('.'.join(map(str, ios)))
     from release_ledger import PLATFORMS
     versions = {p: android if p == 'android' else ios if p == 'ios' else desktop for p in PLATFORMS}
-    pair = hashlib.sha256(canonical({'sources': upstream, 'policy': policy})).hexdigest()
+    # A corrected reservation needs a new immutable ref even if its source and
+    # policy match an invalid reservation from an earlier controller.
+    pair = hashlib.sha256(canonical({'sources': upstream, 'policy': policy, 'versions': versions})).hexdigest()
     branch = 'refs/heads/release/gchat-' + pair[:20]
     commit = prepare(root, sources['gchat']['commit'], sources['gcoms']['commit'], versions, branch)
     sources['gchat'] = identity(root, commit)

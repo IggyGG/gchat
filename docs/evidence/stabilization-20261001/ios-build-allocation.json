@@ -11,24 +11,36 @@
     "invalid_number_rejected_before_git_preparation_and_atomic_reservation": true,
     "immutable_old_reservations_preserved": true,
     "exhaustion_rejected": true,
-    "same_validator_as_signing_worker": true
+    "same_validator_as_signing_worker": true,
+    "corrected_reservations_get_distinct_immutable_refs": true
   },
   "validation": {
     "focused_controls": 3,
     "real_discovery_and_failed_push_recovery": true,
-    "python_tests": 636,
+    "python_tests": 637,
     "existing_skips": 5,
-    "passed": true
+    "passed": true,
+    "historical_invalid_reservation_retry": true,
+    "original_digest_and_other_fields_checked": true,
+    "failed_push_reuses_new_reservation": true
   },
-  "controller_activation": "pending",
+  "controller_activation": {
+    "initial_allocator_source": "e0e7fb9ab64c0ac53702833e58bb6b3329133c2f",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:f9e7890599db7100955e4908fc8cdceaaba0fe9a1b0f023daeafae42720c1e16",
+    "deployment_generation": 49,
+    "independent_validation_tests": 81,
+    "ready": true,
+    "historical_retry_fix_activation": "pending",
+    "original_invalid_reservation_retained": true
+  },
   "native_valid_number_build": "pending",
   "source_sha256": {
     "scripts/release_pair.py": "68ce4991ca25be435dda21df139390dee92a314cd054bdee252e3081a9a2bfb7",
-    "scripts/release_discovery.py": "96f0e01d98a39c135f1363531a33ac94ba1baccc2cbd891c11d6e7dfbd1e3a65",
+    "scripts/release_discovery.py": "cfd1b320eb856a9ac97b1aceeb67978b143e28080804b80faaa3ad3286833bc4",
     "scripts/release_prepare.py": "1a855d945cdd7c1b3c90e82f22aaef9c7808345e742be7343c3c756b49c1b00f",
     "scripts/ios-build.py": "e65dae0cd234b1d759e3451e04fe5687bc36dea17a89fd8ad33ce88b82d214b1",
     "scripts/tests/release_ios_versions_test.py": "a5069ff3ccbff13b75b28c3a1c1e43292eb43672ea47dcbc48514a441431816c",
-    "scripts/tests/release_prepare_test.py": "957b0cfe5a8a50bf102f709f45715bbdf448e1bb2d1394a0e5df9a47b7248907"
+    "scripts/tests/release_prepare_test.py": "a6a91d30c3d4d1a9779e3f310dc0b99a49b5692249735ebb7f0dd9e9e712f323"
   },
   "evidence": [
     {
@@ -38,6 +50,22 @@
     {
       "path": "test-evidence/stabilization-20261001/ios-version-python-99.log",
       "sha256": "677fe34feac94c8dda11468cc2dd9120981f44cbbc728f58c407eb9b4a79f840"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-reservation-retry-105.log",
+      "sha256": "559d66645c8b2fde1df5b5ef0aa5ff371ce83fc9c370ae7d785f04df89d8b243"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-reservation-all-python-106.log",
+      "sha256": "f295e03b1c8d50d4c1e2d24ed84227490f1634420e583808751852759a2611ab"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-e0e7fb9-observed-106.json",
+      "sha256": "edc6b8235991fc4daf63042650dab09114ba6e7f311a53fa07df4bfef34dc12c"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-e0e7fb9-validation.log",
+      "sha256": "6bdb017955a624f0b7f1861d3547280d06c4a26679a23ee1458f9e4d06fad7e4"
     }
   ],
   "existing_build_policy_reference": "https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html"

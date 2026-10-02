@@ -4,6 +4,10 @@ Run `release_ios_versions_test.py` and `release_prepare_test.py`. Require patch
 and minor carries, monotonic allocation above retained invalid reservations,
 exhaustion refusal, invalid-number rejection before Git preparation or partial
 ledger writes, and idempotent reservation after a lost source-ref publication.
+Reproduce a historical invalid reservation for the same source pair and after a
+documentation change. Require a distinct valid immutable ref, unchanged original
+row/ref, idempotent lost publication recovery, and rejection of a corrupted original
+manifest even when its iOS number overflows.
 Use the signing worker's existing numeric constraints throughout. Retain the
 original failed `1.0.100` worker and require a fresh native build with a valid new
 reservation; component controls do not qualify the signed application.
