@@ -2,27 +2,28 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "421be3764ada4eec00d1cf6f86c47abd39c70445",
-    "image": "sha256:f2f4dd530b83d1e9e15b5e6670ff342860c27796605b553d12cb09fa62a99bad",
+    "gchat_commit": "5db2dbe8fcfed398fd5b79b2ebf5cee734c1ca07",
+    "image": "sha256:2bddfb7a26a81468d6e2f994ef3f7ab7357d3d4a72471dc98fc41067271d607e",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-02T14:51:06Z",
+    "watchdog_last_success": "2026-10-02T16:12:08Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:b436fe119e3f8f7e27616b9c2c4d834d31ddcf1f2b183ec3fff73263c47b1996",
-    "archive_sha256": "cae4ad1f7e52c0c9997c545c00931ac1024d590005fd1b219c9e94bc74f0388f",
-    "observed_at": "2026-10-02T14:51:23.868131+00:00",
+    "configuration_digest": "sha256:8d37594d851253bf94b86f6117d152ad35fcdbd19cdb84c3ae79100569d32e81",
+    "archive_sha256": "30d146c42157ea6e4d88c2dc65ac712d98db79f7ef21b74fff2b2ff1b29eae5d",
+    "observed_at": "2026-10-02T16:12:56.330355+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
+    "previous_digest": "sha256:f2f4dd530b83d1e9e15b5e6670ff342860c27796605b553d12cb09fa62a99bad",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 82,
-    "deployment_generation": 51
+    "validation_tests": 87,
+    "deployment_generation": 52,
+    "source_files_verified": 212
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -64,7 +65,7 @@
       "immutable_ref_checked": true,
       "unknown_dispatch_preserved": true,
       "confirmed_failed_attempt_retained_before_corrected_followup": true,
-      "activation": "pending",
+      "activation": "active",
       "actual_installed_execution_qualified": false,
       "focused_controls": 16,
       "input_controls": 2,
@@ -90,13 +91,16 @@
         "passed": false,
         "activation_attempted": false,
         "verdict": "Legacy dispatch fixtures implicitly used the image controller revision; explicit legacy selection and production-default control added"
-      }
+      },
+      "controller_source": "5db2dbe8fcfed398fd5b79b2ebf5cee734c1ca07",
+      "independent_image_tests": 87,
+      "source_files_verified": 212
     }
   },
   "component_validation": {
     "python_tests": 642,
     "python_skipped": 5,
-    "controller_validation_tests": 82
+    "controller_validation_tests": 87
   },
   "open": [
     "Fresh SDK native desktop/mobile qualification with the approved 20% feature allowance and automatic 5% cap at SDK 1.0",
@@ -261,6 +265,18 @@
     {
       "path": "test-evidence/stabilization-20261001/acceptance-production-env-all-python-123.log",
       "sha256": "4629c148b3e078ada51d9bf391bbb117a7a05953bd2a8688592c58daae8a4abb"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-5db2dbe-validation.log",
+      "sha256": "688af6a135b651491bb77e5df0f892666ee856646b6d489a561fcf9fd158ba44"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-5db2dbe-validation.json",
+      "sha256": "0fcb0cdf1c1b4d4597ce2a758d9f1b200765fc3c844222a80f8fd3f2cb1c2fc0"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-5db2dbe-observed-125.json",
+      "sha256": "589be2bcc9d3c4e9ee23a1b3772f339d920cb5dc5adaeb08d8ef8f3014c067e9"
     }
   ],
   "native_progress": {
@@ -475,6 +491,29 @@
       "initial_mobile_baselines_bound": true,
       "validation_tests": 82,
       "deployment_generation": 50
+    },
+    {
+      "gchat_commit": "421be3764ada4eec00d1cf6f86c47abd39c70445",
+      "image": "sha256:f2f4dd530b83d1e9e15b5e6670ff342860c27796605b553d12cb09fa62a99bad",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-02T14:51:06Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:b436fe119e3f8f7e27616b9c2c4d834d31ddcf1f2b183ec3fff73263c47b1996",
+      "archive_sha256": "cae4ad1f7e52c0c9997c545c00931ac1024d590005fd1b219c9e94bc74f0388f",
+      "observed_at": "2026-10-02T14:51:23.868131+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 82,
+      "deployment_generation": 51
     }
   ],
   "mobile_baselines": {

@@ -24,8 +24,11 @@ original request and worker across controller updates. Acceptance workflow edits
 require fresh infrastructure qualification. Image validation exposed three legacy
 fixtures that implicitly depended on an unset controller revision. Those cases now
 select legacy behavior explicitly; a new control checks the production default
-and rejects moving refs. The original failed image Job is retained, the previous
-controller remains active, and fresh activation and installed execution are required.
+and rejects moving refs. The original failed image Job is retained. Controller
+generation 52 (`5db2dbe`) now passes 87 independent checks, including all 212
+included source hashes and prior-image restoration. Both containers are ready
+with no restarts and the independent watchdog succeeds. Actual installed
+acceptance and qualified fleet/client activation remain required.
 
 Retained iOS lifecycle rerun `37017329318` passes using the exact native visibility
 Switch. The entire provider archive is verified; app `1.0.87` keeps the same binary

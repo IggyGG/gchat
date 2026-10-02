@@ -66,6 +66,9 @@ Acceptance workflow changes preserve app inputs but require new infrastructure.
 Run these controls with `GCHAT_CONTROLLER_REVISION` set, as in the real image.
 Legacy dispatch fixtures select their prior behavior explicitly; the production
 default must use the full controller object and reject moving or malformed refs.
+Controller generation 52 (`5db2dbe`) passes all 87 image controls and 212 source
+hash checks, retains and repairs its prior image, has two ready containers, and
+has a successful independent watchdog. Installed acceptance remains open.
 
 Run `release_acceptance_test.py` for exact native source/archive/platform
 bindings, baseline → current → baseline → current identity/history/cache preservation,

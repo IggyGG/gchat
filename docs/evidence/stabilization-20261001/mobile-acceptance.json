@@ -49,18 +49,19 @@
   },
   "native_ui_execution": "pending",
   "live_producer_activation": {
-    "source": "defc0e12d4a4585c6f87148c337b4dcd617d38d4",
-    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
+    "source": "5db2dbe8fcfed398fd5b79b2ebf5cee734c1ca07",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:2bddfb7a26a81468d6e2f994ef3f7ab7357d3d4a72471dc98fc41067271d607e",
     "ready": true,
     "containers": 2,
     "restarts": 0,
-    "observed_at": "2026-10-02T14:15:11.447679+00:00",
-    "last_independent_watchdog_success": "2026-10-02T14:14:05Z",
-    "validation_tests": 82,
+    "observed_at": "2026-10-02T16:12:56.330355+00:00",
+    "last_independent_watchdog_success": "2026-10-02T16:12:08Z",
+    "validation_tests": 87,
     "prior_retained_and_repaired": true,
     "initial_mobile_baselines_bound": true,
     "mobile_acceptance_recipes_active": true,
-    "deployment_generation": 50
+    "deployment_generation": 52,
+    "source_files_verified": 212
   },
   "initial_mobile_baselines": "verified source-bound retained archives configured",
   "sdk_size_limit_percent": 20,
@@ -120,5 +121,21 @@
     "existing_skips": 5,
     "activated_on_controller": true,
     "reviewed_status_receipts_preserve_artifact_and_infrastructure_identity": true
-  }
+  },
+  "producer_activation_history": [
+    {
+      "source": "defc0e12d4a4585c6f87148c337b4dcd617d38d4",
+      "image": "127.0.0.1:30444/ghost/gchat-release@sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "observed_at": "2026-10-02T14:15:11.447679+00:00",
+      "last_independent_watchdog_success": "2026-10-02T14:14:05Z",
+      "validation_tests": 82,
+      "prior_retained_and_repaired": true,
+      "initial_mobile_baselines_bound": true,
+      "mobile_acceptance_recipes_active": true,
+      "deployment_generation": 50
+    }
+  ]
 }

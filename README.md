@@ -24,8 +24,11 @@ original request and worker across controller updates. Acceptance workflow edits
 require fresh infrastructure qualification. Image validation exposed three legacy
 fixtures that implicitly depended on an unset controller revision. Those cases now
 select legacy behavior explicitly; a new control checks the production default
-and rejects moving refs. The original failed image Job is retained, the previous
-controller remains active, and fresh activation and installed execution are required.
+and rejects moving refs. The original failed image Job is retained. Controller
+generation 52 (`5db2dbe`) now passes 87 independent checks, including all 212
+included source hashes and prior-image restoration. Both containers are ready
+with no restarts and the independent watchdog succeeds. Actual installed
+acceptance and qualified fleet/client activation remain required.
 
 Retained iOS lifecycle rerun `37017329318` passes using the exact native visibility
 Switch. The entire provider archive is verified; app `1.0.87` keeps the same binary
@@ -66,10 +69,10 @@ Kubernetes services, retains rollback artifacts, and preserves configuration and
 relay identities. Acceptance automatically rotates to the most recent available predecessor; the
 initial operator-bound baseline remains a fallback. Reviewed GComs status documents
 preserve both application and infrastructure identity; unknown inputs still
-require fresh artifacts. These controller changes are active in generation 51.
+require fresh artifacts. These controller changes are active in generation 52.
 New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
-Controller source `421be37` is active with 82 deployment/acceptance checks, a
+Controller source `5db2dbe` is active with 87 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile
 acceptance recipes and verified retained Android/iOS baselines are configured.
 iOS passphrase qualification uses the native visibility Switch and normal Show/Hide
