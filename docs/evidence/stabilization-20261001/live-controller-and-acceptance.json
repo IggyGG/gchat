@@ -66,22 +66,35 @@
       "confirmed_failed_attempt_retained_before_corrected_followup": true,
       "activation": "pending",
       "actual_installed_execution_qualified": false,
-      "focused_controls": 15,
+      "focused_controls": 16,
       "input_controls": 2,
-      "python_tests": 641,
+      "python_tests": 642,
       "existing_skips": 5,
       "source_sha256": {
         "scripts/release_acceptance.py": "e462acf767af995b5da405df3e95160034709f849e9afc129c40328c0ba1517c",
         "scripts/release_inputs.py": "e8353742b64a1b3e2a9cce9762f198080e6d2f25db17311f7d5b84f986dfe4a2",
         ".github/workflows/native-acceptance.yml": "4a995965f1782bd70f2a6ce6d18431e8cbc169452de834dfb22690f078c94d0e",
         ".github/workflows/mobile-acceptance.yml": "09ac5c2abb6b938008f0c1bfce6b83c07cff4af22fda982841debb4d1820a51d",
-        "scripts/tests/release_acceptance_test.py": "d26b7ecb113048836a7a3f4f5c9d30b3f198a0f2e5f985ee2cf912c481719c12",
-        "scripts/tests/release_inputs_test.py": "f28e15f4300fd1af7e14183aea06df19aef27fce4c2677f3b8d430f2505bc349"
+        "scripts/tests/release_acceptance_test.py": "e7c16a9767e82f5a52b2ee79be0d0bf055b45b6d82b248c4afc8453e85ff70d8",
+        "scripts/tests/release_inputs_test.py": "f28e15f4300fd1af7e14183aea06df19aef27fce4c2677f3b8d430f2505bc349",
+        "scripts/tests/mobile_acceptance_test.py": "0923f09b7c39ab4099153d2a74fc822d4bd493733ecc0c66662bb70441d71c20"
+      },
+      "production_controller_revision_tested": true,
+      "legacy_fixture_selection_explicit": true,
+      "failed_image_validation": {
+        "source": "b80378a108df40a3287a9ab6d15e70331b2a9de3",
+        "job": "gchat-controller-b80378a-validation",
+        "source_files_verified": 212,
+        "tests": 86,
+        "errors": 3,
+        "passed": false,
+        "activation_attempted": false,
+        "verdict": "Legacy dispatch fixtures implicitly used the image controller revision; explicit legacy selection and production-default control added"
       }
     }
   },
   "component_validation": {
-    "python_tests": 641,
+    "python_tests": 642,
     "python_skipped": 5,
     "controller_validation_tests": 82
   },
@@ -240,6 +253,14 @@
     {
       "path": "test-evidence/stabilization-20261001/acceptance-qualification-all-python-119.log",
       "sha256": "dc6ad58742a1886acdc560370c6431c1c29a0baf5e70b38abe7dbadf65b7ceb7"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-b80378a-validation-failed-122.log",
+      "sha256": "51cc6d5cf428fbd2530b0d3653d2200e9f95a063454ea89588cbd1d216fcfd0e"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/acceptance-production-env-all-python-123.log",
+      "sha256": "4629c148b3e078ada51d9bf391bbb117a7a05953bd2a8688592c58daae8a4abb"
     }
   ],
   "native_progress": {

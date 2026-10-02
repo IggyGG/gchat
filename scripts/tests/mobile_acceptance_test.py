@@ -170,7 +170,7 @@ class MobileAcceptanceTests(unittest.TestCase):
                  patch.object(acceptance, 'gh', side_effect=api) as provider_api, \
                  patch.object(acceptance, 'ssh', return_value=b'{"invitation":"fixture-no-authority"}'), \
                  patch.object(acceptance.subprocess, 'run'):
-                self.assertIsNone(acceptance.collect(root, {'grant_config': str(grant)},
+                self.assertIsNone(acceptance.collect(root, {'grant_config': str(grant), 'qualification_commit': None},
                                                      manifest, 'android', root, '1' * 64))
                 marker = json.loads((root / 'acceptance-intent.json').read_text())
                 self.assertTrue(marker['dispatch_reserved'])
@@ -179,7 +179,7 @@ class MobileAcceptanceTests(unittest.TestCase):
                 calls = [call for call in provider_api.call_args_list if call.args[0].endswith('/dispatches')]
                 self.assertEqual(len(calls), 1)
                 self.assertEqual(calls[0].args[0], 'actions/workflows/mobile-acceptance.yml/dispatches')
-                self.assertIsNone(acceptance.collect(root, {'grant_config': str(grant)},
+                self.assertIsNone(acceptance.collect(root, {'grant_config': str(grant), 'qualification_commit': None},
                                                      manifest, 'android', root, '1' * 64))
                 self.assertEqual(sum(call.args[0].endswith('/dispatches')
                                      for call in provider_api.call_args_list), 1)

@@ -21,8 +21,11 @@ its report must match that commit's actual tree and the application's original
 source manifest. A corrected worker may follow only a completed failed attempt
 with its archive, run and revoked grant retained. An unknown dispatch keeps its
 original request and worker across controller updates. Acceptance workflow edits
-require fresh infrastructure qualification. Component controls pass; activation
-and actual installed execution remain required.
+require fresh infrastructure qualification. Image validation exposed three legacy
+fixtures that implicitly depended on an unset controller revision. Those cases now
+select legacy behavior explicitly; a new control checks the production default
+and rejects moving refs. The original failed image Job is retained, the previous
+controller remains active, and fresh activation and installed execution are required.
 
 Retained iOS lifecycle rerun `37017329318` passes using the exact native visibility
 Switch. The entire provider archive is verified; app `1.0.87` keeps the same binary

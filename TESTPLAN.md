@@ -63,6 +63,9 @@ without another grant or POST. Only a completed failed run with a verified retai
 archive and revoked grant can start a corrected worker. An active follow-up keeps
 its request across another controller change. Preserve all original failure bytes.
 Acceptance workflow changes preserve app inputs but require new infrastructure.
+Run these controls with `GCHAT_CONTROLLER_REVISION` set, as in the real image.
+Legacy dispatch fixtures select their prior behavior explicitly; the production
+default must use the full controller object and reject moving or malformed refs.
 
 Run `release_acceptance_test.py` for exact native source/archive/platform
 bindings, baseline → current → baseline → current identity/history/cache preservation,

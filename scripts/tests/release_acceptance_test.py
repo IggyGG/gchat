@@ -50,6 +50,16 @@ def fixture():
 
 
 class NativeAcceptanceTests(unittest.TestCase):
+    def test_production_controller_revision_is_the_default_and_legacy_requests_remain_explicit(self):
+        manifest = candidate()
+        with patch.dict(acceptance.os.environ, GCHAT_CONTROLLER_REVISION='7'*40):
+            self.assertEqual(acceptance.qualification_revision({}, manifest), '7'*40)
+            self.assertEqual(acceptance.qualification_revision({'qualification_commit': '8'*40}, manifest), '8'*40)
+            self.assertIsNone(acceptance.qualification_revision({'qualification_commit': None}, manifest))
+            for value in ('main', '', '7'*39, 'G'*40, True):
+                with self.subTest(value=value), self.assertRaises(ValueError):
+                    acceptance.qualification_revision({'qualification_commit': value}, manifest)
+
     def test_qualification_reference_reconciles_lost_publication_and_never_replaces_sources(self):
         commit = '7' * 40
         name = 'release/qualification-' + commit
@@ -284,7 +294,7 @@ class NativeAcceptanceTests(unittest.TestCase):
         manifest, inputs, _, _, _ = fixture()
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary); grant = work / 'grant.json'; grant.write_text('{}')
-            config = {'grant_config': str(grant)}; request = '1'*64
+            config = {'grant_config': str(grant), 'qualification_commit': None}; request = '1'*64
             def provider_api(path, **kwargs):
                 if path.endswith('/dispatches'): raise subprocess.TimeoutExpired('provider', 1)
                 return {'workflow_runs': []}
@@ -312,7 +322,7 @@ class NativeAcceptanceTests(unittest.TestCase):
                  patch.object(acceptance, 'ssh', return_value=b'{"revoked":true}') as ssh, \
                  patch.object(acceptance.subprocess, 'check_output', return_value=b'[]'):
                 with self.assertRaisesRegex(ValueError, 'do not resubmit blindly'):
-                    acceptance.collect(work, {'grant_config': str(grant)}, manifest, 'linux-x86_64', work, '1'*64)
+                    acceptance.collect(work, {'grant_config': str(grant), 'qualification_commit': None}, manifest, 'linux-x86_64', work, '1'*64)
                 ssh.assert_called_once()
                 self.assertTrue(json.loads((work / 'acceptance-intent.json').read_text())['cleaned'])
                 self.assertFalse(any(call.args[0].endswith('/dispatches') for call in api.call_args_list))
@@ -328,11 +338,11 @@ class NativeAcceptanceTests(unittest.TestCase):
                  patch.object(acceptance.subprocess, 'check_output', return_value=b'[]'), \
                  patch.object(acceptance.subprocess, 'run') as command:
                 with self.assertRaisesRegex(ValueError, 'grant revoked'):
-                    acceptance.collect(work, {'grant_config': str(grant)}, manifest, inputs['target'], work, '1'*64)
+                    acceptance.collect(work, {'grant_config': str(grant), 'qualification_commit': None}, manifest, inputs['target'], work, '1'*64)
                 intent = json.loads((work / 'acceptance-intent.json').read_text())
                 self.assertTrue(intent['cleaned']); self.assertTrue(intent['rejected_before_dispatch'])
                 with self.assertRaisesRegex(ValueError, 'grant revoked'):
-                    acceptance.collect(work, {'grant_config': str(grant)}, manifest, inputs['target'], work, '1'*64)
+                    acceptance.collect(work, {'grant_config': str(grant), 'qualification_commit': None}, manifest, inputs['target'], work, '1'*64)
                 command.assert_not_called(); self.assertEqual(ssh.call_count, 2)
                 self.assertFalse(any(call.args[0].endswith('/dispatches') for call in api.call_args_list))
 
