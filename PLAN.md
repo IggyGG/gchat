@@ -1,3 +1,20 @@
+Retained native acceptance now waits for a verified running worker before issuing
+its existing host-owned canary grant. The worker publishes an ephemeral X25519
+public key in a source-bound ready artifact; the coordinator encrypts retained
+provider ZIPs and the short-lived bootstrap invitation for that worker. Original
+ZIP hashes, provider runs, signatures and native journey gates remain mandatory.
+Completed acceptance must prove removal of its private key and decrypted copies.
+Lost publication reuses the same sealed response and original grant; it cannot
+renew authority. Existing dispatched requests preserve their original worker,
+request and secret delivery. No chat API, client contract or channel key changes.
+
+All 667 Python tests pass with five existing skips; L0 checks 802 paths and the
+18 stable/three optional methods retain unchanged API 2 fixtures. Twelve new
+controls cover real multiframe encryption, tampering, source/queue binding,
+replay, retained originals and private cleanup. Actual-image qualification and
+activation of this new delivery path are pending; generation 54 remains active.
+See the [release checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
+
 Controller bundle builds now run their actual image under its baked production
 revision before producing a deployable bundle. The image is built from committed
 Git bytes and runs source hashes plus the controller, acceptance, rollback,

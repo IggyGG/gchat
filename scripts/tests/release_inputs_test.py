@@ -87,6 +87,8 @@ class InputTests(unittest.TestCase):
             for path in ('release/downloads.json', 'scripts/website.py',
                          '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py',
                          '.github/workflows/release-tools-check.yml',
+                         'scripts/acceptance_delivery.py', 'scripts/release_acceptance_delivery.py',
+                         'release/automation/requirements.txt',
                          'marketing/play-store/retro-v1/listing.md',
                          'marketing/play-store/retro-v1/exports/feature.png',
                          'marketing/app-store/retro-v1/listing.json',

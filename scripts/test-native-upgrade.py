@@ -18,7 +18,7 @@ import sys
 import time
 import uuid
 
-from release_jobs import gh, extract
+from release_jobs import gh, extract, acceptance_archive
 from release_network_canary import module, verify_journey
 from release_pair import validate
 from release_signatures import verify as verify_gpg
@@ -55,21 +55,25 @@ def validate_inputs(value):
 
 def linux_acquire(name, spec, output):
     run = gh(f'actions/runs/{spec["run"]}')
-    artifact = gh(f'actions/artifacts/{spec["artifact"]}')
+    root = output / name; root.mkdir()
+    archive = root / 'artifact.zip'
+    artifact = acceptance_archive(spec, archive)
+    retained = artifact is not None
+    if not retained: artifact = gh(f'actions/artifacts/{spec["artifact"]}')
     smoke.require(run.get('status') == 'completed' and run.get('conclusion') == 'success'
                   and run.get('head_sha') == spec['controller']
                   and run.get('head_repository', {}).get('full_name') == 'IggyGG/gchat'
                   and run.get('path') == '.github/workflows/linux-release.yml'
                   and run.get('event') == 'workflow_dispatch'
                   and artifact.get('workflow_run', {}).get('id') == spec['run']
-                  and artifact.get('expired') is False and artifact.get('digest') == 'sha256:' + spec['archive']
+                  and (retained or artifact.get('expired') is False)
+                  and artifact.get('digest') == 'sha256:' + spec['archive']
                   and type(artifact.get('size_in_bytes')) is int and 0 < artifact['size_in_bytes'] <= 12 * 1024**3,
                   'retained Linux provider identity differs')
-    root = output / name; root.mkdir()
-    archive = root / 'artifact.zip'
-    with archive.open('xb') as stream:
-        subprocess.run(['gh', 'api', f'repos/IggyGG/gchat/actions/artifacts/{spec["artifact"]}/zip'],
-                       stdout=stream, stderr=subprocess.PIPE, check=True, timeout=600)
+    if not retained:
+        with archive.open('xb') as stream:
+            subprocess.run(['gh', 'api', f'repos/IggyGG/gchat/actions/artifacts/{spec["artifact"]}/zip'],
+                           stdout=stream, stderr=subprocess.PIPE, check=True, timeout=600)
     smoke.require(smoke.digest(archive) == spec['archive'] and archive.stat().st_size == artifact['size_in_bytes'],
                   'retained Linux archive differs')
     extract(archive, root / 'original')

@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import uuid
+from release_jobs import acceptance_archive
 
 import importlib.util
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,18 +36,22 @@ smoke = network.m
 def acquire(name, output, commands):
     bound = retained.RETAINED[name]
     run = retained.package.api(f"repos/IggyGG/gchat/actions/runs/{bound['run']}")
-    artifact = retained.package.api(f"repos/IggyGG/gchat/actions/artifacts/{bound['artifact']}")
-    smoke.require(run.get('status') == 'completed' and run.get('conclusion') == bound['conclusion']
-                  and run.get('head_sha') == bound['sources']['gchat']
-                  and run.get('path') == '.github/workflows/windows-release.yml'
-                  and artifact.get('workflow_run', {}).get('id') == bound['run']
-                  and artifact.get('expired') is False and artifact.get('digest') == 'sha256:' + bound['archive'],
-                  'retained Windows source/artifact identity differs')
     root = output / name; root.mkdir()
     archive = root / 'artifact.zip'
-    with archive.open('xb') as stream:
-        subprocess.run(['gh','api',f"repos/IggyGG/gchat/actions/artifacts/{bound['artifact']}/zip"],
-                       stdout=stream,check=True,timeout=180)
+    artifact = acceptance_archive(bound, archive)
+    local = artifact is not None
+    if not local: artifact = retained.package.api(f"repos/IggyGG/gchat/actions/artifacts/{bound['artifact']}")
+    smoke.require(run.get('status') == 'completed' and run.get('conclusion') == bound['conclusion']
+                  and run.get('head_sha') == bound.get('controller', bound['sources']['gchat'])
+                  and run.get('path') == '.github/workflows/windows-release.yml'
+                  and artifact.get('workflow_run', {}).get('id') == bound['run']
+                  and (local or artifact.get('expired') is False)
+                  and artifact.get('digest') == 'sha256:' + bound['archive'],
+                  'retained Windows source/artifact identity differs')
+    if not local:
+        with archive.open('xb') as stream:
+            subprocess.run(['gh','api',f"repos/IggyGG/gchat/actions/artifacts/{bound['artifact']}/zip"],
+                           stdout=stream,check=True,timeout=180)
     smoke.require(smoke.digest(archive) == bound['archive'] and archive.stat().st_size == artifact['size_in_bytes'],
                   'retained Windows archive differs')
     retained.package.extract(archive, root / 'original')

@@ -40,7 +40,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
     atomic_json(a.output/'controller.json',configuration())
     atomic_json(a.output/'acceptance.json', {'schema':1,'grant_config':'/config/grant.json',
-        'deployment_file':'/config/deployment.json','baselines':{}})
+        'deployment_file':'/config/deployment.json','baselines':{},
+        'delivery_url':'https://gchat.boo/updates/acceptance'})
     policy=json.loads((Path(__file__).resolve().parents[1]/'release/automation/policy.json').read_text())
     atomic_json(a.output/'publisher.json',{'public_root':'/state/public/updates','public_url':'https://gchat.boo/updates',
         'public_key':policy['updater_public_key'],'signer':['python3','/opt/gchat/automation/sign-update'],

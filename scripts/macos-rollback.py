@@ -29,7 +29,7 @@ def load(name):
     return module
 
 
-from release_jobs import gh, extract
+from release_jobs import gh, extract, acceptance_archive
 
 MOUNTS = []
 INPUTS = {}
@@ -59,20 +59,24 @@ def validate_inputs(value):
 def acquire(name, output, commands):
     bound = INPUTS[name]
     run = gh(f"actions/runs/{bound['run']}")
-    artifact = gh(f"actions/artifacts/{bound['artifact']}")
+    root = output / name; root.mkdir()
+    archive = root / 'artifact.zip'
+    artifact = acceptance_archive(bound, archive)
+    retained = artifact is not None
+    if not retained: artifact = gh(f"actions/artifacts/{bound['artifact']}")
     smoke.require(run.get('status') == 'completed' and run.get('conclusion') == 'success'
                   and run.get('head_repository', {}).get('full_name') == 'IggyGG/gchat'
                   and run.get('path') in ('.github/workflows/macos-release.yml', '.github/workflows/macos-notarize.yml')
                   and run.get('head_sha') == bound['controller'] and run.get('event') == 'workflow_dispatch'
                   and artifact.get('workflow_run', {}).get('id') == bound['run']
-                  and artifact.get('expired') is False and artifact.get('digest') == 'sha256:' + bound['archive']
+                  and (retained or artifact.get('expired') is False)
+                  and artifact.get('digest') == 'sha256:' + bound['archive']
                   and type(artifact.get('size_in_bytes')) is int and 0 < artifact['size_in_bytes'] <= 2 * 1024**3,
                   'retained Mac source/artifact identity differs')
-    root = output / name; root.mkdir()
-    archive = root / 'artifact.zip'
-    with archive.open('xb') as stream:
-        subprocess.run(['gh', 'api', f"repos/IggyGG/gchat/actions/artifacts/{bound['artifact']}/zip"],
-                       stdout=stream, check=True, timeout=300)
+    if not retained:
+        with archive.open('xb') as stream:
+            subprocess.run(['gh', 'api', f"repos/IggyGG/gchat/actions/artifacts/{bound['artifact']}/zip"],
+                           stdout=stream, check=True, timeout=300)
     smoke.require(smoke.digest(archive) == bound['archive'] and archive.stat().st_size == artifact['size_in_bytes'],
                   'retained Mac archive differs')
     extract(archive, root / 'original')

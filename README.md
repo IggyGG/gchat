@@ -1,3 +1,25 @@
+Retained native acceptance now waits for a verified running worker before issuing
+its existing host-owned canary grant. The worker publishes an ephemeral X25519
+public key in a source-bound ready artifact; the coordinator encrypts retained
+provider ZIPs and the short-lived bootstrap invitation for that worker. Original
+ZIP hashes, provider runs, signatures and native journey gates remain mandatory.
+Completed acceptance must prove removal of its private key and decrypted copies.
+Lost publication reuses the same sealed response and original grant; it cannot
+renew authority. Existing dispatched requests preserve their original worker,
+request and secret delivery. No chat API, client contract or channel key changes.
+The controller and native workers explicitly pin `cryptography==50.0.2` (previously
+a transitive controller dependency) for X25519, HKDF-SHA256 and AES-256-GCM.
+New configurations set `delivery_url` to `https://gchat.boo/updates/acceptance`;
+legacy configurations remain readable. Only ciphertext is published there.
+Original provider ZIPs remain private in release state, including retained seeds.
+
+All 667 Python tests pass with five existing skips; L0 checks 802 paths and the
+18 stable/three optional methods retain unchanged API 2 fixtures. Twelve new
+controls cover real multiframe encryption, tampering, source/queue binding,
+replay, retained originals and private cleanup. Actual-image qualification and
+activation of this new delivery path are pending; generation 54 remains active.
+See the [release checkpoint](docs/evidence/stabilization-20261001/live-controller-and-acceptance.json).
+
 Controller image builds now include an automatic runtime gate. The build uses
 committed Git bytes, verifies the actual image's source inventory and baked
 controller revision, and runs the release/acceptance/rollback/compaction suites

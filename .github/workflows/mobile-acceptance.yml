@@ -23,7 +23,10 @@ on:
         required: true
         type: string
       invitation_secret:
-        required: true
+        required: false
+        type: string
+      delivery_url:
+        required: false
         type: string
 permissions:
   contents: read
@@ -34,6 +37,8 @@ jobs:
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      REQUEST: ${{ inputs.request_id }}
+      DELIVERY_URL: ${{ inputs.delivery_url }}
     steps:
       - name: Preserve source bytes
         run: git config --global core.autocrlf false
@@ -56,13 +61,18 @@ jobs:
           TARGET: ${{ inputs.target }}
         run: |
           python - <<'PY'
-          import base64,json,os,re,subprocess,sys
+          import base64,json,os,re,subprocess,sys,urllib.parse
           from pathlib import Path
           sys.path.insert(0,'scripts')
           from release_pair import canonical,validate,identity
           from mobile_acceptance_inputs import validate_inputs
           assert re.fullmatch('[0-9a-f]{64}',os.environ['REQUEST'])
-          assert re.fullmatch('GCHAT_ACCEPTANCE_[0-9A-F]{64}',os.environ['INVITATION_SECRET'])
+          if os.environ['DELIVERY_URL']:
+              url=urllib.parse.urlsplit(os.environ['DELIVERY_URL'])
+              assert url.scheme=='https' and url.hostname and not any((url.username,url.password,url.query,url.fragment))
+              assert not os.environ['INVITATION_SECRET']
+          else:
+              assert re.fullmatch('GCHAT_ACCEPTANCE_[0-9A-F]{64}',os.environ['INVITATION_SECRET'])
           source=identity(Path('.'))
           assert source['commit']==os.environ['QUALIFICATION_COMMIT']
           assert not subprocess.check_output(['git','status','--porcelain'],text=True).strip()
@@ -106,14 +116,44 @@ jobs:
           test "$(uname -m)" = arm64
           test "$(xcodebuild -version | head -1)" = 'Xcode 26.2'
           brew install xcodegen
+      - name: Publish readiness from this running worker
+        if: inputs.delivery_url != ''
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check cryptography==50.0.2
+          python scripts/acceptance_delivery.py ready --request "$REQUEST" --private "$RUNNER_TEMP/gchat-acceptance-$REQUEST"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: inputs.delivery_url != ''
+        with:
+          name: acceptance-ready-${{ inputs.request_id }}
+          path: acceptance-ready.json
+          retention-days: 30
+          if-no-files-found: error
       - name: Test retained signed applications through actual mobile UI
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GCHAT_NETWORK_INVITATION: ${{ secrets[inputs.invitation_secret] }}
         run: |
-          python scripts/test-mobile-upgrade.py --inputs acceptance-inputs.json --manifest acceptance-manifest.json --output acceptance
+          if [ -n "$DELIVERY_URL" ]; then
+            python scripts/acceptance_delivery.py run --request "$REQUEST" --private "$RUNNER_TEMP/gchat-acceptance-$REQUEST" --url "$DELIVERY_URL" --driver scripts/test-mobile-upgrade.py --output acceptance
+          else
+            python scripts/test-mobile-upgrade.py --inputs acceptance-inputs.json --manifest acceptance-manifest.json --output acceptance
+          fi
           git diff --exit-code
+      - name: Remove this worker's private delivery key and archive copies
+        if: always() && inputs.delivery_url != ''
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os,re,shutil
+          from pathlib import Path
+          request=os.environ['REQUEST']; assert re.fullmatch('[0-9a-f]{64}',request)
+          root=Path(os.environ['RUNNER_TEMP'])/('gchat-acceptance-'+request)
+          assert not root.is_symlink()
+          if root.exists(): shutil.rmtree(root)
+          assert not root.exists()
+          PY
       - name: Retain the independent qualification source binding
         if: always()
         shell: bash
@@ -141,5 +181,6 @@ jobs:
           path: |
             acceptance/worker.json
             acceptance/report.json
+            acceptance/delivery.json
             acceptance/rollback/report.json
             acceptance/network/report.json

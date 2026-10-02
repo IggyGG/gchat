@@ -10,10 +10,18 @@ import tempfile
 import time
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+import io
+import os
+import zipfile
+
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import release_acceptance as acceptance
+import acceptance_delivery as transport
+import release_acceptance_delivery as delivery
 from release_automation_test import candidate
 from release_coordinator import Coordinator, atomic_json
 from release_ledger import Ledger
@@ -345,6 +353,265 @@ class NativeAcceptanceTests(unittest.TestCase):
                     acceptance.collect(work, {'grant_config': str(grant), 'qualification_commit': None}, manifest, inputs['target'], work, '1'*64)
                 command.assert_not_called(); self.assertEqual(ssh.call_count, 2)
                 self.assertFalse(any(call.args[0].endswith('/dispatches') for call in api.call_args_list))
+
+
+class EncryptedAcceptanceDeliveryTests(unittest.TestCase):
+    def ready_fixture(self, root, mutate=None):
+        manifest, inputs, _, _, _ = fixture()
+        request = '1'*64; work = root / 'work'; work.mkdir()
+        binding = {'request': request, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+                   'target': inputs['target'], 'commit': '7'*40, 'tree': '8'*40}
+        private = root / 'private'
+        with patch.object(transport.time, 'time', return_value=100):
+            transport.generate(private, binding, root / 'acceptance-ready.json')
+        ready = json.loads((root / 'acceptance-ready.json').read_text())
+        if mutate: ready.update(mutate)
+        with zipfile.ZipFile(work / 'ready.zip', 'w') as source:
+            source.writestr('acceptance-ready.json', json.dumps(ready))
+        artifact = {'id': 20, 'name': 'acceptance-ready-' + request, 'expired': False,
+                    'digest': 'sha256:' + transport.digest(work / 'ready.zip'),
+                    'size_in_bytes': (work / 'ready.zip').stat().st_size}
+        paths = {}
+        for role in ('current', 'baseline'):
+            path = root / (role + '.zip'); path.write_bytes((role.encode() + b'-original-private-archive') * 100)
+            inputs[role]['archive'] = transport.digest(path)
+            paths[role] = {'path': str(path), 'provider': {'id': inputs[role]['artifact'], 'name': inputs['target'],
+                'workflow_run': {'id': inputs[role]['run']}, 'retained_locally': True,
+                'digest': 'sha256:' + inputs[role]['archive'], 'size_in_bytes': path.stat().st_size}}
+        intent = {'request': request, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+                  'target': inputs['target'], 'inputs': inputs, 'qualification_commit': '7'*40,
+                  'qualification_tree': '8'*40, 'delivery_archives': paths}
+        run = {'id': 10, 'status': 'in_progress'}
+        api = Mock(return_value={'artifacts': [artifact]})
+        issue = Mock(return_value={'invitation': 'fixture-with-no-authority', 'expires_at': 3700})
+        return manifest, intent, work, private, run, api, issue
+
+    def test_actual_multiframe_crypto_rejects_tampering_and_preserves_existing_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); request = '1'*64
+            sender, receiver = X25519PrivateKey.generate(), X25519PrivateKey.generate()
+            secret = transport.key(sender, transport.public(receiver), request, 'current')
+            self.assertEqual(secret, transport.key(receiver, transport.public(sender), request, 'current'))
+            source = root / 'original'; source.write_bytes(b'a' * (transport.CHUNK + 19))
+            bound = transport.encrypt_archive(source, root / 'sealed', secret, request, 'current', transport.digest(source))
+            transport.decrypt_archive(root / 'sealed', root / 'plain', secret, request, 'current', bound)
+            self.assertEqual((root / 'plain').read_bytes(), source.read_bytes())
+            for other_request, purpose, other_key in ((request, 'baseline', secret), ('2'*64, 'current', secret),
+                                                       (request, 'current', b'0'*32)):
+                with self.subTest(purpose=purpose), self.assertRaises(InvalidTag):
+                    transport.decrypt_archive(root / 'sealed', root / 'failed', other_key, other_request, purpose, bound)
+                self.assertFalse((root / 'failed').exists())
+            data = bytearray((root / 'sealed').read_bytes()); data[2] ^= 1; (root / 'sealed').write_bytes(data)
+            changed = {**bound, 'ciphertext_sha256': transport.digest(root / 'sealed')}
+            with self.assertRaises(InvalidTag):
+                transport.decrypt_archive(root / 'sealed', root / 'failed', secret, request, 'current', changed)
+            self.assertFalse((root / 'failed').exists())
+            before = (root / 'plain').read_bytes()
+            with self.assertRaises(FileExistsError):
+                transport.decrypt_archive(root / 'sealed', root / 'plain', secret, request, 'current', changed)
+            self.assertEqual((root / 'plain').read_bytes(), before)
+            with self.assertRaises(ValueError): transport.archive_bound({**bound, 'ciphertext_size': 12*1024**3+1})
+
+    def test_response_is_bound_to_the_request_and_the_runner_private_key(self):
+        sender, receiver = X25519PrivateKey.generate(), X25519PrivateKey.generate(); request = '1'*64
+        sealed = transport.seal({'invitation': 'fixture-with-no-authority'}, sender, transport.public(receiver), request)
+        self.assertEqual(transport.unseal(sealed, receiver, request), {'invitation': 'fixture-with-no-authority'})
+        self.assertNotIn('invitation', sealed)
+        for value, private, bound_request in ((sealed, X25519PrivateKey.generate(), request),
+                                               (sealed, receiver, '2'*64),
+                                               ({**sealed, 'protocol': 'other'}, receiver, request)):
+            with self.subTest(request=bound_request), self.assertRaises((ValueError, InvalidTag)):
+                transport.unseal(value, private, bound_request)
+
+    def test_queued_worker_has_no_grant_and_ready_delivery_replays_the_same_response(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); _, intent, work, _, run, api, issue = self.ready_fixture(root)
+            self.assertIsNone(delivery.ready(root, intent, work, {**run, 'status': 'queued'}, api, issue, now=100))
+            api.assert_not_called(); issue.assert_not_called()
+            proof = delivery.ready(root, intent, work, run, api, issue, now=100)
+            response = root / 'public/updates/acceptance' / intent['request'] / 'response.json'
+            original = response.read_bytes(); response.unlink()
+            self.assertEqual(delivery.ready(root, intent, work, run, api, issue, now=150), proof)
+            self.assertEqual(response.read_bytes(), original); issue.assert_called_once()
+            self.assertTrue(proof['grant_issued_after_ready'])
+            self.assertEqual(proof['expires_at'], 3700)
+            for role, item in intent['delivery_archives'].items():
+                self.assertEqual(transport.digest(item['path']), intent['inputs'][role]['archive'])
+            delivery.cleanup(root, intent['request']); self.assertFalse(response.parent.exists())
+            self.assertTrue((work / 'sealed-delivery.json').exists())
+            self.assertTrue(all(Path(v['path']).exists() for v in intent['delivery_archives'].values()))
+
+    def test_wrong_source_stale_and_small_order_ready_keys_never_issue_a_grant(self):
+        for changed in ({'request': '2'*64}, {'commit': '9'*40}, {'tree': '9'*40}, {'sources': {}},
+                        {'target': 'ios'}, {'release_id': '3'*64}, {'created_at': -201},
+                        {'created_at': 101}, {'public_key': transport.encode(b'\0'*32)}):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); _, intent, work, _, run, api, issue = self.ready_fixture(root, changed)
+                with self.assertRaises(ValueError): delivery.ready(root, intent, work, run, api, issue, now=100)
+                issue.assert_not_called(); self.assertFalse((root / 'public').exists())
+
+    def test_ambiguous_and_changed_ready_provider_archives_are_refused(self):
+        for duplicate in (True, False):
+            with self.subTest(duplicate=duplicate), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); _, intent, work, _, run, api, issue = self.ready_fixture(root)
+                if duplicate: api.return_value['artifacts'] *= 2
+                else: (work / 'ready.zip').write_bytes(b'changed')
+                with self.assertRaises(ValueError): delivery.ready(root, intent, work, run, api, issue, now=100)
+                issue.assert_not_called()
+
+    def test_runner_receives_exact_bytes_and_removes_private_transport_on_success_or_failure(self):
+        class Response(io.BytesIO):
+            def __init__(self, data, url): super().__init__(data); self.url = url
+        for fail in (False, True):
+            with self.subTest(fail=fail), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); manifest, intent, work, private, run, api, issue = self.ready_fixture(root)
+                delivery.ready(root, intent, work, run, api, issue, now=100)
+                public = root / 'public/updates/acceptance' / intent['request']
+                def urlopen(url, **kwargs):
+                    return Response((public / url.rsplit('/', 1)[-1]).read_bytes(), url)
+                def driver(*args, **kwargs):
+                    env = kwargs['env']; self.assertEqual(env['GCHAT_NETWORK_INVITATION'], 'fixture-with-no-authority')
+                    copies = Path(env['GCHAT_ACCEPTANCE_RETAINED_ROOT'])
+                    for role in ('current', 'baseline'):
+                        spec = intent['inputs'][role]
+                        self.assertEqual(transport.digest(copies / (spec['archive'] + '.zip')), spec['archive'])
+                    if fail: raise OSError('fixture driver failure')
+                    return SimpleNamespace(returncode=0)
+                with patch.object(transport.urllib.request, 'urlopen', side_effect=urlopen), \
+                     patch.object(transport.subprocess, 'run', side_effect=driver), \
+                     patch.object(transport.time, 'time', return_value=100):
+                    if fail:
+                        with self.assertRaises(OSError):
+                            transport.receive('https://example.test/updates/acceptance', intent['request'], private,
+                                              intent['inputs'], manifest, 'driver.py', root / 'acceptance')
+                    else:
+                        self.assertEqual(transport.receive('https://example.test/updates/acceptance', intent['request'],
+                            private, intent['inputs'], manifest, 'driver.py', root / 'acceptance'), 0)
+                self.assertFalse(private.exists())
+                proof = json.loads((root / 'acceptance/delivery.json').read_text())
+                self.assertEqual(proof['passed'], not fail)
+                self.assertTrue(proof['private_key_removed']); self.assertTrue(proof['decrypted_archives_removed'])
+                if not fail: delivery.verify_receipt(proof, intent, work)
+                self.assertEqual({p.suffix for p in public.iterdir()}, {'.json', '.sealed'})
+                self.assertFalse(any(b'fixture-with-no-authority' in p.read_bytes() for p in public.iterdir()))
+
+    def test_delivered_archive_metadata_and_bytes_cannot_be_changed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); _, intent, _, _, _, _, _ = self.ready_fixture(root)
+            spec = intent['inputs']['current']; source = Path(intent['delivery_archives']['current']['path'])
+            copies = root / 'copies'; copies.mkdir(); source.rename(copies / (spec['archive'] + '.zip'))
+            metadata = copies / (spec['archive'] + '.json')
+            atomic_json(metadata, intent['delivery_archives']['current']['provider'])
+            with patch.dict(os.environ, GCHAT_ACCEPTANCE_RETAINED_ROOT=str(copies)):
+                transport.copy_retained(spec, root / 'verified.zip')
+                self.assertEqual(transport.digest(root / 'verified.zip'), spec['archive'])
+                atomic_json(metadata, {**json.loads(metadata.read_text()), 'workflow_run': {'id': 999}})
+                with self.assertRaises(ValueError): transport.copy_retained(spec, root / 'bad.zip')
+                atomic_json(metadata, intent['delivery_archives']['current']['provider'])
+                (copies / (spec['archive'] + '.zip')).write_bytes(b'changed')
+                with self.assertRaises(ValueError): transport.copy_retained(spec, root / 'bad.zip')
+                self.assertFalse((root / 'bad.zip').exists())
+
+    def test_retained_original_remains_available_without_provider_download(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); _, specs, _, _, _ = fixture(); spec = specs['current']
+            builds = root / 'jobs/build'; builds.mkdir(parents=True)
+            with zipfile.ZipFile(builds / 'native.zip', 'w') as archive:
+                archive.writestr('build.json', json.dumps({'target': specs['target'], 'sources': spec['sources']}))
+            spec['archive'] = transport.digest(builds / 'native.zip')
+            atomic_json(builds / 'receipt.json', {'stage': 'build', 'passed': True, 'external_id': str(spec['run']),
+                'sources': {k: {'commit': v} for k, v in spec['sources'].items()},
+                'worker': {'artifact_id': spec['artifact'], 'workflow_commit': spec['controller']},
+                'evidence': [{'path': 'native.zip', 'sha256': spec['archive']}]})
+            api = Mock(side_effect=AssertionError('provider download must not be required'))
+            path = delivery.retain_original(root, spec, specs['target'], api)
+            metadata = delivery.provider_metadata(path, spec, specs['target'])
+            self.assertTrue(metadata['retained_locally']); self.assertEqual(metadata['digest'], 'sha256:' + spec['archive'])
+            api.assert_not_called()
+
+    def test_new_dispatch_waits_for_readiness_and_freezes_unknown_requests_without_a_secret(self):
+        manifest, inputs, _, _, _ = fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary); grant = work / 'grant.json'; grant.write_text('{}'); request = '1'*64
+            config = {'grant_config': str(grant), 'qualification_commit': '7'*40,
+                      'delivery_url': 'https://example.test/updates/acceptance'}
+            run = {'id': 10, 'display_title': acceptance.PREFIX + request, 'head_sha': '7'*40,
+                   'event': 'workflow_dispatch', 'path': '.github/workflows/native-acceptance.yml',
+                   'head_repository': {'full_name': 'IggyGG/gchat'}, 'status': 'queued'}
+            dispatched = False
+            def provider_api(path, **kwargs):
+                nonlocal dispatched
+                if path.startswith('git/commits/'): return {'sha': '7'*40, 'tree': {'sha': '8'*40}}
+                if path.endswith('/dispatches'): dispatched = True; raise subprocess.TimeoutExpired('provider', 1)
+                return {'workflow_runs': [run] if dispatched else []}
+            with patch.object(acceptance, 'provider', return_value=inputs['current']), \
+                 patch.object(acceptance, 'baseline', return_value=inputs['baseline']), \
+                 patch.object(acceptance, 'qualification_ref', side_effect=lambda c: 'release/qualification-' + c), \
+                 patch.object(acceptance, 'gh', side_effect=provider_api) as api, \
+                 patch.object(delivery, 'prepare', return_value={}), patch.object(acceptance, 'ssh') as ssh, \
+                 patch.object(acceptance.subprocess, 'run') as command:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    acceptance.collect(work, config, manifest, inputs['target'], work, request)
+                marker = (work / 'acceptance-intent.json').read_bytes()
+                self.assertIsNone(acceptance.collect(work, {**config, 'qualification_commit': '9'*40},
+                                                     manifest, inputs['target'], work, request))
+                self.assertEqual((work / 'acceptance-intent.json').read_bytes(), marker)
+                inputs_sent = next(c.kwargs['body']['inputs'] for c in api.call_args_list if c.args[0].endswith('/dispatches'))
+                self.assertNotIn('invitation_secret', inputs_sent); self.assertIn('delivery_url', inputs_sent)
+                ssh.assert_not_called(); command.assert_not_called()
+                intent = json.loads(marker); intent['cleaned'] = True
+                atomic_json(work / 'acceptance-intent.json', intent)
+                run['status'] = 'in_progress'
+                with self.assertRaisesRegex(ValueError, 'closed acceptance'):
+                    acceptance.collect(work, config, manifest, inputs['target'], work, request)
+                ssh.assert_not_called()
+
+    def test_delivery_cleanup_receipt_cannot_relabel_source_bytes_or_key_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); _, intent, work, _, run, api, issue = self.ready_fixture(root)
+            retained = delivery.ready(root, intent, work, run, api, issue, now=100)
+            proof = {'schema': 1, 'protocol': transport.PROTOCOL, 'request': intent['request'],
+                     'sources': intent['sources'], 'target': intent['target'], 'qualification_commit': '7'*40,
+                     'qualification_tree': '8'*40, 'passed': True, 'response_sha256': retained['response_sha256'],
+                     'archives': {r: s['archive'] for r, s in intent['inputs'].items() if r != 'target'},
+                     'private_key_removed': True, 'decrypted_archives_removed': True}
+            delivery.verify_receipt(proof, intent, work)
+            for field, value in (('sources', {}), ('request', '2'*64), ('qualification_tree', '9'*40),
+                                 ('archives', {}), ('response_sha256', '0'*64), ('passed', False),
+                                 ('private_key_removed', False), ('decrypted_archives_removed', False)):
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    delivery.verify_receipt({**proof, field: value}, intent, work)
+
+    def test_expired_provider_copy_still_requires_the_original_mobile_run_and_sources(self):
+        import mobile_acceptance_inputs as mobile
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); _, specs, _, _, _ = fixture(); spec = specs['current']
+            copies = root / 'copies'; copies.mkdir()
+            original = copies / 'original.zip'
+            report = {'passed': True, 'sources_unchanged': True,
+                      'sources': {k: {'commit': v} for k, v in spec['sources'].items()}}
+            with zipfile.ZipFile(original, 'w') as archive: archive.writestr('build.json', json.dumps(report))
+            spec['archive'] = transport.digest(original); original.rename(copies / (spec['archive'] + '.zip'))
+            provider = delivery.provider_metadata(copies / (spec['archive'] + '.zip'), spec, 'android')
+            atomic_json(copies / (spec['archive'] + '.json'), provider)
+            run = {'status': 'completed', 'conclusion': 'success', 'head_sha': spec['controller'],
+                   'head_repository': {'full_name': 'IggyGG/gchat'}, 'event': 'workflow_dispatch',
+                   'path': '.github/workflows/android-release.yml'}
+            with patch.dict(os.environ, GCHAT_ACCEPTANCE_RETAINED_ROOT=str(copies)), \
+                 patch.object(mobile, 'gh', return_value=run) as api:
+                accepted = mobile.acquire('current', spec, 'android', root)
+                self.assertEqual(accepted['archive_sha256'], spec['archive']); api.assert_called_once()
+                api.return_value = {**run, 'conclusion': 'failure'}
+                with self.assertRaisesRegex(ValueError, 'binding differs'):
+                    mobile.acquire('wrong-run', spec, 'android', root)
+
+    def test_delivery_url_and_cleanup_reject_escape_and_cleartext(self):
+        for url in ('http://example.test', 'https://user@example.test', 'https://example.test?x=1',
+                    'https://example.test#secret'):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                transport.delivery_url(url, '1'*64, 'response.json')
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaises(ValueError): delivery.cleanup(Path(temporary), '../../original')
 
 
 class AcceptanceFreshnessTests(unittest.TestCase):

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Dispatch retained native acceptance after rollout; retain grants and lost replies.
 
-Only bootstrap canary authority reaches a native worker through a short-lived
-repository secret. Deployment SSH/signing credentials remain in the coordinator.
+Only bootstrap canary authority reaches a verified running native worker through
+encrypted delivery. Existing requests retain their original repository secret.
+Deployment SSH/signing credentials remain in the coordinator.
 Platform receipts require that platform's current/baseline and actual journey.
 """
 import argparse
@@ -27,6 +28,8 @@ from release_network_canary import module, verify_journey
 from release_pair import canonical, validate
 from release_publish import job
 from release_compatibility import verify as verify_compatibility
+import release_acceptance_delivery as delivery
+from acceptance_delivery import delivery_url, PROTOCOL
 
 WORKFLOW = 'native-acceptance.yml'
 MOBILE_WORKFLOW = 'mobile-acceptance.yml'
@@ -180,13 +183,16 @@ def baseline(state, target, config, current):
     return seed if seed is not None and seed['sources'] != expected else None
 
 
-def cleanup(marker, intent, grant):
+def cleanup(marker, intent, grant, state):
     if intent.get('cleaned') is True: return
     revoked = json.loads(ssh(grant, 'canary revoke ' + intent['operation'], b''))
     if revoked.get('revoked') is not True: raise ValueError('native acceptance grant was not revoked')
-    names = json.loads(subprocess.check_output(['gh', 'secret', 'list', '--repo', 'IggyGG/gchat', '--json', 'name'], stderr=subprocess.PIPE))
-    if any(item['name'] == intent['secret'] for item in names):
-        gh('actions/secrets/' + intent['secret'], method='DELETE')
+    if intent.get('delivery_protocol'):
+        delivery.cleanup(state, intent['request'])
+    else:
+        names = json.loads(subprocess.check_output(['gh', 'secret', 'list', '--repo', 'IggyGG/gchat', '--json', 'name'], stderr=subprocess.PIPE))
+        if any(item['name'] == intent['secret'] for item in names):
+            gh('actions/secrets/' + intent['secret'], method='DELETE')
     intent['cleaned'] = True; atomic_json(marker, intent)
 
 
@@ -276,11 +282,18 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
                 raise ValueError('acceptance qualification tree differs from its source object')
             intent.update(qualification_commit=selected_revision,
                           qualification_tree=tree, qualification_ref=reference)
+        if config.get('delivery_url'):
+            if selected_revision is None:
+                raise ValueError('encrypted acceptance delivery requires a frozen qualification worker')
+            delivery_url(config['delivery_url'], request, 'response.json')
+            intent.update(release_id=manifest['release_id'], delivery_protocol=PROTOCOL,
+                          delivery_url=config['delivery_url'])
+            intent['delivery_archives'] = delivery.prepare(state, intent, gh)
         atomic_json(marker, intent)
     if intent['sources'] != manifest['sources'] or intent['target'] != target or intent['request'] != request:
         raise ValueError('native acceptance intent changed while its worker was active')
     if intent.get('rejected_before_dispatch'):
-        cleanup(marker, intent, grant)
+        cleanup(marker, intent, grant, state)
         raise ValueError('native acceptance invitation exceeded the provider secret bound; grant revoked')
     runs = []
     for page in range(1, 11):
@@ -291,7 +304,7 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
     if not runs:
         if intent.get('dispatch_reserved'):
             if time.time() - intent['created_at'] > 1800:
-                cleanup(marker, intent, grant)
+                cleanup(marker, intent, grant, state)
                 raise ValueError('native acceptance dispatch is still unknown; do not resubmit blindly')
             return None
         reference = manifest['refs']['gchat'].removeprefix('refs/heads/')
@@ -299,17 +312,21 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
             reference = intent['qualification_ref']
             if qualification_ref(intent['qualification_commit']) != reference:
                 raise ValueError('acceptance qualification reference changed before dispatch')
-        issued = json.loads(ssh(grant, 'canary grant ' + intent['operation'], b''))
-        value = issued['invitation'].encode()
-        if len(value) > 48000:
-            intent['rejected_before_dispatch'] = True; atomic_json(marker, intent)
-            cleanup(marker, intent, grant)
-            raise ValueError('bootstrap-only native invitation exceeds the private provider secret bound; grant revoked')
-        subprocess.run(['gh', 'secret', 'set', intent['secret'], '--repo', 'IggyGG/gchat'],
-                       input=value, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, timeout=60)
         inputs = {'request_id': request, 'target': target, 'gchat_commit': manifest['sources']['gchat']['commit'],
                   'release_manifest': base64.b64encode(canonical(manifest)).decode(),
-                  'artifacts': base64.b64encode(canonical(intent['inputs'])).decode(), 'invitation_secret': intent['secret']}
+                  'artifacts': base64.b64encode(canonical(intent['inputs'])).decode()}
+        if intent.get('delivery_protocol'):
+            inputs['delivery_url'] = intent['delivery_url']
+        else:
+            issued = json.loads(ssh(grant, 'canary grant ' + intent['operation'], b''))
+            value = issued['invitation'].encode()
+            if len(value) > 48000:
+                intent['rejected_before_dispatch'] = True; atomic_json(marker, intent)
+                cleanup(marker, intent, grant, state)
+                raise ValueError('bootstrap-only native invitation exceeds the private provider secret bound; grant revoked')
+            subprocess.run(['gh', 'secret', 'set', intent['secret'], '--repo', 'IggyGG/gchat'],
+                           input=value, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, timeout=60)
+            inputs['invitation_secret'] = intent['secret']
         if 'qualification_commit' in intent:
             inputs['qualification_commit'] = intent['qualification_commit']
         intent['dispatch_reserved'] = True; atomic_json(marker, intent)
@@ -321,8 +338,14 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
             or run.get('path') != '.github/workflows/' + workflow
             or run.get('head_repository', {}).get('full_name') != 'IggyGG/gchat'):
         raise ValueError('native acceptance workflow/source differs')
-    if run['status'] != 'completed': return None
-    cleanup(marker, intent, grant)
+    if run['status'] != 'completed':
+        if intent.get('delivery_protocol'):
+            if intent.get('cleaned') is True:
+                raise ValueError('closed acceptance request cannot issue new authority')
+            delivery.ready(state, intent, work, run, gh,
+                           lambda: json.loads(ssh(grant, 'canary grant ' + intent['operation'], b'')))
+        return None
+    cleanup(marker, intent, grant, state)
     atomic_json(work / 'acceptance-run.json', run)
     artifacts = gh(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']
     selected = [item for item in artifacts if item['name'] == 'acceptance-' + request and not item['expired']]
@@ -353,6 +376,8 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
         raise ValueError('native acceptance failed; original reports retained')
     if 'qualification_commit' in intent:
         verify_worker(json.loads((destination / 'worker.json').read_text()), intent, manifest, target)
+    if intent.get('delivery_protocol'):
+        delivery.verify_receipt(json.loads((destination / 'delivery.json').read_text()), intent, work)
     report = json.loads((destination / 'report.json').read_text())
     rollback = json.loads((destination / 'rollback/report.json').read_text())
     network = json.loads((destination / 'network/report.json').read_text())

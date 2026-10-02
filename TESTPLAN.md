@@ -1,3 +1,19 @@
+Run `release_acceptance_test.py` and the full Python suite with a short SSD TMPDIR.
+Require actual multiframe AES-GCM recovery with the original ZIP hash; changed
+frames, wrong key/request/purpose, stale/mismatched/ambiguous ready artifacts,
+small-order public keys and changed retained copies must fail. Queued workers
+must receive no authority or repository secret. Lost dispatch freezes the request
+and worker; a closed request cannot issue a new grant. Lost response publication
+must restore identical ciphertext without another grant. Retained archives may
+outlive provider download expiry, but the original successful run/source,
+signatures and native journey still must pass. Successful acceptance requires a
+source-bound cleanup receipt for both the temporary key and decrypted archives.
+Preserve original private ZIPs and failed reports. Run the actual image gate with
+its baked production revision before activation. All 667 Python tests pass with
+five existing skips, L0 checks 802 paths and contracts retain 18 stable/three
+optional methods with unchanged API 2 fixtures. The new image and native handoff
+still need their live qualification; generation 54 remains active.
+
 Run `controller_runtime_test.py` and `release_infrastructure_bundle_test.py`.
 Require wrong production revisions, changed/symlinked/unsafe source paths,
 failed/skipped tests, test-time source mutations, incomplete inventories and

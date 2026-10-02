@@ -22,6 +22,13 @@ WORKFLOWS = {'linux-x86_64': ('linux-release.yml', 'Forgejo Linux '), 'macos-aar
              'ios': ('ios-release.yml', 'Forgejo iOS ')}
 
 
+def acceptance_archive(spec, destination):
+    if not os.environ.get('GCHAT_ACCEPTANCE_RETAINED_ROOT'):
+        return None
+    from acceptance_delivery import copy_retained
+    return copy_retained(spec, destination)
+
+
 def gh(path, *, method='GET', body=None):
     command = ['gh', 'api', '--method', method, 'repos/' + REPO + '/' + path]
     if body is not None: command += ['--input', '-']
