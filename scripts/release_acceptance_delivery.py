@@ -136,11 +136,17 @@ def ready(state, intent, work, run, api, issue, *, now=None):
     # Reject invalid/small-order recipient keys before any grant is issued.
     delivery.key(private, binding['public_key'], request, 'response')
     root = Path(state) / 'public/updates/acceptance' / request
+    for relative in ('public', 'public/updates', 'public/updates/acceptance'):
+        parent = Path(state) / relative
+        if parent.is_symlink(): raise ValueError('acceptance delivery parent is a symlink')
+        if not parent.exists():
+            parent.mkdir(); parent.chmod(0o755)  # Public ciphertext, even under a private coordinator umask.
+    root.parent.chmod(0o755)
     if root.exists():
         # Only an unfinished derived ciphertext publication for this request.
         if root.is_symlink(): raise ValueError('acceptance delivery path is a symlink')
         shutil.rmtree(root)
-    root.mkdir(parents=True)
+    root.mkdir(); root.chmod(0o755)
     archives = {}
     for role, retained in intent['delivery_archives'].items():
         spec = intent['inputs'][role]

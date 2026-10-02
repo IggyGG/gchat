@@ -1,3 +1,8 @@
+Published acceptance ciphertext directories remain traversable by the web server
+under the production private umask. The original archives and encrypted-response
+journal keep their private permissions. All 28 focused acceptance controls pass;
+actual-image qualification remains pending.
+
 Retained native acceptance now waits for a verified running worker before issuing
 its existing host-owned canary grant. The worker publishes an ephemeral X25519
 public key in a source-bound ready artifact; the coordinator encrypts retained

@@ -428,8 +428,16 @@ class EncryptedAcceptanceDeliveryTests(unittest.TestCase):
             root = Path(temporary); _, intent, work, _, run, api, issue = self.ready_fixture(root)
             self.assertIsNone(delivery.ready(root, intent, work, {**run, 'status': 'queued'}, api, issue, now=100))
             api.assert_not_called(); issue.assert_not_called()
-            proof = delivery.ready(root, intent, work, run, api, issue, now=100)
+            previous_umask = os.umask(0o077)
+            try:
+                proof = delivery.ready(root, intent, work, run, api, issue, now=100)
+            finally:
+                os.umask(previous_umask)
             response = root / 'public/updates/acceptance' / intent['request'] / 'response.json'
+            for directory in (response.parent, response.parent.parent, root / 'public', root / 'public/updates'):
+                self.assertEqual(directory.stat().st_mode & 0o777, 0o755)
+            for file in response.parent.iterdir(): self.assertEqual(file.stat().st_mode & 0o777, 0o644)
+            self.assertEqual((work / 'sealed-response.json').stat().st_mode & 0o777, 0o600)
             original = response.read_bytes(); response.unlink()
             self.assertEqual(delivery.ready(root, intent, work, run, api, issue, now=150), proof)
             self.assertEqual(response.read_bytes(), original); issue.assert_called_once()

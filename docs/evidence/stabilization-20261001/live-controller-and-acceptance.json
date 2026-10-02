@@ -361,6 +361,14 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/acceptance-delivery-python-164.log",
       "sha256": "55331585c336933faf78c9cf4cb4bef3d1e2f00642ffd5081ea29f31f2d2430a"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/acceptance-delivery-private-umask-165.log",
+      "sha256": "3e3a3db1b27f4aa857f0e4a120f1b29e7ac33301957a8592f51a401bc00331de"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/acceptance-delivery-public-permissions-166.log",
+      "sha256": "959a9e48bb3c17e32744000b0f1d21aab1949fb3de273126bb0d6c98b10d58f7"
     }
   ],
   "native_progress": {
@@ -785,12 +793,12 @@
       "scripts/macos-rollback.py": "c4bcf8497ae59c0f7fcc9a07ed8366eb485658672787e1cc5fafa78b2a8c80c8",
       "scripts/mobile_acceptance_inputs.py": "7ce0175e8f77a3d325697948c284f73b3a25deddf8410e7bae5152d83d32c4a7",
       "scripts/release_acceptance.py": "70b72bf0f86bf07fd050de504bcb340a269eda366d46d1bf1aef8054e9996e30",
-      "scripts/release_acceptance_delivery.py": "958d7fb78f34e03988620aad92fdd0de84e449718e82c8a486b56358974cc010",
+      "scripts/release_acceptance_delivery.py": "15cd277a44045338cef0cbbd3a9cb1f5cec8617fdb30beb91353b519e459811d",
       "scripts/release_config.py": "ff56d79341ead704998824e3f63e4a0d5896b2efe1266e75a7fbc0baa353d354",
       "scripts/release_inputs.py": "aba30025e3067e7b6d52973465d4056a4185914c0d70e2319325a1c1ac397c38",
       "scripts/release_jobs.py": "732950b9eeb3d618c1e50fcd07fff03bd4aa4e72ba596be6f3c719f3a2b41a00",
       "scripts/test-native-upgrade.py": "ddf64d45708ce0a634bcfd6f7268406b4cd634e310a9f705275f3ec9e8ce7e57",
-      "scripts/tests/release_acceptance_test.py": "f2054315ef15e07bde3b593c1e5cb903ef1063cf53f45fe023affb9580404714",
+      "scripts/tests/release_acceptance_test.py": "02803b434b737b962865ccc8d89dff42b29ab06a5c91a051fc6171a7ed3fcd9b",
       "scripts/tests/release_inputs_test.py": "ffd9f102d000179ae40299c90b6f93ad8859ee967bedb475d3f42c41a37ef1e1",
       "scripts/windows-rollback.py": "3f7f8a7c1c97b8113f47226a207766628f80188133f92cc7abc3c9c86fa33a89"
     },
@@ -809,6 +817,7 @@
     "legacy_unknown_workers_remain_frozen": true,
     "actual_controller_image_qualification_pending": true,
     "live_native_handoff_pending": true,
-    "codematch": "unreachable: no callable variant-index tools in this session"
+    "codematch": "unreachable: no callable variant-index tools in this session",
+    "public_ciphertext_readable_under_private_umask": true
   }
 }

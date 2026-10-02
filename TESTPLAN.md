@@ -1,3 +1,8 @@
+Published acceptance ciphertext directories remain traversable by the web server
+under the production private umask. The original archives and encrypted-response
+journal keep their private permissions. All 28 focused acceptance controls pass;
+actual-image qualification remains pending.
+
 Run `release_acceptance_test.py` and the full Python suite with a short SSD TMPDIR.
 Require actual multiframe AES-GCM recovery with the original ZIP hash; changed
 frames, wrong key/request/purpose, stale/mismatched/ambiguous ready artifacts,
