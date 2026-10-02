@@ -523,7 +523,10 @@ def simulator_smoke(app, destination):
         run(['xcrun', 'simctl', 'install', device, app], timeout=120)
         report['launches'] = []
         for phase in ('fresh', 'relaunch'):
-            line = output(['xcrun', 'simctl', 'launch', '--terminate-running-process', device, BUNDLE], timeout=60)
+            # This is an owned fresh device, and each completed phase below
+            # explicitly terminates its process. CoreSimulator's redundant
+            # terminate-on-launch path can hang before reporting a PID.
+            line = output(['xcrun', 'simctl', 'launch', device, BUNDLE], timeout=60)
             match = re.fullmatch(re.escape(BUNDLE) + r': ([1-9][0-9]*)', line)
             require(match is not None, 'simulator did not report the actual app PID')
             pid = int(match.group(1))

@@ -1,3 +1,24 @@
+Controller generation 57 (`7808a43`) is active with two ready containers, zero
+restarts, 118 actual-image/Kubernetes runtime checks and 219 verified source
+hashes. It selects qualified Linux infrastructure before advancing the desired
+rollout; the previous digest, independent watchdog and scheduled compaction pass.
+
+Native workers now install the pinned `cryptography==50.0.2` test dependency.
+Mac/Windows build qualification retains signatures and installed offline lifecycle;
+the required live network/file/rollback journey runs after fleet deployment with
+fresh acceptance authority. iOS cold launch avoids a redundant terminate request
+while retaining the 60-second deadline, both launches, liveness and cleanup. A
+retained-app startup probe and an unchanged-source Intel machine-reopen diagnostic
+are available. All 673 Python checks pass with five existing skips; native
+execution of these worker corrections remains pending. Original failures and
+provider archives remain retained. API 3/API 2 coexistence, RPC 1, IPC 26, the
+64-member limit and covered receipts are unchanged. Fleet/client activation and
+a subsequent unattended release are still required before SDK 1.0.
+See `docs/evidence/stabilization-20261001/live-controller-and-acceptance.json`.
+
+Earlier controller checkpoints below retain their original observations; current
+activation and pending work are described above.
+
 Rollout selection now requires a qualified Linux target when the production
 inventory needs its infrastructure bundle. A newer verified mobile artifact
 cannot replace the desired deployment while that bundle is missing; the pointer

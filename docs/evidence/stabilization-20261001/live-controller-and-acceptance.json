@@ -2,27 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "29bd39f947c07292e8601c498fcffa029472d77d",
-    "image": "sha256:e8c3951c608207c65ecaa22c103d71d4b52083be563afca4dbe40c2c186e754b",
+    "gchat_commit": "7808a43d4ee8b5af76cc075af5f6af0cbcde6cde",
+    "image": "sha256:1ede4419c93629a25c47fbff3a97ade19c21ed2538e95cb9619260fc0707d4d7",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-02T19:41:19Z",
+    "watchdog_last_success": "2026-10-02T20:23:07Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:3fb12105e3477b19ff9e52ed51d6c52634cce22be0a53bf536277bb24b790a98",
-    "archive_sha256": "3405a75999a219fba374bae1c4f039212e95da1c5e4ea7daf9f77662213cc767",
-    "observed_at": "2026-10-02T19:41:44.051087+00:00",
+    "configuration_digest": "sha256:9261131c1dbbfab3e29cae5204aea746764131286e4800795d3cb8ebc37bcbca",
+    "archive_sha256": "fb98adf374bec8e597fe1d39a5100097585f7e14e8b94a79326e0b19d90d8c6a",
+    "observed_at": "2026-10-02T20:31:04.186427+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:9ab26308a690d9930d6b9e0f9c2ec7c860f0b46fb291ea5273d7c48ac9583450",
+    "previous_digest": "sha256:e8c3951c608207c65ecaa22c103d71d4b52083be563afca4dbe40c2c186e754b",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 113,
-    "deployment_generation": 56,
+    "validation_tests": 118,
+    "deployment_generation": 57,
     "source_files_verified": 219
   },
   "hosted_test_retention": {
@@ -98,9 +98,9 @@
     }
   },
   "component_validation": {
-    "python_tests": 667,
+    "python_tests": 673,
     "python_skipped": 5,
-    "controller_validation_tests": 113
+    "controller_validation_tests": 118
   },
   "open": [
     "Mobile SDK combinations; desktop native source 1654677 passes all four platforms and 40 size comparisons",
@@ -441,6 +441,46 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/encrypted-delivery-live-187.log",
       "sha256": "e6442bd74d9818e5afa9a66fd6ef91e45351c5506d759d7f0da9160e84142542"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-7808a43-binding.json",
+      "sha256": "0d2f50d2685629e0874d1303f579ca25929f8259ed773a7ed0d8148037bc5b3b"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-7808a43-context/controller-runtime.json",
+      "sha256": "b3a5222bfac0e3f0993b2b8b4cc69b950d609864729f38d995de754755114dbc"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-7808a43-context/controller-runtime.log",
+      "sha256": "4add6ed0a927583d67bc57201231a9c468aa3832b8e95bef4b00eec2570387d1"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-7808a43-validation-206.json",
+      "sha256": "bba61af04c2440a10116ac8b7785f6aa7bfa3d0bf5af114765d532aa9ad5507e"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-7808a43-validation-206.log",
+      "sha256": "f7a8e6e1e50e4d5574b5304b1779b39955c3e8babb9211a408d4442e78fb83a0"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-7808a43-observed-209.json",
+      "sha256": "4f353e343b27d397a92dd3342be3e65000c403b1d457278343c24c77523c24e4"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/failed-native-37058569684-211.log",
+      "sha256": "aaa0a4bc3a1dd6d818c08952952b4c2ba816e7feb0a415fb893e459620e83ab9"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/failed-native-37058569684-artifacts-211.json",
+      "sha256": "374b7b72f0f0794f36d211e3f58a5f87bd868a83d09b4266a26eea4f57291f6b"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/python-213.log",
+      "sha256": "06a1616073201013d294bdcddd5fd514ffc94f28694399c0d3abfdaa4f54bf3a"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/ios-launch-204.log",
+      "sha256": "619db9ef00a1075e2d1a702d2d1759055bef7c7583ee88bb16f7686a6af2d4a9"
     }
   ],
   "native_progress": {
@@ -774,6 +814,30 @@
       "validation_tests": 113,
       "deployment_generation": 55,
       "source_files_verified": 219
+    },
+    {
+      "gchat_commit": "29bd39f947c07292e8601c498fcffa029472d77d",
+      "image": "sha256:e8c3951c608207c65ecaa22c103d71d4b52083be563afca4dbe40c2c186e754b",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-02T19:41:19Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:3fb12105e3477b19ff9e52ed51d6c52634cce22be0a53bf536277bb24b790a98",
+      "archive_sha256": "3405a75999a219fba374bae1c4f039212e95da1c5e4ea7daf9f77662213cc767",
+      "observed_at": "2026-10-02T19:41:44.051087+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:9ab26308a690d9930d6b9e0f9c2ec7c860f0b46fb291ea5273d7c48ac9583450",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 113,
+      "deployment_generation": 56,
+      "source_files_verified": 219
     }
   ],
   "mobile_baselines": {
@@ -894,10 +958,10 @@
       "scripts/release_infrastructure_bundle.py": "a67d1edcec259a034b16f9f1961e19eb66c239df77713cb2ca512a7f32440d0b",
       "scripts/tests/release_infrastructure_bundle_test.py": "5a73e3952d99df4ae60f1c87e559319c9e14be187aef7974acb55c18b618252a"
     },
-    "actual_image_tests": 113,
+    "actual_image_tests": 118,
     "source_files_verified": 219,
-    "controller_source": "29bd39f947c07292e8601c498fcffa029472d77d",
-    "runtime_receipt_sha256": "28f83fa75fdc758650b31b115d0ec8689820a0ff751379028c6d5178823639b4",
+    "controller_source": "7808a43d4ee8b5af76cc075af5f6af0cbcde6cde",
+    "runtime_receipt_sha256": "b3a5222bfac0e3f0993b2b8b4cc69b950d609864729f38d995de754755114dbc",
     "independent_kubernetes_validation_passed": true
   },
   "encrypted_acceptance_delivery": {
@@ -976,5 +1040,59 @@
     "actual_https_transport_and_cleanup_passed": true,
     "https_transport_scope": "Actual HTTPS/TLS encrypted transport and cleanup; no native application acceptance",
     "https_transport_used_real_grant": false
+  },
+  "qualified_rollout_selection": {
+    "controller_source": "7808a43d4ee8b5af76cc075af5f6af0cbcde6cde",
+    "qualified_linux_required_for_production_inventory": true,
+    "infrastructure_receipt_precedes_desired_pointer": true,
+    "regression_cases": 5,
+    "active_owner_and_monotonic_pointer_preserved": true,
+    "live_generation": 57
+  },
+  "native_worker_repairs": {
+    "native_execution_pending": true,
+    "original_failures_retained": true,
+    "all_six_platforms_wait_for_deployment_before_acceptance": true,
+    "macos_windows_build_network_check_moved_to_mandatory_acceptance": true,
+    "ios_redundant_terminate_on_launch_removed": true,
+    "ios_launch_deadline_seconds": 60,
+    "ios_launch_controls": 46,
+    "full_python_tests": 673,
+    "full_python_skips": 5,
+    "native_python_cryptography_pin": "50.0.2",
+    "failures": [
+      {
+        "platform": "macos-x86_64",
+        "run": 37039388341,
+        "artifact": 11247845631,
+        "archive_sha256": "671d8b518ea551ffaea50c64663a37ac8782a9d965609aa2b02988a0d4a371da",
+        "archive_bytes": 10600725,
+        "reason": "Original signed machine member cold-reopen message missed the 15-second deadline; diagnostic remains pending"
+      },
+      {
+        "platform": "windows-x86_64",
+        "run": 37039398687,
+        "artifact": 11247482673,
+        "archive_sha256": "b1cbb9ffbe3721b2f1bb552be39019bf84245745d3454e2b589a206c8b8199dd",
+        "archive_bytes": 57858048,
+        "reason": "Signing and installed offline lifecycle passed; predeployment network invitation stage timed out"
+      },
+      {
+        "platform": "ios",
+        "run": 37039423503,
+        "artifact": 11244692599,
+        "archive_sha256": "6f495a06d21c237730f1f1a65e48d942e7be2562321842450f53db7acedf7cd4",
+        "archive_bytes": 95112259,
+        "reason": "Device signing and three native tests passed; simulator terminate-on-launch timed out at 60 seconds"
+      },
+      {
+        "platform": "linux-x86_64",
+        "run": 37058569684,
+        "artifact": 11249842793,
+        "archive_sha256": "e99116b58b9b06ef36f0565fc9eb1b0c82b17bf3e7f59fefb8d05077c77073a7",
+        "archive_bytes": 153726,
+        "reason": "Two encryption test modules failed to import because native Python lacked cryptography"
+      }
+    ]
   }
 }

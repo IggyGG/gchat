@@ -107,7 +107,7 @@ jobs:
           brew install node@22 cmake
           echo "$(brew --prefix node@22)/bin" >> "$GITHUB_PATH"
           python3 gchat/scripts/macos-loopback.py
-          python3 -m pip install --disable-pip-version-check numpy==2.3.5
+          python3 -m pip install --disable-pip-version-check numpy==2.3.5 cryptography==50.0.2
       - name: Preflight the locked WebKit download before native compilation
         timeout-minutes: 12
         working-directory: gchat
@@ -133,17 +133,14 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: python3 scripts/build-installer.py --target ${{ matrix.target }} --gcoms ../gcoms --native-ci-report ../native-evidence/paired-gchat/native-ci.json --output ../signed
-      - name: Verify copied DMG lifecycle, network recovery and cleanup
+      - name: Verify copied DMG lifecycle and cleanup
         timeout-minutes: 25
         working-directory: gchat
-        env:
-          GCHAT_NETWORK_INVITATION: ${{ secrets.GCHAT_NETWORK_INVITATION }}
         run: >-
           python3 scripts/test-macos-bundle.py
           --build-manifest ../signed/build.json
           --native-receipt ../signed/provenance/native-ci.json
           --output ../signed/application-smoke --temp-parent /private/tmp --timeout 30
-          --network-invitation-env
       - name: Bind native artifact to coordinated release
         run: python3 gchat/scripts/release_attest.py --output signed --platform ${{ matrix.target }}
       - name: Retain native qualification evidence

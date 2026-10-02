@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
           python-version: '3.12'
+      - name: Install pinned transport test dependency
+        run: python -m pip install --disable-pip-version-check cryptography==50.0.2
       - name: Check release tooling on the native host
         shell: bash
         run: |

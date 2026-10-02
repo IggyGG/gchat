@@ -30,14 +30,17 @@ class CoordinatorTests(unittest.TestCase):
         manifest=copy.deepcopy(self.manifest)
         manifest['policy']['deployment_required']=True
         manifest['release_id']=hashlib.sha256(canonical({k:v for k,v in manifest.items() if k!='release_id'})).hexdigest()
-        c=Coordinator(self.root,{'workers':{'android':{}}});self.addCleanup(c.ledger.close)
+        platforms=('android','ios','linux-x86_64','macos-aarch64','macos-x86_64','windows-x86_64')
+        c=Coordinator(self.root,{'workers':{p:{} for p in platforms}});self.addCleanup(c.ledger.close)
         release=c.ledger.add(manifest)
-        c.ledger.transition(release,'android','building')
-        c.ledger.transition(release,'android','verifying')
-        c.ledger.transition(release,'android','verified',evidence='a'*64)
-        with patch.object(c,'execute',side_effect=AssertionError('publication before deployment')):
-            c.step(release,'android')
-        self.assertEqual(c.ledger.target(release,'android')['state'],'verified')
+        for platform in platforms:
+            with self.subTest(platform=platform):
+                c.ledger.transition(release,platform,'building')
+                c.ledger.transition(release,platform,'verifying')
+                c.ledger.transition(release,platform,'verified',evidence='a'*64)
+                with patch.object(c,'execute',side_effect=AssertionError('publication before deployment')):
+                    c.step(release,platform)
+                self.assertEqual(c.ledger.target(release,platform)['state'],'verified')
 
     def test_deployment_observation_must_be_fresh_and_inventory_unchanged(self):
         from release_pair import canonical

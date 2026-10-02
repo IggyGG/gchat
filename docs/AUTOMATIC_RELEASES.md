@@ -81,7 +81,15 @@ change does not qualify an existing installer. The artifact-specific Windows 36
    immutable `release/gchat-*` refs. It never resets a working checkout.
 2. Exact-source native workers run existing qualification, signing and installed
    lifecycle checks. Android uses emulators; Apple uses simulators and native
-   macOS workers. Physical mobile devices remain deferred. SDK qualification
+   macOS workers. Linux/Mac/Windows full Python gates install the pinned
+   `numpy==2.3.5` and `cryptography==50.0.2` test dependencies; release tooling
+   portability also pins cryptography. Mac/Windows build qualification runs the
+   signed installed offline lifecycle without a shared production invitation.
+   Their live network/file/rollback checks remain mandatory in acceptance after
+   deployed infrastructure is ready and the worker receives fresh authority.
+   iOS startup launches its owned simulator normally after explicit per-phase
+   termination, retaining both 60-second launch bounds and liveness/cleanup checks.
+   Physical mobile devices remain deferred. SDK qualification
    runs the four desktop integrations and all client/relay/base/push mobile
    combinations. SDK archives are pinned releases, not hot updates to consumers.
 3. Verify provider archive hashes, paired native provenance, publisher pins and

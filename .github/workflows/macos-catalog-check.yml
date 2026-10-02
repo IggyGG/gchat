@@ -9,6 +9,11 @@ on:
       request_id:
         required: true
         type: string
+      check:
+        description: Fixed native assertion to investigate on unchanged protocol source
+        type: choice
+        default: catalog
+        options: [catalog, machine-reopen]
 permissions:
   contents: read
 jobs:
@@ -49,10 +54,51 @@ jobs:
           mkdir evidence
           git -C gcoms rev-parse HEAD HEAD^{tree} > evidence/source.txt
       - name: Original pinned-source catalog tests
+        if: ${{ inputs.check != 'machine-reopen' }}
         working-directory: gcoms
         run: |
           set -o pipefail
           cargo test -p gcoms-routing --all-features --locked --lib catalog::tests:: -- --test-threads=1 --nocapture 2>&1 | tee ../evidence/catalog.log
+      - name: Repeat the original machine member cold-reopen assertion
+        if: ${{ inputs.check == 'machine-reopen' }}
+        working-directory: gcoms
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys, tempfile, time
+          from pathlib import Path
+          sys.path.insert(0, str(Path('scripts').resolve()))
+          from native_limits import prepare, disposable_mac_ports
+          prepare()
+          output = Path('../evidence')
+          source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          report = {'schema': 1, 'diagnostic_only': True, 'source': source, 'passed': False, 'checks': []}
+          command = ['cargo', 'test', '-p', 'gcoms-node', '--all-features', '--locked', '--lib',
+                     'node::persist::tests::component_authority_actual_signed_join_v15_migration_and_cold_member_reopen',
+                     '--', '--exact', '--test-threads=1', '--nocapture']
+          try:
+              with tempfile.TemporaryDirectory(prefix='gc-', dir='/private/tmp') as temporary, disposable_mac_ports():
+                  environment = dict(os.environ, TMPDIR=temporary, TMP=temporary, TEMP=temporary)
+                  for attempt in range(5):
+                      start = time.monotonic()
+                      with (output / ('machine-reopen-' + str(attempt) + '.log')).open('wb') as log:
+                          result = subprocess.run(command, env=environment, stdout=log,
+                                                  stderr=subprocess.STDOUT, timeout=900)
+                      counts = re.findall(r'test result: (\w+)\. (\d+) passed; (\d+) failed; (\d+) ignored;',
+                                          (output / ('machine-reopen-' + str(attempt) + '.log')).read_text())
+                      passed = result.returncode == 0 and counts == [('ok', '1', '0', '0')]
+                      report['checks'].append({'attempt': attempt, 'exit_code': result.returncode, 'passed': passed,
+                                              'test_counts': counts, 'seconds': time.monotonic() - start})
+                      if not passed:
+                          break
+              report['passed'] = len(report['checks']) == 5 and all(r['passed'] for r in report['checks'])
+          finally:
+              report['source_unchanged'] = (subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == source
+                                          and not subprocess.check_output(['git', 'status', '--porcelain']))
+              report['passed'] = report['passed'] and report['source_unchanged']
+              (output / 'machine-reopen.json').write_text(json.dumps(report, indent=2) + '\n')
+          if not report['passed']:
+              raise SystemExit(1)
+          PY
       - name: Retain result and unchanged source
         if: always()
         run: |

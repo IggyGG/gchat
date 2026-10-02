@@ -402,6 +402,45 @@ class ArtifactTests(unittest.TestCase):
                          ['terminate', 'shutdown', 'delete', 'verify_removal'])
         self.assertFalse(report['cleanup_complete'])
 
+    def test_owned_simulator_launch_does_not_enter_hanging_redundant_terminate(self):
+        device = '12345678-1234-1234-1234-123456789abc'
+        phases = []
+        terminated = []
+        def output(command, **_):
+            if command[2] == 'create':
+                return device
+            if command[2] == 'launch':
+                if '--terminate-running-process' in command:
+                    raise subprocess.TimeoutExpired(command, 60)
+                phases.append(command)
+                return ios.BUNDLE + ': 42'
+            if command[0] == 'ps':
+                return '/owned/GChat.app/GChat'
+            return json.dumps({'devicetypes': [], 'devices': {}})
+        def execute(command, **_):
+            if command[2] == 'terminate':
+                terminated.append(command)
+            if command[2] == 'io':
+                Path(command[-1]).write_bytes(b'screenshot fixture' * 100)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary);app = root / 'GChat.app';app.mkdir()
+            (app / 'Info.plist').write_bytes(plistlib.dumps(
+                {'CFBundleIdentifier': ios.BUNDLE, 'CFBundleExecutable': 'GChat'}))
+            (app / 'GChat').write_bytes(b'fixture executable; never executed')
+            with patch.object(ios, 'simulator_runtime', return_value='ios26'), \
+                    patch.object(ios, 'simulator_phone', return_value='iphone17'), \
+                    patch.object(ios, 'output', side_effect=output), \
+                    patch.object(ios, 'run', side_effect=execute), \
+                    patch.object(ios, 'cleanup_simulator', side_effect=lambda _, r: r.update(cleanup_complete=True)), \
+                    patch.object(ios.os, 'kill'), patch.object(ios.time, 'sleep'), \
+                    patch.object(ios.time, 'monotonic', side_effect=[0, 1, 16, 20, 21, 36]):
+                ios.simulator_smoke(app, root / 'smoke')
+            report = json.loads((root / 'smoke/report.json').read_text())
+            self.assertTrue(report['passed'])
+            self.assertEqual([r['phase'] for r in report['launches']], ['fresh', 'relaunch'])
+        self.assertEqual(phases, [['xcrun', 'simctl', 'launch', device, ios.BUNDLE]] * 2)
+        self.assertEqual(terminated, [['xcrun', 'simctl', 'terminate', device, ios.BUNDLE]] * 2)
+
     def test_simulator_install_failure_survives_cleanup_timeout_with_receipt(self):
         device = '12345678-1234-1234-1234-123456789abc'
         original = subprocess.TimeoutExpired(['simctl', 'install'], 120)

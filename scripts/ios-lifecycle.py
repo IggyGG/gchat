@@ -229,6 +229,10 @@ def run_application(app, destination):
     try:
         report['xcode'] = ios.output(['xcodebuild', '-version'])
         require(report['xcode'].splitlines()[0] == 'Xcode 26.2', 'use the original pinned Xcode')
+        if getattr(args, 'verify_startup', False):
+            report['startup'] = ios.simulator_smoke(app, destination / 'startup')
+            require(ios.digest(binary) == report['application']['sha256'],
+                    'retained application changed during startup check')
         runtime = ios.simulator_runtime()
         types = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
         devices = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
@@ -425,4 +429,6 @@ if __name__ == '__main__':
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--simulator-keychain-fixture', action='store_true',
                         help='ad-hoc sign only an owned simulator copy with its private Keychain group')
+    parser.add_argument('--verify-startup', action='store_true',
+                        help='also recheck cold launch and relaunch of the same retained simulator app')
     main(parser.parse_args())
