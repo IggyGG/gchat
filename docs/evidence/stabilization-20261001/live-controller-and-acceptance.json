@@ -2,27 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "add203aaf56651c5284855cf1f7edfac6604775d",
-    "image": "sha256:9ab26308a690d9930d6b9e0f9c2ec7c860f0b46fb291ea5273d7c48ac9583450",
+    "gchat_commit": "29bd39f947c07292e8601c498fcffa029472d77d",
+    "image": "sha256:e8c3951c608207c65ecaa22c103d71d4b52083be563afca4dbe40c2c186e754b",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-02T18:11:06Z",
+    "watchdog_last_success": "2026-10-02T19:41:19Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:302c728a8caff7a4b8323fc60bb74904594c0e21c510a62748f81384a78bf6f8",
-    "archive_sha256": "88167b52bac01efe9a26e39b9a99e838da397e58d0ef7bf889bf3ccbe4d94115",
-    "observed_at": "2026-10-02T18:11:56.107533+00:00",
+    "configuration_digest": "sha256:3fb12105e3477b19ff9e52ed51d6c52634cce22be0a53bf536277bb24b790a98",
+    "archive_sha256": "3405a75999a219fba374bae1c4f039212e95da1c5e4ea7daf9f77662213cc767",
+    "observed_at": "2026-10-02T19:41:44.051087+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:69c93c73402c15c6c9ee6f6c892adbae5684ceb6cb0330139f06ea6790645916",
+    "previous_digest": "sha256:9ab26308a690d9930d6b9e0f9c2ec7c860f0b46fb291ea5273d7c48ac9583450",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
     "validation_tests": 113,
-    "deployment_generation": 55,
+    "deployment_generation": 56,
     "source_files_verified": 219
   },
   "hosted_test_retention": {
@@ -98,9 +98,9 @@
     }
   },
   "component_validation": {
-    "python_tests": 655,
+    "python_tests": 667,
     "python_skipped": 5,
-    "controller_validation_tests": 101
+    "controller_validation_tests": 113
   },
   "open": [
     "Mobile SDK combinations; desktop native source 1654677 passes all four platforms and 40 size comparisons",
@@ -409,6 +409,38 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/native-baselines-retained-171.log",
       "sha256": "a396b192d32d78726795b2ce9b3aa4563a3bc76941f6663325018923f1a7b3bf"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-29bd39f-binding.json",
+      "sha256": "47e67439cbce3f9a9e2a4ec66c0b496fd3462dad77c3074f732de9696ece3e6d"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-29bd39f-context/controller-runtime.json",
+      "sha256": "28f83fa75fdc758650b31b115d0ec8689820a0ff751379028c6d5178823639b4"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-29bd39f-context/controller-runtime.log",
+      "sha256": "059a22a6ad1ce101e887f23000d49a3e4273f0bc713f10542eb891010ff3a02a"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-29bd39f-validation-184.json",
+      "sha256": "98c4e025ea48434122795e1d76d55d0e5e944e847591c91359c0ec10a0e35db6"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-29bd39f-validation-184.log",
+      "sha256": "5851af8f49744c0b9229cb55913726e7d92ef7acc88626dacadcd96d0a2ba935"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-29bd39f-observed-188.json",
+      "sha256": "f01fa061f6ee42c42b60e41705a46c1e6401933ab135e24760ee991f2e46946f"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/encrypted-delivery-live-187.json",
+      "sha256": "9ebdf166f29cc25334326099bafe94d82c44220b909f97fccd7bf6ef490720e1"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/encrypted-delivery-live-187.log",
+      "sha256": "e6442bd74d9818e5afa9a66fd6ef91e45351c5506d759d7f0da9160e84142542"
     }
   ],
   "native_progress": {
@@ -718,6 +750,30 @@
       "validation_tests": 101,
       "deployment_generation": 54,
       "source_files_verified": 217
+    },
+    {
+      "gchat_commit": "add203aaf56651c5284855cf1f7edfac6604775d",
+      "image": "sha256:9ab26308a690d9930d6b9e0f9c2ec7c860f0b46fb291ea5273d7c48ac9583450",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-02T18:11:06Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:302c728a8caff7a4b8323fc60bb74904594c0e21c510a62748f81384a78bf6f8",
+      "archive_sha256": "88167b52bac01efe9a26e39b9a99e838da397e58d0ef7bf889bf3ccbe4d94115",
+      "observed_at": "2026-10-02T18:11:56.107533+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:69c93c73402c15c6c9ee6f6c892adbae5684ceb6cb0330139f06ea6790645916",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 113,
+      "deployment_generation": 55,
+      "source_files_verified": 219
     }
   ],
   "mobile_baselines": {
@@ -838,10 +894,10 @@
       "scripts/release_infrastructure_bundle.py": "a67d1edcec259a034b16f9f1961e19eb66c239df77713cb2ca512a7f32440d0b",
       "scripts/tests/release_infrastructure_bundle_test.py": "5a73e3952d99df4ae60f1c87e559319c9e14be187aef7974acb55c18b618252a"
     },
-    "actual_image_tests": 101,
-    "source_files_verified": 217,
-    "controller_source": "ea4fdf8dc9d6259b0510d0fee10867dc483a1313",
-    "runtime_receipt_sha256": "e79c722211918789f32c4f2257c3839fcac8819230e55b9af536618fe8066499",
+    "actual_image_tests": 113,
+    "source_files_verified": 219,
+    "controller_source": "29bd39f947c07292e8601c498fcffa029472d77d",
+    "runtime_receipt_sha256": "28f83fa75fdc758650b31b115d0ec8689820a0ff751379028c6d5178823639b4",
     "independent_kubernetes_validation_passed": true
   },
   "encrypted_acceptance_delivery": {
@@ -883,10 +939,20 @@
     "live_native_handoff_pending": true,
     "codematch": "unreachable: no callable variant-index tools in this session",
     "public_ciphertext_readable_under_private_umask": true,
-    "controller_source": "add203aaf56651c5284855cf1f7edfac6604775d",
+    "controller_source": "29bd39f947c07292e8601c498fcffa029472d77d",
     "actual_controller_image_tests": 113,
     "source_files_verified": 219,
     "private_baselines_verified": {
+      "android": {
+        "sha256": "a54747dad70bcd19147925a007c715b0bf2ee097bea00777dcdc286ddd66b454",
+        "bytes": 161735437,
+        "original_source_verified": true
+      },
+      "ios": {
+        "sha256": "a43edf080b08fa26a220c8857643e4948cd8df8c6a92aa1b86ea83a73f84921e",
+        "bytes": 147504126,
+        "original_source_verified": true
+      },
       "macos-aarch64": {
         "sha256": "4ddc0efb2c15c7e15a32c3c07cebcd8922ebc8059dffe092b5951c90c36cb27f",
         "bytes": 132922840,
@@ -901,21 +967,14 @@
         "sha256": "1677df7de66c126c2fc01f0664e4826c3614ffc7e3ebde71119eafb310eba6cd",
         "bytes": 34586215,
         "original_source_verified": true
-      },
-      "android": {
-        "sha256": "a54747dad70bcd19147925a007c715b0bf2ee097bea00777dcdc286ddd66b454",
-        "bytes": 161735437,
-        "original_source_verified": true
-      },
-      "ios": {
-        "sha256": "a43edf080b08fa26a220c8857643e4948cd8df8c6a92aa1b86ea83a73f84921e",
-        "bytes": 147504126,
-        "original_source_verified": true
       }
     },
     "independent_kubernetes_validation_passed": true,
     "independent_watchdog_image": "127.0.0.1:30444/ghost/gchat-release@sha256:69c93c73402c15c6c9ee6f6c892adbae5684ceb6cb0330139f06ea6790645916",
     "derived_native_copy_cleanup_implemented": true,
-    "derived_native_copy_cleanup_image_pending": true
+    "derived_native_copy_cleanup_image_pending": false,
+    "actual_https_transport_and_cleanup_passed": true,
+    "https_transport_scope": "Actual HTTPS/TLS encrypted transport and cleanup; no native application acceptance",
+    "https_transport_used_real_grant": false
   }
 }

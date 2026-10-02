@@ -1,3 +1,13 @@
+Controller generation 56 (`29bd39f`) activates complete worker copy cleanup.
+The actual image and independent Kubernetes job pass 113 checks and all 219 source
+hashes. Both containers are ready with zero restarts; the previous digest is
+retained/repaired, five private baseline archives are verified and the independent
+watchdog succeeds. The actual HTTPS/TLS transport delivers authenticated multiple
+chunks, recovers the exact fixture hashes and removes keys, native copies and
+public ciphertext. This probe uses no real host grant and qualifies transport;
+the real native provider/workflow and application journey gates remain open.
+Evidence: `docs/evidence/stabilization-20261001/live-controller-and-acceptance.json`.
+
 Controller generation 55 (`add203a`) activates encrypted retained acceptance.
 The actual image and independent Kubernetes job pass 113 runtime checks and 219
 source hashes; all five configured private baseline archives are verified. Both
