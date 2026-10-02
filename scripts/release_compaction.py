@@ -335,6 +335,153 @@ def compact(state, maximum_builds=8):
     return completed
 
 
+def retained_path(root, name):
+    path = PurePosixPath(name)
+    if (path.is_absolute() or '..' in path.parts or '\\' in name or '\0' in name
+            or ':' in name or not path.parts):
+        raise ValueError('unsafe SDK artifact path')
+    candidate = root / path
+    if (any((root / Path(*path.parts[:i])).is_symlink() for i in range(1, len(path.parts) + 1))
+            or not candidate.resolve().is_relative_to(root.resolve())):
+        raise ValueError('SDK artifact path escapes retained storage')
+    return candidate
+
+
+def compact_public_sdk(state, maximum_publications=256, minimum_bytes=16 * 1024**2):
+    """Share completed public copies, keeping private provider archives separate."""
+    import fcntl
+    from release_pair import canonical, validate
+    if type(maximum_publications) is not int or not 1 <= maximum_publications <= 256:
+        raise ValueError('SDK compaction limit must be between 1 and 256')
+    state = Path(state).resolve()
+    jobs, public = state / 'jobs', state / 'public/updates/sdk'
+    if not jobs.exists() or not public.exists():
+        return None
+    if (jobs.is_symlink() or any(path.is_symlink() for path in
+            (state / 'public', state / 'public/updates', public))
+            or not public.resolve().is_relative_to(state)):
+        raise ValueError('SDK compaction root escapes retained storage')
+    retained = state / 'maintenance/compaction'
+    retained.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (retained / 'lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        controls, publications, candidates = [], [], {}
+
+        def metadata(path):
+            value, binding = checked_metadata(path, 2 * 1024**2)
+            controls.append((path, binding))
+            return value, binding[0]
+
+        def receipt(path, manifest, stage):
+            proof, _ = metadata(path)
+            if (proof.get('schema') != 1 or proof.get('release_id') != manifest['release_id']
+                    or proof.get('sources') != manifest['sources'] or proof.get('platform') != 'sdk'
+                    or proof.get('stage') != stage or proof.get('passed') is not True
+                    or proof.get('source_unchanged') is not True):
+                raise ValueError('SDK receipt does not bind a completed exact-source publication')
+            return proof
+
+        # Revisit recent completed publications so bounded maintenance keeps
+        # handling new releases as the retained history grows.
+        directories = [p for p in jobs.iterdir() if (p / 'receipt.json').is_file()]
+        directories.sort(key=lambda p: (p / 'receipt.json').stat().st_mtime_ns, reverse=True)
+        for directory in directories:
+            if len(publications) >= maximum_publications:
+                break
+            path = directory / 'receipt.json'
+            if not path.is_file():
+                continue
+            initial, _ = checked_metadata(path, 2 * 1024**2)
+            if initial.get('platform') != 'sdk' or initial.get('stage') != 'publish':
+                continue
+            if initial.get('passed') is not True:
+                continue
+            if directory.is_symlink():
+                raise ValueError('SDK publication directory cannot be a symlink')
+            manifest, _ = metadata(directory / 'candidate.json')
+            validate(manifest)
+            release = manifest['release_id']
+            expected = hashlib.sha256(canonical([release, 'sdk', 'publish'])).hexdigest()
+            if directory.name != expected:
+                raise ValueError('SDK publication has another durable effect identity')
+            published = receipt(path, manifest, 'publish')
+            refs = [ref for ref in published['evidence'] if ref['path'] == 'public-sdk.json']
+            report, report_sha = metadata(directory / 'public-sdk.json')
+            if (len(refs) != 1 or refs[0]['sha256'] != report_sha
+                    or report.get('release_id') != release or report.get('sources') != manifest['sources']
+                    or report.get('version') != manifest['versions']['sdk']):
+                raise ValueError('public SDK index differs from its exact-source receipt')
+            build = jobs / hashlib.sha256(canonical([release, 'sdk', 'build'])).hexdigest()
+            if build.is_symlink():
+                raise ValueError('SDK build directory cannot be a symlink')
+            original = receipt(build / 'receipt.json', manifest, 'build')
+            archives = {ref['sha256']: retained_path(build, ref['path'])
+                        for ref in original['evidence'] if ref['path'].endswith('.zip')}
+            for item in report['archives']:
+                name, sha, size = item['path'], item['sha256'], item['size']
+                if (not re.fullmatch('[0-9a-f]{64}', sha) or type(size) is not int or size <= 0
+                        or not PurePosixPath(name).parts or PurePosixPath(name).parts[0] != release
+                        or not name.endswith('.zip')
+                        or sha not in archives):
+                    raise ValueError('public SDK archive is not bound by the original build')
+                if size < minimum_bytes:
+                    continue
+                target = retained_path(public, name)
+                if target in candidates:
+                    raise ValueError('public SDK archive path is repeated')
+                value = target.stat()
+                if not stat.S_ISREG(value.st_mode) or value.st_size != size:
+                    raise ValueError('public SDK archive size or type changed')
+                key = (value.st_dev, size, stat.S_IMODE(value.st_mode), value.st_uid, value.st_gid, sha)
+                candidates[target] = (key, archives[sha])
+            publications.append(release)
+
+        groups = {}
+        for path, (key, original) in candidates.items():
+            groups.setdefault(key, []).append((path, original))
+        duplicates, verified, inodes, authorities = {}, {}, {}, {}
+        for key, entries in groups.items():
+            if len(entries) < 2:
+                continue
+            public_inodes = {(p.stat().st_dev, p.stat().st_ino) for p, _ in entries}
+            if any((p.stat().st_dev, p.stat().st_ino) in public_inodes for _, p in entries):
+                raise ValueError('public SDK archive already shares a private provider inode')
+            for path, original in entries:
+                for artifact in (original, path):
+                    if artifact not in verified:
+                        before = artifact.stat()
+                        if artifact.is_symlink() or not stat.S_ISREG(before.st_mode):
+                            raise ValueError('SDK compaction requires regular archives')
+                        stamp = identity(before)
+                        if stamp not in inodes:
+                            inodes[stamp] = file_digest(artifact)[0]
+                        verified[artifact] = (inodes[stamp], before)
+                    sha, before = verified[artifact]
+                    if sha != key[-1] or before.st_size != key[1]:
+                        raise ValueError('SDK archive bytes differ from the original source-bound build')
+                authorities[original] = verified[original][1]
+                duplicates.setdefault(key, []).append((path, verified[path][1]))
+        for path, before in authorities.items():
+            if path.is_symlink() or identity(path.stat()) != identity(before):
+                raise ValueError('original SDK archive changed during compaction')
+        for path, (_, before) in controls:
+            if path.is_symlink() or identity(path.stat()) != identity(before):
+                raise ValueError('SDK provenance changed during compaction')
+        changes, reclaimed = share_files(duplicates, state)
+        for path, before in authorities.items():
+            if path.is_symlink() or identity(path.stat()) != identity(before):
+                raise ValueError('original SDK archive changed during replacement')
+        for path, (_, before) in controls:
+            if path.is_symlink() or identity(path.stat()) != identity(before):
+                raise ValueError('SDK provenance changed during replacement')
+        report = {'schema': 1, 'publications': publications,
+                  'original_provider_archives_retained': True, 'private_provider_archives_shared': False,
+                  'all_paths_retained': True, 'estimated_reclaimed_bytes': reclaimed,
+                  'changes': changes, 'completed_at': int(time.time())}
+        atomic_json(retained / ('public-sdk-' + str(time.time_ns()) + '.json'), report)
+        return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', type=Path, required=True)
@@ -343,7 +490,8 @@ def main():
     if not 1 <= args.maximum_builds <= 256:
         parser.error('maximum builds must be between 1 and 256')
     print(json.dumps({'completed': compact(args.state, args.maximum_builds),
-                      'rollback_images': compact_rollback_images(args.state)}), flush=True)
+                      'rollback_images': compact_rollback_images(args.state),
+                      'public_sdk': compact_public_sdk(args.state)}), flush=True)
 
 
 if __name__ == '__main__':

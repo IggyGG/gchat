@@ -1685,9 +1685,103 @@
     "host_installer_tests_passed": 7,
     "full_python_tests_passed": 687,
     "existing_skips": 5,
-    "installed_host_fix_activated": false,
+    "installed_host_fix_activated": true,
     "api_changed": false,
     "raw_failure": "operations/relay1-activation-diagnostic-281.log",
-    "raw_tests": "operations/host-install-tests-282.log"
+    "raw_tests": "operations/host-install-tests-282.log",
+    "installed_hosts": [
+      {
+        "target": "relay-1",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      },
+      {
+        "target": "relay-2",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      },
+      {
+        "target": "relay-3",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      },
+      {
+        "target": "relay-4",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      },
+      {
+        "target": "relay-5",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      },
+      {
+        "target": "relay-6",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      },
+      {
+        "target": "relay-7",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      },
+      {
+        "target": "relay-8",
+        "installed": true,
+        "revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+        "policy_unchanged": true,
+        "restricted_key_preserved": true,
+        "host_installer_sha256": "18f5eee79a3efbd1b0ab1209c7144a158671eeb52872c45aec58759fff5300b5"
+      }
+    ],
+    "inventory_correction": {
+      "host_worker_revision": "ff6d5c20056cab66b18b832713f8ee14d4863eac",
+      "native_hosts_installed": 8,
+      "inventory_targets": 17,
+      "previous_inventory_sha256": "605b10efa6bb3e7b1da42611cb107da1458dade2b7b286b96031c8f8bc768a9b",
+      "corrected_inventory_sha256": "988f3f755b96b0821ba61ee137af6ae45d23d17120c627260307c8a4b3cb02ef",
+      "original_failed_revision_retained": true,
+      "operator_config_cas": true,
+      "ledger_mutated_by_operator": false
+    },
+    "qualified_binary_activated_as_gc_relay": true,
+    "subsequent_network_canary_passed": false,
+    "subsequent_network_canary_failure": "First client did not connect before the original stage deadline; grant revoked and relay rolled back"
+  },
+  "public_sdk_archive_compaction": {
+    "implemented": true,
+    "scope": "Completed source-bound public SDK archives only; preserve every published URL, private provider original, byte, mode and receipt",
+    "declared_duplicate_bytes_before_actual_verification": 8409079808,
+    "declared_duplicate_groups": 48,
+    "completed_publications_observed": 23,
+    "archive_paths_observed": 276,
+    "compaction_tests_passed": 21,
+    "full_python_tests_passed": 696,
+    "existing_skips": 5,
+    "actual_compaction_activated": false,
+    "actual_reclaimed_bytes": 0,
+    "api_changed": false,
+    "native_sdk_1_0_qualified": false
   }
 }

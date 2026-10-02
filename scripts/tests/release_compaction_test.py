@@ -9,7 +9,8 @@ from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from release_compaction import compact_build, compact_rollback_images, checked_metadata
+from release_compaction import compact_build, compact_rollback_images, compact_public_sdk, checked_metadata
+from release_pair import canonical
 
 
 @unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
@@ -219,6 +220,147 @@ class RollbackImageCompactionTests(unittest.TestCase):
             original(source, destination, **kwargs)
             receipt.write_bytes(receipt.read_bytes() + b' ')
         with patch('release_compaction.os.link', side_effect=provenance_race), self.assertRaisesRegex(ValueError, 'provenance changed'):
+            self.compact()
+        self.assertFalse(list(self.state.rglob('.compact-*')))
+
+
+@unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
+class PublicSdkCompactionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.state = Path(self.temp.name)
+        self.content = b'original-qualified-sdk-archive' * 100
+        self.sha = hashlib.sha256(self.content).hexdigest()
+        self.public, self.originals, self.reports = [], [], []
+        for number in range(1, 4):
+            manifest = {'schema': 1, 'sources': {
+                'gchat': {'commit': 'b' * 40, 'tree': 'e' * 40},
+                'gcoms': {'commit': 'c' * 40, 'tree': 'f' * 40}},
+                'versions': {'sdk': '0.0.' + str(number)}, 'policy': {}}
+            manifest['release_id'] = hashlib.sha256(canonical(manifest)).hexdigest()
+            release = manifest['release_id']
+            build = self.state / 'jobs' / hashlib.sha256(canonical([release, 'sdk', 'build'])).hexdigest()
+            source = build / 'archives/native.zip'
+            source.parent.mkdir(parents=True)
+            source.write_bytes(self.content); source.chmod(0o600)
+            self.originals.append(source)
+            receipt = {'schema': 1, 'release_id': release, 'sources': manifest['sources'],
+                       'platform': 'sdk', 'passed': True, 'source_unchanged': True,
+                       'stage': 'build', 'evidence': [{'path': 'archives/native.zip', 'sha256': self.sha}]}
+            (build / 'receipt.json').write_bytes(canonical(receipt))
+            publication = self.state / 'jobs' / hashlib.sha256(canonical([release, 'sdk', 'publish'])).hexdigest()
+            publication.mkdir()
+            (publication / 'candidate.json').write_bytes(canonical(manifest))
+            target = self.state / 'public/updates/sdk' / release / 'native.zip'
+            target.parent.mkdir(parents=True)
+            target.write_bytes(self.content); target.chmod(0o644)
+            self.public.append(target)
+            report = {'schema': 1, 'release_id': release, 'sources': manifest['sources'],
+                      'version': manifest['versions']['sdk'], 'archives': [{
+                          'path': release + '/native.zip', 'sha256': self.sha, 'size': len(self.content)}]}
+            report_path = publication / 'public-sdk.json'
+            report_path.write_bytes(canonical(report)); self.reports.append(report_path)
+            receipt = dict(receipt, stage='publish', evidence=[{
+                'path': 'public-sdk.json', 'sha256': hashlib.sha256(report_path.read_bytes()).hexdigest()}])
+            (publication / 'receipt.json').write_bytes(canonical(receipt))
+
+    def compact(self):
+        return compact_public_sdk(self.state, minimum_bytes=1)
+
+    def test_all_urls_originals_permissions_and_receipts_survive_idempotent_sharing(self):
+        originals = {p: (p.read_bytes(), p.stat().st_mode) for p in self.state.rglob('*') if p.is_file()}
+        private_inodes = [p.stat().st_ino for p in self.originals]
+        report = self.compact()
+        self.assertEqual(len(report['changes']), 2)
+        self.assertTrue(report['original_provider_archives_retained'])
+        self.assertFalse(report['private_provider_archives_shared'])
+        self.assertEqual(len({p.stat().st_ino for p in self.public}), 1)
+        self.assertEqual([p.stat().st_ino for p in self.originals], private_inodes)
+        for path, (content, mode) in originals.items():
+            self.assertEqual((path.read_bytes(), path.stat().st_mode), (content, mode))
+        self.assertEqual(self.compact()['changes'], [])
+
+    def test_changed_public_or_original_archive_blocks_before_any_replacement(self):
+        for victim in (self.public[-1], self.originals[-1]):
+            with self.subTest(victim=victim):
+                before = [p.stat().st_ino for p in self.public]
+                victim.write_bytes(b'x' * len(self.content))
+                with self.assertRaisesRegex(ValueError, 'bytes differ'):
+                    self.compact()
+                self.assertEqual([p.stat().st_ino for p in self.public], before)
+                victim.write_bytes(self.content)
+
+    def test_changed_provenance_is_rejected_before_any_replacement(self):
+        before = [p.stat().st_ino for p in self.public]
+        self.reports[-1].write_bytes(self.reports[-1].read_bytes() + b' ')
+        with self.assertRaisesRegex(ValueError, 'index differs'):
+            self.compact()
+        self.assertEqual([p.stat().st_ino for p in self.public], before)
+
+    def test_index_cannot_redirect_archives_outside_the_public_release(self):
+        path = self.reports[-1]
+        report = json.loads(path.read_text())
+        report['archives'][0]['path'] = report['release_id'] + '/../outside.zip'
+        path.write_bytes(canonical(report))
+        receipt = path.parent / 'receipt.json'
+        proof = json.loads(receipt.read_text())
+        proof['evidence'][0]['sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+        receipt.write_bytes(canonical(proof))
+        with self.assertRaisesRegex(ValueError, 'unsafe SDK artifact path'):
+            self.compact()
+
+    def test_private_original_inodes_cannot_be_used_as_public_canonical_files(self):
+        self.public[-1].unlink()
+        os.link(self.originals[-1], self.public[-1])
+        self.originals[-1].chmod(0o644)
+        with self.assertRaisesRegex(ValueError, 'shares a private provider inode'):
+            self.compact()
+
+    def test_bounded_maintenance_visits_recent_publications_and_ignores_unfinished_work(self):
+        for number, path in enumerate(self.reports, 1):
+            os.utime(path.parent / 'receipt.json', ns=(number * 10**9, number * 10**9))
+        report = compact_public_sdk(self.state, maximum_publications=2, minimum_bytes=1)
+        expected = [json.loads(p.read_text())['release_id'] for p in reversed(self.reports[-2:])]
+        self.assertEqual(report['publications'], expected)
+        self.assertEqual(len(report['changes']), 1)
+        receipt = self.reports[-1].parent / 'receipt.json'
+        proof = json.loads(receipt.read_text()); proof['passed'] = False
+        receipt.write_bytes(canonical(proof))
+        report = compact_public_sdk(self.state, minimum_bytes=1)
+        self.assertNotIn(json.loads(self.reports[-1].read_text())['release_id'], report['publications'])
+
+    def test_different_public_permissions_stay_separate(self):
+        self.public[-1].chmod(0o640)
+        before = self.public[-1].stat().st_ino
+        self.assertEqual(len(self.compact()['changes']), 1)
+        self.assertEqual(self.public[-1].stat().st_ino, before)
+        self.assertEqual(self.public[-1].stat().st_mode & 0o777, 0o640)
+
+    def test_symlink_and_fifo_are_rejected_without_reading_or_changing_their_target(self):
+        victim = self.public[-1]
+        victim.unlink()
+        victim.symlink_to(self.originals[-1])
+        with self.assertRaisesRegex(ValueError, 'escapes retained'):
+            self.compact()
+        victim.unlink(); os.mkfifo(victim)
+        with self.assertRaisesRegex(ValueError, 'size or type'):
+            self.compact()
+
+    def test_replacement_and_original_archive_races_fail_closed(self):
+        original_link = os.link
+        def race(source, destination, **kwargs):
+            original_link(source, destination, **kwargs)
+            (destination.parent / source.name).write_bytes(b'x' * len(self.content))
+        with patch('release_compaction.os.link', side_effect=race), self.assertRaisesRegex(ValueError, 'changed before replacement'):
+            self.compact()
+        self.assertFalse(list(self.state.rglob('.compact-*')))
+        for path in self.public:
+            path.write_bytes(self.content)
+        def authority_race(source, destination, **kwargs):
+            original_link(source, destination, **kwargs)
+            self.originals[-1].write_bytes(b'x' * len(self.content))
+        with patch('release_compaction.os.link', side_effect=authority_race), self.assertRaisesRegex(ValueError, 'original SDK archive changed'):
             self.compact()
         self.assertFalse(list(self.state.rglob('.compact-*')))
 

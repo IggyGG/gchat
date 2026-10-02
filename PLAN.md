@@ -1,3 +1,20 @@
+Completed public SDK archives now have source-bound duplicate compaction.
+It verifies the original build and publication receipts, every selected archive
+hash and stable provenance before sharing public copies with identical ownership
+and permissions. Private provider originals remain separate. Every URL, byte,
+mode and receipt is retained. Bounded maintenance visits recent publications;
+tampering, path escapes, symlinks, FIFOs and replacement races fail closed.
+The live scan estimates 8,409,079,808 duplicate bytes across 23 publications;
+actual reclamation remains pending the qualified maintenance image. All 21
+compaction tests and 696 full Python checks pass with five existing skips.
+
+The corrected host installer is installed on all eight native hosts, preserving
+service policies and restricted SSH keys. The original qualified binary starts
+as gc-relay after the normal inventory correction. Its following network canary
+times out before the first client connects; the grant is revoked and the relay
+is rolled back. The original failure and correction remain retained, and all
+17 targets remain healthy. Fleet/client activation is still required.
+
 The original signed Linux 0.1.98 workflow passes both full native CI gates,
 signed packaging, actual infrastructure image tests and packaged desktop/CLI
 profile lifecycle and cleanup. Its complete 875,492,915-byte provider ZIP verifies
@@ -12,8 +29,9 @@ binary directories with mode 0700, denying traversal to the service's gc-relay
 user. Preparation now repairs those executable directories to 0755 while keeping
 installer state private; symlinked binary directories fail closed. Seven host
 installer tests and 687 full Python checks pass with five existing skips. The
-corrected helper still needs installation on the eight native hosts before the
-original rollout resumes. No application API or protocol changed.
+corrected helper is now installed on the eight native hosts; the original
+rollout resumes after its normal inventory correction. No application API or
+protocol changed.
 
 Controller generation 59 (`3792ae8`) is active with two ready containers, zero
 restarts, 130 actual-image/Kubernetes runtime checks and 219 verified source
