@@ -2,27 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "3fec49aa299685a7863ba311f9a88f647b7db0d5",
-    "image": "sha256:af8a802e9d3a2f0efacff69b700e9ba63fb3d4e3f2f3854de7489ba7af8aa1a5",
+    "gchat_commit": "3792ae8b907646df237feb2846f2f4f4b8f64742",
+    "image": "sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-02T21:11:11Z",
+    "watchdog_last_success": "2026-10-02T21:38:06Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:e9d1cd08bf90f97ea89879b576765d85e7d4739c3c0441a0741a3bd01218eb58",
-    "archive_sha256": "7a2f49807c6424a2c17ad3c99a7ed8d8d50967ef626fbc0addfb6af57f7497d0",
-    "observed_at": "2026-10-02T21:11:23.920546+00:00",
+    "configuration_digest": "sha256:fdfcd17e5264f21974d832653cbeda8d1269656d077d03e060839cf1737a0968",
+    "archive_sha256": "79ded299888fb2422602d3cee478c47ee2bdb9cd5c013176457d91e0ae43788e",
+    "observed_at": "2026-10-02T21:47:28.496413+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:1ede4419c93629a25c47fbff3a97ade19c21ed2538e95cb9619260fc0707d4d7",
+    "previous_digest": "sha256:af8a802e9d3a2f0efacff69b700e9ba63fb3d4e3f2f3854de7489ba7af8aa1a5",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 125,
-    "deployment_generation": 58,
+    "validation_tests": 130,
+    "deployment_generation": 59,
     "source_files_verified": 219
   },
   "hosted_test_retention": {
@@ -1159,6 +1159,36 @@
         }
       ],
       "linux_windows_verified": true
+    },
+    "ios_original_app_startup_diagnostic": {
+      "passed": true,
+      "scope": "Independent native startup and relaunch; original provider lifecycle and messaging gates remain pending",
+      "original_provider_run": 37039423503,
+      "original_provider_artifact": 11244692599,
+      "simulator_archive_sha256": "b19767150557e25b93c89456aa86a47c5d342f4167a5b2608664b78b3b2796aa",
+      "simulator_executable_sha256": "1214f87b0757a8a0ef8f3f67687083a587c7cd078866af3cc08abf9cc146d89d",
+      "simulator_executable_bytes": 34640224,
+      "original_binary_unchanged": true,
+      "diagnostic_source": {
+        "commit": "3792ae8b907646df237feb2846f2f4f4b8f64742",
+        "tree": "2347ff11dce6257017c6f3a3334796794ffffd38"
+      },
+      "source_files_verified": 219,
+      "xcode": "Xcode 26.2\nBuild version 17C52\n",
+      "simulator_runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+      "launch_phases": [
+        "fresh",
+        "relaunch"
+      ],
+      "alive_seconds_each": 15,
+      "launch_deadline_seconds": 60,
+      "owned_device_removed": true,
+      "cleanup_complete": true,
+      "profile_journey_qualified": false,
+      "messaging_qualified": false,
+      "push_qualified": false,
+      "physical_device_qualified": false,
+      "raw_evidence": "operations/ios-mac-startup-evidence-242/native-proof.json"
     }
   },
   "rollback_image_compaction": {
@@ -1191,11 +1221,14 @@
     "no_keys_or_network_in_hourly_recipe": true,
     "rwo_controller_colocation_required": true,
     "never_started_original_scheduled_failure_retained": true,
-    "corrected_colocated_recipe_pending": true
+    "corrected_colocated_recipe_pending": false,
+    "corrected_recipe_passed": true,
+    "corrected_recipe_images_verified": 17,
+    "qualified_hourly_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea"
   },
   "storage_recovery_automation": {
     "implemented": true,
-    "activated": false,
+    "activated": true,
     "focused_controls": 27,
     "legacy_storage_blocks_supported": true,
     "existing_request_markers_and_receipts_preserved": true,
@@ -1203,7 +1236,7 @@
     "recent_candidates_polled_first": true,
     "capacity_threshold_unchanged": true,
     "codematch": "unreachable",
-    "actual_image_and_activation_pending": true,
+    "actual_image_and_activation_pending": false,
     "full_python_tests": 685,
     "existing_skips": 5,
     "l0_source_paths": 802,
@@ -1211,7 +1244,7 @@
     "optional_methods": 3,
     "api_2_fixtures_unchanged": true,
     "same_clock_tick_worker_logs_retained": true,
-    "windows_correction_requalification_pending": true,
+    "windows_correction_requalification_pending": false,
     "original_windows_failure_run": 37065834031,
     "original_provider_archives": [
       {
@@ -1236,6 +1269,50 @@
           "4f1bd6f492a66196508e68e36578d14a95de5de9"
         ]
       }
-    ]
+    ],
+    "native_portability_run": 37067141216,
+    "native_linux_windows_archives_verified": [
+      {
+        "artifact": 11253390968,
+        "name": "release-tools-windows-2022",
+        "sha256": "515814fec7b863905fb89aa159f2a4dc1e25e47a77115b69ed6f6870c80ef438",
+        "bytes": 7241,
+        "source": [
+          "3792ae8b907646df237feb2846f2f4f4b8f64742",
+          "2347ff11dce6257017c6f3a3334796794ffffd38"
+        ],
+        "results": {
+          "release.log": [
+            "Ran 213 tests in 69.146s\r",
+            "OK (skipped=41)\r"
+          ],
+          "rollback.log": [
+            "Ran 3 tests in 0.032s\r",
+            "OK\r"
+          ]
+        }
+      },
+      {
+        "artifact": 11253280691,
+        "name": "release-tools-ubuntu-24.04",
+        "sha256": "b383b1cefd96c80314a7fdb2a7aa90055416878eb46f4e6c3f6480779b7601f2",
+        "bytes": 7038,
+        "source": [
+          "3792ae8b907646df237feb2846f2f4f4b8f64742",
+          "2347ff11dce6257017c6f3a3334796794ffffd38"
+        ],
+        "results": {
+          "release.log": [
+            "Ran 213 tests in 14.793s",
+            "OK (skipped=4)"
+          ],
+          "rollback.log": [
+            "Ran 3 tests in 0.021s",
+            "OK"
+          ]
+        }
+      }
+    ],
+    "all_seven_retained_builds_resumed_observed": true
   }
 }

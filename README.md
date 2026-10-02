@@ -1,3 +1,23 @@
+Controller generation 59 (`3792ae8`) is active with two ready containers, zero
+restarts, 130 actual-image/Kubernetes runtime checks and 219 verified source
+hashes. Storage recovery, recent-candidate polling and unique worker logs are
+active. Linux/Windows portability passes with independently verified original
+provider archives; the previous controller and five private baselines are
+verified. The independent watchdog succeeds and the corrected maintenance
+recipe passes on the controller's node with 17 retained images. All 685 Python
+tests pass with five existing skips; L0 checks 802 paths, 18 stable/three optional
+methods remain, and API 2 fixtures are unchanged.
+
+The retained original iOS simulator app passes actual cold launch and relaunch
+on the available Apple Silicon Mac with Xcode 26.2. The executable hash is
+unchanged; both 15-second liveness checks, screenshots and owned-device cleanup
+pass under the original 60-second launch limit. This independently proves
+startup, while the original provider lifecycle, native messaging, fleet/client
+activation and a subsequent unattended release remain required. No SDK 1.0
+qualification or whole-fleet activation is claimed.
+
+Earlier controller implementation checkpoints retain their original observations.
+
 Controller generation 58 (`3fec49a`) is active with two ready containers, zero
 restarts, 125 actual-image/Kubernetes runtime checks and 219 verified source
 hashes. Its previous digest and five private baselines are verified; the
