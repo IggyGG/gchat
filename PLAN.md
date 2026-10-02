@@ -3,8 +3,10 @@ restarts, 130 actual-image/Kubernetes runtime checks and 219 verified source
 hashes. Storage recovery, recent-candidate polling and unique worker logs are
 active. Linux/Windows portability passes with independently verified original
 provider archives; the previous controller and five private baselines are
-verified. The independent watchdog succeeds and the corrected maintenance
-recipe passes on the controller's node with 17 retained images. All 685 Python
+verified. The independent watchdog succeeds. The scheduled hourly maintenance
+run passes automatically on the controller's node, verifying three native
+artifacts and 17 retained images with every original archive and path preserved.
+All 685 Python
 tests pass with five existing skips; L0 checks 802 paths, 18 stable/three optional
 methods remain, and API 2 fixtures are unchanged.
 

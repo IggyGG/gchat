@@ -1257,7 +1257,24 @@
     "corrected_colocated_recipe_pending": false,
     "corrected_recipe_passed": true,
     "corrected_recipe_images_verified": 17,
-    "qualified_hourly_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea"
+    "qualified_hourly_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea",
+    "automatic_hourly_run": {
+      "schema": 1,
+      "passed": true,
+      "automatic_cronjob": true,
+      "job": "gchat-release-compaction-29849657",
+      "node": "triform-6",
+      "image": "127.0.0.1:30444/ghost/gchat-release@sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea",
+      "started_at": "2026-10-02T22:17:00Z",
+      "completed_at": "2026-10-02T22:20:48Z",
+      "native_artifacts_verified": 3,
+      "retained_images_verified": 17,
+      "all_paths_and_original_archives_retained": true,
+      "log_sha256": "eace2ab32d5ccab96fcff43d4cfe4408ba988753f7c68f0d958f16bd787241a2",
+      "reclaimed_bytes": 0,
+      "raw_evidence": "test-evidence/stabilization-20261001/operations/compaction-hourly-summary-265.json",
+      "raw_evidence_sha256": "97418003591737c94906e436e6bdea6f25b40bb997c584e3a2965e82a80e43e2"
+    }
   },
   "storage_recovery_automation": {
     "implemented": true,
