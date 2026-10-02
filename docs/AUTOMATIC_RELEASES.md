@@ -1,3 +1,15 @@
+The release publisher preserves original provider archives and source receipts.
+`release_compaction.py --state /state` verifies each completed build's original
+archive before sharing identical extraction files. It preserves every path and
+byte, checks ownership/mode compatibility and refuses changed files or links.
+Receipts under `maintenance/compaction/` retain the archive and build proof hashes.
+An uncertain run can be retried; already shared files are unchanged. Compaction
+never removes archives, profiles, unpublished work, signatures or evidence.
+The independent hourly `release/automation/compaction.yaml` uses a qualified,
+immutable controller image and the release PVC, without signing keys or network
+access. Install that image only after its source and native compaction controls
+pass. Storage headroom still blocks new build stages when capacity is insufficient.
+
 # Automatic releases
 
 A release is one immutable GChat/GComs source pair. A successful build, a submitted

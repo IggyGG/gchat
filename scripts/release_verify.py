@@ -158,7 +158,14 @@ def verify(manifest, platform, directory, output, tools=None):
     for path in [report, *artifacts, *followup_evidence]:
         name = sha(path) + '-' + path.name
         destination = retained / name
-        if not destination.exists(): shutil.copyfile(path, destination)
+        if not destination.exists():
+            try:
+                os.link(path, destination)
+            except OSError as error:
+                import errno
+                if error.errno != errno.EXDEV:
+                    raise
+                shutil.copyfile(path, destination)
         if sha(destination) != sha(path): raise ValueError('retained verified evidence changed')
         evidence.append({'path': destination.relative_to(output.parent).as_posix(), 'sha256': sha(destination)})
     result = {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'], 'platform': platform,

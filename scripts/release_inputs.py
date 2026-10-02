@@ -16,6 +16,7 @@ CONTROL_FILES = frozenset({
     'scripts/release_inputs.py', 'scripts/release_coordinator.py',
     'scripts/release_discovery.py', 'scripts/release_config.py',
     'scripts/release_ledger.py', 'scripts/release_maintenance.py',
+    'scripts/release_compaction.py', 'release/automation/compaction.yaml',
     'scripts/release_pair.py', 'release/automation/Dockerfile',
     'scripts/release_jobs.py', 'scripts/release_verify.py', 'scripts/release_recovery.py',
     'scripts/release_ios_recovery.py',
@@ -66,6 +67,7 @@ GCOMS_STATUS_FILES = frozenset({
     'docs/evidence/stabilization-20261001/windows-locked-storage-tests.json',
     'docs/evidence/stabilization-20261001/sdk-size-policy.json',
     'docs/evidence/stabilization-20261001/sdk-native-90d7eac.json',
+    'crates/file-transfer/README.md',
 })
 
 

@@ -109,6 +109,8 @@ class InputTests(unittest.TestCase):
                 commit(project, path, 'changed')
                 self.assertNotEqual(before['artifacts'], fingerprints(roots, sources)['artifacts'])
             for project,path in [('gchat','scripts/mobile_installed_journey.py'),
+                                 ('gchat','scripts/release_compaction.py'),
+                                 ('gchat','release/automation/compaction.yaml'),
                                  ('gchat','.github/workflows/mobile-acceptance.yml'),
                                  ('gchat','scripts/fixtures/ios-acceptance/AcceptanceTests.swift'),
                                  ('gchat','docs/evidence/stabilization-20261001/ios-build-allocation.json'),
@@ -118,6 +120,7 @@ class InputTests(unittest.TestCase):
                                  ('gcoms','docs/evidence/stabilization-20261001/contact-request-window.json'),
                                  ('gcoms','docs/evidence/stabilization-20261001/windows-locked-storage-tests.json'),
                                  ('gcoms','docs/evidence/stabilization-20261001/sdk-size-policy.json'),
+                                 ('gcoms','crates/file-transfer/README.md'),
                                  ('gcoms','docs/evidence/stabilization-20261001/sdk-native-90d7eac.json')]:
                 before=fingerprints(roots,sources)
                 commit(project,path,'reviewed qualification change')
@@ -126,7 +129,8 @@ class InputTests(unittest.TestCase):
                 self.assertNotEqual(before['qualification'],after['qualification'])
                 if project == 'gcoms' or path.startswith('docs/'):
                     self.assertEqual(before['infrastructure'],after['infrastructure'])
-                elif path == '.github/workflows/mobile-acceptance.yml':
+                elif path in ('.github/workflows/mobile-acceptance.yml',
+                              'scripts/release_compaction.py', 'release/automation/compaction.yaml'):
                     self.assertNotEqual(before['infrastructure'],after['infrastructure'])
             for project,path in [('gchat','scripts/mobile-build-new.py'),
                                  ('gchat','.github/workflows/ios-release.yml'),

@@ -1,3 +1,15 @@
+Release storage now has an independent compaction worker and hourly CronJob
+recipe. It verifies the completed build receipt and original provider ZIP, checks
+duplicate extracted artifacts against the archive, then shares identical files
+with hard links. Paths, bytes, permissions, source receipts and original archives
+remain; unfinished builds, changed files, symlinks and replacement races fail.
+Only completed extraction copies are eligible. The live read-only inventory finds
+3.00 GiB duplicated signed installers across 123 completed builds. Five meaningful
+controls pass. Live compaction and permanent scheduling still require activation;
+this is not an application or fleet qualification receipt. A requested 128-to-160
+GiB expansion was refused by Longhorn's disk limits; actual capacity remains 128
+GiB, with the expansion pending and the release headroom gate retained.
+
 ## Stable contracts and released clients (2026-10-01)
 
 Run `release_ios_versions_test.py` and `release_prepare_test.py`. Require patch
