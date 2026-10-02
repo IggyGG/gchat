@@ -26,12 +26,13 @@
   },
   "controller_activation": {
     "initial_allocator_source": "e0e7fb9ab64c0ac53702833e58bb6b3329133c2f",
-    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:f9e7890599db7100955e4908fc8cdceaaba0fe9a1b0f023daeafae42720c1e16",
-    "deployment_generation": 49,
-    "independent_validation_tests": 81,
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
+    "deployment_generation": 50,
+    "independent_validation_tests": 82,
     "ready": true,
-    "historical_retry_fix_activation": "pending",
-    "original_invalid_reservation_retained": true
+    "historical_retry_fix_activation": "active",
+    "original_invalid_reservation_retained": true,
+    "source": "defc0e12d4a4585c6f87148c337b4dcd617d38d4"
   },
   "native_valid_number_build": "pending",
   "source_sha256": {
@@ -66,7 +67,27 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/controller-e0e7fb9-validation.log",
       "sha256": "6bdb017955a624f0b7f1861d3547280d06c4a26679a23ee1458f9e4d06fad7e4"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-ios-reservations-111.json",
+      "sha256": "72e559185db7242c1f7f54160ccd09a1bb46493e521396851c45535df0d1f0db"
     }
   ],
-  "existing_build_policy_reference": "https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html"
+  "existing_build_policy_reference": "https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html",
+  "first_automatic_valid_reservation": {
+    "release_id": "b6bcdf38c8e5ad6e12dcf093402bb724d7b215856bbf0a367698997e660ae6ea",
+    "sequence": 80,
+    "ios": "1.1.0",
+    "sources": {
+      "gchat": {
+        "commit": "91a4ca736a4a7e6d981808d3145d24892681192e",
+        "tree": "2ae9ce95177c4b7fcbe234fc49e711de43331b04"
+      },
+      "gcoms": {
+        "commit": "90d7eace5011a88068eb604aaf82149f9352c439",
+        "tree": "2329c634eb145dd2f0523c793687eb6606e43dbc"
+      }
+    },
+    "original_invalid_release_id": "e3ff1e4183854687294107197cd684f2effac9b73e498f73019b77ea484b01c1"
+  }
 }

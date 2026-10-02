@@ -9,8 +9,9 @@ documentation change. Require a distinct valid immutable ref, unchanged original
 row/ref, idempotent lost publication recovery, and rejection of a corrupted original
 manifest even when its iOS number overflows.
 Use the signing worker's existing numeric constraints throughout. Retain the
-original failed `1.0.100` worker and require a fresh native build with a valid new
-reservation; component controls do not qualify the signed application.
+original failed `1.0.100` worker and require a fresh native build with the automatically reserved valid `1.1.0`
+reservation. Controller generation 50 passes 82 independent checks; these controls
+do not qualify the signed application.
 
 For retained iOS lifecycle qualification, use the exact labelled visibility
 Switch exposed in the real XCTest hierarchy. Verify the exact plaintext input

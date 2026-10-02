@@ -7,8 +7,9 @@ replaying it prevented a valid replacement. Discovery now checks the original
 manifest digest and other fields, preserves that invalid row and ref, and reserves
 a new valid version on a distinct immutable ref. Lost publication retries reuse
 that new reservation. The real Git/ledger regressions and 637 Python checks pass
-with five existing skips. Activation of this retry fix and a native valid-number
-build remain open. The original `1.0.100` worker failure and later invalid rows are
+with five existing skips. The retry fix is active in generation 50 (`defc0e1`), with 82 independent
+checks, both containers ready, retained/repaired rollback and a successful minute
+watchdog. It automatically reserved build `1.1.0`; its native build remains open. The original `1.0.100` worker failure and later invalid rows are
 retained in the [allocation checkpoint](docs/evidence/stabilization-20261001/ios-build-allocation.json).
 
 Retained iOS lifecycle run `36862393296` fails while querying the passphrase
@@ -41,10 +42,10 @@ Kubernetes services, retains rollback artifacts, and preserves configuration and
 relay identities. Acceptance automatically rotates to the most recent available predecessor; the
 initial operator-bound baseline remains a fallback. Reviewed GComs status documents
 preserve both application and infrastructure identity; unknown inputs still
-require fresh artifacts. These controller changes are active in generation 48.
+require fresh artifacts. These controller changes are active in generation 50.
 New client/relay activation and native acceptance remain subject
 to their qualification gates; see [current work](PLAN.md).
-Controller source `5b89c81` is active with 76 deployment/acceptance checks, a
+Controller source `defc0e1` is active with 82 deployment/acceptance checks, a
 successful independent minute watchdog and retained previous image. Mobile
 acceptance recipes and verified retained Android/iOS baselines are configured.
 iOS passphrase qualification uses the native visibility Switch and normal Show/Hide

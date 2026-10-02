@@ -2,27 +2,27 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "5b89c81c855237fdf5b36aaa59986a7adf2317c0",
-    "image": "sha256:e03d6293f8b6a08bac5c03c46c23f9f46fff79d5db421c6218496bdfdf8efdf3",
+    "gchat_commit": "defc0e12d4a4585c6f87148c337b4dcd617d38d4",
+    "image": "sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
     "ready": true,
     "containers": 2,
     "restarts": 0,
     "serial_targets": 17,
     "native_hosts_observed": 8,
     "scoped_role_enforced": true,
-    "watchdog_last_success": "2026-10-01T13:27:06Z",
+    "watchdog_last_success": "2026-10-02T14:14:05Z",
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:58ee1bcc95724223761734a68a8b1fd097420a79eb19bda30292c6044d5b8db9",
-    "archive_sha256": "2ba2015a280de03277113cbaf65efad358f67dff1d807e1cfa252346cf043142",
-    "observed_at": "2026-10-01T13:27:54.264437+00:00",
+    "configuration_digest": "sha256:0abb23e71cc7362a082ac2bb2dad9c8ad6f0960b15a194d3e641699224c7646b",
+    "archive_sha256": "d1272a89f464693d064e42e2d2855446b0de6a6ac31635157f542c911ff7ee18",
+    "observed_at": "2026-10-02T14:15:11.447679+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:80235f5f68c91ee9c4bfd660de1e518eb30bc2c08c6c8e38aa3e6fa802a78ff6",
+    "previous_digest": "sha256:f9e7890599db7100955e4908fc8cdceaaba0fe9a1b0f023daeafae42720c1e16",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 76,
-    "deployment_generation": 48
+    "validation_tests": 82,
+    "deployment_generation": 50
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -59,9 +59,9 @@
     "baseline_current_baseline_current_rollback": true
   },
   "component_validation": {
-    "python_tests": 633,
+    "python_tests": 637,
     "python_skipped": 5,
-    "controller_validation_tests": 76
+    "controller_validation_tests": 82
   },
   "open": [
     "Fresh SDK native desktop/mobile qualification with the approved 20% feature allowance and automatic 5% cap at SDK 1.0",
@@ -146,6 +146,22 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/controller-5b89c81-observed.json",
       "sha256": "c35beff29fc0650f26c9ab7ffbcf2438d87564bb5ecfcd4a5ab446497a43c195"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-defc0e1-observed-111.json",
+      "sha256": "4821833fec9ff3c2f4c65d045e8d3d711302046830ac5dd271ff5fe73d9357e5"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-defc0e1-validation.log",
+      "sha256": "0f48d71d2660a56a6f5b22c8b7c51da84d49d05f8d2175e6692bcfb760a4727e"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-defc0e1-validation.json",
+      "sha256": "4f9bda261430d3919def1ff303547185d9012ebf2d743c055e08a4cacf733778"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-ios-reservations-111.json",
+      "sha256": "72e559185db7242c1f7f54160ccd09a1bb46493e521396851c45535df0d1f0db"
     }
   ],
   "native_progress": {
@@ -249,6 +265,52 @@
       "initial_mobile_baselines_bound": true,
       "validation_tests": 75,
       "deployment_generation": 47
+    },
+    {
+      "gchat_commit": "5b89c81c855237fdf5b36aaa59986a7adf2317c0",
+      "image": "sha256:e03d6293f8b6a08bac5c03c46c23f9f46fff79d5db421c6218496bdfdf8efdf3",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-01T13:27:06Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:58ee1bcc95724223761734a68a8b1fd097420a79eb19bda30292c6044d5b8db9",
+      "archive_sha256": "2ba2015a280de03277113cbaf65efad358f67dff1d807e1cfa252346cf043142",
+      "observed_at": "2026-10-01T13:27:54.264437+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:80235f5f68c91ee9c4bfd660de1e518eb30bc2c08c6c8e38aa3e6fa802a78ff6",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 76,
+      "deployment_generation": 48
+    },
+    {
+      "gchat_commit": "e0e7fb9ab64c0ac53702833e58bb6b3329133c2f",
+      "image": "sha256:f9e7890599db7100955e4908fc8cdceaaba0fe9a1b0f023daeafae42720c1e16",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-02T13:59:05Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:f46812e8fa52bf7c09d356e74d1b59780fb887865f5a1cd00e6fbc6a3ab14416",
+      "archive_sha256": "e5d5e8ec46a5e60b9dc592d221388871ba2a9e12cffbe1c23aa0f68b3064f342",
+      "observed_at": "2026-10-02T13:59:54.855454+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:e03d6293f8b6a08bac5c03c46c23f9f46fff79d5db421c6218496bdfdf8efdf3",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 81,
+      "deployment_generation": 49
     }
   ],
   "mobile_baselines": {
@@ -315,6 +377,9 @@
     "latest_available_distinct_earlier_provider_is_baseline": true,
     "initial_seed_fallback": true,
     "corrupt_receipts_fail": true,
-    "active": true
+    "active": true,
+    "valid_ios_number_automatically_reserved": "1.1.0",
+    "original_invalid_reservation_preserved": true,
+    "component_python_tests": 637
   }
 }

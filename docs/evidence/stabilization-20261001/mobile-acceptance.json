@@ -49,17 +49,18 @@
   },
   "native_ui_execution": "pending",
   "live_producer_activation": {
-    "source": "5b89c81c855237fdf5b36aaa59986a7adf2317c0",
-    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:e03d6293f8b6a08bac5c03c46c23f9f46fff79d5db421c6218496bdfdf8efdf3",
+    "source": "defc0e12d4a4585c6f87148c337b4dcd617d38d4",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:2fe64e0bd0064f2a77e16dc323a8f6c3a630ff4ed1b928e74c61d06dd15251ad",
     "ready": true,
     "containers": 2,
     "restarts": 0,
-    "observed_at": "2026-10-01T13:27:54.264437+00:00",
-    "last_independent_watchdog_success": "2026-10-01T13:27:06Z",
-    "validation_tests": 76,
+    "observed_at": "2026-10-02T14:15:11.447679+00:00",
+    "last_independent_watchdog_success": "2026-10-02T14:14:05Z",
+    "validation_tests": 82,
     "prior_retained_and_repaired": true,
     "initial_mobile_baselines_bound": true,
-    "mobile_acceptance_recipes_active": true
+    "mobile_acceptance_recipes_active": true,
+    "deployment_generation": 50
   },
   "initial_mobile_baselines": "verified source-bound retained archives configured",
   "sdk_size_limit_percent": 20,
@@ -74,10 +75,13 @@
     "exact_entered_value_required": true,
     "value_assertion_seconds": 10,
     "passphrase_hidden_after_check": true,
-    "native_execution": "pending",
+    "native_execution": "in_progress",
     "original_lifecycle_run": 36837842309,
     "original_lifecycle_passed": false,
-    "original_assertion": "waitForPopulated at LifecycleTests.swift:64"
+    "original_assertion": "waitForPopulated at LifecycleTests.swift:64",
+    "actual_native_role": "Switch",
+    "failed_visibility_query_run": 36862393296,
+    "rerun_id": 37017329318
   },
   "additional_evidence": [
     {
@@ -108,7 +112,7 @@
     "initial_seeds_are_fallback_only": true,
     "identical_and_newer_candidates_rejected": true,
     "corrupt_receipts_not_skipped": true,
-    "component_python_tests": 633,
+    "component_python_tests": 637,
     "existing_skips": 5,
     "activated_on_controller": true
   }
