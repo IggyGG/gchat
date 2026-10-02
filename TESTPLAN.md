@@ -1,3 +1,16 @@
+Controller generation 55 (`add203a`) activates encrypted retained acceptance.
+The actual image and independent Kubernetes job pass 113 runtime checks and 219
+source hashes; all five configured private baseline archives are verified. Both
+containers are ready with zero restarts. The independent watchdog now uses the
+previous qualified schema-2-capable image and passes a live run. The handoff's
+actual HTTPS/native-worker check remains open.
+
+Cleanup additionally removes the driver's owned current/baseline/peer native ZIPs
+and extractions after use, preserving diagnostic reports and the coordinator's
+original private archives. A required receipt covers those copies as well as the
+temporary key and decrypted transport files. All 667 Python checks pass with five
+existing skips; the strengthened cleanup image is being qualified before activation.
+
 Published acceptance ciphertext directories remain traversable by the web server
 under the production private umask. The original archives and encrypted-response
 journal keep their private permissions. All 28 focused acceptance controls pass;

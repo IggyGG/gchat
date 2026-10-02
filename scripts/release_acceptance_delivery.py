@@ -194,6 +194,7 @@ def verify_receipt(proof, intent, work):
                 'response_sha256': retained['response_sha256'],
                 'archives': {role: spec['archive'] for role, spec in intent['inputs'].items()
                              if role in ('current', 'baseline', 'peer')},
-                'private_key_removed': True, 'decrypted_archives_removed': True}
+                'private_key_removed': True, 'decrypted_archives_removed': True,
+                'derived_native_copies_removed': True}
     if any(proof.get(k) != v for k, v in expected.items()):
         raise ValueError('native encrypted delivery bytes, source or private cleanup differs')

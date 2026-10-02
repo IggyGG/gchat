@@ -483,6 +483,10 @@ class EncryptedAcceptanceDeliveryTests(unittest.TestCase):
                     for role in ('current', 'baseline'):
                         spec = intent['inputs'][role]
                         self.assertEqual(transport.digest(copies / (spec['archive'] + '.zip')), spec['archive'])
+                        destination = root / 'acceptance' / role; destination.mkdir(parents=True)
+                        (destination / 'artifact.zip').write_bytes((copies / (spec['archive'] + '.zip')).read_bytes())
+                    (root / 'acceptance/network').mkdir()
+                    (root / 'acceptance/network/report.json').write_text('{"retained":true}')
                     if fail: raise OSError('fixture driver failure')
                     return SimpleNamespace(returncode=0)
                 with patch.object(transport.urllib.request, 'urlopen', side_effect=urlopen), \
@@ -499,6 +503,10 @@ class EncryptedAcceptanceDeliveryTests(unittest.TestCase):
                 proof = json.loads((root / 'acceptance/delivery.json').read_text())
                 self.assertEqual(proof['passed'], not fail)
                 self.assertTrue(proof['private_key_removed']); self.assertTrue(proof['decrypted_archives_removed'])
+                self.assertTrue(proof['derived_native_copies_removed'])
+                self.assertFalse((root / 'acceptance/current').exists())
+                self.assertFalse((root / 'acceptance/baseline').exists())
+                self.assertTrue((root / 'acceptance/network/report.json').exists())
                 if not fail: delivery.verify_receipt(proof, intent, work)
                 self.assertEqual({p.suffix for p in public.iterdir()}, {'.json', '.sealed'})
                 self.assertFalse(any(b'fixture-with-no-authority' in p.read_bytes() for p in public.iterdir()))
@@ -582,11 +590,12 @@ class EncryptedAcceptanceDeliveryTests(unittest.TestCase):
                      'sources': intent['sources'], 'target': intent['target'], 'qualification_commit': '7'*40,
                      'qualification_tree': '8'*40, 'passed': True, 'response_sha256': retained['response_sha256'],
                      'archives': {r: s['archive'] for r, s in intent['inputs'].items() if r != 'target'},
-                     'private_key_removed': True, 'decrypted_archives_removed': True}
+                     'private_key_removed': True, 'decrypted_archives_removed': True, 'derived_native_copies_removed': True}
             delivery.verify_receipt(proof, intent, work)
             for field, value in (('sources', {}), ('request', '2'*64), ('qualification_tree', '9'*40),
                                  ('archives', {}), ('response_sha256', '0'*64), ('passed', False),
-                                 ('private_key_removed', False), ('decrypted_archives_removed', False)):
+                                 ('private_key_removed', False), ('decrypted_archives_removed', False),
+                                 ('derived_native_copies_removed', False)):
                 with self.subTest(field=field), self.assertRaises(ValueError):
                     delivery.verify_receipt({**proof, field: value}, intent, work)
 

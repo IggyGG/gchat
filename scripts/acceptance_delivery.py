@@ -201,7 +201,9 @@ def receive(base, request, directory, specs, manifest, driver, output):
         raise ValueError('private delivery directory is not owned by this request')
     ready = json.loads((directory / 'ready.json').read_text())
     completed, response_sha, recovered = False, None, {}
+    output = Path(output); owned_output = not output.exists()
     try:
+        if not owned_output: raise ValueError('acceptance output must be a new owned directory')
         private = X25519PrivateKey.from_private_bytes((directory / 'key').read_bytes())
         deadline = time.monotonic() + 1200
         while True:
@@ -246,11 +248,17 @@ def receive(base, request, directory, specs, manifest, driver, output):
     finally:
         # Only this runner's temporary transport key and decrypted copies.
         shutil.rmtree(directory)
-        atomic_json(Path(output) / 'delivery.json', {'schema': 1, 'protocol': PROTOCOL,
-            'request': request, 'sources': manifest['sources'], 'target': specs['target'],
-            'qualification_commit': ready['commit'], 'qualification_tree': ready['tree'],
-            'passed': completed, 'response_sha256': response_sha, 'archives': recovered,
-            'private_key_removed': not directory.exists(), 'decrypted_archives_removed': not directory.exists()})
+        if owned_output:
+            copies = [output / role for role in ('current', 'baseline', 'peer', 'peer-application')]
+            for copy in copies:
+                if copy.is_symlink(): copy.unlink()  # Never follow a driver-created link.
+                elif copy.exists(): shutil.rmtree(copy)
+            atomic_json(output / 'delivery.json', {'schema': 1, 'protocol': PROTOCOL,
+                'request': request, 'sources': manifest['sources'], 'target': specs['target'],
+                'qualification_commit': ready['commit'], 'qualification_tree': ready['tree'],
+                'passed': completed, 'response_sha256': response_sha, 'archives': recovered,
+                'private_key_removed': not directory.exists(), 'decrypted_archives_removed': not directory.exists(),
+                'derived_native_copies_removed': all(not p.exists() and not p.is_symlink() for p in copies)})
 
 
 def main():

@@ -2,8 +2,8 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "ea4fdf8dc9d6259b0510d0fee10867dc483a1313",
-    "image": "sha256:69c93c73402c15c6c9ee6f6c892adbae5684ceb6cb0330139f06ea6790645916",
+    "gchat_commit": "add203aaf56651c5284855cf1f7edfac6604775d",
+    "image": "sha256:9ab26308a690d9930d6b9e0f9c2ec7c860f0b46fb291ea5273d7c48ac9583450",
     "ready": true,
     "containers": 2,
     "restarts": 0,
@@ -14,16 +14,16 @@
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:9b18e76df91d1cfbd81795f1797528d54bf206ea82cb1c2a6e3f97f3d400e3ad",
-    "archive_sha256": "5bd8b8be8a26cd9d5dcc0681defcbc344b9f3a7fbba4672d3f3affc4e8adb822",
+    "configuration_digest": "sha256:302c728a8caff7a4b8323fc60bb74904594c0e21c510a62748f81384a78bf6f8",
+    "archive_sha256": "88167b52bac01efe9a26e39b9a99e838da397e58d0ef7bf889bf3ccbe4d94115",
     "observed_at": "2026-10-02T18:11:56.107533+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:39f9127967bf544e348bbd51038e59115978bb4eebb37906074fc9eb5b41f36a",
+    "previous_digest": "sha256:69c93c73402c15c6c9ee6f6c892adbae5684ceb6cb0330139f06ea6790645916",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 101,
-    "deployment_generation": 54,
-    "source_files_verified": 217
+    "validation_tests": 113,
+    "deployment_generation": 55,
+    "source_files_verified": 219
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -369,6 +369,46 @@
     {
       "path": "test-evidence/stabilization-20261001/operations/acceptance-delivery-public-permissions-166.log",
       "sha256": "959a9e48bb3c17e32744000b0f1d21aab1949fb3de273126bb0d6c98b10d58f7"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-add203a-binding.json",
+      "sha256": "912337de862aad274f5af8200be9674771d192fe63c6c8241a044c2dfd07da60"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-add203a-context/controller-runtime.json",
+      "sha256": "9f8d2bf7f29275891043b773c79be3eeed556b3a3d61beb28b079a6924f7434b"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-add203a-context/controller-runtime.log",
+      "sha256": "5c2f3495ed055b943faa435f84d910151d057d8799f16674a247ac98ba306840"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-add203a-validation-176.json",
+      "sha256": "11e2fac69ed977be2b292fccb4f607d9797feeeba7cc065de99f65376a419b31"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-add203a-validation-176.log",
+      "sha256": "3b2fae50ab830e66fcdfb8d621958409b0267018ebf916bbc587044688f1df47"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/controller-add203a-validation-job-173.json",
+      "sha256": "5b72ff6ec9d8778ec86f86c764fcae3027c720817683698851d130875294d8f4"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/acceptance-delivery-config-before-178.json",
+      "sha256": "bd21d3601f4e9ef3e6c3210c50c0ff0f6b9823d8393f4732405d334f8fea4601"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/watchdog-schema2-live-178.log",
+      "sha256": "72fd52d682107988a064f73170c11edc64b3a01a42cd39439d18f838cdb7d6e5"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/acceptance-delivery-derived-cleanup-180.log",
+      "sha256": "46400489f44d8d847c214cf78baa99bb9391e6405bedf1413baa960c3368d6bc"
+    },
+    {
+      "path": "test-evidence/stabilization-20261001/operations/native-baselines-retained-171.log",
+      "sha256": "a396b192d32d78726795b2ce9b3aa4563a3bc76941f6663325018923f1a7b3bf"
     }
   ],
   "native_progress": {
@@ -654,6 +694,30 @@
       "validation_tests": 92,
       "deployment_generation": 53,
       "source_files_verified": 215
+    },
+    {
+      "gchat_commit": "ea4fdf8dc9d6259b0510d0fee10867dc483a1313",
+      "image": "sha256:69c93c73402c15c6c9ee6f6c892adbae5684ceb6cb0330139f06ea6790645916",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-02T18:11:06Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:9b18e76df91d1cfbd81795f1797528d54bf206ea82cb1c2a6e3f97f3d400e3ad",
+      "archive_sha256": "5bd8b8be8a26cd9d5dcc0681defcbc344b9f3a7fbba4672d3f3affc4e8adb822",
+      "observed_at": "2026-10-02T18:11:56.107533+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:39f9127967bf544e348bbd51038e59115978bb4eebb37906074fc9eb5b41f36a",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 101,
+      "deployment_generation": 54,
+      "source_files_verified": 217
     }
   ],
   "mobile_baselines": {
@@ -783,22 +847,22 @@
   "encrypted_acceptance_delivery": {
     "protocol": "gchat-acceptance-delivery-1",
     "implemented": true,
-    "activated": false,
+    "activated": true,
     "implementation_parent": "2af9be55548648d5345b9adbce7b448b0642bdd8",
     "implementation_files": {
       ".github/workflows/mobile-acceptance.yml": "f79cb0c5624c80f3f65961845d7efd10929c072e0d3419313e6ea421d4ee1646",
       ".github/workflows/native-acceptance.yml": "22d97bb2f000e00c544f07ac8d7f3e89ea01d085d58895db172be1b5980a2491",
       "release/automation/requirements.txt": "2fcbfb3029362fff81c935f1077612c900854ce402ee4ff0ba596d838fe0a818",
-      "scripts/acceptance_delivery.py": "f1e7c5352fbff824d6e7e590ba5194493b6321ae4d8e9d052673cee4873295af",
+      "scripts/acceptance_delivery.py": "2eb39a0627699b6e47e014a0d0d8f7f2d1ccda10cb93bf15f8077c5f48765690",
       "scripts/macos-rollback.py": "c4bcf8497ae59c0f7fcc9a07ed8366eb485658672787e1cc5fafa78b2a8c80c8",
       "scripts/mobile_acceptance_inputs.py": "7ce0175e8f77a3d325697948c284f73b3a25deddf8410e7bae5152d83d32c4a7",
       "scripts/release_acceptance.py": "70b72bf0f86bf07fd050de504bcb340a269eda366d46d1bf1aef8054e9996e30",
-      "scripts/release_acceptance_delivery.py": "15cd277a44045338cef0cbbd3a9cb1f5cec8617fdb30beb91353b519e459811d",
+      "scripts/release_acceptance_delivery.py": "94438e3e31a1f5ed24baf5666af8d982a7ea2d3a931275dcfd6311a71beae61e",
       "scripts/release_config.py": "ff56d79341ead704998824e3f63e4a0d5896b2efe1266e75a7fbc0baa353d354",
       "scripts/release_inputs.py": "aba30025e3067e7b6d52973465d4056a4185914c0d70e2319325a1c1ac397c38",
       "scripts/release_jobs.py": "732950b9eeb3d618c1e50fcd07fff03bd4aa4e72ba596be6f3c719f3a2b41a00",
       "scripts/test-native-upgrade.py": "ddf64d45708ce0a634bcfd6f7268406b4cd634e310a9f705275f3ec9e8ce7e57",
-      "scripts/tests/release_acceptance_test.py": "02803b434b737b962865ccc8d89dff42b29ab06a5c91a051fc6171a7ed3fcd9b",
+      "scripts/tests/release_acceptance_test.py": "2d3d337a8ce330a18177450cfefcb9ff9ee12c6acceab642753618dee07ea32e",
       "scripts/tests/release_inputs_test.py": "ffd9f102d000179ae40299c90b6f93ad8859ee967bedb475d3f42c41a37ef1e1",
       "scripts/windows-rollback.py": "3f7f8a7c1c97b8113f47226a207766628f80188133f92cc7abc3c9c86fa33a89"
     },
@@ -815,9 +879,43 @@
     "expired_provider_downloads_do_not_invalidate_retained_originals": true,
     "private_key_and_copy_cleanup_receipt_required": true,
     "legacy_unknown_workers_remain_frozen": true,
-    "actual_controller_image_qualification_pending": true,
+    "actual_controller_image_qualification_pending": false,
     "live_native_handoff_pending": true,
     "codematch": "unreachable: no callable variant-index tools in this session",
-    "public_ciphertext_readable_under_private_umask": true
+    "public_ciphertext_readable_under_private_umask": true,
+    "controller_source": "add203aaf56651c5284855cf1f7edfac6604775d",
+    "actual_controller_image_tests": 113,
+    "source_files_verified": 219,
+    "private_baselines_verified": {
+      "macos-aarch64": {
+        "sha256": "4ddc0efb2c15c7e15a32c3c07cebcd8922ebc8059dffe092b5951c90c36cb27f",
+        "bytes": 132922840,
+        "original_source_verified": true
+      },
+      "macos-x86_64": {
+        "sha256": "6ef8a1ffba92bf2d5381aac7a201023d712bd270e4d645556c322f82f1a5c074",
+        "bytes": 74770807,
+        "original_source_verified": true
+      },
+      "windows-x86_64": {
+        "sha256": "1677df7de66c126c2fc01f0664e4826c3614ffc7e3ebde71119eafb310eba6cd",
+        "bytes": 34586215,
+        "original_source_verified": true
+      },
+      "android": {
+        "sha256": "a54747dad70bcd19147925a007c715b0bf2ee097bea00777dcdc286ddd66b454",
+        "bytes": 161735437,
+        "original_source_verified": true
+      },
+      "ios": {
+        "sha256": "a43edf080b08fa26a220c8857643e4948cd8df8c6a92aa1b86ea83a73f84921e",
+        "bytes": 147504126,
+        "original_source_verified": true
+      }
+    },
+    "independent_kubernetes_validation_passed": true,
+    "independent_watchdog_image": "127.0.0.1:30444/ghost/gchat-release@sha256:69c93c73402c15c6c9ee6f6c892adbae5684ceb6cb0330139f06ea6790645916",
+    "derived_native_copy_cleanup_implemented": true,
+    "derived_native_copy_cleanup_image_pending": true
   }
 }
