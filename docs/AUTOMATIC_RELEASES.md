@@ -15,12 +15,15 @@ never removes archives, profiles, unpublished work, signatures or evidence.
 The independent hourly `release/automation/compaction.yaml` uses a qualified,
 immutable controller image and the release PVC, without signing keys or network
 access. Install that image only after its source and native compaction controls
-pass. Storage headroom still blocks new build stages when capacity is insufficient.
+pass. Its pod follows the live controller node so the shared ReadWriteOnce volume
+can attach. Storage headroom still blocks new build stages when capacity is insufficient.
 
 Builds blocked solely by storage resume when the unchanged headroom threshold is
 met. This also recognizes retained blocks from older controller versions. An
 older candidate is superseded only if its build effect was never dispatched;
-original request markers, receipts and provider identities are retained. Existing
+original request markers, receipts and provider identities are retained. Worker
+logs include a random suffix, preserving separate reconciliations within one host
+clock tick. Existing
 builds and verifications keep their ownership. Recent candidates are polled first
 so old diagnostics cannot delay starting otherwise eligible current work.
 

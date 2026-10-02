@@ -202,6 +202,17 @@ class CoordinatorTests(unittest.TestCase):
             c.ledger.transition(release,'android','building');c.step(release,'android')
         self.assertEqual(seen,[['first'],['recover']])
 
+    def test_same_clock_tick_keeps_both_logs_and_reconciles_the_original_effect(self):
+        c=Coordinator(self.root,{'minimum_free_bytes':0,
+            'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})
+        self.addCleanup(c.ledger.close);release=c.ledger.add(self.manifest)
+        with patch('release_coordinator.time.time_ns',return_value=42),patch('release_coordinator.subprocess.run',return_value=type('Result',(),{'returncode':75})()) as worker:
+            c.step(release,'android');effect=c.ledger.effect(release,'android','build');c.step(release,'android')
+        self.assertEqual([v.args[0] for v in worker.call_args_list],[['first'],['recover']])
+        self.assertEqual(c.ledger.effect(release,'android','build')['id'],effect['id'])
+        self.assertEqual(c.ledger.target(release,'android')['state'],'building')
+        self.assertEqual(len(list((self.root/'jobs'/effect['id']).glob('42-*.log'))),2)
+
     def test_transient_recovery_backs_off_and_only_reconciles(self):
         c=Coordinator(self.root,{'minimum_free_bytes':0,'automatic_recovery':True,
             'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})

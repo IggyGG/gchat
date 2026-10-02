@@ -1188,12 +1188,15 @@
     "hourly_recipe_passed": true,
     "recipe_images_verified": 16,
     "recipe_reclaimed_bytes": 453869568,
-    "no_keys_or_network_in_hourly_recipe": true
+    "no_keys_or_network_in_hourly_recipe": true,
+    "rwo_controller_colocation_required": true,
+    "never_started_original_scheduled_failure_retained": true,
+    "corrected_colocated_recipe_pending": true
   },
   "storage_recovery_automation": {
     "implemented": true,
     "activated": false,
-    "focused_controls": 26,
+    "focused_controls": 27,
     "legacy_storage_blocks_supported": true,
     "existing_request_markers_and_receipts_preserved": true,
     "undispatched_older_work_only_superseded": true,
@@ -1201,11 +1204,38 @@
     "capacity_threshold_unchanged": true,
     "codematch": "unreachable",
     "actual_image_and_activation_pending": true,
-    "full_python_tests": 684,
+    "full_python_tests": 685,
     "existing_skips": 5,
     "l0_source_paths": 802,
     "stable_methods": 18,
     "optional_methods": 3,
-    "api_2_fixtures_unchanged": true
+    "api_2_fixtures_unchanged": true,
+    "same_clock_tick_worker_logs_retained": true,
+    "windows_correction_requalification_pending": true,
+    "original_windows_failure_run": 37065834031,
+    "original_provider_archives": [
+      {
+        "run": 37065834031,
+        "artifact": 11252706632,
+        "bytes": 7155,
+        "sha256": "5e416dd826ad8dacd7f50e696f9c1c87029f075d644374aa57bd886ca32a9a65",
+        "name": "release-tools-windows-2022",
+        "source": [
+          "cf54f2715b230411df28d7e8f58a44f46b2d592f",
+          "4f1bd6f492a66196508e68e36578d14a95de5de9"
+        ]
+      },
+      {
+        "run": 37065834031,
+        "artifact": 11252696580,
+        "bytes": 7006,
+        "sha256": "ea8a0636598f96036964b0ca5b532deb9f400edeaaa79654c728d3a2ecf9ba53",
+        "name": "release-tools-ubuntu-24.04",
+        "source": [
+          "cf54f2715b230411df28d7e8f58a44f46b2d592f",
+          "4f1bd6f492a66196508e68e36578d14a95de5de9"
+        ]
+      }
+    ]
   }
 }

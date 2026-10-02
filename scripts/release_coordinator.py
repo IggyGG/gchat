@@ -13,6 +13,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
+import uuid
 
 from release_ledger import Ledger
 from release_pair import canonical, validate
@@ -252,7 +253,7 @@ class Coordinator:
                            GCHAT_RELEASE_RECEIPT=str(output), GCHAT_RELEASE_TARGET=platform,
                            GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'])
         atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
-        with (work / (str(time.time_ns()) + '.log')).open('xb') as log:
+        with (work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')).open('xb') as log:
             result = subprocess.run(argv, env=environment, cwd=work, stdout=log,
                                     stderr=subprocess.STDOUT, timeout=recipe.get('timeout', 120))
         if result.returncode == 75:

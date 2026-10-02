@@ -19,6 +19,11 @@ spec:
           automountServiceAccountToken: false
           restartPolicy: Never
           affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels: {app: gchat-release}
+                  topologyKey: kubernetes.io/hostname
             nodeAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:

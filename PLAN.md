@@ -14,6 +14,14 @@ retaining older active work. All 26 focused recovery controls and 684 Python tes
 skips; L0 checks 802 paths and API 2/3 contracts remain unchanged. Actual-image
 qualification and activation remain pending.
 
+Worker logs now remain distinct when the host clock returns the same timestamp;
+the original build request still reconciles and both logs are retained. The
+scheduled compactor also follows the live controller's node so its existing
+ReadWriteOnce volume can attach. The original scheduled run never started and
+its placement failure is retained. All 685 Python tests pass with five existing
+skips, including 27 coordinator controls and the fixed-clock regression. The
+corrected native Windows rerun and actual-image activation remain pending.
+
 Native workers now install the pinned `cryptography==50.0.2` test dependency.
 Mac/Windows build qualification retains signatures and installed offline lifecycle;
 the required live network/file/rollback journey runs after fleet deployment with
