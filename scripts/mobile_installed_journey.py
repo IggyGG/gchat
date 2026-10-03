@@ -72,7 +72,7 @@ class MobileJourney:
     def run(self, ui):
         self.peer.start_client(0, True)
         self.peer.channel = self.peer.submit(0, '/create #mobile-release sender')['conversation']
-        code = self.peer.until(lambda: self.peer.submit(0, '/invite')['output'].get('link'))
+        code = self.peer.invitation()
         ui.install(self.baseline)
         ui.unlock(create=True)
         ui.join(code)

@@ -1,3 +1,21 @@
+The native network and rollback fixtures now select the existing one-person
+invitation policy once, then wait for saved enrollment and the active channel
+projection. The earlier canary repeatedly opened the invitation chooser, so it
+never obtained a link and timed out after both clients connected. Its failure,
+grant revocation, profile cleanup and automatic rollback remain retained. The
+corrected fixture preserves API 2, existing authority and the original delivery,
+file and total deadlines. All 19 focused network/rollback controls and 702
+Python tests pass with five existing skips. Installed-network qualification
+remains open.
+
+The qualified maintenance image passes 141 actual-image/Kubernetes tests and
+219 source hashes. Its real hourly compaction recipe verifies 23 SDK publications,
+shares 120 identical public copies and recovers 8,409,079,808 bytes. All archive
+paths and bytes remain; private provider originals stay separate. Available
+release storage rises to 21,635,923,968 bytes, above the 16 GiB reserve. The
+independent watchdog and main controller remain unchanged. Kubernetes recovers
+the transient registry eviction without deleting data or changing disk limits.
+
 The controller's installed-network canary can now reach the eight approved
 native relay addresses on TCP 4433. Its earlier egress policy allowed public
 443/22 and blocked the actual relay port; probes timed out. The corrected policy

@@ -47,6 +47,9 @@ class FlowTests(unittest.TestCase):
             phases = []
 
             class Journey:
+                invitation = rollback.network.Journey.invitation
+                join_peer = rollback.network.Journey.join_peer
+
                 def __init__(self, args):
                     self.args = args; self.root = args.output; self.root.mkdir()
                     self.start = time.monotonic(); self.children = []; self.clients = {}
@@ -59,15 +62,20 @@ class FlowTests(unittest.TestCase):
                         raise RuntimeError('restart failed')
 
                 def submit(self, i, text):
-                    return {'conversation': self.channel, 'output': {'link': 'fixture'}}
+                    return {'conversation': self.channel, 'output': {'kind': 'invitation', 'link': 'fixture'}}
 
                 def until(self, fn): return fn()
 
-                def call(self, i, kind, request):
-                    if request['kind'] == 'inspect':
+                def call(self, i, kind, **data):
+                    if kind == 'snapshot':
+                        return {'snapshot': {'conversations': [{'id': self.channel, 'active': True}]}}
+                    if data['request']['kind'] == 'inspect':
                         return {'response': {'kind': 'preview', 'preview': {
                             'newNetwork': False, 'network': {'id': 'fixture'}}}}
-                    return {'response': {'kind': 'result', 'response': {'conversation': self.channel}}}
+                    return {'response': {'kind': 'result', 'network': 'fixture',
+                        'response': {'kind': 'applied', 'conversation': self.channel}}}
+
+                def event(self, name): self.report['events'].append({'event': name})
 
                 def chat(self, phase):
                     if failure == 'ack' and phase == 'baseline':

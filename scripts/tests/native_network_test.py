@@ -8,6 +8,7 @@ import os
 import tempfile
 import copy
 from unittest.mock import patch
+from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -100,6 +101,72 @@ class DiagnosticTests(unittest.TestCase):
                 with self.subTest(section=section, key=key):
                     value = copy.deepcopy(good); value[section][key] = bad; write(value)
                     with self.assertRaises(ValueError): retained.original_network_failure(root)
+
+class InvitationJourneyTests(unittest.TestCase):
+    def setUp(self):
+        self.journey = network.Journey.__new__(network.Journey)
+        self.journey.channel = 'channel-1'
+        self.journey.deadline = network.time.monotonic() + 600
+        self.journey.event = Mock()
+
+    def test_policy_chooser_creates_exactly_one_bounded_invitation(self):
+        self.journey.submit = Mock(side_effect=[
+            {'output': {'kind': 'invitation_options'}},
+            {'output': {'kind': 'reusable_invitation', 'limit': 1, 'link': 'private-code'}}])
+        self.assertEqual(self.journey.invitation(), 'private-code')
+        self.assertEqual([call.args for call in self.journey.submit.call_args_list],
+                         [(0, '/invite'), (0, '/invite person')])
+        self.journey.event.assert_not_called()
+
+    def test_retained_legacy_invitation_needs_no_second_operation(self):
+        self.journey.submit = Mock(return_value={'output': {'kind': 'invitation', 'link': 'legacy-code'}})
+        self.assertEqual(self.journey.invitation(), 'legacy-code')
+        self.journey.submit.assert_called_once_with(0, '/invite')
+
+    def test_missing_link_and_broader_policy_are_rejected_without_retry(self):
+        for value in ({'kind': 'reusable_invitation', 'limit': 25, 'link': 'private-code'},
+                      {'kind': 'reusable_invitation', 'limit': 1, 'link': ''},
+                      {'kind': 'invitation_options'}):
+            self.journey.submit = Mock(side_effect=[{'output': {'kind': 'invitation_options'}}, {'output': value}])
+            with self.subTest(value=value), self.assertRaises(ValueError): self.journey.invitation()
+            self.assertEqual(self.journey.submit.call_count, 2)
+
+    def peer(self, *, phase='joined', ident='enrollment-1', network_id='network-1', rows=None):
+        rows = rows if rows is not None else [{'id': 'channel-1', 'active': True}]
+        self.journey.call = Mock(side_effect=[
+            {'response': {'kind': 'preview', 'preview': {'newNetwork': False, 'network': {'id': 'network-1'}}}},
+            {'response': {'kind': 'result', 'network': network_id, 'response': {'kind': 'output',
+                'output': {'kind': 'enrollment', 'id': 'enrollment-1'}}}},
+            {'kind': 'output', 'output': {'kind': 'enrollment', 'id': 'enrollment-1', 'phase': 'waiting_owner'}},
+            {'kind': 'output', 'output': {'kind': 'enrollment', 'id': ident, 'phase': phase}},
+            {'snapshot': {'conversations': rows}}])
+
+    def test_saved_join_waits_for_admission_and_active_primary_projection(self):
+        self.peer()
+        with patch.object(network.time, 'sleep'): self.journey.join_peer('private-code')
+        calls = self.journey.call.call_args_list
+        self.assertEqual(sum(call.args[1] == 'networks' and call.kwargs['request']['kind'] == 'join'
+                             for call in calls), 1)
+        self.assertEqual([call.kwargs for call in calls if call.args[1] == 'enrollment'],
+                         [{'id': 'enrollment-1', 'action': 'status'}] * 2)
+        self.journey.event.assert_called_once_with('joined')
+
+    def test_wrong_network_changed_enrollment_cancel_and_duplicate_membership_fail(self):
+        for changes in ({'network_id': 'other-network'}, {'ident': 'other-enrollment'},
+                        {'phase': 'cancelled'}, {'rows': [{'id': 'channel-1', 'active': True}] * 2}):
+            self.peer(**changes)
+            with self.subTest(changes=changes), patch.object(network.time, 'sleep'), self.assertRaises(ValueError):
+                self.journey.join_peer('private-code')
+            self.journey.event.assert_not_called()
+
+    def test_retained_immediate_join_still_requires_the_same_active_channel(self):
+        self.journey.call = Mock(side_effect=[
+            {'response': {'kind': 'preview', 'preview': {'newNetwork': False, 'network': {'id': 'network-1'}}}},
+            {'response': {'kind': 'result', 'network': 'network-1',
+                          'response': {'kind': 'applied', 'conversation': 'channel-1'}}},
+            {'snapshot': {'conversations': [{'id': 'channel-1', 'active': True}]}}])
+        self.journey.join_peer('legacy-code')
+        self.journey.event.assert_called_once_with('joined')
 
 if __name__ == '__main__':
     unittest.main()

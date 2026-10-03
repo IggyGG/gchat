@@ -1,0 +1,51 @@
+{
+  "scope": "Qualification fixture correction only; installed messaging/file acceptance remains required",
+  "original_release": {
+    "gchat": {
+      "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+      "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+    },
+    "gcoms": {
+      "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+      "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+    }
+  },
+  "original_canary_passed": false,
+  "original_canary_elapsed_seconds": 240.60674285469577,
+  "original_client_connections": [
+    {
+      "client": 0,
+      "elapsed_seconds": 56.323529332876205
+    },
+    {
+      "client": 1,
+      "elapsed_seconds": 119.78569468390197
+    }
+  ],
+  "original_stage_deadline_preserved": true,
+  "original_grant_revoked": true,
+  "original_children_stopped": true,
+  "original_profiles_removed": true,
+  "original_binary_unchanged": true,
+  "cause": "The fixture polls /invite policy options instead of selecting one person; saved joins require enrollment polling",
+  "correction": "Select the one-person policy exactly once; await the same enrollment and its active primary channel; preserve legacy immediate joins",
+  "existing_api_2_used": true,
+  "application_api_or_protocol_changed": false,
+  "covered_receipts_and_file_bounds_unchanged": true,
+  "focused_network_and_rollback_controls": 19,
+  "python_tests": 702,
+  "existing_skips": 5,
+  "corrected_installed_network_qualified": false,
+  "codematch": "unreachable",
+  "source_sha256": {
+    "scripts/test-native-network.py": "139bd32a9ef88cfb6d0f250495729723f6928367f5df42e21357fe1d08cf520a",
+    "scripts/test-native-upgrade.py": "4b842f71fb19656a55211ebac37347a29143d92e30eb4a7722b1cbbb8f9f7c2d",
+    "scripts/mobile_installed_journey.py": "ddfa32f6cd4f5db333e2d86d343a8ed732eeaca4626a8c2b2abf90a801e8a4c8",
+    "scripts/macos-rollback.py": "89fd6930bb58b5f3a382e23bfe9079cf57dc23c9e1127d9b907cc1f9dd9a755d",
+    "scripts/windows-rollback.py": "239b8256169d402addc97eff8912312b01fa3fbe87171392bb36f23a0f05b81b"
+  },
+  "L0_source_paths": 804,
+  "stable_methods": 18,
+  "optional_methods": 3,
+  "api_2_fixtures_unchanged": true
+}

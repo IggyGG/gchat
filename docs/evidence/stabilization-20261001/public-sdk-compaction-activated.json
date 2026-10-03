@@ -1,0 +1,39 @@
+{
+  "scope": "Actual qualified hourly maintenance recipe; fleet and client acceptance remain open",
+  "source": {
+    "commit": "477f76b2302711eae9e352888a29a30f5a3e0c63",
+    "tree": "2535e60fc726d7810af708330a76f1fcd18154fa"
+  },
+  "image": "127.0.0.1:30444/ghost/gchat-release@sha256:cec239395b8590d060c9694edd865deb7fab2df64e8db147b6ae4131e731a896",
+  "configuration": "sha256:d3a535a9640953fdb2b7a07a18376ba64c95fb2451189c1ccee58ffe1eabf3fc",
+  "archive_sha256": "a1fe2cf712d5a5734c0af876905f61408ca19996c4153aaf75582a3e996733a9",
+  "actual_image_tests": 141,
+  "source_hashes_verified": 219,
+  "independent_kubernetes_job_passed": true,
+  "job": "gchat-compaction-477f76b-298",
+  "job_passed": true,
+  "completed_at": 1790986870,
+  "publications_verified": 23,
+  "public_archive_copies_shared": 120,
+  "estimated_reclaimed_bytes": 8409079808,
+  "free_bytes_after": 21635923968,
+  "required_reserve_bytes": 17179869184,
+  "reserve_restored": true,
+  "every_archive_path_retained": true,
+  "original_provider_archives_retained": true,
+  "private_provider_archives_shared": false,
+  "independent_watchdog_unchanged": true,
+  "main_controller_unchanged": true,
+  "registry_eviction_recovered_by_kubernetes": true,
+  "disk_limits_unchanged": true,
+  "native_installed_acceptance_passed": false,
+  "full_fleet_activated": false,
+  "raw_evidence_sha256": {
+    "maintenance-kubernetes-proof-297.json": "cfce70a25ea13409a12a6697ed76ddc5b0b955ea73c5a956957cab1972e208ba",
+    "compaction-actual-report-298.json": "7f8fc636b62a71c56d5a70ed516ee3297b89f6ca6f97a18203939fd754b8139b",
+    "compaction-job-observed-298.json": "77e49c17640686675ee69fa0e8ee27cc9463e893040fc4564d62100d3aae39fa"
+  },
+  "independent_changed_paths_reauthenticated": 120,
+  "independent_unique_archive_hashes": 48,
+  "independent_paths_receipt_sha256": "5b9c1cdc05aeb78aaf3598b2910cd60d28196611aef6b5de54f3f39e7dc7e202"
+}

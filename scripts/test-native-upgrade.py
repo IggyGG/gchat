@@ -108,12 +108,8 @@ def rollback(current, baseline, invitation, output):
         smoke.require(binaries['current'] != binaries['baseline'], 'upgrade acceptance needs different installed binaries')
         for i in (0, 1): journey.start_client(i, True)
         journey.channel = journey.submit(0, '/create #upgrade sender')['conversation']
-        code = journey.until(lambda: journey.submit(0, '/invite')['output'].get('link'))
-        preview = journey.call(1, 'networks', request={'kind': 'inspect', 'code': code})['response']
-        smoke.require(preview['kind'] == 'preview' and not preview['preview']['newNetwork'], 'unexpected fixture network')
-        joined = journey.call(1, 'networks', request={'kind': 'join', 'code': code, 'nickname': 'receiver',
-            'accepted_network': preview['preview']['network']['id'], 'operation_id': uuid.uuid4().hex})['response']
-        smoke.require(joined['kind'] == 'result' and joined['response']['conversation'] == journey.channel, 'fixture join differs')
+        code = journey.invitation()
+        journey.join_peer(code)
         journey.chat('baseline-initial')
         ident = uuid.uuid4().hex; data = hashlib.shake_256(b'release-rollback-cache').digest(network.PIECE)
         expected = hashlib.sha256(data).hexdigest()

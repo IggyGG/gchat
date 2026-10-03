@@ -139,6 +139,53 @@ class Journey:
     def history(self, i):
         return self.call(i, 'history', conversation=self.channel, before=None, limit=200)['page']['messages']
 
+    def invitation(self):
+        output = self.submit(0, '/invite')['output']
+        if output.get('kind') == 'invitation_options':
+            # Create once; do not poll an operation or retain its bearer link.
+            output = self.submit(0, '/invite person')['output']
+            m.require(output.get('kind') == 'reusable_invitation' and output.get('limit') == 1,
+                      'one-person invitation policy differs')
+        else:
+            m.require(output.get('kind') == 'invitation', 'unexpected invitation response')
+        code = output.get('link')
+        m.require(isinstance(code, str) and bool(code), 'invitation link missing')
+        return code
+
+    def join_peer(self, code):
+        preview = self.call(1, 'networks', request={'kind': 'inspect', 'code': code})['response']
+        m.require(preview['kind'] == 'preview' and not preview['preview']['newNetwork'],
+                  'unexpected fixture network')
+        network = preview['preview']['network']['id']
+        joined = self.call(1, 'networks', request={'kind': 'join', 'code': code, 'nickname': 'receiver',
+            'accepted_network': network, 'operation_id': uuid.uuid4().hex})['response']
+        m.require(joined.get('kind') == 'result' and joined.get('network') == network,
+                  'join network mismatch')
+        response = joined['response']
+        if response.get('kind') == 'output' and response.get('output', {}).get('kind') == 'enrollment':
+            ident = response['output']['id']
+
+            def admitted():
+                value = self.call(1, 'enrollment', id=ident, action='status')
+                status = value.get('output', {})
+                m.require(value.get('kind') == 'output' and status.get('kind') == 'enrollment'
+                          and status.get('id') == ident and status.get('phase') != 'cancelled',
+                          'saved enrollment differs or was cancelled')
+                return status.get('phase') == 'joined'
+            self.until(admitted)
+        else:
+            m.require(response.get('kind') == 'applied' and response.get('conversation') == self.channel,
+                      'join conversation mismatch')
+        # Admission alone does not prove that the installed client exposes the
+        # channel. Require its reconciled primary projection as well.
+        def available():
+            rows = self.call(1, 'snapshot')['snapshot']['conversations']
+            matches = [row for row in rows if row['id'] == self.channel and row['active']]
+            m.require(len(matches) <= 1, 'duplicate joined conversation')
+            return len(matches) == 1
+        self.until(available)
+        self.event('joined')
+
     def chat(self, label):
         for sender, receiver in ((0, 1), (1, 0)):
             body = f'bounded-{label}-{sender}-{uuid.uuid4().hex[:8]}'
@@ -196,13 +243,8 @@ class Journey:
             for i in range(2):
                 self.start_client(i, True)
             self.channel = self.submit(0, '/create #native-release sender')['conversation']
-            code = self.until(lambda: self.submit(0, '/invite')['output'].get('link'))
-            preview = self.call(1, 'networks', request={'kind': 'inspect', 'code': code})['response']
-            m.require(preview['kind'] == 'preview' and (not preview['preview']['newNetwork']), 'unexpected network')
-            network = preview['preview']['network']['id']
-            joined = self.call(1, 'networks', request={'kind': 'join', 'code': code, 'nickname': 'receiver', 'accepted_network': network, 'operation_id': uuid.uuid4().hex})['response']
-            m.require(joined['kind'] == 'result' and joined['network'] == network and (joined['response']['conversation'] == self.channel), 'join mismatch')
-            self.event('joined')
+            code = self.invitation()
+            self.join_peer(code)
             self.chat('before')
             ident = uuid.uuid4().hex
             self.files(0, 'prepare', id=ident, conversation=self.channel, name='bounded.bin', size_bytes=str(self.args.bytes))
