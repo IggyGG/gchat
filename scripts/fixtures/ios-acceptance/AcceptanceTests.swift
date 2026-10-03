@@ -85,12 +85,10 @@ final class GChatAcceptanceTests: XCTestCase {
             }
         }
         try require(focused)
-        // Use the normal system Paste action. Simulated keyboard events can
-        // silently drop characters in a freshly booted WebView. Clipboard
-        // contents belong only to this disposable simulator and expire locally.
-        UIPasteboard.general.setItems([["public.utf8-plain-text": Data(value.utf8)]],
-            options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(30)])
-        defer { UIPasteboard.general.items = [] }
+        // The host copies and verifies this command's input through simctl on
+        // the bound, fresh simulator. The test runner's background pasteboard
+        // is not an authority for the foreground application's clipboard.
+        // Only the normal system Paste action enters the unchanged app.
         field.press(forDuration: 1)
         let menuPaste = app.menuItems["Paste"].firstMatch
         let buttonPaste = app.buttons["Paste"].firstMatch

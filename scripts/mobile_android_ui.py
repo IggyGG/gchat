@@ -69,13 +69,14 @@ def invitation_nickname(tree):
     return editable_composer(tree) if preview and join else None
 
 
-def invitation_form(tree):
+def invitation_form(tree, expected=None):
     nodes = list(tree.iter('node'))
     owned = [node for node in nodes if node.get('package') == android.PACKAGE]
     if not any(AndroidUI.text('Invitation')(node) for node in owned): return None
     if not any(AndroidUI.text('Continue')(node) for node in owned): return None
     field = editable_composer(tree)
-    return field if field is not None and field.get('text', '') in ('', 'Paste an invitation') else None
+    allowed = ('', 'Paste an invitation') if expected is None else ('', 'Paste an invitation', expected)
+    return field if field is not None and field.get('text', '') in allowed else None
 
 
 def message_bodies(values, known_bodies):
@@ -381,7 +382,16 @@ class AndroidUI:
             tree = self.tree()
             nickname = invitation_nickname(tree)
             if nickname is not None: return ('nickname', nickname)
-            form = invitation_form(tree)
+            form = invitation_form(tree, invitation)
+            fields = [node for node in tree.iter('node') if node.get('package') == android.PACKAGE
+                      and node.get('class') == 'android.widget.EditText']
+            self.ui_observation['invitation_form'] = {
+                'editable_fields': len(fields),
+                'empty_fields': sum(node.get('text', '') in ('', 'Paste an invitation') for node in fields),
+                'exact_invitation_fields': sum(node.get('text') == invitation for node in fields),
+                'invitation_label': any(self.text('Invitation')(node) for node in tree.iter('node')),
+                'continue_enabled': any(self.text('Continue')(node) and node.get('enabled') == 'true'
+                                        for node in tree.iter('node'))}
             return ('invitation', form) if form is not None else None
         kind, field = self.until(enrollment_input, 120)
         if kind == 'invitation':
@@ -390,7 +400,8 @@ class AndroidUI:
             require(re.fullmatch(r'gcoms://join#GCIR1-[A-Za-z0-9_-]+', invitation)
                     and len(invitation.encode()) <= 2048, 'bounded compact form invitation required')
             self.ui_observation['invitation_entry'] = 'os_link_with_visible_form'
-            self.type(field, invitation)
+            if field.get('text') != invitation:
+                self.type(field, invitation)
             self.click('Continue')
             self.scroll_to_top()
             field = self.until(lambda: (node,) if (node := invitation_nickname(self.tree())) is not None else None, 120)[0]

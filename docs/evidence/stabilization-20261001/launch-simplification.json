@@ -329,8 +329,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "0b03781602a2ef22026b0165ec6e9afeb5aeec3e",
-  "native_helper_qualification": "operations/native-helper-0b03781-qualified-794.json",
+  "native_helper_source": "c8477aec869b05ba91417654175e641f6523f0d6",
+  "native_helper_qualification": "operations/native-helper-c8477ae-qualified-797.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -635,6 +635,34 @@
         "cleanup_passed": false,
         "receipt": "operations/ios-helper-0b03781-result-795.zip"
       }
+    },
+    {
+      "android": 37160999646,
+      "ios": 37160986712,
+      "helper": "c8477aec869b05ba91417654175e641f6523f0d6",
+      "state": "both_failed",
+      "android_report": {
+        "artifact": 11286918965,
+        "sha256": "2954a59967c72f6e30690fdf77b09e449da18e2c9a5945c43f2718f2579390f5",
+        "passed": false,
+        "failure": "invitation_form_before_preview",
+        "continue_present": true,
+        "preview_present": false,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-c8477ae-result-801.zip"
+      },
+      "ios_report": {
+        "artifact": 11287288376,
+        "sha256": "44c6fed2942a7f37c8fdca03f19f3e7ab7c88146436a9b45269739c31f42f6fe",
+        "passed": false,
+        "failure": "normal_paste_control_missing",
+        "observation_failure_lines": [
+          97
+        ],
+        "installed_binary_hash_verified": true,
+        "cleanup_passed": false,
+        "receipt": "operations/ios-helper-c8477ae-result-800.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -678,6 +706,16 @@
     "clipboard_local_only": true,
     "clipboard_expiry_seconds": 30,
     "clipboard_cleared_after_input": true,
+    "native_acceptance_passed": false
+  },
+  "mobile_simulator_clipboard_correction": {
+    "clipboard_target": "fresh_owned_simulator",
+    "host_clipboard_used": false,
+    "input_in_command_arguments": false,
+    "exact_clipboard_readback_required": true,
+    "clipboard_cleared_after_success_or_failure": true,
+    "android_exact_prefilled_invitation_required": true,
+    "focused_controls_passed": 57,
     "native_acceptance_passed": false
   }
 }

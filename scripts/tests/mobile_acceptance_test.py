@@ -353,6 +353,48 @@ class MobileAcceptanceTests(unittest.TestCase):
             with self.subTest(changed=changed):
                 self.assertIsNone(android_ui.invitation_form(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
 
+    def test_android_populated_invitation_form_must_match_the_exact_reserved_link(self):
+        invitation='gcoms://join#GCIR1-private-fixture'
+        tree=ET.fromstring('<hierarchy><node package="boo.gchat.app" text="Invitation"/>'
+            '<node package="boo.gchat.app" text="Continue"/><node package="boo.gchat.app" '
+            'class="android.widget.EditText" text="'+invitation+'" bounds="[10,100][290,150]"/></hierarchy>')
+        self.assertIsNotNone(android_ui.invitation_form(tree,invitation))
+        self.assertIsNone(android_ui.invitation_form(tree,invitation+'-different'))
+        self.assertIsNone(android_ui.invitation_form(tree))
+
+    def test_ios_command_clipboard_is_cleared_after_success_or_ui_failure(self):
+        for failed in (False,True):
+            ui=IOSUI.__new__(IOSUI);ui.runner=SimpleNamespace(poll=lambda:None)
+            ui.deadline=lambda:time.monotonic()+120
+            from unittest.mock import Mock
+            ui.bridge=SimpleNamespace(call=Mock(side_effect=ValueError if failed else None,return_value=True))
+            with patch.object(ui,'copy_input') as copy:
+                if failed:
+                    with self.assertRaises(ValueError):ui.call('unlock',passphrase='private input')
+                else:self.assertTrue(ui.call('unlock',passphrase='private input'))
+            self.assertEqual([c.args[0] for c in copy.call_args_list],['private input',''])
+            self.assertLessEqual(ui.bridge.call.call_args.kwargs['timeout'],120)
+
+    def test_ios_clipboard_refuses_foreign_devices_changed_bytes_and_expired_deadlines(self):
+        ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.owned_devices={'owned'};ui.before_devices=set()
+        with patch('mobile_ios_ui.subprocess.run') as run, \
+             patch('mobile_ios_ui.subprocess.check_output',return_value=b'private input'):
+            ui.copy_input('private input',time.monotonic()+10)
+        self.assertEqual(run.call_args.args[0],['xcrun','simctl','pbcopy','owned'])
+        self.assertNotIn('private input',' '.join(run.call_args.args[0]))
+        self.assertEqual(run.call_args.kwargs['input'],b'private input')
+        with patch('mobile_ios_ui.subprocess.run'), \
+             patch('mobile_ios_ui.subprocess.check_output',return_value=b'changed'), \
+             self.assertRaisesRegex(ValueError,'differs'):
+            ui.copy_input('private input',time.monotonic()+10)
+        for device,before,end in [('other',set(),time.monotonic()+10),
+                                 ('owned',{'owned'},time.monotonic()+10),
+                                 ('owned',set(),time.monotonic()-1)]:
+            ui.device=device;ui.before_devices=before
+            with patch('mobile_ios_ui.subprocess.run') as run,self.assertRaises(ValueError):
+                ui.copy_input('private input',end)
+            run.assert_not_called()
+
     def test_android_form_fallback_refuses_long_or_legacy_invitation(self):
         form=ET.fromstring('<hierarchy><node package="boo.gchat.app" text="Invitation"/><node package="boo.gchat.app" text="Continue"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/></hierarchy>')
         for invitation in ('gcoms://join#GCI1-private_fixture','gcoms://join#GCIR1-'+'x'*2048):
