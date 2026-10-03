@@ -229,6 +229,9 @@ class IOSUI:
     def join(self, invitation):
         require(invitation.startswith('gcoms:') and len(invitation.encode()) <= 180000,
                 'bounded mobile conversation invitation required')
+        # Exercise the real cold OS activation path. Termination also verifies
+        # that the newly created identity survives before network enrollment.
+        self.stop()
         # The retained app consumes its normal deep-link path. Never print the
         # URI or return a CalledProcessError containing private command arguments.
         result = subprocess.run(['xcrun', 'simctl', 'openurl', self.device, invitation],

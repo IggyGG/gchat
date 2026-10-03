@@ -284,27 +284,27 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37132630686,
-    "artifact": 11277667083,
-    "source": "f66452af95843041c20fadcb5a8c6ca770968f9c",
-    "source_tree": "50ab0fd6b97aef3c9b92eb24a007ff144e2edec4",
-    "archive_sha256": "2eed2dc876baa57b3259993bbdf29dad0cd710a0bbfc190ff774a16f8c2d8ebc",
+    "run": 37133829149,
+    "artifact": 11277409593,
+    "source": "86280609cedb4cffed9cd8c709e2a2365f3cebc4",
+    "source_tree": "74b69d76d81fe14872ea95f053c94911534df16c",
+    "archive_sha256": "b0e118252ae28ed90725cc751fefecef21fc6dabc4e6026304f2e9fe750092ba",
     "full_history": true,
-    "all_python_tests": 819,
+    "all_python_tests": 823,
     "skips": 5,
-    "seconds": 28.821,
+    "seconds": 31.532,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37132813819,
-    "ios": 37132813875,
-    "helper": "f66452af95843041c20fadcb5a8c6ca770968f9c",
+    "android": 37134035645,
+    "ios": 37134037366,
+    "helper": "86280609cedb4cffed9cd8c709e2a2365f3cebc4",
     "state": "failed",
     "previous_failed_runs": {
-      "android": 37131600497,
-      "ios": 37131601344
+      "android": 37132813819,
+      "ios": 37132813875
     }
   },
   "retained_workstation_failures": {
@@ -331,8 +331,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "f66452af95843041c20fadcb5a8c6ca770968f9c",
-  "native_helper_qualification": "operations/native-helper-f66452a-qualified-691.json",
+  "native_helper_source": "86280609cedb4cffed9cd8c709e2a2365f3cebc4",
+  "native_helper_qualification": "operations/native-helper-8628060-qualified-696.json",
   "mobile_ui_corrections": {
     "source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
     "android_keyboard_and_value_confirmation": true,
@@ -341,7 +341,7 @@
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 30,
+    "focused_tests": 32,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
@@ -353,7 +353,10 @@
     "first_run_notification_dialog_dismissed": true,
     "notification_dismissed_before_composer": true,
     "ios_first_run_controls_revealed": true,
-    "ios_capture_only_first_pre_input_failure": true
+    "ios_capture_only_first_pre_input_failure": true,
+    "owned_unique_editable_composer": true,
+    "ios_os_invitation_activation": "cold",
+    "warm_ios_link_qualified": false
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",
@@ -365,7 +368,8 @@
     "local_update_restarts_personal_application": false,
     "release_trigger": "push authoritative Forgejo main",
     "source_settle_seconds": 600,
-    "status_command": "python3 scripts/release.py status"
+    "status_command": "python3 scripts/release.py status",
+    "user_linger_enabled": true
   },
   "public_feed_readback": "operations/public-feed-readback-687.json"
 }

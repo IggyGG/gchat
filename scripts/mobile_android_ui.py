@@ -36,6 +36,13 @@ def completed_file_row(tree, name, known_names):
     return False
 
 
+def editable_composer(tree):
+    fields = [node for node in tree.iter('node') if node.get('package') == android.PACKAGE
+              and node.get('class') == 'android.widget.EditText'
+              and node.get('password') != 'true' and android.ui_bounds(node)]
+    return fields[0] if len(fields) == 1 else None
+
+
 def delivery_row(tree, body, known_bodies):
     # A delivered suffix elsewhere in the transcript cannot qualify this send.
     # Require one smallest message subtree containing exactly this test body.
@@ -258,7 +265,10 @@ class AndroidUI:
                 self.click('Close dialog')
                 self.ui_observation['notification_dialog_dismissed'] = True
                 return False
-            return any(self.text('Message or command')(node) for node in tree.iter('node'))
+            self.ui_observation['editable_fields'] = sum(node.get('class') == 'android.widget.EditText'
+                and node.get('password') != 'true' for node in tree.iter('node')
+                if node.get('package') == android.PACKAGE)
+            return editable_composer(tree) is not None
         self.until(ready, 120)
 
     def identity(self):
@@ -279,7 +289,8 @@ class AndroidUI:
 
     def send(self, body):
         self.bodies.add(body)
-        self.type(self.node(self.text('Message or command')), body)
+        field = self.until(lambda: (node,) if (node := editable_composer(self.tree())) is not None else None)[0]
+        self.type(field, body)
         self.click('Send')
 
     def received(self, body):

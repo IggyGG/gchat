@@ -259,7 +259,7 @@ class MobileAcceptanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary));clicks=[]
             joined=ET.fromstring('<hierarchy><node text="Joined"/></hierarchy>')
-            composer=ET.fromstring('<hierarchy><node content-desc="Message or command"/></hierarchy>')
+            composer=ET.fromstring('<hierarchy><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]" content-desc="Message or command"/></hierarchy>')
             with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
                  patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
                  patch.object(ui,'tree',side_effect=[joined,composer]),patch.object(ui,'tap') as tap:
@@ -274,7 +274,7 @@ class MobileAcceptanceTests(unittest.TestCase):
             screens=[ET.fromstring(xml) for xml in (
                 '<hierarchy><node text="Joined"/></hierarchy>',
                 '<hierarchy><node text="Notifications"/><node content-desc="Close dialog"/></hierarchy>',
-                '<hierarchy><node content-desc="Message or command"/></hierarchy>')]
+                '<hierarchy><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]" content-desc="Message or command"/></hierarchy>')]
             with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
                  patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
                  patch.object(ui,'tree',side_effect=screens),patch.object(ui,'tap'),patch.object(android_ui.time,'sleep'):
@@ -299,6 +299,28 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertTrue(android_ui.owned_channel(ET.Element('node', {'text':label})),label)
         for label in ('other-mobile-release', 'mobile-release-private', '#another-channel', 'private invitation'):
             self.assertFalse(android_ui.owned_channel(ET.Element('node', {'text':label})),label)
+
+    def test_composer_requires_one_visible_owned_nonpassword_editable_field(self):
+        field='<node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]"/>'
+        tree=ET.fromstring('<hierarchy>'+field+'</hierarchy>')
+        self.assertIsNotNone(android_ui.editable_composer(tree))
+        for changed in (field+field,field.replace('boo.gchat.app','other.app'),
+                        field.replace('/>',' password="true"/>'),field.replace('[10,400][290,450]','[0,0][0,0]')):
+            self.assertIsNone(android_ui.editable_composer(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
+
+    def test_ios_os_invitation_activation_fails_closed_and_uses_owned_cold_launch(self):
+        for code in (0,1):
+            with self.subTest(exit_code=code):
+                ui=IOSUI.__new__(IOSUI);ui.device='owned-device';events=[]
+                def stop():events.append('stop')
+                def openurl(*args,**kwargs):events.append('os-link');return SimpleNamespace(returncode=code)
+                def call(op,**kwargs):events.append(op)
+                with patch.object(ui,'stop',side_effect=stop),patch('mobile_ios_ui.subprocess.run',side_effect=openurl), \
+                     patch.object(ui,'call',side_effect=call):
+                    if code:
+                        with self.assertRaisesRegex(ValueError,'activation failed'):ui.join('gcoms://join#GCIR1-fixture')
+                    else:ui.join('gcoms://join#GCIR1-fixture')
+                self.assertEqual(events,['stop','os-link']+([] if code else ['join']))
 
     def test_ios_initial_install_is_retained_until_a_distinct_replacement(self):
         ui=IOSUI.__new__(IOSUI)
