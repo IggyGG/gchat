@@ -6,7 +6,7 @@ Retained signing and native qualification can feed client acceptance and publica
 
 The installed iOS journey uses the existing visible invitation form. OS link arrival remains failed and is tracked separately; form acceptance cannot qualify it. The retained cold-start failure is consistent with the [upstream iOS scene URL issue](https://github.com/tauri-apps/tao/issues/1248); the warm failure remains independently unexplained.
 
-Node 5 now retains its anchor identity volume with about 181 GB available after unused-image cleanup and a reversible ext4 reserve adjustment from 5% to 1%. `node-image-headroom.timer` is prepared to check every five minutes and use containerd’s unused-image pruning below 17% free space. Its script preserves node data and reports when pruning cannot restore sufficient headroom. The unit and script live in `release/automation/node-image-headroom.*` and `scripts/node-image-headroom.py`.
+Node 5 now retains its anchor identity volume after unused-image cleanup and a reversible ext4 reserve adjustment from 5% to 1% recovered about 38 GB of available headroom. `node-image-headroom.timer` is enabled to check every five minutes and use containerd’s unused-image pruning below 17% free space. Its script preserves node data and reports when pruning cannot restore sufficient headroom. The unit and script live in `release/automation/node-image-headroom.*` and `scripts/node-image-headroom.py`.
 
 ## Routine release operation
 

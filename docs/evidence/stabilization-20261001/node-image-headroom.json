@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "source": "6348b586bb01c7d9f0eb5b3686e38fd316a751fa",
+  "ci_run": 37153408439,
+  "artifact": 11284388749,
+  "archive_sha256": "b422c3093221021c0da562fe41063653d748790d4e4c16fc793da993a900bd8a",
+  "tests": 845,
+  "seconds": 38.15,
+  "skips": 5,
+  "passed": true,
+  "node": "triform-5",
+  "timer_enabled": true,
+  "timer_active": true,
+  "service_result": "success",
+  "exec_main_status": 0,
+  "scheduled_run_passed": true,
+  "timer_interval_seconds": 300,
+  "minimum_free_percent": 17,
+  "code_sha256": {
+    "scripts/node-image-headroom.py": "c6aae91de3f64be44de2f95188c8823344103f052529d6b6c849e29b7706c0e2",
+    "release/automation/node-image-headroom.service": "ce70699219169787653b2235c63775bbeda78d381bc9b7dda75c80f2a9e9e315",
+    "release/automation/node-image-headroom.timer": "c10293059f8c1e07b55c73eafd03a1595351d9554bd595e9b7667e72784e80c1"
+  },
+  "live_receipt": "operations/node5-headroom-timer-760.log",
+  "scheduled_receipt_at": 1791061205,
+  "anchor_ready": true,
+  "anchor_identity_volume_preserved": true,
+  "disk_pressure": false,
+  "eviction_threshold_changed": false,
+  "ext4_reserve_recovery": "operations/node5-reserve-recovery-757.json"
+}

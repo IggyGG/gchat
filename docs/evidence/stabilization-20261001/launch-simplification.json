@@ -485,10 +485,16 @@
     "reserve_receipt": "operations/node5-reserve-recovery-757.json",
     "image_cleanup_receipt": "operations/node5-unused-image-recovery-756.log",
     "fresh_deployment_receipt": "operations/release-current-759.json",
-    "timer_installed": false,
+    "timer_installed": true,
     "timer_interval_seconds": 300,
     "minimum_free_percent": 17,
     "local_controls": 3,
-    "controls_passed": true
+    "controls_passed": true,
+    "timer_enabled": true,
+    "timer_active": true,
+    "first_and_scheduled_runs_passed": true,
+    "qualified_source": "6348b586bb01c7d9f0eb5b3686e38fd316a751fa",
+    "source_ci_tests": 845,
+    "qualification_receipt": "node-image-headroom.json"
   }
 }
