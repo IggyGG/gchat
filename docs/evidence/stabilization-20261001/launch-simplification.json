@@ -211,7 +211,7 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": 1791039559,
+    "observed_at": 1791046461,
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
@@ -284,27 +284,41 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37135371353,
-    "artifact": 11277882534,
-    "source": "03c2be814fd5b369b687a7aa7bcf014bdc962d96",
-    "source_tree": "36f565b2d0e4b256c3a4a31ca9b503ffe7bb6cc7",
-    "archive_sha256": "d84756a84d10f1deb4517def24f270e7bb215613f632a5e13923e6cf8aac72fc",
+    "run": 37137437420,
+    "artifact": 11279435555,
+    "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
+    "source_tree": "84e13e2adeb431547039cc2b7f9edec4360533e7",
+    "archive_sha256": "f156963836edc28cddc692868f17faec84145b00ae8a74b050ff0b18b86f305c",
     "full_history": true,
-    "all_python_tests": 825,
+    "all_python_tests": 827,
     "skips": 5,
-    "seconds": 29.115,
+    "seconds": 40.497,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37135536417,
-    "ios": 37135537692,
-    "helper": "03c2be814fd5b369b687a7aa7bcf014bdc962d96",
+    "android": 37137666727,
+    "ios": 37137666816,
+    "helper": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "state": "failed",
     "previous_failed_runs": {
-      "android": 37134035645,
-      "ios": 37134037366
+      "android": 37135536417,
+      "ios": 37135537692
+    },
+    "reports": {
+      "android": {
+        "sha256": "643b914f6f2507c9180f4714e25dc05bb303f30fed776a47562f06d5c5066a62",
+        "artifact": 11279127198,
+        "passed": false,
+        "stage": "baseline-start"
+      },
+      "ios": {
+        "sha256": "008575125b4dfcfac86ab6d2f87c357bfadc40c36992c27b66671e072cd18828",
+        "artifact": 11279117277,
+        "passed": false,
+        "stage": "retained-inputs-or-device-setup"
+      }
     }
   },
   "retained_workstation_failures": {
@@ -331,17 +345,17 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "03c2be814fd5b369b687a7aa7bcf014bdc962d96",
-  "native_helper_qualification": "operations/native-helper-03c2be8-qualified-700.json",
+  "native_helper_source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
+  "native_helper_qualification": "operations/native-helper-7525311-qualified-707.json",
   "mobile_ui_corrections": {
-    "source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
+    "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
     "android_fields_scrolled_out_from_under_header": true,
     "owned_enrollment_channel_selected": true,
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 34,
+    "focused_tests": 36,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
@@ -361,7 +375,9 @@
     "public_runner_progress_categories": true,
     "xctest_device_bound_to_fresh_owned_inventory": true,
     "owned_clones_cleaned": true,
-    "clone_caused_previous_failure_proven": false
+    "clone_caused_previous_failure_proven": false,
+    "xctest_setup_before_command_deadline": true,
+    "owned_preview_scopes_nickname_field": true
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",

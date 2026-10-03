@@ -141,6 +141,15 @@ class Bridge:
             raise error
         return result.get('value')
 
+    def wait_running(self, deadline, alive):
+        # Compilation and test-runner startup belong to the existing setup
+        # budget. A UI command's timeout starts when XCTest can receive it.
+        while self.polls == 0:
+            require(time.monotonic() < deadline, 'original mobile setup deadline')
+            require(alive(), 'owned XCTest runner exited before readiness')
+            time.sleep(0.2)
+        require(time.monotonic() < deadline, 'late XCTest runner readiness')
+
     def close(self):
         self.server.shutdown()
         self.server.server_close()
@@ -201,6 +210,7 @@ class IOSUI:
                            if key not in ('GH_TOKEN', 'GITHUB_TOKEN', 'GCHAT_NETWORK_INVITATION')}
             self.runner = subprocess.Popen(list(map(str, command)), stdout=self.log,
                                            stderr=subprocess.STDOUT, env=environment)
+            self.bridge.wait_running(self.deadline(), lambda: self.runner.poll() is None)
             ready = self.call('ready', maximum=240)
             require(isinstance(ready, dict) and set(ready) == {'device'}, 'XCTest device receipt missing')
             inventory = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', '--json']))

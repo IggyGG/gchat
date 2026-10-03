@@ -200,7 +200,8 @@ class MobileAcceptanceTests(unittest.TestCase):
                 self.assertEqual(len(list(ui.tree().iter('node'))),3)
             self.assertEqual(ui.ui_observation,{'attempts':1,'errors':0,'application_nodes':3,
                 'password_fields':1,'create_identity':1,'reconnect':0,
-                'public_controls':{'network':0,'files':0,'send':0,'connect_to_gchat':0,'close_dialog':0,'close_details':0}})
+                'public_controls':{'network':0,'files':0,'send':0,'connect_to_gchat':0,'close_dialog':0,'close_details':0,'nickname':0,'invitation_preview':0,'join':0,
+                    'continue':0,'validating':0,'notifications':0}})
             with patch.object(ui,'shell',side_effect=['','', 'invalid private hierarchy']):
                 self.assertEqual(ui.tree().tag,'hierarchy')
             self.assertEqual(ui.ui_observation['last_error'],'ParseError')
@@ -259,11 +260,12 @@ class MobileAcceptanceTests(unittest.TestCase):
     def test_android_join_selects_the_channel_after_async_enrollment_modal(self):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary));clicks=[]
+            preview=ET.fromstring('<hierarchy><node text="Join #mobile-release on Canary"/><node text="Join"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/></hierarchy>')
             joined=ET.fromstring('<hierarchy><node text="Joined"/></hierarchy>')
             composer=ET.fromstring('<hierarchy><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]" content-desc="Message or command"/></hierarchy>')
             with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
                  patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
-                 patch.object(ui,'tree',side_effect=[joined,composer]),patch.object(ui,'tap') as tap:
+                 patch.object(ui,'tree',side_effect=[preview,joined,composer]),patch.object(ui,'scroll_to_top'),patch.object(ui,'tap') as tap:
                 ui.join('gcoms://join#GCI1-fixture')
             self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels'])
             tap.assert_called_once()
@@ -273,12 +275,13 @@ class MobileAcceptanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary));clicks=[]
             screens=[ET.fromstring(xml) for xml in (
+                '<hierarchy><node text="Join #mobile-release on Canary"/><node text="Join"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/></hierarchy>',
                 '<hierarchy><node text="Joined"/></hierarchy>',
                 '<hierarchy><node text="Notifications"/><node content-desc="Close dialog"/></hierarchy>',
                 '<hierarchy><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]" content-desc="Message or command"/></hierarchy>')]
             with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
                  patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
-                 patch.object(ui,'tree',side_effect=screens),patch.object(ui,'tap'),patch.object(android_ui.time,'sleep'):
+                 patch.object(ui,'tree',side_effect=screens),patch.object(ui,'scroll_to_top'),patch.object(ui,'tap'),patch.object(android_ui.time,'sleep'):
                 ui.join('gcoms://join#GCI1-fixture')
             self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels','Close dialog'])
             self.assertTrue(ui.ui_observation['notification_dialog_dismissed'])
@@ -341,6 +344,30 @@ class MobileAcceptanceTests(unittest.TestCase):
                         with self.assertRaisesRegex(ValueError,'activation failed'):ui.join('gcoms://join#GCIR1-fixture')
                     else:ui.join('gcoms://join#GCIR1-fixture')
                 self.assertEqual(events,['stop','os-link']+([] if code else ['join']))
+
+    def test_invitation_field_requires_the_owned_channel_preview_and_join_control(self):
+        field='<node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/>'
+        preview='<node text="Join #mobile-release on Canary"/><node content-desc="Join"/>'
+        self.assertIsNotNone(android_ui.invitation_nickname(ET.fromstring('<hierarchy>'+preview+field+'</hierarchy>')))
+        for changed in (field, preview.replace('mobile-release','another-channel')+field,
+                        preview.replace('Join"','Connect"')+field, preview+field+field):
+            self.assertIsNone(android_ui.invitation_nickname(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
+
+    def test_xctest_startup_uses_setup_budget_before_issuing_ui_commands(self):
+        bridge=Bridge()
+        try:
+            def started(_):bridge.polls=1
+            with patch('mobile_ios_ui.time.sleep',side_effect=started):
+                bridge.wait_running(time.monotonic()+5,lambda:True)
+            bridge.polls=0
+            with self.assertRaisesRegex(ValueError,'before readiness'):
+                bridge.wait_running(time.monotonic()+5,lambda:False)
+            with self.assertRaisesRegex(ValueError,'setup deadline'):
+                bridge.wait_running(time.monotonic()-1,lambda:True)
+            bridge.polls=1
+            with self.assertRaisesRegex(ValueError,'late XCTest'):
+                bridge.wait_running(time.monotonic()-1,lambda:True)
+        finally:bridge.close()
 
     def test_ios_initial_install_is_retained_until_a_distinct_replacement(self):
         ui=IOSUI.__new__(IOSUI)

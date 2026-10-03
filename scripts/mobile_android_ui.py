@@ -47,6 +47,13 @@ def editable_composer(tree):
     return fields[0] if len(fields) == 1 else None
 
 
+def invitation_nickname(tree):
+    nodes = list(tree.iter('node'))
+    preview = any(named_control(node, 'Join #mobile-release on ') for node in nodes)
+    join = any(node.get(key) == 'Join' for node in nodes for key in ('text', 'content-desc'))
+    return editable_composer(tree) if preview and join else None
+
+
 def delivery_row(tree, body, known_bodies):
     # A delivered suffix elsewhere in the transcript cannot qualify this send.
     # Require one smallest message subtree containing exactly this test body.
@@ -121,7 +128,13 @@ class AndroidUI:
                 'send':sum(self.text('Send')(node) for node in nodes),
                 'connect_to_gchat':sum(self.text('Connect to GChat')(node) for node in nodes),
                 'close_dialog':sum(self.text('Close dialog')(node) for node in nodes),
-                'close_details':sum(self.text('Close details')(node) for node in nodes)})
+                'close_details':sum(self.text('Close details')(node) for node in nodes),
+                'nickname':sum(self.text('Your nickname in this channel')(node) for node in nodes),
+                'invitation_preview':sum(named_control(node, 'Join #mobile-release on ') for node in nodes),
+                'join':sum(self.text('Join')(node) for node in nodes),
+                'continue':sum(self.text('Continue')(node) for node in nodes),
+                'validating':sum(self.text('Validating…')(node) for node in nodes),
+                'notifications':sum(self.text('Notifications')(node) for node in nodes)})
         return tree
 
     def until(self, fn, timeout=60):
@@ -247,10 +260,8 @@ class AndroidUI:
         self.shell('am', 'start', '-W', '-a', 'android.intent.action.VIEW',
                    '-d', shlex.quote(invitation), android.PACKAGE)
         self.click('Review invitation')
-        self.node(self.text('Your nickname in this channel'), 120)
-        field = self.node(lambda node: node.get('package') == android.PACKAGE
-                          and node.get('class') == 'android.widget.EditText'
-                          and node.get('password') != 'true')
+        self.scroll_to_top()
+        field = self.until(lambda: (node,) if (node := invitation_nickname(self.tree())) is not None else None, 120)[0]
         self.type(field, 'mobile')
         self.click('Join')
         # A new network joins asynchronously and presents its saved enrollment
