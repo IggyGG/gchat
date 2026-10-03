@@ -90,6 +90,25 @@ class LifecycleBindingTests(unittest.TestCase):
         self.assertNotIn('TEST_TARGET_NAME', target['settings']['base'])
         self.assertEqual(target['settings']['base']['CODE_SIGNING_ALLOWED'], 'NO')
 
+    def test_installed_application_entry_reaches_native_boundary_without_cli_globals(self):
+        for verify_startup in (False, True):
+            with self.subTest(verify_startup=verify_startup), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                app = root / 'GChat.app'; app.mkdir()
+                (app / 'Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier': journey.ios.BUNDLE,
+                    'CFBundleSupportedPlatforms': ['iPhoneSimulator'], 'CFBundleExecutable': 'GChat'}))
+                (app / 'GChat').write_bytes(b'owned entry-point fixture')
+                with patch.object(journey.ios, 'output', return_value='Xcode 26.2\nBuild version fixture'), \
+                     patch.object(journey.ios, 'simulator_smoke', return_value={'passed': True}) as startup, \
+                     patch.object(journey.ios, 'simulator_runtime', side_effect=RuntimeError('owned native boundary')):
+                    with self.assertRaisesRegex(RuntimeError, 'owned native boundary'):
+                        journey.run_application(app, root / 'journey', verify_startup=verify_startup)
+                self.assertEqual(startup.call_count, int(verify_startup))
+                report = json.loads((root / 'journey/report.json').read_text())
+                self.assertFalse(report['passed'])
+                self.assertTrue(report['cleanup_complete'])
+                self.assertEqual(report['error'], 'RuntimeError: owned native boundary')
+
     def test_cleanup_failure_still_attempts_delete_and_records_failure(self):
         report = {}
         with patch.object(journey.subprocess, 'run', side_effect=subprocess.TimeoutExpired('simctl', 60)), \

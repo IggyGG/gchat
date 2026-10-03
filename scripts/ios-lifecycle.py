@@ -209,7 +209,7 @@ def cleanup_device(device, report):
     report['cleanup_complete'] = report['cleanup_complete'] and not errors
 
 
-def run_application(app, destination):
+def run_application(app, destination, verify_startup=False):
     """Exercise an already-built app without compiling or re-signing it."""
     destination.mkdir(parents=True, exist_ok=False)
     info = plistlib.loads((app / 'Info.plist').read_bytes())
@@ -229,7 +229,7 @@ def run_application(app, destination):
     try:
         report['xcode'] = ios.output(['xcodebuild', '-version'])
         require(report['xcode'].splitlines()[0] == 'Xcode 26.2', 'use the original pinned Xcode')
-        if getattr(args, 'verify_startup', False):
+        if verify_startup:
             report['startup'] = ios.simulator_smoke(app, destination / 'startup')
             require(ios.digest(binary) == report['application']['sha256'],
                     'retained application changed during startup check')

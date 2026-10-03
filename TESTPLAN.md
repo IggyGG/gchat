@@ -2,6 +2,8 @@ The asynchronous coordinator fixtures explicitly use zero storage reserve in the
 
 ## Simplified release controls (2026-10-03)
 
+Installed iOS lifecycle must reach its native boundary without CLI globals, with explicit startup verification both enabled and disabled; failure cleanup and the original report must remain intact. Full run 437 passes 754 tests with five existing skips. The original provider run 37065253240 remains failed; its 95,573,668-byte archive has SHA-256 251925d0cdc2b2cc19d176e6090a36f69ccf8b0ea933c509a98ed000ba226f67. A separate actual lifecycle and retained signed-IPA verification must pass before client acceptance.
+
 Run `python3 -m unittest discover -s scripts/tests -p "*_test.py"` with a short SSD TMPDIR; full run 421 passes 753 tests with five existing skips. Require source-bound deployment step receipts, one owned child process with an explicit deadline, fresh coordinator status during a sleeping canary, and separate limits of three artifact workers and six acceptance workers. The deployment child must not open the ledger. A blocked active flight must hold both build admission and deployment selection. Busy rollback requests stay queued. Public status exposes stage/deadline progress without private paths.
 
 SDK reuse controls require completed successful original provider matrices, matching repository/workflow/source, every expected archive and original hash/size. Missing variants and cancelled providers cannot qualify a cache hit. Completed desktop qualification may be reused while mobile variants continue. Changes to toolchains, workflows, tests, policy or unknown files invalidate the input key; only individually reviewed status/prose files are excluded. Reuse receipts preserve original source labels through publication.
