@@ -6,6 +6,7 @@ bounded export/reopen, and never changes a personal profile or relay service.
 It does not qualify GUI behavior, steady-state latency, or rollback.
 """
 import argparse, base64, hashlib, importlib.util, json, os, secrets, shutil, socket, struct, subprocess, sys, time, uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 spec = importlib.util.spec_from_file_location('smoke', Path(__file__).resolve().parent / 'test-native-application.py')
@@ -131,6 +132,13 @@ class Journey:
 
     def call(self, i, kind, **data):
         return self.clients[i].call(kind, timeout=self.timeout(), **data)
+
+    def start_clients(self, create):
+        # Each client owns a distinct private profile and IPC endpoint. Starting
+        # them together removes repeated serial bootstrap waits; both remain
+        # inside the same original journey deadline and ordinary cleanup.
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            list(executor.map(lambda i: self.start_client(i, create), (0, 1)))
 
     def files(self, i, action='list', **data):
         if action == 'list':
@@ -316,8 +324,7 @@ class Journey:
             self.report['inputs'] = m.validate_artifacts(self.args.binary, self.args.build_manifest, self.args.native_receipt)
             m.require(self.args.invitation.is_file() and self.args.invitation.stat().st_size <= 180000, 'invalid invitation input')
             m.require(m.digest(self.args.binary) == self.args.binary_sha256, 'binary binding mismatch')
-            for i in range(2):
-                self.start_client(i, True)
+            self.start_clients(True)
             self.channel = self.submit(0, '/create #native-release sender')['conversation']
             code = self.invitation()
             self.join_peer(code)

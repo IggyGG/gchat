@@ -8,12 +8,19 @@
     "canary bootstrap/invitation scope with legacy revocation",
     "source-qualified companion grant operator preparation",
     "private command/operation failure diagnostics",
-    "bidirectional authenticated chat during interrupted file recovery"
+    "bidirectional authenticated chat during interrupted file recovery",
+    "concurrent isolated canary startup with bounded cleanup",
+    "sealed independent controller image qualification",
+    "full checks of matching boundary targets without restarting unchanged services"
   ],
   "tests": {
-    "python": 720,
+    "python": 725,
     "existing_skips": 5,
-    "log_sha256": "2ed4f63ebd08dad9591ea5fa1d9a3a9ea0adca96a952ef3b5319930194f4f9af"
+    "log_sha256": "02b694d86f08d422da5f3a6832776c8301b1800a85febec48f7ad53369448755",
+    "L0_source_paths": 809,
+    "retained_failed_run": "352: six lifecycle fixture IPC failures",
+    "isolated_lifecycle_tests": 17,
+    "final_focused_controls": 37
   },
   "live_operator": {
     "installed": true,

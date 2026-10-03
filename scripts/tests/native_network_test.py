@@ -50,6 +50,32 @@ class DeadlineTests(unittest.TestCase):
                 self.journey.timeout()
 
 class DiagnosticTests(unittest.TestCase):
+    def test_profiles_start_concurrently_and_both_workers_finish_before_cleanup(self):
+        import threading
+        barrier = threading.Barrier(2)
+        completed = []
+        journey = network.Journey.__new__(network.Journey)
+        def start(i, create):
+            self.assertTrue(create)
+            barrier.wait(timeout=5)
+            completed.append(i)
+        journey.start_client = start
+        journey.start_clients(True)
+        self.assertEqual(sorted(completed), [0, 1])
+
+    def test_failed_parallel_start_waits_for_the_other_owned_worker(self):
+        import threading
+        barrier = threading.Barrier(2)
+        finished = threading.Event()
+        journey = network.Journey.__new__(network.Journey)
+        def start(i, create):
+            barrier.wait(timeout=5)
+            if i == 0: raise ValueError('failed owned client')
+            finished.set()
+        journey.start_client = start
+        with self.assertRaisesRegex(ValueError, 'failed owned client'):
+            journey.start_clients(True)
+        self.assertTrue(finished.is_set())
     def test_unknown_submit_is_not_repeated_and_private_details_stay_private(self):
         with tempfile.TemporaryDirectory() as directory:
             journey = network.Journey.__new__(network.Journey)

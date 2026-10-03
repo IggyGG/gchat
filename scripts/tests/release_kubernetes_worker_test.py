@@ -11,6 +11,39 @@ import release_kubernetes_worker as worker
 
 
 class KubernetesWorkerTests(unittest.TestCase):
+    def test_independent_controller_pin_requires_complete_sealed_native_qualification(self):
+        import hashlib
+        import controller_runtime
+        source = {'commit': 'b' * 40, 'tree': 'c' * 40}
+        configuration = 'sha256:' + 'd' * 64
+        runtime = {'schema': 1, 'passed': True, 'source': source, 'source_unchanged': True,
+            'production_controller_revision_tested': True, 'suites': list(controller_runtime.SUITES),
+            'tests': controller_runtime.MINIMUM_TESTS, 'source_files_verified': 222,
+            'inventory_sha256': 'e' * 64, 'configuration_digest': configuration}
+        proof = {'schema': 1, 'source': source, 'runtime': runtime, 'configuration': configuration,
+                 'registry_configuration_verified': True, 'image': 'registry/controller@sha256:' + 'f' * 64,
+                 'kubernetes_validation': {'source': source['commit'], 'tests': runtime['tests'],
+                    'source_files_verified': 222, 'previous_digest_retained_and_repaired': True}}
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'qualified.json'
+            target = {'kind': 'deployment', 'namespace': 'ghost-com', 'name': 'gchat-release',
+                      'image': 'controller', 'controller_qualification': str(path)}
+            def seal(value):
+                path.write_text(json.dumps(value))
+                target['controller_qualification_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+            seal(proof)
+            self.assertEqual(worker.expected_image(target, {}), proof['image'])
+            path.write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'changed'):
+                worker.expected_image(target, {})
+            for field, value in [('registry_configuration_verified', False), ('kubernetes_validation', {}),
+                                 ('image', 'registry/controller:latest'), ('runtime', {**runtime, 'passed': False})]:
+                seal({**proof, field: value})
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    worker.expected_image(target, {})
+            seal(proof)
+            with self.assertRaisesRegex(ValueError, 'outside'):
+                worker.expected_image({**target, 'name': 'other-workload'}, {})
     def setUp(self):
         self.image = 'registry/gcnode@sha256:' + 'a' * 64
         self.target = {'kind': 'statefulset', 'namespace': 'ghost-com', 'name': 'gc-anchor',

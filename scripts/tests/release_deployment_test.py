@@ -74,6 +74,20 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(journal['state'], 'rolled_back')
         self.assertFalse((self.root / 'deployment/owner.json').exists())
 
+    def test_boundary_checks_run_even_when_controller_already_has_qualified_image(self):
+        self.config['network_check_policy'] = 'boundaries-v1'
+        for value in self.live.values(): value['matches'] = True
+        for _ in range(3): self.tick()
+        self.assertEqual([name for name, stage in self.calls if stage == 'check'], ['canary', 'relay-2'])
+        self.assertFalse(any(stage == 'activate' for _, stage in self.calls))
+
+    def test_failed_check_without_activation_does_not_restart_healthy_target(self):
+        self.config['network_check_policy'] = 'boundaries-v1'
+        for value in self.live.values(): value['matches'] = True
+        self.fail = ('canary', 'check')
+        self.tick()
+        self.assertFalse(any(stage in ('activate', 'rollback') for _, stage in self.calls))
+
     def test_failed_canary_rolls_back_and_never_advances(self):
         self.fail = ('canary', 'check')
         self.assertFalse(self.tick())

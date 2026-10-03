@@ -128,12 +128,43 @@ def rollback_stateful(target, current, before, journal):
     return {'passed': True, **observed}
 
 
+def expected_image(target, build):
+    """A reviewed controller upgrade has its own exact-source image receipt."""
+    path = target.get('controller_qualification')
+    if not path:
+        return build['images'][target['image']]
+    if (target.get('kind') != 'deployment' or target.get('namespace') != 'ghost-com'
+            or target.get('name') != 'gchat-release' or target.get('image') != 'controller'):
+        raise ValueError('independent controller qualification is outside the installed controller')
+    raw = Path(path).read_bytes()
+    if hashlib.sha256(raw).hexdigest() != target.get('controller_qualification_sha256'):
+        raise ValueError('operator controller qualification changed')
+    proof = json.loads(raw)
+    source = proof.get('source', {})
+    if (proof.get('schema') != 1 or not re.fullmatch('[0-9a-f]{40}', str(source.get('commit', '')))
+            or not re.fullmatch('[0-9a-f]{40}', str(source.get('tree', '')))
+            or proof.get('registry_configuration_verified') is not True):
+        raise ValueError('controller source or registry qualification is incomplete')
+    from controller_runtime import validate
+    validate(proof['runtime'], source, proof['configuration'])
+    native = proof.get('kubernetes_validation', {})
+    if (native.get('source') != source['commit']
+            or native.get('tests') != proof['runtime']['tests']
+            or native.get('source_files_verified') != proof['runtime']['source_files_verified']
+            or native.get('previous_digest_retained_and_repaired') is not True):
+        raise ValueError('controller did not pass its actual Kubernetes image validation')
+    image = proof.get('image', '')
+    if not re.fullmatch(r'[^\s]+@sha256:[0-9a-f]{64}', image):
+        raise ValueError('qualified controller image must be digest-pinned')
+    return image
+
+
 def run(target, manifest, stage, output):
     directory = Path(target['artifact_root']) / manifest['release_id']
     build = json.loads((directory / 'build.json').read_text())
     if build.get('sources') != manifest['sources'] or build.get('qualified') is not True:
         raise ValueError('image bundle is not qualified on this exact source')
-    expected = build['images'][target['image']]
+    expected = expected_image(target, build)
     if not re.fullmatch(r'[^\s]+@sha256:[0-9a-f]{64}', expected):
         raise ValueError('deployment image must be pinned by digest')
     if stage == 'observe': return observe(target, expected)

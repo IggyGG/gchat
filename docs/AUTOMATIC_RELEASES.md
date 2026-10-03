@@ -17,6 +17,16 @@ intermediate targets run covered bidirectional messaging within 300 seconds plus
 their running-version/health checks. The original every-target policy remains the
 default for existing inventories. A short check cannot qualify file recovery.
 
+The controller target may retain a separately qualified operations image through
+`controller_qualification` and its SHA-256 in the operator inventory. Its sealed
+receipt must bind exact source, actual-image runtime tests, registry configuration
+and Kubernetes validation with the previous image retained. This applies only to
+the installed `ghost-com/gchat-release` controller; application services still use
+the original paired-source bundle. Matching boundary images still receive their
+full network check. Failure of such a check does not restart an unchanged target.
+Each canary starts its two isolated clients concurrently under the same deadline
+and waits for both owned startup workers before cleanup.
+
 Canaries receive expiring bootstrap and invitation-publication scope, zero name
 quota and no server authority. Legacy bootstrap-only grants remain revocable.
 Catalog preparation with `canary_operator: true` installs the qualified companion

@@ -200,7 +200,10 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
             unhealthy = [t for t in targets if not observations[t['id']]['healthy']]
             pending = [t for t in targets if not (observations[t['id']]['healthy']
                        and observations[t['id']]['matches'])
-                       or report['targets'][t['id']].get('state') == 'activating']
+                       or report['targets'][t['id']].get('state') == 'activating'
+                       or (config.get('network_check_policy') == 'boundaries-v1'
+                           and t['network_check'] == 'full'
+                           and report['targets'][t['id']].get('state') != 'deployed')]
             if len(unhealthy) > 1:
                 report['reason'] = 'More than one target is unhealthy; rollout deferred'
                 return False
@@ -216,7 +219,8 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                 prepared = worker(target, 'prepare', manifest, work)
                 if prepared is None:
                     return False
-                item.update(state='activating', started_at=now, previous=observations[target['id']], prepared=prepared)
+                item.update(state='activating', started_at=now, previous=observations[target['id']], prepared=prepared,
+                            mutation_needed=not observations[target['id']]['matches'])
                 write(journal, report)  # activation intent precedes the external effect
             if now - item['started_at'] > target.get('activation_deadline_seconds', 900):
                 raise ValueError('deployment activation exceeded its original deadline')
@@ -238,6 +242,9 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
             for target in targets:
                 item = report['targets'].get(target['id'], {})
                 if item.get('state') == 'activating':
+                    if item.get('mutation_needed') is False:
+                        item['state'] = 'check_failed'
+                        continue
                     try:
                         rollback = worker(target, 'rollback', manifest, directory / target['id'], item['previous'])
                         item['state'] = 'rolled_back' if rollback else 'rollback_pending'
