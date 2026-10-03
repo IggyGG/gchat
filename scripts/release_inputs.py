@@ -11,6 +11,8 @@ from release_pair import canonical
 
 
 CONTROL_FILES = frozenset({
+    'scripts/node-image-headroom.py', 'scripts/tests/node_image_headroom_test.py',
+    'release/automation/node-image-headroom.service', 'release/automation/node-image-headroom.timer',
     'PLAN.md', 'TESTPLAN.md', 'README.md', 'docs/AUTOMATIC_RELEASES.md',
     'docs/PRODUCTION_RELEASE.md',
     'scripts/release_inputs.py', 'scripts/release_coordinator.py',

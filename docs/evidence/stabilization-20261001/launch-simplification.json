@@ -25,7 +25,7 @@
     "python": 834,
     "existing_skips": 5,
     "log_sha256": "377cbe6bf085c82bbab0935f1cabba80b9c67ec56bb581b7ec78d25744ecb386",
-    "L0_source_paths": 820,
+    "L0_source_paths": 824,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
     "final_focused_controls": 37,
@@ -298,10 +298,10 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37150879135,
-    "ios": 37150886456,
-    "helper": "750b6b46529d0f3e65100a4915859ec7e1d5f91a",
-    "state": "both_failed",
+    "android": 37153338081,
+    "ios": 37153342875,
+    "helper": "d8051bf409e87049702d90407e9edc2d0b0c4868",
+    "state": "both_running",
     "previous_failed_runs": {
       "android": 37145104303,
       "ios": 37145106253
@@ -324,7 +324,7 @@
       "failure": "incoming_rendered_message_timeout",
       "receipt": "operations/android-helper-750b6b4-result-753.zip"
     },
-    "android_helper": "750b6b46529d0f3e65100a4915859ec7e1d5f91a",
+    "android_helper": "d8051bf409e87049702d90407e9edc2d0b0c4868",
     "ios_report": {
       "artifact": 11284211613,
       "sha256": "daf3eb5a5b1fe6539bd9f73ce6be9ef74cb5a919786981d610ea21687aa41bb3",
@@ -336,7 +336,7 @@
       "invitation_entry": "visible_form",
       "receipt": "operations/ios-helper-750b6b4-result-752.zip"
     },
-    "ios_helper": "750b6b46529d0f3e65100a4915859ec7e1d5f91a"
+    "ios_helper": "d8051bf409e87049702d90407e9edc2d0b0c4868"
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -362,8 +362,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "750b6b46529d0f3e65100a4915859ec7e1d5f91a",
-  "native_helper_qualification": "operations/native-helper-750b6b4-qualified-750.json",
+  "native_helper_source": "d8051bf409e87049702d90407e9edc2d0b0c4868",
+  "native_helper_qualification": "operations/native-helper-d8051bf-qualified-755.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -404,7 +404,7 @@
     "timeout_keeps_original_failure": true,
     "android_transcript_diagnostics": "successor, awaiting native result",
     "ios_identity_coordinate_navigation": "successor, awaiting native result",
-    "android_pixel_observer": "successor, awaiting native result; no image or recognized text retention",
+    "android_pixel_observer": "active helper, actual installed run pending",
     "native_worker_dependency": "Ubuntu tesseract-ocr",
     "ios_assertion_locations": "successor, static lines only"
   },
@@ -477,5 +477,18 @@
     "scheduled_compaction_success": true,
     "maintenance_originals_preserved": true,
     "automation_receipt": "operations/controller-automation-readback-740.json"
+  },
+  "node5_headroom_recovery": {
+    "disk_pressure_cleared": true,
+    "anchor_identity_volume_preserved": true,
+    "anchor_uid": "473c2bd2-1f5f-443d-945b-c38615ac475c",
+    "reserve_receipt": "operations/node5-reserve-recovery-757.json",
+    "image_cleanup_receipt": "operations/node5-unused-image-recovery-756.log",
+    "fresh_deployment_receipt": "operations/release-current-759.json",
+    "timer_installed": false,
+    "timer_interval_seconds": 300,
+    "minimum_free_percent": 17,
+    "local_controls": 3,
+    "controls_passed": true
   }
 }
