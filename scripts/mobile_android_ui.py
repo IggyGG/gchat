@@ -270,7 +270,14 @@ class AndroidUI:
                     self.ui_observation['startup_capture_error'] = type(error).__name__
             raise
         self.click(button)
-        self.until(lambda: not any(self.text(button)(node) for node in self.tree().iter('node')), 120)
+        def unlocked():
+            tree = self.tree()
+            # The button becomes Opening… while the identity is still locked.
+            # Require the actual post-unlock UI before delivering an OS link.
+            return not any(self.text(button)(node) for node in tree.iter('node')) and (
+                any(self.text('Connect to GChat')(node) for node in tree.iter('node'))
+                or editable_composer(tree) is not None)
+        self.until(unlocked, 120)
         self.no_listener()
 
     def join(self, invitation):

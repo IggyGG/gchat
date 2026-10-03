@@ -346,7 +346,20 @@ class MobileAcceptanceTests(unittest.TestCase):
         self.assertIsNotNone(android_ui.editable_composer(tree))
         for changed in (field+field,field.replace('boo.gchat.app','other.app'),
                         field.replace('/>',' password="true"/>'),field.replace('[10,400][290,450]','[0,0][0,0]')):
-            self.assertIsNone(android_ui.editable_composer(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
+                self.assertIsNone(android_ui.editable_composer(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
+
+    def test_android_unlock_waits_for_the_unlocked_view_after_opening_feedback(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            opening=ET.fromstring('<hierarchy><node package="boo.gchat.app" text="Opening…"/></hierarchy>')
+            connected=ET.fromstring('<hierarchy><node package="boo.gchat.app" text="Connect to GChat"/></hierarchy>')
+            field=ET.fromstring('<node package="boo.gchat.app" password="true" bounds="[10,10][90,40]"/>')
+            with patch.object(ui,'launch'),patch.object(ui,'node',return_value=field), \
+                 patch.object(ui,'scroll_to_top'),patch.object(ui,'type'),patch.object(ui,'click'), \
+                 patch.object(ui,'no_listener'),patch.object(ui,'tree',side_effect=[opening,connected]) as tree, \
+                 patch.object(android_ui.time,'sleep'):
+                ui.unlock(create=True)
+            self.assertEqual(tree.call_count,2)
 
     def test_ios_os_invitation_activation_fails_closed_without_a_second_launch(self):
         for code in (0,1):
