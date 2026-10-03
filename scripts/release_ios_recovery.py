@@ -39,7 +39,7 @@ def sha(path):
     with Path(path).open('rb') as stream: return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def validate_run(manifest, run, artifact, rule=RULE):
+def validate_run(manifest, run, artifact, rule=RULE, *, retained=False):
     require(manifest['release_id'] == rule['release_id'], 'no reviewed iOS recovery for this candidate')
     require(run.get('id') == rule['run'] and run.get('head_sha') == rule['controller']
             and run.get('path') == '.github/workflows/ios-verify.yml'
@@ -47,7 +47,8 @@ def validate_run(manifest, run, artifact, rule=RULE):
             and run.get('display_title') == 'iOS retained verification ' + rule['request']
             and run.get('event') == 'workflow_dispatch' and run.get('status') == 'completed'
             and run.get('conclusion') == 'success', 'iOS follow-up identity or result differs')
-    require(artifact.get('id') == rule['artifact'] and artifact.get('expired') is False
+    require(artifact.get('id') == rule['artifact']
+            and (artifact.get('expired') is False or (retained is True and artifact.get('retained_locally') is True))
             and artifact.get('workflow_run', {}).get('id') == rule['run']
             and artifact.get('digest') == 'sha256:' + rule['sha256']
             and artifact.get('size_in_bytes') == rule.get('size', 316898149), 'iOS follow-up archive differs')

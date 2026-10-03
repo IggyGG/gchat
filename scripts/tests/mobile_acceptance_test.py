@@ -87,6 +87,14 @@ class MobileAcceptanceTests(unittest.TestCase):
             spec={'run':rule['run'],'artifact':rule['artifact'],'archive':rule['sha256'],'controller':rule['controller'],
                   'sources':{p:v['commit'] for p,v in manifest['sources'].items()},'manifest':'ios-verification/build.json',
                   'conclusion':'success','recovery':{'kind':'ios-retained','candidate':manifest,'rule':rule,'inputs':reviewed}}
+            from release_acceptance_delivery import provider_metadata
+            artifact=provider_metadata(archive,spec,'ios')
+            self.assertNotIn('expired',artifact)
+            with self.assertRaisesRegex(ValueError,'archive differs'):
+                recovery.validate_run(manifest,run,artifact,rule)
+            recovery.validate_run(manifest,run,artifact,rule,retained=True)
+            with self.assertRaisesRegex(ValueError,'archive differs'):
+                recovery.validate_run(manifest,run,{**artifact,'retained_locally':False},rule,retained=True)
             def retained(bound,destination): destination.write_bytes(archive.read_bytes()); return artifact
             with patch.dict(os.environ,{'GCHAT_NATIVE_RECOVERIES':str(registry)}), \
                  patch.object(inputs,'gh',return_value=run),patch.object(inputs,'acceptance_archive',side_effect=retained):
@@ -185,6 +193,18 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(ui.ui_observation['last_error'],'ParseError')
             self.assertEqual(ui.ui_observation['errors'],1)
             self.assertNotIn('private',json.dumps(ui.ui_observation))
+
+    def test_android_startup_capture_is_limited_to_the_fresh_owned_screen_before_any_input(self):
+        for create,typed in ((True,False),(True,True),(False,False)):
+            with self.subTest(create=create,typed=typed),tempfile.TemporaryDirectory() as temporary:
+                ui,_,_=self.owned_android_ui(Path(temporary));ui.input_started=typed
+                with patch.object(ui,'launch'),patch.object(ui,'node',side_effect=TimeoutError), \
+                     patch.object(ui,'shell',return_value='fixture-process'), \
+                     patch.object(android_ui.android,'screenshot') as screenshot, \
+                     self.assertRaises(TimeoutError):
+                    ui.unlock(create=create)
+                self.assertEqual(screenshot.call_count,int(create and not typed))
+                self.assertNotIn('fixture-private-value',json.dumps(ui.ui_observation))
 
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):

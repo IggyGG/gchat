@@ -48,6 +48,7 @@ class AndroidUI:
         self.names, self.bodies = set(), set()
         self.exports = []
         self.ui_observation = {'attempts':0, 'errors':0}
+        self.input_started = False
         require(self.shell('getprop', 'ro.kernel.qemu') == '1', 'physical device refused')
         expected = 'gchat-release-fixture-' + serial.removeprefix('emulator-')
         require(self.command('emu', 'avd', 'name').splitlines()[0] == expected,
@@ -133,6 +134,7 @@ class AndroidUI:
         self.shell('input', 'tap', (x1 + x2) // 2, (y1 + y2) // 2)
 
     def type(self, node, value):
+        self.input_started = True
         self.tap(node)
         self.shell('input', 'text', shlex.quote(value.replace(' ', '%s')))
         self.shell('input', 'keyevent', '4')
@@ -155,7 +157,9 @@ class AndroidUI:
     def launch(self):
         self.shell('input', 'keyevent', 'KEYCODE_WAKEUP')
         self.shell('wm', 'dismiss-keyguard')
-        self.shell('am', 'start', '-W', '-n', android.PACKAGE + '/' + self.activity)
+        result = self.shell('am', 'start', '-W', '-n', android.PACKAGE + '/' + self.activity)
+        self.ui_observation['launch_status_ok'] = 'Status: ok' in result
+        require(self.ui_observation['launch_status_ok'], 'owned Android activity did not start')
 
     def stop(self):
         self.shell('am', 'force-stop', android.PACKAGE)
@@ -165,7 +169,19 @@ class AndroidUI:
     def unlock(self, create=False):
         self.launch()
         button = 'Create identity' if create else 'Reconnect'
-        self.node(self.text(button))
+        try:
+            self.node(self.text(button))
+        except (TimeoutError, ValueError):
+            # This fresh owned AVD has received no identity, passphrase, channel
+            # or invitation. Never capture a reopened or populated app screen.
+            if create and not self.input_started:
+                try:
+                    self.ui_observation['process_alive'] = bool(self.shell('pidof', android.PACKAGE, absent=True))
+                    android.screenshot(self.adb, self.output.parent / 'fresh-startup.png')
+                    self.ui_observation['fresh_startup_screen_retained'] = True
+                except Exception as error:
+                    self.ui_observation['startup_capture_error'] = type(error).__name__
+            raise
         for _ in range(2 if create else 1):
             field = self.node(lambda node: node.get('package') == android.PACKAGE
                               and node.get('password') == 'true' and not node.get('text'))

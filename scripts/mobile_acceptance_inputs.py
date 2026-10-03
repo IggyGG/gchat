@@ -93,7 +93,7 @@ def acquire(name, spec, target, output, manifest=None):
         require(recovered['inputs'] == reviewed and spec['manifest'] == 'ios-verification/build.json'
                 and {key: value['commit'] for key, value in candidate['sources'].items()} == spec['sources']
                 and (manifest is None or candidate == manifest), 'retained iOS acceptance candidate differs')
-        recovery.validate_run(candidate, run, artifact, rule)
+        recovery.validate_run(candidate, run, artifact, rule, retained=retained)
         recovery.validate_report(candidate, report, rule, reviewed)
         require(artifact.get('name') == 'ios-verified-' + rule['request'], 'retained iOS verification artifact name differs')
         original_path = recovery.reference(report['original_build'], report_path.parent)
