@@ -301,40 +301,37 @@
     "android": 37153338081,
     "ios": 37153342875,
     "helper": "d8051bf409e87049702d90407e9edc2d0b0c4868",
-    "state": "both_running",
+    "state": "both_failed",
     "previous_failed_runs": {
       "android": 37145104303,
       "ios": 37145106253
     },
     "android_report": {
-      "artifact": 11283604360,
-      "sha256": "06c5e8e8fa96f20a0a000962fbef9b0eea5d0c26cef25f735b6eef1b867b03ed",
+      "artifact": 11285226996,
+      "sha256": "8e3c7aac03c757231e08b2dbc0f63096459ac712b06800a4821a851e82e28114",
       "passed": false,
       "stage": "baseline-start",
       "identity_and_join_passed": true,
       "authenticated_recipient_ack": true,
-      "owned_channel_title": true,
-      "transcript_nodes": 1,
-      "transcript_bounds": [
-        0,
-        125,
-        320,
-        555
-      ],
+      "pixel_observer_used": true,
+      "pixel_canary_prefix_lines": 1,
+      "pixel_lines_count": 7,
       "failure": "incoming_rendered_message_timeout",
-      "receipt": "operations/android-helper-750b6b4-result-753.zip"
+      "receipt": "operations/android-helper-d8051bf-result-763.zip"
     },
     "android_helper": "d8051bf409e87049702d90407e9edc2d0b0c4868",
     "ios_report": {
-      "artifact": 11284211613,
-      "sha256": "daf3eb5a5b1fe6539bd9f73ce6be9ef74cb5a919786981d610ea21687aa41bb3",
+      "artifact": 11284578944,
+      "sha256": "2cc26218ffa7713b0cc44e5a52935209b8d635137de8b7149d493fa3d45fd150",
       "passed": false,
       "stage": "baseline-start",
       "phase": "unlock-passphrase",
+      "observation_failure_lines": [
+        94
+      ],
       "owned_device_binding_passed": true,
       "clone_used": false,
-      "invitation_entry": "visible_form",
-      "receipt": "operations/ios-helper-750b6b4-result-752.zip"
+      "receipt": "operations/ios-helper-d8051bf-result-764.zip"
     },
     "ios_helper": "d8051bf409e87049702d90407e9edc2d0b0c4868"
   },
@@ -404,9 +401,11 @@
     "timeout_keeps_original_failure": true,
     "android_transcript_diagnostics": "successor, awaiting native result",
     "ios_identity_coordinate_navigation": "successor, awaiting native result",
-    "android_pixel_observer": "active helper, actual installed run pending",
+    "android_pixel_observer": "pixel canary prefix observed; exact recognition failed at low resolution",
     "native_worker_dependency": "Ubuntu tesseract-ocr",
-    "ios_assertion_locations": "successor, static lines only"
+    "ios_assertion_locations": "successor, static lines only",
+    "android_display_correction": "successor: 720x1440 physical pixels, 360 dpi; same logical viewport",
+    "ios_input_correction": "successor: unchanged 256-bit random entropy, hexadecimal input, static lengths/masking diagnostics"
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",

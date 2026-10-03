@@ -48,6 +48,8 @@ def runner_diagnostics(path, exit_code, polls):
         'runtime_error_locations': sorted(set(re.findall(r'AcceptanceTests\.swift:(\d+): error:', text))),
         'observation_failure_lines': sorted(set(int(value) for value in
             re.findall(r'GCHAT_ACCEPTANCE_OBSERVATION_FAILURE=(\d+)\b', text))),
+        'input_value_diagnostics': {key.lower(): int(value) for key, value in
+            re.findall(r'GCHAT_ACCEPTANCE_INPUT_(FIELD_PRESENT|VALUE_LENGTH|EXPECTED_LENGTH|VALUE_MASKED)=(\d+)\b', text)},
         'ui_error_categories': {'tap_failed': 'Failed to tap' in text,
             'snapshot_failed': 'Failed to get matching snapshot' in text,
             'not_hittable': 'not hittable' in text,

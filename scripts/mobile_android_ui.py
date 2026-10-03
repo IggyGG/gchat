@@ -143,6 +143,12 @@ class AndroidUI:
         require(self.shell('getprop', 'ro.product.cpu.abi') == 'x86_64'
                 and int(self.shell('getprop', 'ro.build.version.sdk')) >= 26,
                 'Android test ABI/API differs')
+        # Preserve the 320x640 logical viewport with normal phone pixel density.
+        # Tiny physical glyphs are insufficient for exact native OCR tokens.
+        self.shell('wm', 'size', '720x1440')
+        self.shell('wm', 'density', '360')
+        self.ui_observation['display_size'] = [720, 1440]
+        self.ui_observation['display_density'] = 360
 
     def command(self, *args, binary=False, absent=False):
         left = min(120, self.deadline() - time.monotonic())

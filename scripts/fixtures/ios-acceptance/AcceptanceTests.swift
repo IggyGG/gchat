@@ -91,7 +91,16 @@ final class GChatAcceptanceTests: XCTestCase {
             try require(!label.isEmpty)
             try passphraseVisibility("Show passphrase")
             let revealed = app.webViews.textFields.matching(NSPredicate(format: "label == %@", label)).firstMatch
-            try wait(10) { revealed.exists && (revealed.value as? String) == value }
+            do {
+                try wait(10) { revealed.exists && (revealed.value as? String) == value }
+            } catch {
+                let actual = revealed.exists ? (revealed.value as? String) ?? "" : ""
+                print("GCHAT_ACCEPTANCE_INPUT_FIELD_PRESENT=\(revealed.exists ? 1 : 0)")
+                print("GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=\(actual.count)")
+                print("GCHAT_ACCEPTANCE_INPUT_EXPECTED_LENGTH=\(value.count)")
+                print("GCHAT_ACCEPTANCE_INPUT_VALUE_MASKED=\(actual.contains("•") || actual.contains("●") ? 1 : 0)")
+                throw error
+            }
             try passphraseVisibility("Hide passphrase")
             try wait(10) { field.exists }
         } else {

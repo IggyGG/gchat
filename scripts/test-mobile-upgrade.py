@@ -98,7 +98,8 @@ def main():
         del code
         owned = root / 'owned-device'
         owned.mkdir(mode=0o700)
-        passphrase = secrets.token_urlsafe(32)
+        # Same random entropy, without shift/symbol transitions in native input.
+        passphrase = secrets.token_hex(32)
         setup_deadline = time.monotonic() + 600
         deadline = lambda: journey.deadline if journey is not None else setup_deadline
 
