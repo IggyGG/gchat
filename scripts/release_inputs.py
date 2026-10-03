@@ -17,6 +17,7 @@ CONTROL_FILES = frozenset({
     'scripts/release_discovery.py', 'scripts/release_config.py',
     'scripts/release_ledger.py', 'scripts/release_maintenance.py',
     'scripts/release.py', 'scripts/release_control.py',
+    'scripts/release_flight.py', 'scripts/tests/release_flight_test.py',
     'scripts/release_deployment.py', 'scripts/release_host_worker.py',
     'scripts/release_network_canary.py', 'scripts/release_kubernetes_worker.py',
     'scripts/release_canary_grant.py', 'scripts/release_host_serve.py',
@@ -84,6 +85,7 @@ GCOMS_STATUS_FILES = frozenset({
     'scripts/release_evidence.py',
     'scripts/tests/release_evidence_test.py',
     'docs/evidence/stabilization-20261001/native-capacity-exclusion-policy.json',
+    'docs/evidence/stabilization-20261001/sdk-apple-8f8fdb3.json',
 })
 
 

@@ -11,16 +11,19 @@
     "bidirectional authenticated chat during interrupted file recovery",
     "concurrent isolated canary startup with bounded cleanup",
     "sealed independent controller image qualification",
-    "full checks of matching boundary targets without restarting unchanged services"
+    "full checks of matching boundary targets without restarting unchanged services",
+    "one active release and one newest pending release without dropping original dispatched requests",
+    "new build admission pauses at the reserve while already admitted workers still finish reconciliation"
   ],
   "tests": {
-    "python": 726,
+    "python": 734,
     "existing_skips": 5,
-    "log_sha256": "79bb15edac6b5d515c3ad31a2cc8ebf7a820ffe01ab5d23e36018e371ffd3043",
-    "L0_source_paths": 809,
+    "log_sha256": "df4f480311ccc2a5ec84616ce0b8f3c29078fe8ffecfacbfe063088552140b61",
+    "L0_source_paths": 811,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
-    "final_focused_controls": 37
+    "final_focused_controls": 37,
+    "single_flight_controls": 8
   },
   "live_operator": {
     "installed": true,
@@ -39,5 +42,7 @@
   "active_controller_source": "749eb913bfd9587ce18f44a422623d3176729247",
   "active_controller_kubernetes_checks": 203,
   "live_worker_entry_failure_retained": true,
-  "entry_point_fix_requires_new_image": true
+  "entry_point_fix_requires_new_image": true,
+  "single_flight_active": false,
+  "storage_frontend_fault": "Longhorn iSCSI frontend retained a dead iscsid namespace; backend and three healthy replicas already expanded to 160 GiB"
 }

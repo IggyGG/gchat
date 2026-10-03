@@ -9,7 +9,12 @@ Store publications cannot be rolled back by that command. Use `--json` for statu
 integration and `--state PATH` only when operating on a local controller state.
 
 New source changes settle for ten minutes. Three artifact workers can progress
-concurrently, while infrastructure activation stays serial. Completed stages and
+concurrently, while infrastructure activation stays serial. Production defaults admit
+one active release and expose one newest pending release. A blocked active release
+holds new admission; already dispatched provider requests retain their original
+identity and keep being reconciled. Once all internal stages finish, mobile
+processing/review may continue while the next release starts. The scheduler never
+selects an older pending candidate after a newer one completes. Completed stages and
 provider request IDs survive retries. A failed or unknown operation remains explicit.
 The operator inventory can select `network_check_policy: boundaries-v1`: full
 covered messaging/interrupted-file checks run at the first and final targets;
@@ -53,6 +58,8 @@ immutable controller image and the release PVC, without signing keys or network
 access. Install that image only after its source and native compaction controls
 pass. Its pod follows the live controller node so the shared ReadWriteOnce volume
 can attach. Storage headroom still blocks new build stages when capacity is insufficient.
+Already admitted workers can finish and record receipts below that threshold;
+no new artifact is admitted by this exception.
 
 Builds blocked solely by storage resume when the unchanged headroom threshold is
 met. This also recognizes retained blocks from older controller versions. An

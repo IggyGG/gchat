@@ -40,7 +40,8 @@ class CoordinatorTests(unittest.TestCase):
         self.assertEqual(len(c.running_workers), 2)
         effect = c.ledger.effect(self.manifest['release_id'], 'linux-x86_64', 'build')
         pid = c.running_workers[effect['id']]['process'].pid
-        self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
+        with patch('shutil.disk_usage', return_value=type('Usage', (), {'free': -1})()):
+            self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
         self.assertEqual(c.running_workers[effect['id']]['process'].pid, pid)
         release_worker.touch()
         c.running_workers[effect['id']]['process'].wait(timeout=5)

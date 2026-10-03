@@ -81,6 +81,8 @@ class Coordinator:
             raise ValueError('maximum_workers must be an integer between 1 and 8')
         if type(config.get('nonblocking_workers', False)) is not bool:
             raise ValueError('nonblocking_workers must be a boolean')
+        if type(config.get('single_flight', False)) is not bool:
+            raise ValueError('single_flight must be a boolean')
         self.state = Path(state).resolve()
         self.state.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(self.state / 'ledger.sqlite')
@@ -133,6 +135,9 @@ class Coordinator:
                     and (recovery.get('cause') == 'storage_headroom'
                          or target.get('reason') == STORAGE_HEADROOM_REASON))
         if capacity:
+            from release_flight import can_build
+            if not can_build(self, release, platform):
+                return False
             import shutil
             if shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
                 return False
@@ -225,7 +230,11 @@ class Coordinator:
         recipe = self.config['workers'][platform][stage]
         if stage == 'build':
             import shutil
-            if shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
+            existing = self.ledger.db.execute('''SELECT id FROM effects
+                WHERE candidate=? AND platform=? AND kind='build' ''', (manifest['release_id'], platform)).fetchone()
+            admitted = existing and (existing['id'] in self.running_workers or
+                (self.state / 'jobs' / existing['id'] / 'receipt.json').is_file())
+            if not admitted and shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
                 raise StorageHeadroomError(STORAGE_HEADROOM_REASON)
         effect_kind = stage if stage != 'observe' else 'observe-' + str(time.time_ns())
         if stage == 'acceptance' and 'max_age_seconds' in recipe:
@@ -337,6 +346,10 @@ class Coordinator:
             state = target['state']
         if state in {'available', 'failed', 'superseded', 'blocked'}:
             return
+        if state in {'queued', 'building'}:
+            from release_flight import can_build
+            if not can_build(self, release, platform):
+                return
         if platform not in self.config.get('workers', {}):
             self.ledger.transition(release, platform, 'blocked', reason='platform worker is not configured')
             return
@@ -433,6 +446,9 @@ class Coordinator:
         self.reconcile_deployment()
         public = self.ledger.status()
         public['observed_at'] = int(time.time())
+        if self.config.get('single_flight', False):
+            from release_flight import select
+            public['flight'] = select(self.state, self.ledger)
         public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage')}
                                     for item in self.running_workers.values()]
         atomic_json(self.state / 'public/status.json', public)
