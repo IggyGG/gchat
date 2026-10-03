@@ -85,6 +85,7 @@ class InputTests(unittest.TestCase):
             self.assertNotEqual(first['infrastructure'], second['infrastructure'])
             self.assertNotEqual(first['qualification'], second['qualification'])
             for path in ('release/downloads.json', 'scripts/website.py',
+                         'scripts/release_inventory.py', 'scripts/release_sdk.py',
                          '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py',
                          '.github/workflows/release-tools-check.yml',
                          'scripts/acceptance_delivery.py', 'scripts/release_acceptance_delivery.py',

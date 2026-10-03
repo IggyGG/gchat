@@ -2,6 +2,8 @@ The asynchronous coordinator fixtures explicitly use zero storage reserve in the
 
 ## Simplified release controls (2026-10-03)
 
+SDK resume must publish and independently read the older candidate's immutable index and archive while preserving a newer latest index byte for byte. Reject source relabelling under an existing immutable index and same-version source collisions. Publishers share a filesystem lock. Full run 447 passes 758 tests with five existing skips; the expanded reviewed-input fixture also checks inventory and SDK orchestration changes without relaxing unknown/native/build inputs.
+
 Pull probes must retain Always image pulls, no API credentials, explicit namespace DNS and stable identities across recovery. Corrected DNS must produce a different Job identity from the original rejected probe. Invalid or excessive DNS addresses must fail before creating a Job. Full run 441 passes 756 tests with five existing skips. Retain the four actual ghost-bench admission failures; require a successful actual probe before replacing an anchor.
 
 Installed iOS lifecycle must reach its native boundary without CLI globals, with explicit startup verification both enabled and disabled; failure cleanup and the original report must remain intact. Full run 437 passes 754 tests with five existing skips. The original provider run 37065253240 remains failed; its 95,573,668-byte archive has SHA-256 251925d0cdc2b2cc19d176e6090a36f69ccf8b0ea933c509a98ed000ba226f67. A separate actual lifecycle and retained signed-IPA verification must pass before client acceptance.

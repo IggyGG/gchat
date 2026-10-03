@@ -52,6 +52,13 @@ reuse. A desktop matrix can be reused while mobile qualification continues. The
 public SDK index includes the requested source and original qualification source;
 original archive names and embedded source labels are preserved. Partial or
 cancelled provider runs remain failures and cannot become cached passes.
+Every completed SDK publication also has an immutable index at
+`/updates/sdk/<release-id>/index.json`. Resume verifies that index and its archive
+bytes directly. Older retained candidates can complete while the newest version
+stays advertised by `latest.json`; publishers serialize their updates and reject
+same-version source collisions or changed immutable indexes. Reviewed inventory
+and SDK orchestration edits require controller qualification without reserving
+new application versions.
 `release_compaction.py --state /state` verifies each completed build's original
 archive before sharing identical extraction files. It preserves every path and
 byte, checks ownership/mode compatibility and refuses changed files or links.

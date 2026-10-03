@@ -179,12 +179,25 @@ def build(manifest,cache):
 def publish_archives(manifest, paths, public, qualification_reuse=None):
     """Copy immutable archives before atomically advertising the complete set."""
     public.mkdir(parents=True, exist_ok=True)
+    with (public / '.publication.lock').open('a+b') as lock:
+        if os.name == 'nt':
+            import msvcrt
+            lock.seek(0); lock.write(b'\0'); lock.flush(); lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        return publish_locked(manifest, paths, public, qualification_reuse)
+
+
+def publish_locked(manifest, paths, public, qualification_reuse):
+    public.mkdir(parents=True, exist_ok=True)
     pointer = public / 'latest.json'
     number = manifest['versions']['sdk']
+    historical = False
     if pointer.exists():
         previous = json.loads(pointer.read_text())
-        if version(previous['version']) > version(number):
-            raise ValueError('cannot regress SDK publication')
+        historical = version(previous['version']) > version(number)
         if previous['version'] == number and previous['release_id'] != manifest['release_id']:
             raise ValueError('SDK version already belongs to another source pair')
     records = []
@@ -213,13 +226,18 @@ def publish_archives(manifest, paths, public, qualification_reuse=None):
               'archives': records}
     if qualification_reuse is not None:
         report['qualification_reuse'] = qualification_reuse
-    atomic_json(pointer, report); pointer.chmod(0o644)
+    index = public / manifest['release_id'] / 'index.json'
+    if index.exists() and json.loads(index.read_text()) != report:
+        raise ValueError('immutable SDK index changed')
+    atomic_json(index, report); index.chmod(0o644)
+    if not historical:
+        atomic_json(pointer, report); pointer.chmod(0o644)
     return report
 
 
 def verify_public(report, base):
     """Availability includes the publicly served immutable bytes."""
-    url = base.rstrip('/') + '/sdk/latest.json'
+    url = base.rstrip('/') + '/sdk/' + report['release_id'] + '/index.json'
     with urllib.request.urlopen(url, timeout=30) as response:
         if response.url != url or json.loads(response.read(65537)) != report:
             raise ValueError('public SDK index differs from the candidate')

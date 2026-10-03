@@ -20,6 +20,7 @@ CONTROL_FILES = frozenset({
     'scripts/release_flight.py', 'scripts/tests/release_flight_test.py',
     'scripts/release_deployment_runner.py', 'scripts/tests/release_deployment_runner_test.py',
     'scripts/release_deployment.py', 'scripts/release_host_worker.py',
+    'scripts/release_inventory.py', 'scripts/release_sdk.py',
     'scripts/release_network_canary.py', 'scripts/release_kubernetes_worker.py',
     'scripts/release_canary_grant.py', 'scripts/release_host_serve.py',
     'scripts/release_evidence.py',

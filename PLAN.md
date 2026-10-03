@@ -2,6 +2,8 @@ The asynchronous coordinator fixtures explicitly use zero storage reserve in the
 
 ## Launch simplification (2026-10-03, in progress)
 
+SDK publication now uses a per-release immutable index and serializes publishers. Resuming the frozen 0.1.98 candidate can publish its original qualified archives while the already published 0.1.102 stays latest; verification reads the candidate's own index and archive bytes. Version collisions and changed immutable indexes still fail. Inventory and SDK orchestration edits now invalidate controller qualification without rebuilding applications. Full run 447 passes 758 tests with five existing skips; actual publication remains pending the corrected controller.
+
 Pull probes now use the configured namespace DNS, including the authoritative ghost-bench resolver. Corrected DNS changes the deterministic probe identity, so the four original admission-denied Jobs remain failures rather than being mistaken for corrected results. The production inventory carries that resolver automatically. Full run 441 passes 756 tests with five existing skips; image qualification and activation are pending.
 
 The installed iOS lifecycle entry now takes its startup option explicitly instead of reading an undefined CLI variable. The original 1.1.13 provider failure occurred after native tests, startup and signed IPA creation; preserve that verdict and reuse its unchanged simulator and signed device archive for separate retained verification. Full Python validation passes 754 tests with five existing skips. Actual retained lifecycle and release verification remain required.

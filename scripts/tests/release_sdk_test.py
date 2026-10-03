@@ -3,6 +3,45 @@ import sys,unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from release_sdk import expected_names
 class SdkMatrixTests(unittest.TestCase):
+    def test_retained_older_sdk_publishes_and_verifies_without_regressing_latest(self):
+        import tempfile, hashlib, json, io
+        from unittest.mock import patch
+        from release_sdk import publish_archives, verify_public
+        from release_automation_test import candidate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); payload = root / 'sdk.zip'; payload.write_bytes(b'qualified sdk')
+            sha = hashlib.sha256(payload.read_bytes()).hexdigest(); public = root / 'public'
+            old = candidate(); newer = candidate(); newer['release_id'] = 'b' * 64
+            newer['versions']['sdk'] = '9.0.0'
+            current = publish_archives(newer, [(payload, sha)], public)
+            before = (public / 'latest.json').read_bytes()
+            retained = publish_archives(old, [(payload, sha)], public)
+            self.assertEqual((public / 'latest.json').read_bytes(), before)
+            self.assertEqual(json.loads((public / old['release_id'] / 'index.json').read_text()), retained)
+            self.assertEqual(json.loads(before), current)
+            base = 'https://sdk.example/updates'
+            def served(url, timeout):
+                relative = url.removeprefix(base + '/sdk/')
+                stream = io.BytesIO((public / relative).read_bytes()); stream.url = url
+                return stream
+            with patch('release_sdk.urllib.request.urlopen', side_effect=served) as fetch:
+                verify_public(retained, base)
+            self.assertEqual(fetch.call_args_list[0].args[0], base + '/sdk/' + old['release_id'] + '/index.json')
+            self.assertEqual(fetch.call_count, 2)
+
+    def test_retained_sdk_index_cannot_be_relabelled(self):
+        import tempfile, hashlib, json
+        from release_sdk import publish_archives
+        from release_automation_test import candidate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); payload = root / 'sdk.zip'; payload.write_bytes(b'qualified sdk')
+            sha = hashlib.sha256(payload.read_bytes()).hexdigest(); manifest = candidate(); public = root / 'public'
+            first = json.loads(json.dumps(publish_archives(manifest, [(payload, sha)], public)))
+            manifest['sources']['gcoms']['commit'] = 'd' * 40
+            with self.assertRaisesRegex(ValueError, 'immutable SDK index changed'):
+                publish_archives(manifest, [(payload, sha)], public)
+            self.assertEqual(json.loads((public / 'latest.json').read_text()), first)
+
     def test_all_native_roles_and_push_variants_have_distinct_exact_source_names(self):
         commit='a'*40
         desktop=expected_names('rust',commit);base=expected_names('mobile-base',commit);push=expected_names('mobile-push',commit)
