@@ -56,6 +56,9 @@ def invoke(target, stage, manifest, directory, previous=None):
     env = dict(os.environ, GCHAT_RELEASE_MANIFEST=str(source),
                GCHAT_DEPLOYMENT_TARGET=str(spec), GCHAT_DEPLOYMENT_STAGE=stage,
                GCHAT_DEPLOYMENT_RECEIPT=str(output), GCHAT_DEPLOYMENT_PREVIOUS=str(prior))
+    if directory.parent.name == manifest['release_id'] and directory.parent.parent.name == 'deployment':
+        write(directory.parent / 'progress.json', {'target': target['id'], 'stage': stage,
+              'started_at': int(time.time()), 'deadline_at': int(time.time()) + target.get('timeout', 120)})
     with (directory / (stage + '-' + stamp + '.log')).open('xb') as stream:
         result = subprocess.run(target['workers'][stage], env=env, stdout=stream,
                                 stderr=subprocess.STDOUT, timeout=target.get('timeout', 120))
@@ -265,3 +268,22 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                              'healthy': item.get('observed', {}).get('healthy'),
                              'matches': item.get('observed', {}).get('matches')}
                             for ident, item in report['targets'].items()]})
+
+
+def main():
+    import argparse
+    from release_pair import validate
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ('state', 'manifest', 'inventory', 'receipt'):
+        parser.add_argument('--' + name, type=Path, required=True)
+    args = parser.parse_args()
+    manifest = validate(json.loads(args.manifest.read_text()))
+    config = json.loads(args.inventory.read_text())
+    result = reconcile(args.state, manifest, config)
+    write(args.receipt, {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+                        'revision': hashlib.sha256(canonical(config)).hexdigest(),
+                        'step_completed': True, 'deployed': result, 'completed_at': int(time.time())})
+
+
+if __name__ == '__main__':
+    main()

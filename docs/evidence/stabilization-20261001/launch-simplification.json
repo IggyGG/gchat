@@ -13,17 +13,24 @@
     "sealed independent controller image qualification",
     "full checks of matching boundary targets without restarting unchanged services",
     "one active release and one newest pending release without dropping original dispatched requests",
-    "new build admission pauses at the reserve while already admitted workers still finish reconciliation"
+    "new build admission pauses at the reserve while already admitted workers still finish reconciliation",
+    "one serial deployment child with frozen inputs and bound step receipts; coordinator status stays responsive",
+    "six concurrent client acceptance workers separate from three artifact workers",
+    "public worker stage/deadline progress and controller observation age",
+    "busy rollback requests remain queued behind the rollout lock",
+    "per-matrix SDK qualification reuse with all qualification inputs, original successful provider identity and archive hashes verified"
   ],
   "tests": {
-    "python": 734,
+    "python": 750,
     "existing_skips": 5,
-    "log_sha256": "df4f480311ccc2a5ec84616ce0b8f3c29078fe8ffecfacbfe063088552140b61",
-    "L0_source_paths": 811,
+    "log_sha256": "b7334ca5a0fd7d37c07e4f46caa187ef13aade020f3618eec38fb3a1f9df1707",
+    "L0_source_paths": 814,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
     "final_focused_controls": 37,
-    "single_flight_controls": 8
+    "single_flight_controls": 9,
+    "sdk_reuse_controls": 7,
+    "deployment_runner_controls": 6
   },
   "live_operator": {
     "installed": true,
@@ -39,10 +46,30 @@
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "749eb913bfd9587ce18f44a422623d3176729247",
-  "active_controller_kubernetes_checks": 203,
+  "active_controller_source": "a5231de3b836c64ba9fbd21c76f36e718dace5ef",
+  "active_controller_kubernetes_checks": 212,
   "live_worker_entry_failure_retained": true,
-  "entry_point_fix_requires_new_image": true,
-  "single_flight_active": false,
-  "storage_frontend_fault": "Longhorn iSCSI frontend retained a dead iscsid namespace; backend and three healthy replicas already expanded to 160 GiB"
+  "entry_point_fix_requires_new_image": false,
+  "single_flight_active": true,
+  "storage_frontend_fault": "repaired by restarting only the owned release engine process with no active volume consumers; original three replicas remain healthy",
+  "asynchronous_deployment_active": false,
+  "six_acceptance_workers_active": false,
+  "sdk_qualification_reuse_active": false,
+  "release_filesystem_gib": 160,
+  "fleet_progress": {
+    "native_relays_deployed_and_healthy": 8,
+    "inventory_targets": 17,
+    "first_full_canary_passed": true,
+    "full_canary_authenticated_acks": 6,
+    "full_canary_file_bytes": 16777216,
+    "full_canary_file_completion_seconds": 122.685681,
+    "full_canary_total_seconds": 240.031106,
+    "remaining_blocker": "triform-5 disk pressure; registry and anchor-2 unavailable"
+  },
+  "pending_native_qualification": [
+    "Intel Mac installer: retained original GComs resume fixture failure",
+    "iOS original workflow still running",
+    "installed network acceptance and publication after infrastructure rollout"
+  ],
+  "sdk_original_push_matrix_success": true
 }

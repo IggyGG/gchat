@@ -59,11 +59,20 @@ def status(state, release=None, now=None):
         if 'images' in item['running']:
             item['running']['images'] = [{'container': image.get('container'), 'image_id': image.get('image_id')}
                                          for image in item['running']['images']]
+    public_path = state / 'public/status.json'
+    public = json.loads(public_path.read_text()) if public_path.is_file() else {}
+    progress_path = state / 'deployment' / release / 'progress.json'
+    progress = json.loads(progress_path.read_text()) if progress_path.is_file() else {}
     return {'schema': 1, 'release_id': release, 'sequence': candidate['seq'],
             'versions': manifest['versions'], 'sources': manifest['sources'], 'observed_at': now,
             'deployment': {'state': deployment.get('state', 'waiting_artifacts'),
                            'reason': deployment.get('reason', ''), 'targets': targets},
-            'platforms': platforms}
+            'platforms': platforms, 'flight': public.get('flight'),
+            'controller_status_age_seconds': max(0, now - public['observed_at']) if public.get('observed_at') else None,
+            'running_workers': [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')
+                                 if key in item} for item in public.get('running_workers', [])],
+            'deployment_progress': {key: progress[key] for key in ('target', 'stage', 'started_at', 'deadline_at')
+                                    if key in progress}}
 
 
 def request(state, action, release=None, platform=None):
@@ -130,6 +139,8 @@ def consume(controller):
                 result = {'state': 'accepted', 'rollback': 'pending'}
             else:
                 raise ValueError('unsupported operator request')
+        except BlockingIOError:
+            continue  # Keep the operator request queued while the rollout owns its lock.
         except (ValueError, KeyError, TypeError, OSError) as error:
             result = {'state': 'rejected', 'reason': str(error) if isinstance(error, ValueError) else type(error).__name__}
         atomic_json(output, result)

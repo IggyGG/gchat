@@ -8,8 +8,12 @@ These commands use the running coordinator and never create a second ledger writ
 Store publications cannot be rolled back by that command. Use `--json` for status
 integration and `--state PATH` only when operating on a local controller state.
 
-New source changes settle for ten minutes. Three artifact workers can progress
-concurrently, while infrastructure activation stays serial. Production defaults admit
+New source changes settle for ten minutes. Three artifact workers and up to six
+installed-client acceptance workers can progress concurrently. Infrastructure
+activation stays serial in one owned worker, so a long canary does not delay the
+coordinator's polling or status updates. Each step has a deadline and source-bound
+receipt. Status exposes active stages, deadlines and controller observation age.
+Rollback requests remain queued while a deployment owns its lock. Production defaults admit
 one active release and expose one newest pending release. A blocked active release
 holds new admission; already dispatched provider requests retain their original
 identity and keep being reconciled. Once all internal stages finish, mobile
@@ -40,6 +44,14 @@ revocation before updating its root-owned policy. Original operators and policy
 backups remain retained.
 
 The release publisher preserves original provider archives and source receipts.
+SDK qualification is cached per completed matrix. A hit requires identical Git
+entries for every build, test, toolchain, feature, workflow and policy input; only
+individually reviewed prose/status files are excluded. The controller rechecks the
+original successful provider run and all expected archive hashes and sizes before
+reuse. A desktop matrix can be reused while mobile qualification continues. The
+public SDK index includes the requested source and original qualification source;
+original archive names and embedded source labels are preserved. Partial or
+cancelled provider runs remain failures and cannot become cached passes.
 `release_compaction.py --state /state` verifies each completed build's original
 archive before sharing identical extraction files. It preserves every path and
 byte, checks ownership/mode compatibility and refuses changed files or links.

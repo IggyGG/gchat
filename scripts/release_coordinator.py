@@ -83,13 +83,24 @@ class Coordinator:
             raise ValueError('nonblocking_workers must be a boolean')
         if type(config.get('single_flight', False)) is not bool:
             raise ValueError('single_flight must be a boolean')
+        if type(config.get('nonblocking_deployment', False)) is not bool:
+            raise ValueError('nonblocking_deployment must be a boolean')
+        self.maximum_acceptance_workers = config.get('maximum_acceptance_workers', min(self.maximum_workers, 6))
+        if type(self.maximum_acceptance_workers) is not int or not 1 <= self.maximum_acceptance_workers <= 6:
+            raise ValueError('maximum_acceptance_workers must be an integer between 1 and 6')
+        deployment_timeout = config.get('deployment_step_timeout_seconds', 1800)
+        if type(deployment_timeout) is not int or not 900 <= deployment_timeout <= 3600:
+            raise ValueError('deployment_step_timeout_seconds must be an integer between 900 and 3600')
         self.state = Path(state).resolve()
         self.state.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(self.state / 'ledger.sqlite')
         self.config = config
         self.running_workers = {}
+        from release_deployment_runner import DeploymentRunner
+        self.deployment_runner = DeploymentRunner(self.state, deployment_timeout)
 
     def close_workers(self):
+        self.deployment_runner.close()
         for item in list(self.running_workers.values()):
             process = item['process']
             if process.poll() is None:
@@ -196,11 +207,14 @@ class Coordinator:
             selected = self.ledger.db.execute('SELECT id,seq FROM candidates WHERE id=?',
                                               (active['release_id'],)).fetchone()
         else:
+            from release_flight import select
+            flight = select(self.state, self.ledger)['active'] if self.config.get('single_flight', False) else None
             selected = self.ledger.db.execute('''SELECT c.id,c.seq FROM candidates c
                 WHERE EXISTS (SELECT 1 FROM platforms p WHERE p.candidate=c.id
                     AND ((? AND p.platform='linux-x86_64') OR (NOT ? AND p.platform!='sdk')) AND p.state IN
                     ('verified','publishing','submitting','processing','in_review','available'))
-                ORDER BY c.seq DESC LIMIT 1''', (infrastructure_required, infrastructure_required)).fetchone()
+                AND (? IS NULL OR c.id=?) ORDER BY c.seq DESC LIMIT 1''',
+                (infrastructure_required, infrastructure_required, flight, flight)).fetchone()
         if selected is None or (previous and selected['seq'] < previous['sequence']):
             return
         manifest = self.ledger.manifest(selected['id'])
@@ -218,8 +232,11 @@ class Coordinator:
             # is available, so queued/superseded Linux work cannot stall rollout.
             atomic_json(desired_path, {'release_id': selected['id'], 'sequence': selected['seq']})
             from release_control import deployment_config
-            reconcile(self.state, manifest, deployment_config(self.state, manifest,
-                json.loads(Path(configured).read_text())))
+            config = deployment_config(self.state, manifest, json.loads(Path(configured).read_text()))
+            if self.config.get('nonblocking_deployment', False):
+                self.deployment_runner.step(manifest, config)
+            else:
+                reconcile(self.state, manifest, config)
         except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
             atomic_json(self.state / 'public/deployment.json', {
                 'schema': 1, 'release_id': selected['id'], 'state': 'blocked',
@@ -307,7 +324,10 @@ class Coordinator:
                            GCHAT_RELEASE_RECEIPT=str(output), GCHAT_RELEASE_TARGET=platform,
                            GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'])
         if self.config.get('nonblocking_workers', False):
-            if len(self.running_workers) >= self.maximum_workers:
+            acceptance = stage == 'acceptance'
+            occupied = sum((item['stage'] == 'acceptance') == acceptance for item in self.running_workers.values())
+            limit = self.maximum_acceptance_workers if acceptance else self.maximum_workers
+            if occupied >= limit:
                 return None
             log_path = work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')
             log = log_path.open('xb')
@@ -321,7 +341,8 @@ class Coordinator:
             timeout = recipe.get('timeout', 120)
             self.running_workers[effect['id']] = {'process': process, 'log': log, 'argv': argv,
                 'release_id': manifest['release_id'], 'platform': platform, 'stage': stage,
-                'timeout': timeout, 'deadline': time.monotonic() + timeout}
+                'timeout': timeout, 'deadline': time.monotonic() + timeout,
+                'started_at': int(time.time()), 'deadline_at': int(time.time()) + timeout}
             atomic_json(work / 'progress.json', {'stage': stage, 'started_at': int(time.time()),
                         'deadline_at': int(time.time()) + timeout, 'log': log_path.name})
             return None
@@ -449,8 +470,9 @@ class Coordinator:
         if self.config.get('single_flight', False):
             from release_flight import select
             public['flight'] = select(self.state, self.ledger)
-        public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage')}
+        public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')}
                                     for item in self.running_workers.values()]
+        public['deployment_worker'] = self.deployment_runner.progress()
         atomic_json(self.state / 'public/status.json', public)
         os.chmod(self.state / 'public/status.json', 0o644)
 

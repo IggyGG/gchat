@@ -64,6 +64,26 @@ class FlightTests(unittest.TestCase):
         self.assertEqual(select(self.root, self.controller.ledger),
                          {'schema': 1, 'active': self.releases[2], 'pending': None})
 
+    def test_later_ready_artifact_cannot_advance_an_incomplete_active_flight(self):
+        from unittest.mock import patch
+        import hashlib
+        from release_pair import canonical
+        inventory = self.root / 'inventory.json';atomic_json(inventory, {'targets': []})
+        controller = Coordinator(self.root / 'deployment-fixture',
+                                 {'single_flight': True, 'deployment_file': str(inventory)})
+        self.addCleanup(controller.ledger.close)
+        releases = []
+        for number in (1, 2):
+            manifest = candidate(number);manifest['policy']['deployment_required'] = True
+            manifest['release_id'] = hashlib.sha256(canonical({k:v for k,v in manifest.items() if k!='release_id'})).hexdigest()
+            release = controller.ledger.add(manifest);releases.append(release)
+            for state in ('building', 'verifying', 'verified'):
+                controller.ledger.transition(release, 'linux-x86_64', state, evidence='a'*64)
+        atomic_json(controller.state / 'deployment/desired.json', {'release_id': releases[0], 'sequence': 1})
+        with patch('release_deployment.reconcile') as reconcile:
+            controller.reconcile_deployment()
+        self.assertEqual(reconcile.call_args.args[1]['release_id'], releases[0])
+
     def test_invalid_flight_configuration_creates_no_state(self):
         path = self.root / 'unused'
         with self.assertRaisesRegex(ValueError, 'boolean'):

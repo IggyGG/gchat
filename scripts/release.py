@@ -30,6 +30,13 @@ def main():
             print(json.dumps(value, indent=2))
         else:
             print(f"Release {value['sequence']}  {value['release_id']}")
+            if value.get('flight'):
+                print(f"Pending release: {value['flight'].get('pending') or 'none'}")
+            progress = value.get('deployment_progress')
+            if progress:
+                print(f"Active stage: {progress['target']}/{progress['stage']}  deadline={progress['deadline_at']}")
+            for worker in value.get('running_workers', []):
+                print(f"Worker: {worker['platform']}/{worker['stage']}")
             deployment = value['deployment']
             print(f"Deployment: {deployment['state']}  {deployment['reason']}")
             for target in deployment['targets']:

@@ -79,6 +79,31 @@ class ControlTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             control.request(self.root, 'rollback', platform='android')
 
+    def test_rollback_waits_for_busy_rollout_instead_of_losing_the_operator_request(self):
+        from unittest.mock import patch
+        response = control.request(self.root, 'rollback')
+        pending = self.root / 'control/incoming' / (response['request_id'] + '.json')
+        with patch('release_deployment.request_rollback', side_effect=BlockingIOError):
+            control.consume(self.controller)
+        self.assertTrue(pending.is_file())
+        with patch('release_deployment.request_rollback') as rollback:
+            control.consume(self.controller)
+        rollback.assert_called_once_with(self.root, self.release)
+        self.assertFalse(pending.exists())
+
+    def test_status_exposes_flight_stage_and_deadline_without_private_worker_details(self):
+        atomic_json(self.root / 'public/status.json', {'observed_at': 100,
+                    'flight': {'active': self.release, 'pending': None},
+                    'running_workers': [{'platform': 'ios', 'stage': 'build', 'private': '/private/worker'}]})
+        atomic_json(self.root / 'deployment' / self.release / 'progress.json',
+                    {'target': 'relay-1', 'stage': 'check', 'started_at': 100, 'deadline_at': 1000,
+                     'log': '/private/rollout'})
+        result = control.status(self.root, now=130)
+        self.assertEqual(result['controller_status_age_seconds'], 30)
+        self.assertEqual(result['deployment_progress']['deadline_at'], 1000)
+        self.assertEqual(result['flight']['active'], self.release)
+        self.assertNotIn('/private/', json.dumps(result))
+
     @unittest.skipUnless(os.name == 'posix', 'POSIX symlinks')
     def test_symlinked_operator_request_is_rejected_without_reading_target(self):
         incoming = self.root / 'control/incoming'
