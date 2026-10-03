@@ -199,6 +199,7 @@ class MobileAcceptanceTests(unittest.TestCase):
             with patch.object(ui,'shell',side_effect=['','',xml]):
                 self.assertEqual(len(list(ui.tree().iter('node'))),3)
             self.assertEqual(ui.ui_observation,{'attempts':1,'errors':0,'application_nodes':3,
+                'display_size':[720,1440],'display_density':360,
                 'password_fields':1,'create_identity':1,'reconnect':0,
                 'public_controls':{'network':0,'files':0,'send':0,'connect_to_gchat':0,'close_dialog':0,'close_details':0,'nickname':0,'invitation_preview':0,'join':0,
                     'continue':0,'validating':0,'notifications':0}})

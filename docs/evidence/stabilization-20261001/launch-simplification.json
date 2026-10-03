@@ -25,7 +25,7 @@
     "python": 834,
     "existing_skips": 5,
     "log_sha256": "377cbe6bf085c82bbab0935f1cabba80b9c67ec56bb581b7ec78d25744ecb386",
-    "L0_source_paths": 824,
+    "L0_source_paths": 825,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
     "final_focused_controls": 37,
@@ -405,7 +405,15 @@
     "native_worker_dependency": "Ubuntu tesseract-ocr",
     "ios_assertion_locations": "successor, static lines only",
     "android_display_correction": "successor: 720x1440 physical pixels, 360 dpi; same logical viewport",
-    "ios_input_correction": "successor: unchanged 256-bit random entropy, hexadecimal input, static lengths/masking diagnostics"
+    "ios_input_correction": "successor: unchanged 256-bit random entropy, hexadecimal input, static lengths/masking diagnostics",
+    "display_diagnostic_assertion_correction": {
+      "previous_source": "d6fb12c",
+      "original_focused_verdict": false,
+      "cause": "fixed privacy assertion did not include new public display size and density",
+      "private_text_still_excluded": true,
+      "corrected_focused_tests": 44,
+      "corrected_focused_passed": true
+    }
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",
