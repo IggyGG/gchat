@@ -1,4 +1,6 @@
-Active launch state (2026-10-03): all 17 infrastructure targets are deployed and healthy. Linux, SDK and Apple Silicon Mac 0.1.98 are published. The corrected 3b35330 controller is active with both containers ready, zero restarts, 312 cold-pull Kubernetes checks and verified rollback retention. The exact retained iOS verification succeeded (37118617630) without rebuilding/re-signing its IPA; collection, installed iOS acceptance and store publication remain separate gates. Android, Windows and Intel Mac retries are running. France-inclusive Apple encryption approval remains IN_REVIEW; its automatic waiting handling is active. The Linux package is installed at 0.1.98 and the launcher chooses it; the already-running desktop still uses its previous executable. No personal app was restarted. Full launch remains open on the remaining client gates and store availability.
+Current launch (2026-10-03): all 17 infrastructure targets are deployed and healthy. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. The qualified 3b35330 controller is active. The retained iOS verification passed without rebuilding or re-signing its IPA. Android installed acceptance still needs correction; iOS installed acceptance is held before an older store lane. Apple encryption approval remains IN_REVIEW, including France. Linux 0.1.98 is installed and selected on a fresh launcher start; the open desktop still uses its previous executable. Full launch remains open on the mobile gates and external store availability.
+
+Mobile launch corrections awaiting controller qualification: baseline rotation requires an unchanged source-bound installed acceptance receipt; older publications remain available but cannot displace the configured qualified seed. Android startup records only fixed control counts and error types. Native acceptance and compatibility finish before store serialization. A separate iOS prerequisite worker reads Apple encryption status without uploading or submitting, so a qualified pending approval can release the global flight while the original store lane continues reconciliation.
 
 Retained signing and native qualification can feed client acceptance and publication directly through registered provider bindings. A failed iOS verification may use one separately frozen helper after its exact terminal failure and original request are retained. Unknown dispatches continue reconciliation. This handoff correction is active in the qualified b7c0d02 controller.
 
@@ -272,8 +274,10 @@ not qualify rendered GUI interaction or personal installations.
 
 `acceptance.json` references the restricted grant and deployment policies and
 optionally pins initial native `baselines` by platform. Later runs can select the
-latest available normally retained provider for that platform. A failed historical
-provider or missing baseline cannot be relabelled as a successful native run.
+latest available normally retained provider with unchanged source-bound installed
+acceptance evidence for that platform. A historical publication without that
+receipt leaves the qualified seed in place. Changed or failed evidence remains an
+error; an older publication is never relabelled as a successful native run.
 Only a short-lived repository secret carries bootstrap canary authority; deployment
 and signing credentials stay in the coordinator. Grant revocation and owned secret
 removal precede collection of completed evidence. Lost dispatch replies reconcile

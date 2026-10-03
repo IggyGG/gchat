@@ -169,6 +169,23 @@ class MobileAcceptanceTests(unittest.TestCase):
         self.assertNotIn('private-test-invitation', encoded)
         self.assertNotIn('/private/profile/path', encoded)
 
+    def test_android_startup_diagnostics_retain_control_counts_without_private_hierarchy(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            xml='<hierarchy><node package="boo.gchat.app" text="private-canary-invitation">' \
+                '<node package="boo.gchat.app" text="Create identity"/>' \
+                '<node package="boo.gchat.app" password="true" text="private-passphrase"/>' \
+                '</node></hierarchy>'
+            with patch.object(ui,'shell',side_effect=['','',xml]):
+                self.assertEqual(len(list(ui.tree().iter('node'))),3)
+            self.assertEqual(ui.ui_observation,{'attempts':1,'errors':0,'application_nodes':3,
+                'password_fields':1,'create_identity':1,'reconnect':0})
+            with patch.object(ui,'shell',side_effect=['','', 'invalid private hierarchy']):
+                self.assertEqual(ui.tree().tag,'hierarchy')
+            self.assertEqual(ui.ui_observation['last_error'],'ParseError')
+            self.assertEqual(ui.ui_observation['errors'],1)
+            self.assertNotIn('private',json.dumps(ui.ui_observation))
+
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):
             _, specs, *_ = mobile_fixture(target)

@@ -392,11 +392,6 @@ class Coordinator:
         try:
             if state in {'verified', 'publishing', 'submitting'} and platform != 'sdk' and not self.deployment_ready(manifest):
                 return
-            if state == 'verified' and platform in {'ios', 'android'}:
-                other = self.ledger.db.execute("""SELECT 1 FROM platforms WHERE platform=? AND candidate!=?
-                    AND (state IN ('submitting','processing','in_review') OR
-                    (state='blocked' AND resume_state IN ('submitting','processing','in_review')))""", (platform, release)).fetchone()
-                if other: return  # retain the candidate while the current review finishes
             if state == 'queued':
                 active = self.ledger.db.execute("""SELECT 1 FROM platforms
                     WHERE platform=? AND candidate!=? AND state IN ('building','verifying')""",
@@ -422,6 +417,17 @@ class Coordinator:
                     raise ValueError('compatible deployed relay receipt is missing')
                 if platform == 'sdk' and report.get('consumers_compatible') is not True:
                     raise ValueError('SDK consumer compatibility receipt is missing')
+                if platform in {'ios', 'android'}:
+                    other = self.ledger.db.execute("""SELECT 1 FROM platforms
+                        WHERE platform=? AND candidate!=?
+                        AND (state IN ('submitting','processing','in_review') OR
+                        (state='blocked' AND resume_state IN ('submitting','processing','in_review')))""",
+                        (platform, release)).fetchone()
+                    if other:
+                        if platform == 'ios' and 'prerequisite' in self.config['workers'][platform]:
+                            stage = 'prerequisite'
+                            self.execute(manifest, platform, stage)
+                        return  # Native checks can finish while store submission waits.
                 next_state = 'submitting' if platform in {'ios', 'android'} else 'publishing'
             else:
                 next_state = {'building': 'verifying', 'verifying': 'verified',

@@ -14,7 +14,8 @@ def external_ios_wait(state, ledger, release):
     from release_publish import job
     from release_feed import digest
     manifest = ledger.manifest(release)
-    work = job(Path(state), manifest, 'ios', 'submit')
+    stage = 'prerequisite' if ledger.target(release, 'ios')['state'] == 'verified' else 'submit'
+    work = job(Path(state), manifest, 'ios', stage)
     if not (work/'attempted.json').is_file():
         return False
     try:
@@ -43,7 +44,7 @@ def internal_complete(ledger, release, state=None):
     rows = ledger.db.execute('SELECT platform,state FROM platforms WHERE candidate=?', (release,)).fetchall()
     return bool(rows) and all(row['state'] in DONE or
         (row['platform'] in ('ios', 'android') and row['state'] in ('processing', 'in_review')) or
-        (row['platform'] == 'ios' and row['state'] == 'submitting'
+        (row['platform'] == 'ios' and row['state'] in ('verified', 'submitting')
          and external_ios_wait(state, ledger, release)) for row in rows)
 
 
@@ -88,7 +89,7 @@ def can_build(coordinator, release, platform):
 def can_execute(coordinator, release, platform, stage, kind):
     if not coordinator.config.get('single_flight', False):
         return True
-    if stage in ('verify', 'observe'):
+    if stage in ('verify', 'observe', 'prerequisite'):
         return True  # Retain completed artifacts and observe external store reviews.
     flight = select(coordinator.state, coordinator.ledger)
     return release == flight['active'] or already_dispatched(coordinator.state, coordinator.ledger,

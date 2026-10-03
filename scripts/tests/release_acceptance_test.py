@@ -403,6 +403,13 @@ class NativeAcceptanceTests(unittest.TestCase):
                 release = ledger.add(manifest)
                 for state in ('building', 'verifying', 'verified', 'publishing', 'available'):
                     ledger.transition(release, target, state, evidence='a'*64)
+                work = acceptance.job(root, manifest, target, 'acceptance')
+                work.mkdir(parents=True)
+                (work / 'native.zip').write_bytes(b'installed native evidence')
+                atomic_json(work / 'receipt.json', {'schema':1, 'release_id':release,
+                    'sources':manifest['sources'], 'platform':target, 'stage':'acceptance',
+                    'passed':True, 'source_unchanged':True,
+                    'evidence':[{'path':'native.zip','sha256':acceptance.digest(work / 'native.zip')}]})
             current = manifests[2]
             specs = {m['release_id']: {'sources': {k:v['commit'] for k,v in m['sources'].items()},
                                      'archive': str(i)*64}
@@ -431,6 +438,44 @@ class NativeAcceptanceTests(unittest.TestCase):
             with patch.object(acceptance,'provider',side_effect=ValueError('corrupt source binding')):
                 with self.assertRaisesRegex(ValueError,'corrupt source binding'):
                     acceptance.baseline(root,target,config,current)
+
+    def test_legacy_available_release_cannot_displace_qualified_seed_without_installed_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary, closing(Ledger(Path(temporary) / 'ledger.sqlite')) as ledger:
+            root = Path(temporary); old, current = candidate(1), candidate(2); target = 'android'
+            release = ledger.add(old)
+            for state in ('building','verifying','verified','submitting','processing','available'):
+                ledger.transition(release,target,state,evidence='a'*64)
+            ledger.add(current)
+            seed = {'sources':{'gchat':'5'*40,'gcoms':'6'*40},'archive':'e'*64}
+            with patch.object(acceptance,'provider') as provider:
+                self.assertEqual(acceptance.baseline(root,target,{'baselines':{target:seed}},current),seed)
+                provider.assert_not_called()
+            self.assertEqual(ledger.target(release,target)['state'],'available')
+
+    def test_installed_predecessor_requires_unchanged_source_bound_evidence_and_latest_effect(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); manifest = candidate(); target = 'android'
+            kind = 'acceptance-after-' + 'a'*64
+            pointer = root / 'acceptance-effects' / manifest['release_id'] / (target+'.json')
+            atomic_json(pointer,{'kind':kind})
+            self.assertFalse(acceptance.installed_predecessor(root,manifest,target))
+            work = acceptance.job(root,manifest,target,kind); work.mkdir(parents=True)
+            (work/'native.zip').write_bytes(b'installed native evidence')
+            report = {'schema':1,'release_id':manifest['release_id'],'sources':manifest['sources'],
+                'platform':target,'stage':'acceptance','passed':True,'source_unchanged':True,
+                'evidence':[{'path':'native.zip','sha256':acceptance.digest(work/'native.zip')}]}
+            atomic_json(work/'receipt.json',report)
+            self.assertTrue(acceptance.installed_predecessor(root,manifest,target))
+            for key,value in [('passed',False),('source_unchanged',False),('platform','ios'),('sources',candidate(2)['sources'])]:
+                atomic_json(work/'receipt.json',{**report,key:value})
+                with self.subTest(key=key),self.assertRaises(ValueError):
+                    acceptance.installed_predecessor(root,manifest,target)
+            atomic_json(work/'receipt.json',report); (work/'native.zip').write_bytes(b'changed')
+            with self.assertRaisesRegex(ValueError,'evidence changed'):
+                acceptance.installed_predecessor(root,manifest,target)
+            atomic_json(pointer,{'kind':'build'})
+            with self.assertRaisesRegex(ValueError,'effect identity'):
+                acceptance.installed_predecessor(root,manifest,target)
 
     def test_cleanup_failure_still_stops_other_children_and_retains_failed_report(self):
         driver = acceptance.module('test-native-upgrade')

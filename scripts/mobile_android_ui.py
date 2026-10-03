@@ -47,6 +47,7 @@ class AndroidUI:
         self.uid = None
         self.names, self.bodies = set(), set()
         self.exports = []
+        self.ui_observation = {'attempts':0, 'errors':0}
         require(self.shell('getprop', 'ro.kernel.qemu') == '1', 'physical device refused')
         expected = 'gchat-release-fixture-' + serial.removeprefix('emulator-')
         require(self.command('emu', 'avd', 'name').splitlines()[0] == expected,
@@ -75,12 +76,21 @@ class AndroidUI:
         return self.command('shell', *args, absent=absent or absent_ok)
 
     def tree(self):
+        self.ui_observation['attempts'] += 1
         self.shell('rm', '-f', self.dump)
         try:
             self.shell('uiautomator', 'dump', self.dump)
-            return ET.fromstring(self.shell('cat', self.dump))
-        except (ValueError, ET.ParseError):
+            tree = ET.fromstring(self.shell('cat', self.dump))
+        except (ValueError, ET.ParseError) as error:
+            self.ui_observation.update(errors=self.ui_observation['errors']+1, last_error=type(error).__name__)
             return ET.Element('hierarchy')
+        nodes = [node for node in tree.iter('node') if node.get('package') == android.PACKAGE]
+        # Fixed control counts diagnose startup without retaining private UI text.
+        self.ui_observation.update(application_nodes=len(nodes),
+            password_fields=sum(node.get('password') == 'true' for node in nodes),
+            create_identity=sum(self.text('Create identity')(node) for node in nodes),
+            reconnect=sum(self.text('Reconnect')(node) for node in nodes))
+        return tree
 
     def until(self, fn, timeout=60):
         end = min(self.deadline(), time.monotonic() + timeout)

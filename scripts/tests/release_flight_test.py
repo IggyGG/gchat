@@ -7,7 +7,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_coordinator import Coordinator, atomic_json
 from release_automation_test import candidate
-from release_flight import select, can_build, can_execute
+from release_flight import select, can_build, can_execute, internal_complete
 
 
 class FlightTests(unittest.TestCase):
@@ -82,15 +82,16 @@ class FlightTests(unittest.TestCase):
         self.assertEqual(select(self.root, self.controller.ledger)['active'], self.releases[2])
         self.assertTrue(can_build(self.controller, self.releases[2], 'ios'))
 
-    def external_wait_fixture(self):
+    def external_wait_fixture(self, stage='submit'):
         from release_store_worker import retain_external_wait
         from release_publish import job
         from release_feed import digest
         manifest=self.controller.ledger.manifest(self.releases[0])
         self.controller.ledger.db.execute("UPDATE platforms SET state='available' WHERE candidate=?",(self.releases[0],))
-        self.controller.ledger.db.execute("UPDATE platforms SET state='submitting' WHERE candidate=? AND platform='ios'",(self.releases[0],))
-        effect=self.controller.ledger.effect(self.releases[0],'ios','submit')
-        work=job(self.root,manifest,'ios','submit')
+        self.controller.ledger.db.execute("UPDATE platforms SET state=? WHERE candidate=? AND platform='ios'",
+            ('verified' if stage=='prerequisite' else 'submitting',self.releases[0]))
+        effect=self.controller.ledger.effect(self.releases[0],'ios',stage)
+        work=job(self.root,manifest,'ios',stage)
         atomic_json(work/'attempted.json',{'request_id':effect['id']})
         gates=[]
         for stage in ('verify','compatibility'):
@@ -114,6 +115,16 @@ class FlightTests(unittest.TestCase):
         self.assertTrue(can_build(self.controller,self.releases[2],'linux-x86_64'))
         self.assertTrue((work/'external-prerequisite.json').is_file())
         self.assertFalse((work/'receipt.json').exists())
+
+    def test_verified_ios_read_only_prerequisite_releases_flight_without_starting_store_submission(self):
+        from release_publish import job
+        work,gates=self.external_wait_fixture('prerequisite')
+        self.assertEqual(select(self.root,self.controller.ledger)['active'],self.releases[2])
+        self.assertEqual(self.controller.ledger.target(self.releases[0],'ios')['state'],'verified')
+        self.assertFalse(job(self.root,self.controller.ledger.manifest(self.releases[0]),'ios','submit').exists())
+        self.assertTrue(can_execute(self.controller,self.releases[0],'ios','prerequisite','prerequisite'))
+        (work/'attempted.json').unlink()
+        self.assertFalse(internal_complete(self.controller.ledger,self.releases[0],self.root))
 
     def test_external_wait_cannot_bypass_missing_changed_expired_or_wrong_source_gates(self):
         for change in ('evidence','receipt','time','source','france','state','dispatch','uploaded'):

@@ -26,6 +26,7 @@ class ConfigurationTests(unittest.TestCase):
         for platform,stages in config['workers'].items():
             expected={'build','verify','compatibility'}|({'submit','observe'} if platform in {'ios','android'} else {'publish'})
             if platform=='linux-x86_64':expected.add('infrastructure')
+            if platform=='ios':expected.add('prerequisite')
             if platform!='sdk':expected.add('acceptance')
             self.assertEqual(set(stages),expected)
             if platform!='sdk':

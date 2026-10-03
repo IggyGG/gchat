@@ -142,6 +142,8 @@ def main():
         report['error_frames'] = error_frames(error)
         report['stage'] = journey.stage if journey is not None else 'retained-inputs-or-device-setup'
     finally:
+        if target == 'android' and ui is not None:
+            report['ui_observation'] = dict(ui.ui_observation)
         invitation.unlink(missing_ok=True)
         report['invitation_removed'] = not invitation.exists()
         if journey is not None:

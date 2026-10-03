@@ -222,7 +222,13 @@
     "macos-x86_64": "acceptance_running",
     "macos-aarch64": "available",
     "ios": "retained_verification_passed",
-    "source_fixes_active": true
+    "source_fixes_active": true,
+    "desktop_platforms_available": [
+      "linux-x86_64",
+      "windows-x86_64",
+      "macos-aarch64",
+      "macos-x86_64"
+    ]
   },
   "retained_handoff_correction": {
     "source_validated": true,
@@ -268,5 +274,12 @@
     "next_fresh_launcher_uses_managed_package": true,
     "running_desktop_uses_previous_executable": true,
     "personal_application_restarted": false
+  },
+  "mobile_release_corrections": {
+    "installed_baseline_receipt_required": true,
+    "read_only_ios_prerequisite": true,
+    "store_serialization_preserved": true,
+    "private_safe_android_control_diagnostics": true,
+    "controller_activated": false
   }
 }

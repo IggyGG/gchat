@@ -15,15 +15,20 @@ from release_stores import google,apple,submit_google,submit_apple,observe_googl
 from release_jobs import gh
 
 
-def ios_build(api,config,manifest,build_job,work):
-    # Apple's external encryption decision blocks only the iOS lane. The same
-    # already-qualified IPA is uploaded after approval; it is never rebuilt.
+def observe_encryption(api,config,manifest,work):
     declaration=api.request('GET','/v1/appEncryptionDeclarations/'+config['encryption_declaration'])['data']
     atomic_json(work/'encryption-observation.json', {'schema':1,'release_id':manifest['release_id'],
         'sources':manifest['sources'],'at':int(time.time()),
         'declaration':config['encryption_declaration'],
         'state':declaration['attributes'].get('appEncryptionDeclarationState'),
         'includes_france':declaration['attributes'].get('availableOnFrenchStore') is True})
+    return declaration
+
+
+def ios_build(api,config,manifest,build_job,work):
+    # Apple's external encryption decision blocks only the iOS lane. The same
+    # already-qualified IPA is uploaded after approval; it is never rebuilt.
+    declaration=observe_encryption(api,config,manifest,work)
     if declaration['attributes'].get('appEncryptionDeclarationState')!='APPROVED':
         return None,'Apple encryption declaration is still awaiting approval'
     if declaration['attributes'].get('availableOnFrenchStore') is not True:raise ValueError('approved declaration must include France')
@@ -106,6 +111,15 @@ def main():
     verification=job(a.state,manifest,platform,'verify')/'receipt.json';proof,_=read_receipt(verification,manifest,platform,'verify')
     compatibility=job(a.state,manifest,platform,'compatibility')/'receipt.json';compatible,_=read_receipt(compatibility,manifest,platform,'compatibility')
     if compatible.get('relay_compatible') is not True:raise ValueError('publication requires qualified deployed relay compatibility')
+    if stage=='prerequisite':
+        if platform!='ios':raise ValueError('read-only encryption prerequisite is iOS-only')
+        work=job(a.state,manifest,platform,stage);work.mkdir(exist_ok=True)
+        observed=observe_encryption(apple(config),config,manifest,work)
+        if (observed['attributes'].get('appEncryptionDeclarationState')=='IN_REVIEW'
+                and observed['attributes'].get('availableOnFrenchStore') is True):
+            retain_external_wait(manifest,work,verification,compatibility)
+        atomic_json(work/'waiting.json',{'reason':'Store lane is active; encryption prerequisite observed without submission','at':int(time.time())})
+        raise SystemExit(75)
     work=job(a.state,manifest,platform,'submit');work.mkdir(exist_ok=True)
     paths=[verification.parent/i['path'] for i in proof['evidence']]
     api=google(config) if platform=='android' else apple(config)

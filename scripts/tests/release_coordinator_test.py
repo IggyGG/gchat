@@ -19,6 +19,32 @@ class CoordinatorTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.manifest=candidate()
 
+    def test_mobile_native_checks_finish_before_store_serialization_and_prerequisite_is_read_only(self):
+        for platform in ('ios','android'):
+            for waiting in ('submitting','processing','in_review','blocked'):
+                for proven in (False,True):
+                    with self.subTest(platform=platform,waiting=waiting,proven=proven):
+                        c=Coordinator(self.root/f'{platform}-{waiting}-{proven}',
+                            {'workers':{platform:{'acceptance':{},'compatibility':{},'prerequisite':{}}}})
+                        self.addCleanup(c.ledger.close)
+                        old=c.ledger.add(candidate(1))
+                        for state in ('building','verifying','verified','submitting'):
+                            c.ledger.transition(old,platform,state,evidence='a'*64)
+                        if waiting in ('processing','in_review'):
+                            c.ledger.transition(old,platform,'processing',evidence='a'*64)
+                        if waiting in ('in_review','blocked'):
+                            c.ledger.transition(old,platform,waiting,evidence='a'*64,reason='retained provider failure')
+                        latest=c.ledger.add(candidate(2))
+                        for state in ('building','verifying','verified'):
+                            c.ledger.transition(latest,platform,state,evidence='b'*64)
+                        with patch.object(c,'execute',return_value=({'relay_compatible':True},'c'*64)) as execute, \
+                             patch('release_flight.external_ios_wait',return_value=proven):
+                            c.step(latest,platform)
+                        self.assertEqual([call.args[2] for call in execute.call_args_list],
+                            ['acceptance','compatibility','prerequisite'] if platform=='ios' else ['acceptance','compatibility'])
+                        self.assertEqual(c.ledger.target(latest,platform)['state'],'verified')
+                        self.assertEqual(c.ledger.target(old,platform)['state'],waiting)
+
     @unittest.skipUnless(os.name == 'posix', 'controller uses POSIX process groups')
     def test_nonblocking_worker_does_not_prevent_another_platform_and_reconciles_same_effect(self):
         import sys

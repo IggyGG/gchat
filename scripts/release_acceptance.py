@@ -235,6 +235,19 @@ def provider(state, manifest, target):
     return result
 
 
+def installed_predecessor(state, manifest, target):
+    kind = 'acceptance'
+    pointer = state / 'acceptance-effects' / manifest['release_id'] / (target + '.json')
+    if pointer.is_file():
+        kind = json.loads(pointer.read_text())['kind']
+        if not re.fullmatch(r'acceptance-after-[0-9a-f]{64}', kind):
+            raise ValueError('baseline acceptance effect identity is invalid')
+    receipt = job(state, manifest, target, kind) / 'receipt.json'
+    if not receipt.is_file(): return False
+    read_receipt(receipt, manifest, target, 'acceptance')
+    return True
+
+
 def baseline(state, target, config, current):
     # Initial operator-bound seeds are a fallback. Each successful release can
     # supply the next baseline; do not pin every future upgrade to an old seed
@@ -246,7 +259,9 @@ def baseline(state, target, config, current):
             (target, current['release_id'])).fetchall()
     expected = {key: value['commit'] for key, value in current['sources'].items()}
     for row in rows:
-        try: result = provider(state, validate(json.loads(row[0])), target)
+        manifest = validate(json.loads(row[0]))
+        if not installed_predecessor(state, manifest, target): continue
+        try: result = provider(state, manifest, target)
         except (KeyError, FileNotFoundError): continue
         if result is not None and result['sources'] != expected: return result
     seed = config.get('baselines', {}).get(target)

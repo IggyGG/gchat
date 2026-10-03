@@ -61,6 +61,37 @@ class IosUploadTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.invoke()
         self.gh.assert_not_called()
 
+    def test_serialized_store_prerequisite_uses_only_get_and_never_uploads_even_after_approval(self):
+        from release_publish import job
+        from release_automation_test import candidate
+        self.manifest=candidate()
+        self.proof['relay_compatible']=True
+        state=self.work/'state';state.mkdir()
+        source=self.work/'manifest.json';source.write_bytes(canonical(self.manifest))
+        config=self.work/'stores.json';config.write_bytes(canonical({'ios':self.config}))
+        work=job(state,self.manifest,'ios','prerequisite');work.mkdir(parents=True)
+        for stage in ('verify','compatibility'):
+            gate=job(state,self.manifest,'ios',stage);gate.mkdir(parents=True)
+            (gate/'receipt.json').write_bytes(canonical(self.proof))
+        environment={'GCHAT_RELEASE_MANIFEST':str(source),'GCHAT_RELEASE_RECEIPT':str(work/'receipt.json'),
+            'GCHAT_RELEASE_TARGET':'ios','GCHAT_RELEASE_STAGE':'prerequisite'}
+        for status in ('IN_REVIEW','APPROVED'):
+            with self.subTest(status=status):
+                self.declaration['appEncryptionDeclarationState']=status;self.api.reset_mock()
+                with patch.dict(worker.os.environ,environment), \
+                     patch.object(sys,'argv',['worker','--state',str(state),'--config',str(config)]), \
+                     patch.object(worker,'apple',return_value=self.api), \
+                     patch.object(worker,'ios_build') as upload, \
+                     patch.object(worker,'submit_apple') as submit, \
+                     self.assertRaises(SystemExit) as stopped:
+                    worker.main()
+                self.assertEqual(stopped.exception.code,75)
+                upload.assert_not_called();submit.assert_not_called();self.gh.assert_not_called()
+                self.api.request.assert_called_once_with('GET','/v1/appEncryptionDeclarations/declaration')
+                self.assertEqual(json.loads((work/'encryption-observation.json').read_text())['state'],status)
+                self.assertFalse(job(state,self.manifest,'ios','submit').exists())
+                self.assertFalse((work/'receipt.json').exists())
+
     def test_exact_recovered_upload_dispatched_only_once(self):
         self.invoke(); self.invoke()
         posts = [c for c in self.gh.call_args_list if c.kwargs.get('method') == 'POST']
