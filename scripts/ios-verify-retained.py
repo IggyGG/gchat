@@ -177,8 +177,29 @@ def validate_original_lifecycle(candidate, original, inputs, root):
     for key in ('application', 'original_application'):
         require(all(candidate[key][field] == original['simulator_executable'][field]
                     for field in ('sha256', 'size')), 'lifecycle executable differs from original')
-    authority = json.loads(lifecycle_file(candidate['linked_verification'], root).read_text())
-    original_authority = json.loads(lifecycle_file(candidate['original_linked_authority'], root).read_text())
+    original_root = lifecycle_file(candidate['original_build'], root).parent
+    completed_startup = 'original_simulator' in candidate
+    if completed_startup:
+        smoke_path = lifecycle_file(candidate['original_simulator'], root)
+        require(smoke_path == journey.relocated(original['simulator'], original_root),
+                'original completed startup receipt was substituted')
+        smoke = json.loads(smoke_path.read_text())
+        require(smoke.get('scope') == 'ios_simulator_native_startup_relaunch'
+                and smoke.get('passed') is True and smoke.get('cleanup_complete') is True
+                and smoke.get('owned_device_removed') is True and smoke.get('cleanup_errors') == []
+                and [item.get('phase') for item in smoke.get('launches', [])] == ['fresh', 'relaunch']
+                and all(smoke['executable'][field] == original['simulator_executable'][field]
+                        for field in ('sha256', 'size')),
+                'original completed simulator startup or cleanup differs')
+        authority_path = journey.relocated(original['simulator_linked_authority'], original_root)
+        native_path = journey.relocated(original['native_tests'], original_root)
+        authority = original_authority = json.loads(authority_path.read_text())
+        native = failed = json.loads(native_path.read_text())
+    else:
+        authority = json.loads(lifecycle_file(candidate['linked_verification'], root).read_text())
+        original_authority = json.loads(lifecycle_file(candidate['original_linked_authority'], root).read_text())
+        native = json.loads(lifecycle_file(candidate['native_tests'], root).read_text())
+        failed = json.loads(lifecycle_file(candidate['original_native_tests'], root).read_text())
     for proof in (authority, original_authority):
         require(proof.get('scope') == 'ios_xcode_linked_simulator_authority' and proof.get('passed') is True
                 and proof.get('device_qualified') is False and all(proof['executable'][field]
@@ -186,8 +207,6 @@ def validate_original_lifecycle(candidate, original, inputs, root):
                 'original simulator authority mismatch')
     for key in ('host_entitlements', 'linked_simulator_authority'):
         require(authority[key] == original_authority[key], 'simulator authority changed')
-    native = json.loads(lifecycle_file(candidate['native_tests'], root).read_text())
-    failed = json.loads(lifecycle_file(candidate['original_native_tests'], root).read_text())
     startup_timeout = candidate.get('original_startup_timeout_recovery') is True
     if startup_timeout:
         original_root = lifecycle_file(candidate['original_build'], root).parent
@@ -202,7 +221,8 @@ def validate_original_lifecycle(candidate, original, inputs, root):
     require(native.get('scope') == 'ios_app_hosted_native_push_validation_and_keychain_tests'
             and native.get('passed') is True and native.get('sources_unchanged') is True
             and native.get('cleanup_complete') is True and native.get('owned_device_removed') is True
-            and native.get('cleanup_errors') == [] and (failed.get('passed') is False or startup_timeout)
+            and native.get('cleanup_errors') == []
+            and (failed.get('passed') is False or startup_timeout or completed_startup)
             and failed.get('sources_unchanged') is True and failed.get('cleanup_complete') is True,
             'native test recovery or cleanup did not pass')
     expected = {'Sources/PushNotifications.swift', 'Sources/UnlockVault.swift',
@@ -211,13 +231,15 @@ def validate_original_lifecycle(candidate, original, inputs, root):
             'native test source inventory differs')
     require(all(native['sources'][name][field] == failed['sources'][name][field]
                 for name in expected for field in ('sha256', 'size')), 'native source changed')
-    summary = json.loads(lifecycle_file(native['test_summary'], root).read_text())
+    native_file = journey.relocated if completed_startup else lifecycle_file
+    native_root = original_root if completed_startup else root
+    summary = json.loads(native_file(native['test_summary'], native_root).read_text())
     require(summary.get('result') == 'Passed' and summary.get('passedTests') == 3
             and summary.get('failedTests') == 0 and summary.get('skippedTests') == 0
             and native.get('tests', {}).get('passed') == 3
             and native['tests'].get('failed') == 0 and native['tests'].get('skipped') == 0,
             'all three native tests must pass without exclusions')
-    lifecycle_file(native['log'], root)
+    native_file(native['log'], native_root)
     return authority, native
 
 

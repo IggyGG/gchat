@@ -94,8 +94,19 @@ class AndroidUI:
 
     def node(self, predicate, timeout=60):
         def find():
-            return next((node for node in self.tree().iter('node')
-                         if predicate(node) and android.ui_bounds(node)), None)
+            nodes = list(self.tree().iter('node'))
+            matches = [node for node in nodes if predicate(node)]
+            visible = next((node for node in matches if android.ui_bounds(node)), None)
+            if visible is None and matches:
+                # The installed lifecycle fixture already reveals fields below
+                # the fold this way. Keep the original observation deadline.
+                bounds = next((android.ui_bounds(node) for node in nodes
+                               if node.get('package') == android.PACKAGE and android.ui_bounds(node)), None)
+                require(bounds is not None, 'owned Android UI has no visible application surface')
+                x1, y1, x2, y2 = bounds
+                self.shell('input', 'swipe', (x1+x2)//2, y1+(y2-y1)*4//5,
+                           (x1+x2)//2, y1+(y2-y1)//3, '250')
+            return visible
         # ElementTree elements have false truth values when childless.
         return self.until(lambda: (node,) if (node := find()) is not None else None, timeout)[0]
 

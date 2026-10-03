@@ -158,6 +158,42 @@ class RegisteredIosTests(unittest.TestCase):
                     worker.retained_followup(self.manifest,work,self.original,config)
                 self.assertFalse(any(call.kwargs.get('method')=='POST' for call in api.call_args_list))
 
+    def test_later_corrected_helper_requires_its_immediate_failed_dispatch_and_preserves_chain(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work=Path(temporary); first,failed=self.corrected_verification(work)
+            original=(work/'ios-retained-verification-dispatch.json').read_bytes()
+            def provider(endpoint,**kwargs):
+                if endpoint=='actions/runs/999': return failed
+                if endpoint=='actions/runs/999/artifacts?per_page=100': return {'artifacts':[]}
+                if endpoint.startswith('git/ref/heads/'): return {'object':{'sha':first['verification']['controller']}}
+                return self.provider(endpoint,**kwargs)
+            with patch('release_jobs.gh',side_effect=provider):
+                self.assertIsNone(worker.retained_followup(self.manifest,work,self.original,first))
+            child=work/'ios-retained-verification-followups'/('7'*40)/'dispatch.json'
+            child_before=child.read_bytes();old=json.loads(child_before)['intent']
+            second=copy.deepcopy(first)
+            second['previous_verification']={**first['verification'],'run':1000}
+            second['verification']={'controller':'8'*40,'ref':'release/qualification-ios-installed-'+'8'*12,
+                'request':hashlib.sha256(__import__('release_pair').canonical(
+                    ['ios-retained-verification-followup',old['request'],'8'*40])).hexdigest()}
+            recent={**failed,'id':1000,'head_sha':old['controller'],'head_branch':old['ref'],
+                    'display_title':'iOS retained verification '+old['request']}
+            def next_provider(endpoint,**kwargs):
+                if endpoint=='actions/runs/1000': return recent
+                if endpoint=='actions/runs/1000/artifacts?per_page=100': return {'artifacts':[]}
+                if endpoint.startswith('git/ref/heads/'): return {'object':{'sha':'8'*40}}
+                return self.provider(endpoint,**kwargs)
+            with patch('release_jobs.gh',side_effect=next_provider) as api:
+                recent['status']='in_progress'
+                with self.assertRaisesRegex(ValueError,'predecessor'):
+                    worker.retained_followup(self.manifest,work,self.original,second)
+                recent['status']='completed'
+                self.assertIsNone(worker.retained_followup(self.manifest,work,self.original,second))
+                self.assertIsNone(worker.retained_followup(self.manifest,work,self.original,second))
+                self.assertEqual(sum(call.kwargs.get('method')=='POST' for call in api.call_args_list),1)
+            self.assertEqual(child.read_bytes(),child_before)
+            self.assertEqual((work/'ios-retained-verification-dispatch.json').read_bytes(),original)
+
     def test_queued_lifecycle_waits_without_dispatching_or_changing_original(self):
         with tempfile.TemporaryDirectory() as root, patch('release_jobs.gh', return_value={**self.lifecycle, 'status': 'queued', 'conclusion': None}) as gh:
             self.assertIsNone(worker.collect(self.manifest, Path(root), self.original))

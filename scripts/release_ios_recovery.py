@@ -77,6 +77,13 @@ def verification_marker(manifest, work, config, intent, api):
         return marker
     old = json.loads(marker.read_text())['intent']
     previous = config.get('previous_verification', {})
+    if previous.get('controller') != old.get('controller'):
+        controller = previous.get('controller', '')
+        require(re.fullmatch('[0-9a-f]{40}', controller) is not None,
+                'iOS verification predecessor controller is invalid')
+        marker = work / 'ios-retained-verification-followups' / controller / 'dispatch.json'
+        require(marker.is_file(), 'iOS verification predecessor dispatch is missing')
+        old = json.loads(marker.read_text())['intent']
     require(previous.get('controller') == old.get('controller') and previous.get('request') == old.get('request')
             and previous.get('ref') == old.get('ref') and type(previous.get('run')) is int
             and previous['run'] > 0 and old.get('inputs') == intent['inputs']

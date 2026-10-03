@@ -19,6 +19,11 @@ def ios_build(api,config,manifest,build_job,work):
     # Apple's external encryption decision blocks only the iOS lane. The same
     # already-qualified IPA is uploaded after approval; it is never rebuilt.
     declaration=api.request('GET','/v1/appEncryptionDeclarations/'+config['encryption_declaration'])['data']
+    atomic_json(work/'encryption-observation.json', {'schema':1,'release_id':manifest['release_id'],
+        'sources':manifest['sources'],'at':int(time.time()),
+        'declaration':config['encryption_declaration'],
+        'state':declaration['attributes'].get('appEncryptionDeclarationState'),
+        'includes_france':declaration['attributes'].get('availableOnFrenchStore') is True})
     if declaration['attributes'].get('appEncryptionDeclarationState')!='APPROVED':
         return None,'Apple encryption declaration is still awaiting approval'
     if declaration['attributes'].get('availableOnFrenchStore') is not True:raise ValueError('approved declaration must include France')
@@ -80,6 +85,20 @@ def ios_build(api,config,manifest,build_job,work):
     return builds[0]['id'],None
 
 
+def retain_external_wait(manifest, work, verification, compatibility):
+    observation=json.loads((work/'encryption-observation.json').read_text())
+    if (observation['release_id']!=manifest['release_id'] or observation['sources']!=manifest['sources']
+        or observation['state']!='IN_REVIEW' or observation['includes_france'] is not True):
+        return
+    # Both complete native gates were independently read before querying Apple.
+    # This is a prerequisite wait, never an upload/submission/availability pass.
+    atomic_json(work/'external-prerequisite.json', {'schema':1,'release_id':manifest['release_id'],
+        'sources':manifest['sources'],'platform':'ios','kind':'apple_encryption_review',
+        'at':int(time.time()),'uploaded':False,'submitted':False,
+        'encryption_observation_sha256':digest(work/'encryption-observation.json'),
+        'verification_sha256':digest(verification),'compatibility_sha256':digest(compatibility)})
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--config',type=Path,required=True);a=p.parse_args()
     manifest=validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()));platform=os.environ['GCHAT_RELEASE_TARGET'];stage=os.environ['GCHAT_RELEASE_STAGE']
@@ -100,6 +119,8 @@ def main():
         if not binding.exists():
             build,reason=ios_build(api,config,manifest,job(a.state,manifest,'ios','build'),work)
             if build is None:
+                if reason=='Apple encryption declaration is still awaiting approval':
+                    retain_external_wait(manifest,work,verification,compatibility)
                 atomic_json(work/'waiting.json',{'reason':reason,'at':int(time.time())});raise SystemExit(75)
             marketing=manifest['versions']['linux-x86_64']
             versions=api.request('GET','/v1/apps/'+config['app_id']+'/appStoreVersions',params={'filter[platform]':'IOS','limit':50})['data']

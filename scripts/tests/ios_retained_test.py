@@ -315,6 +315,49 @@ class OriginalSimulatorLifecycleTests(unittest.TestCase):
         self.assertEqual(original, self.original)
         self.assertFalse(self.original['passed'])
 
+    def completed_startup_candidate(self, *, removed=True, skipped=0):
+        original_root = 'original/ios-output/'
+        native = copy.deepcopy(self.native)
+        native['test_summary'] = self.ref(original_root + 'native-tests/test-summary.json',
+            {'result': 'Passed', 'passedTests': 3-skipped, 'failedTests': 0, 'skippedTests': skipped})
+        native['log'] = self.write(original_root + 'native-tests/xctest.log', b'original 3 native tests passed')
+        authority = json.loads(retained.lifecycle_file(self.candidate['original_linked_authority'], self.root).read_text())
+        self.original.update(native_tests=self.ref(original_root + 'native-tests/report.json', native),
+            simulator_linked_authority=self.ref(original_root + 'authority/report.json', authority))
+        smoke = {'scope': 'ios_simulator_native_startup_relaunch', 'passed': True,
+            'cleanup_complete': True, 'cleanup_errors': [], 'owned_device_removed': removed,
+            'executable': self.original['simulator_executable'],
+            'launches': [{'phase': 'fresh'}, {'phase': 'relaunch'}]}
+        self.original['simulator'] = self.ref(original_root + 'simulator-smoke/report.json', smoke)
+        candidate = {key: value for key, value in self.candidate.items()
+                     if key not in ('linked_verification', 'original_linked_authority', 'native_tests', 'original_native_tests')}
+        candidate.update(original_build=self.ref(original_root + 'build.json', self.original),
+                         original_simulator=self.original['simulator'])
+        return candidate
+
+    def test_later_lifecycle_preserves_completed_original_startup_and_native_tests(self):
+        candidate = self.completed_startup_candidate()
+        authority, native = self.validate(candidate)
+        self.assertTrue(authority['passed'])
+        self.assertEqual(native['tests']['passed'], 3)
+        self.assertNotIn('linked_verification', candidate)
+        self.assertFalse(self.original['passed'])
+
+    def test_completed_original_startup_cannot_hide_skipped_native_tests_or_cleanup_failure(self):
+        for kwargs in ({'removed': False}, {'skipped': 1}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                self.validate(self.completed_startup_candidate(**kwargs))
+
+    def test_completed_original_startup_rejects_substituted_or_modified_proof(self):
+        candidate = self.completed_startup_candidate()
+        smoke = json.loads(retained.lifecycle_file(candidate['original_simulator'], self.root).read_text())
+        changed = candidate | {'original_simulator': self.ref('unbound-startup.json', smoke)}
+        with self.assertRaisesRegex(ValueError, 'substituted'):
+            self.validate(changed)
+        (self.root / 'original/ios-output/native-tests/xctest.log').write_bytes(b'modified')
+        with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+            self.validate(candidate)
+
     def timeout_candidate(self):
         device = '8DFECF94-FE40-4113-B39C-B38212DE0D36'
         command = ['xcrun', 'simctl', 'launch', '--terminate-running-process', device, ios.BUNDLE]

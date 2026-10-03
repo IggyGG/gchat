@@ -22,22 +22,22 @@
     "active flight is polled first; other flights cannot admit fresh acceptance, expired revalidation or publication"
   ],
   "tests": {
-    "python": 793,
+    "python": 801,
     "existing_skips": 5,
-    "log_sha256": "3c0cef3fbf81cd8a46f8afff531fc52cc5940b45b09d8f3984bbd048395b065c",
+    "log_sha256": "b53217a182900416fbce5b720c5e92e895ffdc53e668977a8c36dc9aaa01f0a2",
     "L0_source_paths": 820,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
     "final_focused_controls": 37,
-    "single_flight_controls": 12,
+    "single_flight_controls": 15,
     "sdk_reuse_controls": 7,
     "deployment_runner_controls": 6,
     "macos_recovery_controls": 7,
     "registry_copy_controls": 5,
-    "ios_retained_recovery_controls": 12,
+    "ios_retained_recovery_controls": 13,
     "native_acceptance_controls": 35,
-    "seconds": 172.304,
-    "mobile_acceptance_controls": 13,
+    "seconds": 223.575,
+    "mobile_acceptance_controls": 14,
     "ios_store_worker_controls": 8
   },
   "live_operator": {
@@ -217,10 +217,10 @@
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "acceptance_running",
+    "android": "blocked_ui_control_observation",
     "windows-x86_64": "blocked_baseline_pipe_startup",
-    "macos-x86_64": "acceptance_running",
-    "macos-aarch64": "acceptance_running",
+    "macos-x86_64": "blocked_network_startup_deadline",
+    "macos-aarch64": "available",
     "ios": "blocked_retained_verification_report_shape",
     "source_fixes_active": true
   },
@@ -242,5 +242,15 @@
     "uploaded": false
   },
   "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b12a9173653611a16197b15a1691750ee1960886eae663b6b49d922138383937",
-  "controller_qualification_sha256": "dd2332a4f05725e391ee88459720e9e4ec973fc23752c640a47a16e49d804ca4"
+  "controller_qualification_sha256": "dd2332a4f05725e391ee88459720e9e4ec973fc23752c640a47a16e49d804ca4",
+  "remaining_launch_source_corrections": {
+    "ios_completed_original_evidence_validated": true,
+    "original_ios_provider_adapter_proof": "operations/actual-ios-lifecycle-adapter-588.json",
+    "sequential_failed_helper_evidence_retained": true,
+    "android_existing_control_scroll": true,
+    "native_connection_state_diagnostics": true,
+    "external_encryption_wait_does_not_qualify_publication": true,
+    "controller_activated": false,
+    "full_python_tests": 801
+  }
 }

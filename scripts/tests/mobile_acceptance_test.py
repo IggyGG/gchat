@@ -143,6 +143,19 @@ class MobileAcceptanceTests(unittest.TestCase):
             with self.subTest(options=options), tempfile.TemporaryDirectory() as temporary, self.assertRaises(ValueError):
                 self.owned_android_ui(Path(temporary), **options)
 
+    def test_android_accessibility_reveals_existing_offscreen_controls_before_original_deadline(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            hidden=ET.fromstring('<hierarchy><node package="boo.gchat.app" bounds="[0,0][100,200]">'
+                '<node text="Create identity" bounds="[0,0][0,0]"/></node></hierarchy>')
+            visible=ET.fromstring('<hierarchy><node package="boo.gchat.app" bounds="[0,0][100,200]">'
+                '<node text="Create identity" bounds="[10,10][90,40]"/></node></hierarchy>')
+            with patch.object(ui,'tree',side_effect=[hidden,visible]),patch.object(ui,'shell') as shell, \
+                 patch.object(android_ui.time,'sleep'):
+                node=ui.node(ui.text('Create identity'))
+            self.assertEqual(node.get('text'),'Create identity')
+            shell.assert_called_once_with('input','swipe',50,160,50,66,'250')
+
     def test_mobile_failure_locations_exclude_exception_messages_and_private_paths(self):
         driver = module('test-mobile-upgrade')
         try:

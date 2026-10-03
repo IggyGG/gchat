@@ -127,7 +127,18 @@ class Journey:
         if create:
             self.call(i, 'import_network_invitation', code=self.args.invitation.read_text().strip())
             self.files(i, 'configure', quota_bytes=str(64 * 1024 * 1024), retention_days=1)
-        self.until(lambda: self.call(i, 'network_status')['status']['state'] == 'connected')
+        last_state = None
+        states = {'locked', 'local_only', 'invitation_required', 'connecting', 'connected',
+                  'reconnecting', 'invitation_expired', 'unavailable'}
+        def connected():
+            nonlocal last_state
+            state = self.call(i, 'network_status')['status']['state']
+            observed = state if state in states else 'unknown'
+            if observed != last_state:
+                self.event('network_connection_state', client=i, state=observed)
+                last_state = observed
+            return state == 'connected'
+        self.until(connected)
         self.event('client_ready', client=i, create=create)
 
     def call(self, i, kind, **data):

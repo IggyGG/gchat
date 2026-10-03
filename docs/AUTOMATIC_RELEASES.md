@@ -32,7 +32,7 @@ Rollback requests remain queued while a deployment owns its lock. Production def
 one active release and expose one newest pending release. A blocked active release
 holds new build, acceptance and publication admission. The active release is polled first; already dispatched provider requests retain their original
 identity and keep being reconciled. Once all internal stages finish, mobile
-processing/review may continue while the next release starts. The scheduler never
+processing/review may continue while the next release starts. A pending iOS encryption declaration may also release the global flight after the unchanged IPA and installed compatibility gates pass. It requires fresh IN_REVIEW evidence including France and matching native receipt hashes. The original iOS submit request continues reconciliation in its own lane; the wait never marks an upload, submission or availability as passed. This added prerequisite handling awaits controller image activation. The scheduler never
 selects an older pending candidate after a newer one completes. Completed stages and
 provider request IDs survive retries. A failed or unknown operation remains explicit.
 The operator inventory can select `network_check_policy: boundaries-v1`: full

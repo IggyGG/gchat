@@ -52,6 +52,9 @@ class IosUploadTests(unittest.TestCase):
         self.assertIsNone(build); self.assertIn('approval', reason)
         self.gh.assert_not_called(); self.receipt.assert_not_called()
         self.assertFalse((self.work/'upload-dispatch.json').exists())
+        observation=json.loads((self.work/'encryption-observation.json').read_text())
+        self.assertEqual(observation['state'],'IN_REVIEW')
+        self.assertTrue(observation['includes_france'])
 
     def test_france_remains_required(self):
         self.declaration['availableOnFrenchStore'] = False

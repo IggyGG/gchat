@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 import sys
 import tempfile
@@ -80,6 +81,64 @@ class FlightTests(unittest.TestCase):
                                               (state, self.releases[0], item['platform']))
         self.assertEqual(select(self.root, self.controller.ledger)['active'], self.releases[2])
         self.assertTrue(can_build(self.controller, self.releases[2], 'ios'))
+
+    def external_wait_fixture(self):
+        from release_store_worker import retain_external_wait
+        from release_publish import job
+        from release_feed import digest
+        manifest=self.controller.ledger.manifest(self.releases[0])
+        self.controller.ledger.db.execute("UPDATE platforms SET state='available' WHERE candidate=?",(self.releases[0],))
+        self.controller.ledger.db.execute("UPDATE platforms SET state='submitting' WHERE candidate=? AND platform='ios'",(self.releases[0],))
+        effect=self.controller.ledger.effect(self.releases[0],'ios','submit')
+        work=job(self.root,manifest,'ios','submit')
+        atomic_json(work/'attempted.json',{'request_id':effect['id']})
+        gates=[]
+        for stage in ('verify','compatibility'):
+            folder=job(self.root,manifest,'ios',stage)
+            atomic_json(folder/'evidence.json',{'owned_fixture':True})
+            atomic_json(folder/'receipt.json',{'schema':1,'release_id':manifest['release_id'],
+                'sources':manifest['sources'],'platform':'ios','stage':stage,'passed':True,
+                'source_unchanged':True,'relay_compatible':True,
+                'evidence':[{'path':'evidence.json','sha256':digest(folder/'evidence.json')}]})
+            gates.append(folder/'receipt.json')
+        atomic_json(work/'encryption-observation.json',{'schema':1,'release_id':manifest['release_id'],
+            'sources':manifest['sources'],'state':'IN_REVIEW','includes_france':True,'at':int(time.time())})
+        retain_external_wait(manifest,work,*gates)
+        return work,gates
+
+    def test_qualified_external_encryption_wait_releases_flight_and_keeps_original_submission(self):
+        work,gates=self.external_wait_fixture()
+        self.assertEqual(select(self.root,self.controller.ledger)['active'],self.releases[2])
+        self.assertEqual(self.controller.ledger.target(self.releases[0],'ios')['state'],'submitting')
+        self.assertTrue(can_execute(self.controller,self.releases[0],'ios','submit','submit'))
+        self.assertTrue(can_build(self.controller,self.releases[2],'linux-x86_64'))
+        self.assertTrue((work/'external-prerequisite.json').is_file())
+        self.assertFalse((work/'receipt.json').exists())
+
+    def test_external_wait_cannot_bypass_missing_changed_expired_or_wrong_source_gates(self):
+        for change in ('evidence','receipt','time','source','france','state','dispatch','uploaded'):
+            with self.subTest(change=change):
+                work,gates=self.external_wait_fixture()
+                if change=='evidence':(gates[0].parent/'evidence.json').write_text('{}')
+                if change=='receipt':gates[1].unlink()
+                if change=='dispatch':(work/'attempted.json').unlink()
+                waiting=json.loads((work/'external-prerequisite.json').read_text())
+                if change=='time':waiting['at']-=601
+                if change=='source':waiting['sources']={}
+                if change=='uploaded':waiting['uploaded']=True
+                atomic_json(work/'external-prerequisite.json',waiting)
+                if change in ('france','state'):
+                    observed=json.loads((work/'encryption-observation.json').read_text())
+                    if change=='france':observed['includes_france']=False
+                    else:observed['state']='REJECTED'
+                    atomic_json(work/'encryption-observation.json',observed)
+                atomic_json(self.root/'release-flight.json',{'schema':1,'active':self.releases[0],'pending':None})
+                self.assertEqual(select(self.root,self.controller.ledger)['active'],self.releases[0])
+
+    def test_external_wait_does_not_hide_another_platform_failure(self):
+        self.external_wait_fixture()
+        self.controller.ledger.db.execute("UPDATE platforms SET state='blocked' WHERE candidate=? AND platform='android'",(self.releases[0],))
+        self.assertEqual(select(self.root,self.controller.ledger)['active'],self.releases[0])
 
     def test_unknown_saved_flight_is_rejected(self):
         atomic_json(self.root / 'release-flight.json', {'schema': 1, 'active': 'f' * 64, 'pending': None})
