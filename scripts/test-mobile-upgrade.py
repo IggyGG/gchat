@@ -123,7 +123,7 @@ def main():
                     'owned mobile emulator driver did not finish')
         else:
             from mobile_ios_ui import IOSUI
-            ui = IOSUI(owned, passphrase, deadline)
+            ui = IOSUI(owned, passphrase, deadline, initial=baseline)
             journey = MobileJourney(current, baseline, peer, invitation, root, manifest)
             try:
                 journey.run(ui)
@@ -144,8 +144,12 @@ def main():
         if target == 'ios' and hasattr(error, 'ios_setup_diagnostics'):
             report['runner_setup'] = error.ios_setup_diagnostics
             report['installation_cleanup'].append(error.owned_device_cleanup)
+        elif target == 'ios' and ui is not None:
+            report['runner_setup'] = ui.diagnostics()
         if target == 'ios' and getattr(error, 'ios_observation_phase', None) is not None:
             report['ui_observation'] = {'phase': error.ios_observation_phase}
+            if getattr(error, 'ios_observation_controls', None) is not None:
+                report['ui_observation']['controls'] = error.ios_observation_controls
     finally:
         if target == 'android' and ui is not None:
             report['ui_observation'] = dict(ui.ui_observation)

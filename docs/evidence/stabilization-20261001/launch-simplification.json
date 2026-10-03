@@ -211,17 +211,17 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": "2026-10-03T12:30:50.712680+00:00",
+    "observed_at": 1791039559,
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "installed_acceptance_running",
+    "android": "installed_acceptance_failed",
     "windows-x86_64": "available",
     "macos-x86_64": "available",
     "macos-aarch64": "available",
-    "ios": "installed_acceptance_running",
+    "ios": "installed_acceptance_failed",
     "source_fixes_active": true,
     "desktop_platforms_available": [
       "linux-x86_64",
@@ -284,19 +284,28 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37122181374,
-    "artifact": 11274145775,
-    "source": "2b2478e1e71e00b3598c50bf11db68a1bb5747ea",
+    "run": 37131273300,
+    "artifact": 11276662612,
+    "source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
+    "source_tree": "1b2ec20502b61a9c696e4b2a3135303d39e74b9f",
+    "archive_sha256": "39110dc364272d7e820e869bb5d710f4a1e9c23c7dc081f9d62407e72bb2e36f",
     "full_history": true,
-    "all_python_tests": 808,
+    "all_python_tests": 816,
+    "skips": 5,
+    "seconds": 33.886,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37122972931,
-    "ios": 37123018106,
-    "helper": "2b2478e1e71e00b3598c50bf11db68a1bb5747ea"
+    "android": 37131600497,
+    "ios": 37131601344,
+    "helper": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
+    "state": "failed",
+    "previous_failed_runs": {
+      "android": 37129678031,
+      "ios": 37129719954
+    }
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -307,7 +316,7 @@
   "mobile_native_adapter_correction": {
     "passed_static_preflight": true,
     "source_file_sha256": "166098cc732f10f99866cdb90a249bb7c0d46ca50497c1a14bf72f901f1968c6",
-    "current_ios_original_verdict_preserved": false,
+    "current_ios_original_verdict_preserved": true,
     "scope": "actual cached iOS input and every pre-install archive/authority/executable reference; Mac codesign and installed UI remain required",
     "actual_cached_preflight": "operations/actual-ios-original-adapter-658.json",
     "focused_tests": 16,
@@ -319,6 +328,38 @@
       "ios": 37124581743,
       "android": 37124594329
     },
-    "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered"
-  }
+    "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
+    "original_current_overall_verdict": false
+  },
+  "native_helper_source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
+  "native_helper_qualification": "operations/native-helper-41d81d3-qualified-683.json",
+  "mobile_ui_corrections": {
+    "source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
+    "android_keyboard_and_value_confirmation": true,
+    "android_fields_scrolled_out_from_under_header": true,
+    "owned_enrollment_channel_selected": true,
+    "ios_existing_app_activated": true,
+    "ios_pending_invitation_unlock_in_place": true,
+    "public_ui_phases_only": true,
+    "focused_tests": 26,
+    "focused_passed": true,
+    "installed_acceptance_complete": false,
+    "combined_owned_channel_accessibility_name": true,
+    "ios_baseline_installed_before_xctest": true,
+    "runtime_runner_diagnostics": true,
+    "actual_peer_cleanup_independent_of_ui_verdict": true
+  },
+  "routine_automation": {
+    "source_mirror_timer": "gchat-source-mirror.timer",
+    "source_mirror_enabled": true,
+    "source_mirror_last_result": "success",
+    "local_package_timer": "gchat-package-update.timer",
+    "local_package_update_enabled": true,
+    "local_package_last_result": "success",
+    "local_update_restarts_personal_application": false,
+    "release_trigger": "push authoritative Forgejo main",
+    "source_settle_seconds": 600,
+    "status_command": "python3 scripts/release.py status"
+  },
+  "public_feed_readback": "operations/public-feed-readback-687.json"
 }

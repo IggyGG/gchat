@@ -11,7 +11,9 @@ final class GChatAcceptanceTests: XCTestCase {
     var passphrase = ""
     var endpoint = ""
     var token = ""
-    var phase = "ready"
+    var phase = "ready" {
+        didSet { print("GCHAT_ACCEPTANCE_UI_PHASE=\(phase)") }
+    }
 
     func require(_ value: Bool) throws {
         if !value { throw Failure.observation }
@@ -123,6 +125,18 @@ final class GChatAcceptanceTests: XCTestCase {
         root.descendants(matching: .any).allElementsBoundByIndex.map { $0.label }
     }
 
+    func publicObservation() -> [String: Bool] {
+        return ["review_invitation": element("Review invitation").exists,
+            "reconnect": element("Reconnect").exists,
+            "connect_to_gchat": element("Connect to GChat").exists,
+            "close_dialog": element("Close dialog").exists,
+            "nickname": element("Your nickname in this channel").exists,
+            "joined": element("Joined").exists,
+            "composer": element("Message or command").exists,
+            "webview": app.webViews.firstMatch.exists,
+            "foreground": app.state == .runningForeground]
+    }
+
     func row(_ name: String, action: String? = nil) throws -> XCUIElement {
         var selected: XCUIElement?
         try wait(120) {
@@ -222,7 +236,10 @@ final class GChatAcceptanceTests: XCTestCase {
             if element("Joined").exists {
                 try click("Close dialog")
                 try click("Channels")
-                try click("mobile-release")
+                let channel = app.descendants(matching: .any).matching(NSPredicate(
+                    format: "label MATCHES %@", "#?\\s*mobile-release(?:\\s+\\d+)?")).firstMatch
+                try wait { channel.exists && channel.isHittable }
+                channel.tap()
             }
             try wait(30) { self.element("Message or command").exists }
             return true
@@ -343,7 +360,8 @@ final class GChatAcceptanceTests: XCTestCase {
                 _ = try request("/result", ["id": id, "passed": true, "value": value])
                 if command["op"] as? String == "finish" { return }
             } catch {
-                _ = try? request("/result", ["id": id, "passed": false, "phase": phase])
+                _ = try? request("/result", ["id": id, "passed": false, "phase": phase,
+                    "observation": publicObservation()])
                 // Never attach or print a hierarchy, screenshot, invitation,
                 // passphrase, command arguments or raw UI values.
                 XCTFail("The retained application's UI command failed.")

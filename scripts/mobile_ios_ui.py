@@ -23,6 +23,8 @@ UI_PHASES = frozenset(('ready', 'finish', 'stop', 'unlock', 'join', 'identity', 
     'unlock-start', 'unlock-passphrase', 'unlock-confirm', 'unlock-submit', 'unlock-ready',
     'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
     'export-picker', 'export-unlock', 'export-result'))
+UI_CONTROLS = frozenset(('review_invitation', 'reconnect', 'connect_to_gchat',
+    'close_dialog', 'nickname', 'joined', 'composer', 'webview', 'foreground'))
 
 
 def runner_diagnostics(path, exit_code, polls):
@@ -35,6 +37,8 @@ def runner_diagnostics(path, exit_code, polls):
             re.findall(r'GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=(-?\d+)\b', text))),
         'http_status_codes': sorted(set(int(value) for value in
             re.findall(r'GCHAT_ACCEPTANCE_BRIDGE_HTTP=(\d+)\b', text))),
+        'ui_phases': [phase for phase in re.findall(r'GCHAT_ACCEPTANCE_UI_PHASE=([a-z-]+)\b', text)
+                      if phase in UI_PHASES],
         'build_failed': '** TEST BUILD FAILED **' in text or '** BUILD FAILED **' in text}
 
 
@@ -72,6 +76,11 @@ class Bridge:
                                 and (value.get('phase') is None or value['phase'] in UI_PHASES)
                                 and len(json.dumps(value).encode()) <= 65536,
                                 'invalid XCTest result')
+                        observation = value.get('observation')
+                        require(observation is None or (isinstance(observation, dict)
+                            and set(observation) <= UI_CONTROLS
+                            and all(type(flag) is bool for flag in observation.values())),
+                            'invalid public XCTest observation')
                         with owner.ready:
                             require(value['id'] in owner.results and owner.results[value['id']] is None,
                                     'unknown or duplicate XCTest result')
@@ -110,6 +119,7 @@ class Bridge:
         if result['passed'] is not True:
             error = ValueError('installed iOS UI observation failed')
             error.ios_observation_phase = result.get('phase')
+            error.ios_observation_controls = result.get('observation')
             raise error
         return result.get('value')
 
@@ -120,13 +130,14 @@ class Bridge:
 
 
 class IOSUI:
-    def __init__(self, output, passphrase, deadline):
+    def __init__(self, output, passphrase, deadline, initial=None):
         require(ios.output(['xcodebuild', '-version']).splitlines()[0] == 'Xcode 26.2',
                 'retained app requires the pinned Xcode')
         self.output, self.passphrase, self.deadline = output, passphrase, deadline
         self.device, self.bridge, self.runner, self.log = None, None, None, None
         self.bodies = set()
         self.installed = False
+        self.active_binary_sha256 = None
         runtime = ios.simulator_runtime()
         types = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
         devices = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
@@ -136,6 +147,10 @@ class IOSUI:
         try:
             ios.run(['xcrun', 'simctl', 'boot', self.device], timeout=120)
             ios.run(['xcrun', 'simctl', 'bootstatus', self.device, '-b'], timeout=180)
+            # XCTest must attach to a simulator that already has the unchanged
+            # application, as the retained lifecycle worker does.
+            if initial is not None:
+                self.install(initial)
             self.bridge = Bridge()
             runner = output / 'runner'
             runner.mkdir()
@@ -178,10 +193,18 @@ class IOSUI:
         return self.bridge.call(op, timeout=left, alive=lambda: self.runner.poll() is None, **values)
 
     def install(self, item):
+        if self.installed and self.active_binary_sha256 == item['binary_sha256']:
+            return
         if self.installed:
             self.stop()
         ios.run(['xcrun', 'simctl', 'install', self.device, item['app']], timeout=120)
         self.installed = True
+        self.active_binary_sha256 = item['binary_sha256']
+
+    def diagnostics(self):
+        return runner_diagnostics(self.output / 'xctest.private.log',
+            self.runner.poll() if self.runner is not None else None,
+            self.bridge.polls if self.bridge is not None else 0)
 
     def stop(self):
         self.call('stop')

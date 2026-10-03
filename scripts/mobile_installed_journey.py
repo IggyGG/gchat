@@ -183,8 +183,8 @@ class MobileJourney:
             item['stopped'] and not item['forced'] and item['exit_code'] == 0 for item in results)
         self.rollback.update(cleanup_complete=clean, profiles_removed=clean,
                              binaries_unchanged=False)
-        self.report.update(children_stopped=stopped and self.cleanup_report.get('passed') is True,
-            temporary_profile_removed=removed and self.cleanup_report.get('passed') is True,
+        self.report.update(children_stopped=stopped,
+            temporary_profile_removed=removed,
             binary_unchanged=False, inputs_unchanged=False)
         # The caller independently rehashes every retained application after
         # cleanup and applies that verdict to both reports.

@@ -22,6 +22,11 @@ def labels(node):
             for value in (child.get('text', ''), child.get('content-desc', '')) if value]
 
 
+def owned_channel(node):
+    return any(re.fullmatch(r'#?\s*mobile-release(?:\s+\d+)?', node.get(key, ''))
+               for key in ('text', 'content-desc'))
+
+
 def delivery_row(tree, body, known_bodies):
     # A delivered suffix elsewhere in the transcript cannot qualify this send.
     # Require one smallest message subtree containing exactly this test body.
@@ -236,7 +241,7 @@ class AndroidUI:
         if state == 'joined':
             self.click('Close dialog')
             self.click('Channels')
-            self.click('mobile-release')
+            self.tap(self.node(owned_channel))
         self.node(self.text('Message or command'), 120)
 
     def identity(self):

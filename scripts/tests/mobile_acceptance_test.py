@@ -17,7 +17,8 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import mobile_acceptance_inputs as inputs
 from mobile_android_ui import delivery_row
-from mobile_ios_ui import Bridge, runner_diagnostics
+from mobile_ios_ui import Bridge, IOSUI, runner_diagnostics
+from mobile_installed_journey import MobileJourney
 import release_acceptance as acceptance
 import mobile_android_ui as android_ui
 from release_acceptance_test import fixture
@@ -260,10 +261,45 @@ class MobileAcceptanceTests(unittest.TestCase):
             joined=ET.fromstring('<hierarchy><node text="Joined"/></hierarchy>')
             with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
                  patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
-                 patch.object(ui,'tree',return_value=joined):
+                 patch.object(ui,'tree',return_value=joined),patch.object(ui,'tap') as tap:
                 ui.join('gcoms://join#GCI1-fixture')
-            self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels','mobile-release'])
+            self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels'])
+            tap.assert_called_once()
             self.assertEqual(ui.ui_observation['join_state'],'joined')
+
+    def test_owned_channel_matches_combined_accessibility_name_without_other_channels(self):
+        for label in ('mobile-release', '#mobile-release', '# mobile-release', '#mobile-release 2'):
+            self.assertTrue(android_ui.owned_channel(ET.Element('node', {'text':label})),label)
+        for label in ('other-mobile-release', 'mobile-release-private', '#another-channel', 'private invitation'):
+            self.assertFalse(android_ui.owned_channel(ET.Element('node', {'text':label})),label)
+
+    def test_ios_initial_install_is_retained_until_a_distinct_replacement(self):
+        ui=IOSUI.__new__(IOSUI)
+        ui.installed=False;ui.active_binary_sha256=None;ui.device='owned-device'
+        baseline={'app':'baseline.app','binary_sha256':'a'*64}
+        current={'app':'current.app','binary_sha256':'b'*64}
+        with patch('mobile_ios_ui.ios.run') as run,patch.object(ui,'stop') as stop:
+            ui.install(baseline)
+            ui.install(baseline)
+            stop.assert_not_called()
+            self.assertEqual(run.call_count,1)
+            ui.install(current)
+            stop.assert_called_once()
+            self.assertEqual(run.call_count,2)
+        self.assertEqual(ui.active_binary_sha256,current['binary_sha256'])
+
+    def test_failed_device_check_does_not_hide_actual_peer_cleanup_or_become_a_pass(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);(root/'c0').mkdir()
+            journey=MobileJourney.__new__(MobileJourney)
+            journey.peer=SimpleNamespace(children=[],clients=[0],root=root)
+            journey.rollback={'passed':False};journey.report={'passed':False}
+            ui=SimpleNamespace(cleanup=lambda:{'passed':False})
+            self.assertEqual(journey.cleanup(ui),[])
+            self.assertTrue(journey.report['children_stopped'])
+            self.assertTrue(journey.report['temporary_profile_removed'])
+            self.assertFalse(journey.report['passed'])
+            self.assertFalse(journey.rollback['cleanup_complete'])
 
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):
@@ -402,10 +438,17 @@ class MobileAcceptanceTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as denied:
                 post('/result',{'id':command['id'],'passed':False,'phase':'private-invitation'})
             self.assertEqual(denied.exception.code,400);denied.exception.close()
-            post('/result',{'id':command['id'],'passed':False,'phase':'join-preview'})
+            for observation in ({'private-invitation':True}, {'reconnect':'private-value'}):
+                with self.assertRaises(HTTPError) as denied:
+                    post('/result',{'id':command['id'],'passed':False,'phase':'join-preview',
+                                    'observation':observation})
+                self.assertEqual(denied.exception.code,400);denied.exception.close()
+            post('/result',{'id':command['id'],'passed':False,'phase':'join-preview',
+                            'observation':{'reconnect':True,'review_invitation':False}})
             worker.join(timeout=5)
             self.assertEqual(len(errors),1)
             self.assertEqual(errors[0].ios_observation_phase,'join-preview')
+            self.assertEqual(errors[0].ios_observation_controls,{'reconnect':True,'review_invitation':False})
             self.assertNotIn('private',str(errors[0]))
         finally:
             worker.join(timeout=5) if worker.ident is not None else None
@@ -418,10 +461,13 @@ class MobileAcceptanceTests(unittest.TestCase):
                 '/private/build/AcceptanceTests.swift:44:9: error: private error text\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_CONFIGURATION=1\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=-1022\n'
+                'GCHAT_ACCEPTANCE_UI_PHASE=join-arrival\n'
+                'GCHAT_ACCEPTANCE_UI_PHASE=private-invitation\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_HTTP=403\n** TEST BUILD FAILED **\n')
             result=runner_diagnostics(log,65,0)
             self.assertEqual(result,{'exit_code':65,'bridge_polls':0,'compile_error_locations':['44:9'],
-                'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],'build_failed':True})
+                'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],
+                'ui_phases':['join-arrival'],'build_failed':True})
             self.assertNotIn('private',json.dumps(result))
 
     def test_post_journey_artifact_check_observes_changed_bytes(self):
