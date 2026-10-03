@@ -38,6 +38,18 @@ TARGETS = ('linux-x86_64', 'windows-x86_64', 'macos-aarch64', 'macos-x86_64', 'a
 FAILED_CONCLUSIONS = ('failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required')
 
 
+def require_active_request(state, manifest):
+    path = Path(state) / 'release-flight.json'
+    if not path.exists(): return  # Legacy standalone controllers have no flight.
+    flight = json.loads(path.read_text())
+    active = flight.get('active')
+    if (flight.get('schema') != 1 or not isinstance(active, str)
+            or not re.fullmatch('[0-9a-f]{64}', active)):
+        raise ValueError('native acceptance flight identity is invalid')
+    if active != manifest['release_id']:
+        raise ValueError('new acceptance request is held outside the active release; original outcome retained')
+
+
 def qualification_revision(config, manifest):
     value = config.get('qualification_commit', os.environ.get('GCHAT_CONTROLLER_REVISION'))
     if value is None:
@@ -116,6 +128,7 @@ def failed_followup(state, config, manifest, target, work, request, intent, revi
     if pointer.exists():
         followup = json.loads(pointer.read_text())
     elif revision is not None and revision != expected:
+        require_active_request(state, manifest)
         followup = {'commit': revision, 'request': hashlib.sha256(canonical(
             ['native-acceptance-followup', request, revision])).hexdigest()}
         atomic_json(pointer, followup)
@@ -272,6 +285,7 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
         if handled:
             return result
     if intent is None:
+        require_active_request(state, manifest)
         current = provider(state, manifest, target); previous = baseline(state, target, config, manifest)
         if current is None or previous is None: return None
         driver = module('test-mobile-upgrade' if target in ('android', 'ios') else 'test-native-upgrade')
@@ -319,6 +333,7 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
                 cleanup(marker, intent, grant, state)
                 raise ValueError('native acceptance dispatch is still unknown; do not resubmit blindly')
             return None
+        require_active_request(state, manifest)
         reference = manifest['refs']['gchat'].removeprefix('refs/heads/')
         if 'qualification_commit' in intent:
             reference = intent['qualification_ref']

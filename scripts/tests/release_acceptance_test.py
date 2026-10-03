@@ -252,6 +252,42 @@ class NativeAcceptanceTests(unittest.TestCase):
                     acceptance.failed_followup(work, config, manifest, inputs['target'], work, request, intent, '8'*40)
                 collector.assert_not_called()
 
+    def test_other_flight_failure_stays_retained_without_a_new_followup_or_authority(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            manifest, inputs, request, intent, _, config, api = self.rejected_provider(work)
+            with patch.object(acceptance, 'gh', side_effect=api), \
+                 self.assertRaisesRegex(ValueError, 'original reports retained'):
+                acceptance.collect(work, config, manifest, inputs['target'], work, request)
+            saved = (work / 'acceptance-failed.json').read_bytes()
+            atomic_json(work / 'release-flight.json', {'schema': 1, 'active': '2'*64, 'pending': manifest['release_id']})
+            with patch.object(acceptance, 'collect') as collector, \
+                 self.assertRaisesRegex(ValueError, 'held outside'):
+                acceptance.failed_followup(work, config, manifest, inputs['target'], work, request, intent, '8'*40)
+            collector.assert_not_called()
+            self.assertFalse((work / 'acceptance-followup.json').exists())
+            self.assertEqual((work / 'acceptance-failed.json').read_bytes(), saved)
+
+    def test_inactive_flight_can_reconcile_reserved_request_but_cannot_dispatch_fresh_authority(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            manifest, inputs, request, intent, _, config, _ = self.rejected_provider(work)
+            atomic_json(work / 'release-flight.json', {'schema': 1, 'active': '2'*64, 'pending': manifest['release_id']})
+            intent['created_at'] = int(time.time())
+            atomic_json(work / 'acceptance-intent.json', intent)
+            with patch.object(acceptance, 'gh', return_value={'workflow_runs': []}) as api, \
+                 patch.object(acceptance, 'ssh') as ssh:
+                self.assertIsNone(acceptance.collect(work, config, manifest, inputs['target'], work, request))
+                intent['dispatch_reserved'] = False
+                atomic_json(work / 'acceptance-intent.json', intent)
+                with self.assertRaisesRegex(ValueError, 'held outside'):
+                    acceptance.collect(work, config, manifest, inputs['target'], work, request)
+                (work / 'acceptance-intent.json').unlink()
+                with self.assertRaisesRegex(ValueError, 'held outside'):
+                    acceptance.collect(work, config, manifest, inputs['target'], work, request)
+                self.assertFalse(any(call.args[0].endswith('/dispatches') for call in api.call_args_list))
+                ssh.assert_not_called()
+
     def test_baseline_rotates_to_available_predecessor_and_keeps_seed_as_fallback(self):
         with tempfile.TemporaryDirectory() as temporary, closing(Ledger(Path(temporary) / 'ledger.sqlite')) as ledger:
             root = Path(temporary)

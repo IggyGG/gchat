@@ -68,6 +68,41 @@ class CoordinatorTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 Coordinator(self.root / 'unused', {'maximum_workers': value})
             self.assertFalse((self.root / 'unused').exists())
+
+    def test_slow_older_reconciliation_keeps_capacity_for_resumed_active_workers(self):
+        from unittest.mock import Mock
+        for stage, limit in (('build', 3), ('acceptance', 6), ('build', 1)):
+            with self.subTest(stage=stage, limit=limit):
+                root = self.root / (stage + str(limit))
+                recipe = {'run': ['fixture-worker'], 'reconcile': ['fixture-worker'], 'timeout': 10}
+                c = Coordinator(root, {'single_flight': True, 'nonblocking_workers': True,
+                    'maximum_workers': min(limit, 3), 'maximum_acceptance_workers': limit,
+                    'minimum_free_bytes': 0, 'workers': {'linux-x86_64': {stage: recipe}}})
+                manifests = [candidate(i) for i in (1, 2, 3)]
+                for manifest in manifests: c.ledger.add(manifest)
+                atomic_json(root / 'deployment/desired.json', {'release_id': manifests[0]['release_id']})
+                retained = []
+                for manifest in manifests[1:]:
+                    effect = c.ledger.effect(manifest['release_id'], 'linux-x86_64', stage)
+                    path = root / 'jobs' / effect['id'] / 'attempted.json'
+                    atomic_json(path, {'request_id': effect['id'], 'attempted': 1})
+                    retained.append((path, path.read_bytes()))
+                processes = []
+                def launch(*args, **kwargs):
+                    process = Mock(); process.poll.return_value = None; processes.append(process); return process
+                try:
+                    with patch('release_coordinator.subprocess.Popen', side_effect=launch) as worker:
+                        for manifest in manifests[1:]:
+                            c.execute(manifest, 'linux-x86_64', stage)
+                        self.assertEqual(worker.call_count, 1 if limit > 1 else 0)
+                        c.execute(manifests[0], 'linux-x86_64', stage)
+                        self.assertEqual(worker.call_count, 2 if limit > 1 else 1)
+                        self.assertTrue(any(item['release_id'] == manifests[0]['release_id']
+                                            for item in c.running_workers.values()))
+                        self.assertEqual(retained[-1][0].read_bytes(), retained[-1][1])
+                finally:
+                    for process in processes: process.poll.return_value = 0
+                    c.close_workers(); c.ledger.close()
     def test_invalid_poll_interval_cannot_create_release_state(self):
         for interval in (0, 9, 301, True, 0.5, '30', None):
             state=self.root / 'unused'

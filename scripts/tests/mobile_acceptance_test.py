@@ -5,6 +5,8 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -16,6 +18,7 @@ import mobile_acceptance_inputs as inputs
 from mobile_android_ui import delivery_row
 from mobile_ios_ui import Bridge
 import release_acceptance as acceptance
+import mobile_android_ui as android_ui
 from release_acceptance_test import fixture
 from release_network_canary import module
 
@@ -32,6 +35,56 @@ def mobile_fixture(target='android'):
 
 
 class MobileAcceptanceTests(unittest.TestCase):
+    def owned_android_ui(self, root, *, sdk_setup=False, qemu=True, avd=True, installed=False):
+        def command(argv, **kwargs):
+            args = tuple(argv[3:])
+            result, code = '', 0
+            if args == ('shell', 'getprop', 'ro.kernel.qemu'): result = '1' if qemu else '0'
+            elif args == ('emu', 'avd', 'name'): result = 'gchat-release-fixture-5554\nOK' if avd else 'another-owned-avd\nOK'
+            elif args[:3] == ('shell', 'pm', 'path'):
+                present = installed if args[3] == android_ui.android.PACKAGE else sdk_setup
+                result, code = ('package:/fixture.apk', 0) if present else ('', 1)
+            elif args[:3] == ('shell', 'pm', 'disable-user'): result = 'disabled-user'
+            elif args[:2] == ('shell', 'settings') and 'get' in args: result = '1'
+            elif args == ('shell', 'locksettings', 'get-disabled'): result = 'true'
+            elif args == ('shell', 'getprop', 'ro.product.cpu.abi'): result = 'x86_64'
+            elif args == ('shell', 'getprop', 'ro.build.version.sdk'): result = '35'
+            return SimpleNamespace(returncode=code, stdout=result.encode(), stderr=b'')
+        with patch.object(android_ui.android, 'sdk', return_value=root), \
+             patch.object(android_ui.android, 'root_emulator') as rooted, \
+             patch.object(android_ui.subprocess, 'run', side_effect=command) as adb:
+            ui = android_ui.AndroidUI('emulator-5554', root, 'fixture-private-value', lambda: time.monotonic()+60)
+        return ui, rooted, adb
+
+    def test_mobile_android_ui_runs_shared_disposable_setup_with_absent_optional_package(self):
+        for installed in (False, True):
+            with self.subTest(sdk_setup=installed), tempfile.TemporaryDirectory() as temporary:
+                ui, rooted, adb = self.owned_android_ui(Path(temporary), sdk_setup=installed)
+                self.assertFalse(ui.installed)
+                rooted.assert_called_once()
+                calls = [call.args[0][3:] for call in adb.call_args_list]
+                self.assertIn(['shell', 'pm', 'path', 'com.google.android.googlesdksetup'], calls)
+                self.assertIn(['shell', 'locksettings', 'get-disabled'], calls)
+                self.assertEqual(any('disable-user' in argv for argv in calls), installed)
+
+    def test_mobile_setup_still_refuses_physical_other_or_preinstalled_device(self):
+        for options in ({'qemu': False}, {'avd': False}, {'installed': True}):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as temporary, self.assertRaises(ValueError):
+                self.owned_android_ui(Path(temporary), **options)
+
+    def test_mobile_failure_locations_exclude_exception_messages_and_private_paths(self):
+        driver = module('test-mobile-upgrade')
+        try:
+            raise TypeError('private-test-invitation /private/profile/path')
+        except TypeError as error:
+            frames = driver.error_frames(error)
+        self.assertTrue(frames)
+        self.assertEqual(set(frames[0]), {'file','function','line'})
+        self.assertEqual(frames[0]['file'], Path(__file__).name)
+        encoded = json.dumps(frames)
+        self.assertNotIn('private-test-invitation', encoded)
+        self.assertNotIn('/private/profile/path', encoded)
+
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):
             _, specs, *_ = mobile_fixture(target)

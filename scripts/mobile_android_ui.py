@@ -70,8 +70,9 @@ class AndroidUI:
         require(result.returncode == 0, 'owned Android command failed')
         return result.stdout if binary else result.stdout.decode().strip()
 
-    def shell(self, *args, absent=False):
-        return self.command('shell', *args, absent=absent)
+    def shell(self, *args, absent=False, absent_ok=False):
+        # Shared disposable-device setup uses absent_ok for optional packages.
+        return self.command('shell', *args, absent=absent or absent_ok)
 
     def tree(self):
         self.shell('rm', '-f', self.dump)

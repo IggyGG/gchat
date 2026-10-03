@@ -16,8 +16,17 @@ These commands use the running coordinator and never create a second ledger writ
 Store publications cannot be rolled back by that command. Use `--json` for status
 integration and `--state PATH` only when operating on a local controller state.
 
+Current launch status (2026-10-03): all 17 infrastructure targets are deployed;
+Linux and SDK 0.1.98 are published and the local Linux package has updated.
+The full launch remains open on Android, Windows and Intel Mac acceptance,
+Apple Silicon Mac acceptance, and the queued retained iOS lifecycle provider.
+The worker-priority changes below are tested source changes awaiting activation.
+
 New source changes settle for ten minutes. Three artifact workers and up to six
-installed-client acceptance workers can progress concurrently. Infrastructure
+installed-client acceptance workers can progress concurrently. While the active release is incomplete, older dispatched reconciliations use at
+most one artifact worker and one acceptance worker, leaving capacity for active
+work. They may finish their original requests; fresh acceptance authority and
+corrected follow-ups wait for their own active flight. Infrastructure
 activation stays serial in one owned worker, so a long canary does not delay the
 coordinator's polling or status updates. Each step has a deadline and source-bound
 receipt. Status exposes active stages, deadlines and controller observation age.

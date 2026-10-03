@@ -8,6 +8,7 @@ import platform
 import secrets
 import shutil
 import time
+import traceback
 
 from mobile_acceptance_inputs import (
     acquire, android_application, digest, ios_application, require, validate_inputs)
@@ -15,6 +16,13 @@ from mobile_installed_journey import MobileJourney
 from release_coordinator import atomic_json
 from release_network_canary import module, verify_journey
 from release_pair import validate
+
+
+def error_frames(error):
+    # Static locations diagnose harness errors without exception messages,
+    # native arguments, UI hierarchies or local profile paths.
+    return [{'file': Path(frame.filename).name, 'function': frame.name, 'line': frame.lineno}
+            for frame in traceback.extract_tb(error.__traceback__, limit=16)]
 
 
 def unchanged(items, target):
@@ -131,6 +139,7 @@ def main():
     except Exception as error:
         # No raw native command, UI hierarchy, invitation or grant is uploaded.
         report['error'] = type(error).__name__
+        report['error_frames'] = error_frames(error)
         report['stage'] = journey.stage if journey is not None else 'retained-inputs-or-device-setup'
     finally:
         invitation.unlink(missing_ok=True)

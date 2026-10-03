@@ -332,6 +332,17 @@ class Coordinator:
             limit = self.maximum_acceptance_workers if acceptance else self.maximum_workers
             if occupied >= limit:
                 return None
+            if self.config.get('single_flight', False):
+                from release_flight import select, internal_complete
+                active = select(self.state, self.ledger)['active']
+                if manifest['release_id'] != active and active is not None and not internal_complete(self.ledger, active):
+                    background = sum(item['release_id'] != active and
+                                     (item['stage'] == 'acceptance') == acceptance
+                                     for item in self.running_workers.values())
+                    # Retain older dispatched requests, but keep capacity for a
+                    # resumed active release even when a provider poll is slow.
+                    if background >= min(1, limit - 1):
+                        return None
             log_path = work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')
             log = log_path.open('xb')
             atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
