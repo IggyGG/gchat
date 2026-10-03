@@ -310,6 +310,23 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertTrue(android_ui.named_control(ET.Element('node',{attribute:'Files: 2'}),'Files:'))
             self.assertFalse(android_ui.named_control(ET.Element('node',{attribute:'Another control'}),'Network:'))
 
+    def test_only_the_owned_system_pixel_launcher_anr_can_be_dismissed(self):
+        xml='<hierarchy><node package="android" text="Pixel Launcher isn’t responding"/><node package="android" resource-id="android:id/aerr_close" bounds="[20,100][250,150]"/></hierarchy>'
+        self.assertIsNotNone(android_ui.launcher_anr_close(ET.fromstring(xml)))
+        for changed in (xml.replace('Pixel Launcher','GChat'),xml.replace('package="android"','package="boo.gchat.app"'),
+                        xml.replace('aerr_close','aerr_wait'),xml.replace('[20,100][250,150]','[0,0][0,0]')):
+            self.assertIsNone(android_ui.launcher_anr_close(ET.fromstring(changed)))
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            with patch.object(ui,'shell',side_effect=['','',xml]),patch.object(ui,'tap') as tap:
+                self.assertEqual(ui.tree().tag,'hierarchy');tap.assert_called_once()
+            self.assertEqual(ui.ui_observation['launcher_anr_dismissed'],1)
+            ui.ui_observation['launcher_anr_dismissed']=2
+            with patch.object(ui,'shell',side_effect=['','',xml]),patch.object(ui,'tap') as tap, \
+                 self.assertRaisesRegex(ValueError,'launcher repeatedly'):
+                ui.tree()
+            tap.assert_not_called()
+
     def test_xctest_binding_accepts_only_fresh_owned_device_and_its_named_new_clone(self):
         old='10000000-0000-0000-0000-000000000000';base='20000000-0000-0000-0000-000000000000'
         clone='30000000-0000-0000-0000-000000000000';other='40000000-0000-0000-0000-000000000000'

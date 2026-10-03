@@ -22,9 +22,9 @@
     "active flight is polled first; other flights cannot admit fresh acceptance, expired revalidation or publication"
   ],
   "tests": {
-    "python": 808,
+    "python": 834,
     "existing_skips": 5,
-    "log_sha256": "469be954b1fdd6c2b6f8ef5995d1ad62a56b2b6cfa1dfd2e23f2b32c211b173f",
+    "log_sha256": "377cbe6bf085c82bbab0935f1cabba80b9c67ec56bb581b7ec78d25744ecb386",
     "L0_source_paths": 820,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
@@ -36,8 +36,8 @@
     "registry_copy_controls": 5,
     "ios_retained_recovery_controls": 13,
     "native_acceptance_controls": 37,
-    "seconds": 36.462,
-    "mobile_acceptance_controls": 15,
+    "seconds": 39.171,
+    "mobile_acceptance_controls": 37,
     "ios_store_worker_controls": 9
   },
   "live_operator": {
@@ -50,12 +50,12 @@
     "policy_backup_retained": true
   },
   "controller_image_active": true,
-  "fleet_launched": false,
+  "fleet_launched": true,
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "2b2478e1e71e00b3598c50bf11db68a1bb5747ea",
-  "active_controller_kubernetes_checks": 319,
+  "active_controller_source": "1b3fc77583930f2804c06c05b2b113c967d68967",
+  "active_controller_kubernetes_checks": 345,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -211,9 +211,9 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": 1791052849,
+    "observed_at": 1791053971,
     "complete": false,
-    "infrastructure": "recovering",
+    "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
@@ -221,7 +221,7 @@
     "windows-x86_64": "available",
     "macos-x86_64": "available",
     "macos-aarch64": "available",
-    "ios": "installed_acceptance_failed",
+    "ios": "installed_acceptance_running",
     "source_fixes_active": true,
     "desktop_platforms_available": [
       "linux-x86_64",
@@ -247,8 +247,8 @@
     "automatic_retry": true,
     "uploaded": false
   },
-  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b9d2b2e93f3e3a66b8d0aa321f3d0579b20cf03fbc62d5919d4e7c5d2d6d93fd",
-  "controller_qualification_sha256": "201ba6c5843a3a20a172c1c5c172a4c36bf7d6770784cecaffe915cf20f1a4a9",
+  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:8e06c8b605400a2d804bdf725052e232793eccd3f24ccf5076376fb57331571e",
+  "controller_qualification_sha256": "a5bdc81f86e1411960352b3d6c0dd58bb9027befcfa700373c43aed1ca1741aa",
   "remaining_launch_source_corrections": {
     "ios_completed_original_evidence_validated": true,
     "original_ios_provider_adapter_proof": "operations/actual-ios-lifecycle-adapter-588.json",
@@ -284,41 +284,34 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37138641615,
-    "artifact": 11279786127,
-    "source": "63729bba846bd77ee1c3f8851881c995b5d0440a",
-    "source_tree": "b6c8fd2a6a808c8436f0ff0665a67fa459590984",
-    "archive_sha256": "21fd58765683e1732ac2688df8cc49be143a08b6948b1eaf871f7e65ca013a78",
+    "run": 37145140237,
+    "artifact": 11281996788,
+    "source": "dbf0fb27aa10bd914bc1eb30a7a3d2b5a6e41305",
+    "source_tree": "ec5c52e412552fac0ce4e576260a1d1cf6fa86fc",
+    "archive_sha256": "71481a189db39001383c41d12732b1138ca86b16037cead61890a89fbf726faf",
     "full_history": true,
-    "all_python_tests": 829,
+    "all_python_tests": 834,
     "skips": 5,
-    "seconds": 35.659,
+    "seconds": 36.825,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37137666727,
-    "ios": 37137666816,
-    "helper": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
-    "state": "failed",
+    "android": 37145392148,
+    "ios": 37145392636,
+    "helper": "dbf0fb27aa10bd914bc1eb30a7a3d2b5a6e41305",
+    "state": "android_failed_ios_running",
     "previous_failed_runs": {
-      "android": 37135536417,
-      "ios": 37135537692
+      "android": 37145104303,
+      "ios": 37145106253
     },
-    "reports": {
-      "android": {
-        "sha256": "643b914f6f2507c9180f4714e25dc05bb303f30fed776a47562f06d5c5066a62",
-        "artifact": 11279127198,
-        "passed": false,
-        "stage": "baseline-start"
-      },
-      "ios": {
-        "sha256": "008575125b4dfcfac86ab6d2f87c357bfadc40c36992c27b66671e072cd18828",
-        "artifact": 11279117277,
-        "passed": false,
-        "stage": "retained-inputs-or-device-setup"
-      }
+    "android_report": {
+      "artifact": 11281719445,
+      "sha256": "e34700d8451c85d561cbf945fb2795f94ee805cca03d2762cdc3525a9ff11bb6",
+      "passed": false,
+      "stage": "baseline-start",
+      "fresh_pre_input_screenshot_retained": true
     }
   },
   "retained_workstation_failures": {
@@ -345,8 +338,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "63729bba846bd77ee1c3f8851881c995b5d0440a",
-  "native_helper_qualification": "operations/native-helper-63729bb-qualified-712.json",
+  "native_helper_source": "dbf0fb27aa10bd914bc1eb30a7a3d2b5a6e41305",
+  "native_helper_qualification": "operations/native-helper-dbf0fb2-qualified-724.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -355,7 +348,7 @@
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 36,
+    "focused_tests": 37,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
@@ -378,7 +371,8 @@
     "clone_caused_previous_failure_proven": false,
     "xctest_setup_before_command_deadline": true,
     "owned_preview_scopes_nickname_field": true,
-    "files_dialog_closed": true
+    "files_dialog_closed": true,
+    "pixel_launcher_anr_handled": true
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",
@@ -402,7 +396,42 @@
     "new_controller_source": "1b3fc77583930f2804c06c05b2b113c967d68967",
     "actual_image_checks": 197,
     "kubernetes_checks": 345,
-    "active": false,
-    "qualified_receipt": "operations/controller-eviction-qualified-721.json"
+    "active": true,
+    "qualified_receipt": "operations/controller-eviction-qualified-721.json",
+    "live_readback": "operations/controller-eviction-live-readback-728.json",
+    "compaction_image_matches": true
+  },
+  "controller_runtime": {
+    "schema": 1,
+    "passed": true,
+    "source": {
+      "commit": "1b3fc77583930f2804c06c05b2b113c967d68967",
+      "tree": "6cb7ec8e9a7b560c9ec1c3b9bf27721de4b7a1f8"
+    },
+    "inventory_sha256": "8356587bbe5d033d8edd37470aa3b5dea81e7e803dd06a2d4069ad759cf90fb6",
+    "source_files_verified": 233,
+    "tests": 197,
+    "suites": [
+      "release_config_test",
+      "release_acceptance_test",
+      "mobile_acceptance_test",
+      "release_coordinator_test",
+      "release_deployment_test",
+      "release_rollback_image_test",
+      "release_infrastructure_bundle_test",
+      "release_kubernetes_worker_test",
+      "release_host_install_test",
+      "release_rollout_watchdog_test",
+      "release_inputs_test",
+      "release_ios_versions_test",
+      "release_prepare_test",
+      "release_compaction_test",
+      "controller_runtime_test",
+      "infrastructure_build_test"
+    ],
+    "source_unchanged": true,
+    "production_controller_revision_tested": true,
+    "configuration_digest": "sha256:7c0e3baff5bee8cbe8529a0167c001bbded088eaf8bd9c8d22fece6bf5883cd0",
+    "log_sha256": "a2abd067fe8a454bdd5dd4e4f53d6d7a9e9c1edd09eb9fbe8b01aca0a4499acf"
   }
 }

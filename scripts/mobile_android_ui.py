@@ -31,6 +31,18 @@ def named_control(node, prefix):
     return any(node.get(key, '').startswith(prefix) for key in ('text', 'content-desc'))
 
 
+def launcher_anr_close(tree):
+    def title(node):
+        if node.get('package') != 'android': return False
+        for key in ('text', 'content-desc'):
+            value = node.get(key, '').translate({ord(c): None for c in '\u2068\u2069\u200e\u200f'})
+            if value.replace('\u2019', "'").strip() == "Pixel Launcher isn't responding": return True
+        return False
+    if not any(title(node) for node in tree.iter('node')): return None
+    return next((node for node in tree.iter('node') if node.get('package') == 'android'
+                 and node.get('resource-id') == 'android:id/aerr_close' and android.ui_bounds(node)), None)
+
+
 def completed_file_row(tree, name, known_names):
     for node in reversed(list(tree.iter('node'))):
         values = labels(node)
@@ -116,6 +128,13 @@ class AndroidUI:
             tree = ET.fromstring(self.shell('cat', self.dump))
         except (ValueError, ET.ParseError) as error:
             self.ui_observation.update(errors=self.ui_observation['errors']+1, last_error=type(error).__name__)
+            return ET.Element('hierarchy')
+        close = launcher_anr_close(tree)
+        if close is not None:
+            count = self.ui_observation.get('launcher_anr_dismissed', 0)
+            require(count < 2, 'owned Android launcher repeatedly unresponsive')
+            self.tap(close)
+            self.ui_observation['launcher_anr_dismissed'] = count + 1
             return ET.Element('hierarchy')
         nodes = [node for node in tree.iter('node') if node.get('package') == android.PACKAGE]
         # Fixed control counts diagnose startup without retaining private UI text.
