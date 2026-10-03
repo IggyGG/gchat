@@ -217,11 +217,11 @@
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "installed_acceptance_failed",
+    "android": "installed_acceptance_running",
     "windows-x86_64": "available",
     "macos-x86_64": "available",
     "macos-aarch64": "available",
-    "ios": "installed_acceptance_failed",
+    "ios": "installed_acceptance_running",
     "source_fixes_active": true,
     "desktop_platforms_available": [
       "linux-x86_64",
@@ -284,27 +284,27 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37131273300,
-    "artifact": 11276662612,
-    "source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
-    "source_tree": "1b2ec20502b61a9c696e4b2a3135303d39e74b9f",
-    "archive_sha256": "39110dc364272d7e820e869bb5d710f4a1e9c23c7dc081f9d62407e72bb2e36f",
+    "run": 37132630686,
+    "artifact": 11277667083,
+    "source": "f66452af95843041c20fadcb5a8c6ca770968f9c",
+    "source_tree": "50ab0fd6b97aef3c9b92eb24a007ff144e2edec4",
+    "archive_sha256": "2eed2dc876baa57b3259993bbdf29dad0cd710a0bbfc190ff774a16f8c2d8ebc",
     "full_history": true,
-    "all_python_tests": 816,
+    "all_python_tests": 819,
     "skips": 5,
-    "seconds": 33.886,
+    "seconds": 28.821,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37131600497,
-    "ios": 37131601344,
-    "helper": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
-    "state": "failed",
+    "android": 37132813819,
+    "ios": 37132813875,
+    "helper": "f66452af95843041c20fadcb5a8c6ca770968f9c",
+    "state": "installed_acceptance_running",
     "previous_failed_runs": {
-      "android": 37129678031,
-      "ios": 37129719954
+      "android": 37131600497,
+      "ios": 37131601344
     }
   },
   "retained_workstation_failures": {
@@ -331,8 +331,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
-  "native_helper_qualification": "operations/native-helper-41d81d3-qualified-683.json",
+  "native_helper_source": "f66452af95843041c20fadcb5a8c6ca770968f9c",
+  "native_helper_qualification": "operations/native-helper-f66452a-qualified-691.json",
   "mobile_ui_corrections": {
     "source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
     "android_keyboard_and_value_confirmation": true,
@@ -341,13 +341,16 @@
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 26,
+    "focused_tests": 28,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
     "ios_baseline_installed_before_xctest": true,
     "runtime_runner_diagnostics": true,
-    "actual_peer_cleanup_independent_of_ui_verdict": true
+    "actual_peer_cleanup_independent_of_ui_verdict": true,
+    "file_pane_close_details": true,
+    "retained_complete_file_state_from_files_pane": true,
+    "first_run_notification_dialog_dismissed": true
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",

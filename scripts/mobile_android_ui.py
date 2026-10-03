@@ -27,6 +27,15 @@ def owned_channel(node):
                for key in ('text', 'content-desc'))
 
 
+def completed_file_row(tree, name, known_names):
+    for node in reversed(list(tree.iter('node'))):
+        values = labels(node)
+        if name in values and set(values) & known_names == {name}:
+            if any(' · complete · ' in value for value in values):
+                return True
+    return False
+
+
 def delivery_row(tree, body, known_bodies):
     # A delivered suffix elsewhere in the transcript cannot qualify this send.
     # Require one smallest message subtree containing exactly this test body.
@@ -245,6 +254,10 @@ class AndroidUI:
         self.node(self.text('Message or command'), 120)
 
     def identity(self):
+        tree = self.tree()
+        if any(self.text('Notifications')(node) for node in tree.iter('node')) and any(
+                self.text('Close dialog')(node) for node in tree.iter('node')):
+            self.click('Close dialog')
         self.tap(self.node(lambda node: node.get('content-desc', '').startswith('Network:')))
         self.click('Your identity')
         def identify():
@@ -312,7 +325,7 @@ class AndroidUI:
             return None
         self.tap(self.until(find, 120)[0])
         if action != 'Save file…':
-            self.click('Close dialog')
+            self.click('Close details')
 
     def progress(self, name, size):
         self.names.add(name)
@@ -323,7 +336,12 @@ class AndroidUI:
                     match = re.fullmatch(r'([\d,]+) / ([\d,]+) bytes verified', value)
                     if match and int(match[2].replace(',', '')) == size:
                         return int(match[1].replace(',', ''))
-        return None
+        # Completed transfer rows are transient. On reopen, the retained Files
+        # pane still reports the exact file's verified completion state.
+        self.tap(self.node(lambda node: node.get('content-desc', '').startswith('Files:')))
+        complete = completed_file_row(self.tree(), name, self.names)
+        self.click('Close details')
+        return size if complete else None
 
     def cache_hash(self, ident):
         require(re.fullmatch('[0-9a-f]{32}', ident), 'invalid retained file ID')

@@ -301,6 +301,29 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertFalse(journey.report['passed'])
             self.assertFalse(journey.rollback['cleanup_complete'])
 
+    def test_completed_file_observation_cannot_use_another_file_or_downloading_state(self):
+        tree=ET.fromstring('<hierarchy><node><node text="baseline-cache.bin"/>'
+            '<node text="262,144 bytes · complete · 1 offering peers"/></node>'
+            '<node><node text="bounded-mobile.bin"/>'
+            '<node text="16.0 MiB · downloading · 1 offering peers"/></node></hierarchy>')
+        names={'baseline-cache.bin','bounded-mobile.bin'}
+        self.assertTrue(android_ui.completed_file_row(tree,'baseline-cache.bin',names))
+        self.assertFalse(android_ui.completed_file_row(tree,'bounded-mobile.bin',names))
+        self.assertFalse(android_ui.completed_file_row(tree,'absent.bin',names))
+
+    def test_file_action_closes_its_details_pane_after_accept_without_dismissing_picker(self):
+        for action in ('Download & share','Save file…'):
+            with self.subTest(action=action),tempfile.TemporaryDirectory() as temporary:
+                ui,_,_=self.owned_android_ui(Path(temporary))
+                tree=ET.fromstring('<hierarchy><node><node text="baseline-cache.bin"/>'
+                    f'<node text="{action.replace("&","&amp;")}" bounds="[10,10][90,50]"/>'
+                    '</node></hierarchy>')
+                with patch.object(ui,'node',return_value=ET.Element('node')),patch.object(ui,'tap'), \
+                     patch.object(ui,'tree',return_value=tree),patch.object(ui,'click') as click:
+                    ui.file_action('baseline-cache.bin',action)
+                if action=='Save file…':click.assert_not_called()
+                else:click.assert_called_once_with('Close details')
+
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):
             _, specs, *_ = mobile_fixture(target)

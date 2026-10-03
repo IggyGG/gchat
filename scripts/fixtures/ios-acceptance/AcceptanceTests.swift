@@ -165,7 +165,7 @@ final class GChatAcceptanceTests: XCTestCase {
         button.tap()
         let target = try row(name, action: action)
         target.buttons.matching(NSPredicate(format: "label == %@", action)).firstMatch.tap()
-        if action != "Save file…" { try click("Close dialog") }
+        if action != "Save file…" { try click("Close details") }
     }
 
     func request(_ path: String, _ value: [String: Any]) throws -> [String: Any] {
@@ -244,6 +244,9 @@ final class GChatAcceptanceTests: XCTestCase {
             try wait(30) { self.element("Message or command").exists }
             return true
         case "identity":
+            if element("Notifications").exists && element("Close dialog").exists {
+                try click("Close dialog")
+            }
             let network = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Network:")).firstMatch
             try wait { network.exists && network.isHittable }
             network.tap()
@@ -310,6 +313,13 @@ final class GChatAcceptanceTests: XCTestCase {
                        let verified = Int(parts[0]) { return verified }
                 }
             }
+            let button = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Files:")).firstMatch
+            try wait(10) { button.exists && button.isHittable }
+            button.tap()
+            let file = try row(name)
+            let complete = allLabels(file).contains { $0.contains(" · complete · ") }
+            try click("Close details")
+            if complete { return size }
             return NSNull()
         case "export":
             let name = try string("name")
