@@ -8,6 +8,8 @@ The installed iOS journey uses the existing visible invitation form in separate 
 
 Node 5 now retains its anchor identity volume after unused-image cleanup and a reversible ext4 reserve adjustment from 5% to 1% recovered about 38 GB of available headroom. `node-image-headroom.timer` is enabled on all eight cluster nodes to check every five minutes and use containerd’s unused-image pruning below 17% free space. Its script preserves node data and reports when pruning cannot restore sufficient headroom. All eight scheduled checks pass. Node 4 also retains its original insufficient-prune result and reversible reserve adjustment from 5% to 1%, which recovered 8.6 GB without deleting files or changing eviction thresholds. The unit and script live in `release/automation/node-image-headroom.*` and `scripts/node-image-headroom.py`.
 
+Mobile worker correction (2026-10-04): the retained 7f423f8 Android report proves that keyboard capitalization changed the nickname while focus and its length were correct. The fixture now enters uppercase MOBILE and keeps exact input confirmation. The retained iOS report failed during initial simulator installation before XCTest. Installation now reconciles the actual retained executable after a client timeout and permits one idempotent retry inside the original 120-second operation and 600-second setup budget. Changed binaries, ordinary command errors and exhausted deadlines still fail. All 53 focused mobile controls pass; new native acceptance is required. Original failures, application bytes and APIs remain unchanged.
+
 ## Routine release operation
 
 The GitHub `release-signing` environment must permit `release/gchat-*` and

@@ -272,7 +272,7 @@ final class GChatAcceptanceTests: XCTestCase {
             phase = "join-preview"
             try wait(120) { self.element("Your nickname in this channel").exists }
             phase = "join-input"
-            try type(app.webViews.textFields.firstMatch, "mobile")
+            try type(app.webViews.textFields.firstMatch, "MOBILE")
             phase = "join-accept"
             try click("Join")
             return true

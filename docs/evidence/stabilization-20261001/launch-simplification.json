@@ -572,6 +572,37 @@
         "cleanup_passed": true,
         "receipt": "operations/ios-helper-e2a791f-result-781.zip"
       }
+    },
+    {
+      "android": 37158459940,
+      "ios": 37158485477,
+      "helper": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
+      "state": "both_failed",
+      "android_report": {
+        "artifact": 11287450630,
+        "sha256": "2a6e9c6f18b0a674d9a2b2e9e412e14884b226a0f7505f0b96b45a4cad7c25a2",
+        "passed": false,
+        "failure": "nickname_case_changed_by_keyboard",
+        "matching_fields": 1,
+        "focused_fields": 1,
+        "expected_length": 6,
+        "value_lengths": [
+          6
+        ],
+        "case_changed_fields": 1,
+        "exact_value_fields": 0,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-7f423f8-result-791.zip"
+      },
+      "ios_report": {
+        "artifact": 11287630211,
+        "sha256": "2b01306098d11b005cc3c7f008239fee786612f305a0c7d20e2a7cb41693c881",
+        "passed": false,
+        "failure": "initial_simulator_install_timeout",
+        "bridge_polls": 0,
+        "cleanup_passed": true,
+        "receipt": "operations/ios-helper-7f423f8-result-792.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -595,5 +626,15 @@
     "all_timers_active": true,
     "all_scheduled_checks_passed": true,
     "evidence": "node-image-headroom.json"
+  },
+  "mobile_install_correction": {
+    "fixture_nickname": "MOBILE",
+    "exact_input_confirmation": true,
+    "install_total_seconds": 120,
+    "setup_total_seconds": 600,
+    "maximum_install_attempts": 2,
+    "installed_binary_hash_required": true,
+    "focused_controls_passed": 53,
+    "native_acceptance_passed": false
   }
 }

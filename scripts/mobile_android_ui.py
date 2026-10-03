@@ -376,7 +376,7 @@ class AndroidUI:
             field = self.until(lambda: (node,) if (node := invitation_nickname(self.tree())) is not None else None, 120)[0]
         else:
             self.ui_observation['invitation_entry'] = 'os_link'
-        self.type(field, 'mobile')
+        self.type(field, 'MOBILE')
         self.click('Join')
         # A new network joins asynchronously and presents its saved enrollment
         # in a modal. Its Joined state does not select the conversation.

@@ -176,6 +176,7 @@ class IOSUI:
         self.bodies = set()
         self.installed = False
         self.active_binary_sha256 = None
+        self.install_observation = {}
         self.unlock_attempted = False
         runtime = ios.simulator_runtime()
         types = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
@@ -246,6 +247,7 @@ class IOSUI:
                 output / 'xctest.private.log', self.runner.poll() if self.runner is not None else None,
                 self.bridge.polls if self.bridge is not None else 0)
             error.ios_setup_diagnostics['setup_stage'] = setup_stage
+            error.ios_setup_diagnostics['install'] = dict(self.install_observation)
             raise
 
     def call(self, op, maximum=120, **values):
@@ -259,14 +261,51 @@ class IOSUI:
             return
         if self.installed:
             self.stop()
-        ios.run(['xcrun', 'simctl', 'install', self.device, item['app']], timeout=120)
+        # A timed-out simctl client can leave the owned simulator's installer
+        # completing the same request. Reconcile the actual executable before
+        # one idempotent retry, all inside the original 120-second operation.
+        end = min(time.monotonic() + 120, self.deadline())
+        self.install_observation = {'attempts': 0, 'timeouts': 0, 'hash_verified': False}
+        for attempt in range(2):
+            left = end - time.monotonic() - 10
+            require(left > 0, 'original simulator install deadline')
+            self.install_observation['attempts'] += 1
+            try:
+                ios.run(['xcrun', 'simctl', 'install', self.device, item['app']],
+                        timeout=min(40, left) if attempt == 0 else left)
+            except subprocess.TimeoutExpired:
+                self.install_observation['timeouts'] += 1
+            if self.installed_matches(item, end):
+                self.install_observation['hash_verified'] = True
+                break
+        else:
+            raise TimeoutError('original simulator install did not produce the retained executable')
         self.installed = True
         self.active_binary_sha256 = item['binary_sha256']
 
+    def installed_matches(self, item, end):
+        left = min(10, end - time.monotonic())
+        require(left > 0, 'original simulator install deadline')
+        try:
+            app = Path(ios.output(['xcrun', 'simctl', 'get_app_container', self.device,
+                                   ios.BUNDLE, 'app'], timeout=left))
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return False
+        binary = app / Path(item['binary']).name
+        if not app.is_absolute() or not binary.is_file():
+            return False
+        with binary.open('rb') as stream:
+            actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+        require(actual == item['binary_sha256'], 'installed simulator executable differs from retained input')
+        require(time.monotonic() < end, 'late simulator install observation')
+        return True
+
     def diagnostics(self):
-        return runner_diagnostics(self.output / 'xctest.private.log',
+        result = runner_diagnostics(self.output / 'xctest.private.log',
             self.runner.poll() if self.runner is not None else None,
             self.bridge.polls if self.bridge is not None else 0)
+        result['install'] = dict(self.install_observation)
+        return result
 
     def stop(self):
         self.call('stop')

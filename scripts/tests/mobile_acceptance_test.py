@@ -337,7 +337,7 @@ class MobileAcceptanceTests(unittest.TestCase):
                  patch.object(ui,'scroll_to_top'):
                 ui.join(invitation)
             self.assertEqual(clicks,['Review invitation','Continue','Join'])
-            self.assertEqual(typed,[invitation,'mobile'])
+            self.assertEqual(typed,[invitation,'MOBILE'])
             self.assertEqual(ui.ui_observation['invitation_entry'],'os_link_with_visible_form')
             self.assertNotIn('private_fixture',json.dumps(ui.ui_observation))
 
@@ -563,9 +563,11 @@ class MobileAcceptanceTests(unittest.TestCase):
     def test_ios_initial_install_is_retained_until_a_distinct_replacement(self):
         ui=IOSUI.__new__(IOSUI)
         ui.installed=False;ui.active_binary_sha256=None;ui.device='owned-device'
+        ui.deadline=lambda:time.monotonic()+600
         baseline={'app':'baseline.app','binary_sha256':'a'*64}
         current={'app':'current.app','binary_sha256':'b'*64}
-        with patch('mobile_ios_ui.ios.run') as run,patch.object(ui,'stop') as stop:
+        with patch('mobile_ios_ui.ios.run') as run,patch.object(ui,'stop') as stop, \
+             patch.object(ui,'installed_matches',return_value=True):
             ui.install(baseline)
             ui.install(baseline)
             stop.assert_not_called()
@@ -574,6 +576,59 @@ class MobileAcceptanceTests(unittest.TestCase):
             stop.assert_called_once()
             self.assertEqual(run.call_count,2)
         self.assertEqual(ui.active_binary_sha256,current['binary_sha256'])
+
+    def test_ios_install_timeout_reconciles_exact_executable_without_reinstall(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as temporary:
+            app=Path(temporary);binary=app/'GChat';binary.write_bytes(b'retained native bytes')
+            item={'app':app,'binary':binary,'binary_sha256':inputs.digest(binary)}
+            ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
+            ui.active_binary_sha256=None;ui.deadline=lambda:time.monotonic()+600
+            with patch('mobile_ios_ui.ios.run',side_effect=subprocess.TimeoutExpired('simctl',40)) as run, \
+                 patch('mobile_ios_ui.ios.output',return_value=str(app)) as output:
+                ui.install(item)
+            self.assertEqual(run.call_count,1)
+            self.assertTrue(ui.install_observation['hash_verified'])
+            self.assertEqual(ui.install_observation['timeouts'],1)
+            self.assertEqual(output.call_args.kwargs['timeout'],10)
+            self.assertEqual(ui.active_binary_sha256,item['binary_sha256'])
+
+    def test_ios_install_retry_cannot_extend_original_deadline_or_accept_wrong_binary(self):
+        import subprocess
+        ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
+        ui.active_binary_sha256=None;ui.deadline=lambda:120
+        item={'app':'retained.app','binary':'retained.app/GChat','binary_sha256':'a'*64}
+        clock=[0.0]
+        def install(*args,**kwargs):
+            clock[0]+=kwargs['timeout']
+            raise subprocess.TimeoutExpired('simctl',kwargs['timeout'])
+        def observe(*args):clock[0]+=5;return False
+        with patch('mobile_ios_ui.time.monotonic',side_effect=lambda:clock[0]), \
+             patch('mobile_ios_ui.ios.run',side_effect=install) as run, \
+             patch.object(ui,'installed_matches',side_effect=observe),self.assertRaises(TimeoutError):
+            ui.install(item)
+        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[40,65])
+        self.assertLessEqual(clock[0],120)
+        self.assertFalse(ui.installed)
+        with tempfile.TemporaryDirectory() as temporary:
+            app=Path(temporary);(app/'GChat').write_bytes(b'substituted executable')
+            with patch('mobile_ios_ui.ios.output',return_value=str(app)), \
+                 self.assertRaisesRegex(ValueError,'differs from retained'):
+                ui.installed_matches(item,time.monotonic()+10)
+
+    def test_ios_install_refuses_exhausted_budget_and_does_not_retry_command_errors(self):
+        import subprocess
+        ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
+        ui.active_binary_sha256=None;ui.deadline=lambda:time.monotonic()-1
+        item={'app':'retained.app','binary_sha256':'a'*64}
+        with patch('mobile_ios_ui.ios.run') as run,self.assertRaisesRegex(ValueError,'install deadline'):
+            ui.install(item)
+        run.assert_not_called()
+        ui.deadline=lambda:time.monotonic()+600
+        with patch('mobile_ios_ui.ios.run',side_effect=subprocess.CalledProcessError(1,'simctl')) as run, \
+             patch.object(ui,'installed_matches') as observe,self.assertRaises(subprocess.CalledProcessError):
+            ui.install(item)
+        self.assertEqual(run.call_count,1);observe.assert_not_called()
 
     def test_failed_device_check_does_not_hide_actual_peer_cleanup_or_become_a_pass(self):
         with tempfile.TemporaryDirectory() as temporary:

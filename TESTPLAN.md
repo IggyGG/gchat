@@ -2,6 +2,8 @@ Release status, 2026-10-03: all 17 infrastructure targets are healthy and match 
 
 All eight node headroom timers are enabled and scheduled checks pass. Controller 7f423f8 is active after 854 source controls, 214 actual-image controls, 365 Kubernetes controls and verification of 237 source files. Temporary GitHub 502/503/504 errors now use bounded automatic reconciliation of the original request. Both mobile acceptance requests use the qualified same-source helper, with Android focus confirmation and separate iOS visible join stages under unchanged limits. All 17 deployment targets pass a fresh health/version check. Original failures, signed app bytes, API contracts and security checks remain unchanged; mobile launch and OS invitation arrival remain incomplete.
 
+Mobile worker correction (2026-10-04): the retained 7f423f8 Android report proves that keyboard capitalization changed the nickname while focus and its length were correct. The fixture now enters uppercase MOBILE and keeps exact input confirmation. The retained iOS report failed during initial simulator installation before XCTest. Installation now reconciles the actual retained executable after a client timeout and permits one idempotent retry inside the original 120-second operation and 600-second setup budget. Changed binaries, ordinary command errors and exhausted deadlines still fail. All 53 focused mobile controls pass; new native acceptance is required. Original failures, application bytes and APIs remain unchanged.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

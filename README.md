@@ -794,3 +794,5 @@ Current paired GComs source selects responsive profile 46: messages are eligible
 immediately, with independent randomized interactive cover. Timing/activity privacy
 is unqualified. See [production policy](docs/PRODUCTION_RELEASE.md); this source
 change is not a claim that installed/store artifacts have been updated.
+
+Mobile installed acceptance uses an uppercase fixture nickname with exact native input confirmation. Simulator installs verify the retained executable hash; a timed-out install can reconcile or retry once within its original 120-second limit. No app binary is rebuilt for these worker corrections. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
