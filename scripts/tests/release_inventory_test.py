@@ -22,6 +22,8 @@ class ProductionInventoryTests(unittest.TestCase):
         self.assertEqual([t['ordinal'] for t in anchors], [2, 1, 0])
         self.assertTrue(all(t['identity_paths'] and t['rollback_image_root'] for t in anchors))
         self.assertEqual(targets[-1]['id'], 'controller')
+        self.assertTrue(all(t['probe_dns_nameservers'] == ['10.96.254.54']
+                            for t in targets if t.get('probe_namespace') == 'ghost-bench'))
         push = next(t for t in targets if t['id'] == 'push')
         self.assertEqual(push['image'], 'push')
         self.assertEqual(push['containers'], ['gateway', 'private-config'])

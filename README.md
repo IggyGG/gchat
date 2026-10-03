@@ -2,6 +2,8 @@ Release operations use `python3 scripts/release.py status`, `resume` and `rollba
 
 The installed iOS lifecycle helper now receives its startup option explicitly. Its original failed workflow already retained the signed IPA and simulator, allowing verification to resume without compiling or signing the application again. The original failure remains recorded; actual retained verification is still pending.
 
+The production pull probes now select ghost-bench's authoritative DNS automatically. A DNS correction creates a distinct probe request while preserving the earlier rejection evidence. Full Python validation passes 756 tests with five existing skips; the corrected controller image still requires qualification and activation.
+
 The original Windows and Apple Silicon 0.1.98 archives now pass independent
 verification of signatures, frozen source inputs, native CI receipts and installed
 offline lifecycle/cleanup. The original Windows archive has 58,003,839 bytes; the

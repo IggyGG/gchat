@@ -11,6 +11,50 @@ import release_kubernetes_worker as worker
 
 
 class KubernetesWorkerTests(unittest.TestCase):
+    def test_pull_probe_uses_lab_dns_and_a_new_identity_after_policy_correction(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = {'release_id': 'b' * 64, 'sources': {'gchat': 'original', 'gcoms': 'companion'}}
+            directory = root / manifest['release_id']; directory.mkdir()
+            (directory / 'build.json').write_text(json.dumps({'sources': manifest['sources'],
+                'qualified': True, 'images': {'gcnode': self.image}}))
+            (root / 'kubernetes-before.json').write_text('{}')
+            target = {**self.target, 'artifact_root': str(root), 'image': 'gcnode',
+                      'probe_namespace': 'ghost-bench'}
+            def prepare(value):
+                with patch.object(worker, 'resource', return_value=self.current), \
+                     patch.object(worker, 'kubectl', return_value=b'{"status":{"succeeded":1}}'), \
+                     patch.object(worker.subprocess, 'run') as apply:
+                    result = worker.run(value, manifest, 'prepare', root / 'result.json')
+                    probe = json.loads(apply.call_args.kwargs['input'])
+                    self.assertEqual(apply.call_args.args[0][2], 'ghost-bench')
+                    self.assertEqual(result['image'], self.image)
+                    self.assertEqual(probe['spec']['template']['spec']['containers'][0]['imagePullPolicy'], 'Always')
+                    return result['pull_job'], probe['spec']['template']['spec']
+            old, _ = prepare(target)
+            target['probe_dns_nameservers'] = ['10.96.254.54']
+            corrected, spec = prepare(target)
+            self.assertNotEqual(old, corrected)
+            self.assertEqual(prepare(target)[0], corrected)
+            self.assertEqual(spec['dnsPolicy'], 'None')
+            self.assertEqual(spec['dnsConfig']['nameservers'], ['10.96.254.54'])
+            self.assertFalse(spec['automountServiceAccountToken'])
+
+    def test_invalid_probe_dns_cannot_create_a_job(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = {'release_id': 'b' * 64, 'sources': {}}
+            directory = root / manifest['release_id']; directory.mkdir()
+            (directory / 'build.json').write_text(json.dumps({'sources': {}, 'qualified': True,
+                'images': {'gcnode': self.image}}))
+            (root / 'kubernetes-before.json').write_text('{}')
+            for dns in ([], '10.96.254.54', ['not-an-address'], ['10.96.254.54'] * 4):
+                target = {**self.target, 'artifact_root': str(root), 'image': 'gcnode', 'probe_dns_nameservers': dns}
+                with self.subTest(dns=dns), patch.object(worker, 'resource', return_value=self.current), \
+                     patch.object(worker.subprocess, 'run') as apply, self.assertRaises(ValueError):
+                    worker.run(target, manifest, 'prepare', root / 'result.json')
+                apply.assert_not_called()
+
     def test_worker_entry_point_observes_the_qualified_bundle_without_preparation(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

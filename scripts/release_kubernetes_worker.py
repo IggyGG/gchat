@@ -1,5 +1,6 @@
 """Serial digest-pinned deployment adapter; never replaces PVCs or identities."""
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -198,7 +199,15 @@ def run(target, manifest, stage, output):
         # any working replica is replaced. The Job is deterministic after a crash.
         attempts_path = output.parent / 'pull-attempts.json'
         attempts = json.loads(attempts_path.read_text()) if attempts_path.exists() else {'generation': 0}
-        job = 'gchat-pull-' + hashlib.sha256((expected + ':' + str(attempts['generation'])).encode()).hexdigest()[:24]
+        dns = target.get('probe_dns_nameservers')
+        probe_key = expected + ':' + str(attempts['generation'])
+        if dns is not None:
+            if not isinstance(dns, list) or not 1 <= len(dns) <= 3:
+                raise ValueError('pull probe requires one to three DNS addresses')
+            dns = [str(ipaddress.ip_address(value)) for value in dns]
+            probe_key += ':' + json.dumps({'namespace': target.get('probe_namespace', target['namespace']),
+                                          'dns': dns}, sort_keys=True)
+        job = 'gchat-pull-' + hashlib.sha256(probe_key.encode()).hexdigest()[:24]
         probe = {'apiVersion': 'batch/v1', 'kind': 'Job', 'metadata': {'name': job}, 'spec': {
             'backoffLimit': 0, 'activeDeadlineSeconds': 180, 'ttlSecondsAfterFinished': 86400,
             'template': {'spec': {'automountServiceAccountToken': False, 'restartPolicy': 'Never',
@@ -211,6 +220,8 @@ def run(target, manifest, stage, output):
                                         'capabilities': {'drop': ['ALL']}},
                     'resources': {'requests': {'cpu': '10m', 'memory': '16Mi'},
                                   'limits': {'cpu': '100m', 'memory': '64Mi'}}}]}}}}
+        if dns is not None:
+            probe['spec']['template']['spec'].update(dnsPolicy='None', dnsConfig={'nameservers': dns})
         probe_target = {'namespace': target.get('probe_namespace', target['namespace'])}
         subprocess.run(['kubectl', '-n', probe_target['namespace'], 'apply', '-f', '-'],
                        input=json.dumps(probe).encode(), check=True, stdout=subprocess.DEVNULL, timeout=30)

@@ -36,6 +36,7 @@ def configuration(hosts, state=Path('/state'), scripts=Path('/opt/gchat/scripts'
     # Complete the native relay fleet before its bootstrap/channel services.
     targets.extend(sorted(companion, key=lambda t: (t['binary_name'] == 'gcoms-channel-service', t['id'])))
     kube = {**common, 'namespace': 'ghost-com', 'probe_namespace': 'ghost-bench',
+            'probe_dns_nameservers': ['10.96.254.54'],
             'infrastructure_config': str(config / 'infrastructure.json'),
             'rollback_image_root': str(state / 'rollback-images'),
             'rollback_registry': 'registry.ghost-com.svc.cluster.local:5000',
