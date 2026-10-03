@@ -21,7 +21,7 @@ lifecycle = module('ios-lifecycle')
 UI_PHASES = frozenset(('ready', 'finish', 'stop', 'unlock', 'join', 'identity', 'send',
     'received', 'delivered', 'history', 'file_action', 'progress', 'export',
     'unlock-start', 'unlock-passphrase', 'unlock-confirm', 'unlock-submit', 'unlock-ready',
-    'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
+    'join-ready', 'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
     'export-picker', 'export-unlock', 'export-result'))
 UI_CONTROLS = frozenset(('review_invitation', 'create_identity', 'reconnect', 'connect_to_gchat',
     'close_dialog', 'nickname', 'joined', 'composer', 'webview', 'foreground'))
@@ -273,9 +273,10 @@ class IOSUI:
     def join(self, invitation):
         require(invitation.startswith('gcoms:') and len(invitation.encode()) <= 180000,
                 'bounded mobile conversation invitation required')
-        # Exercise the real cold OS activation path. Termination also verifies
-        # that the newly created identity survives before network enrollment.
-        self.stop()
+        # Let XCTest observe the already unlocked app before OS activation.
+        # It must not launch/activate the app again after openurl, since that
+        # introduces a second launch authority during the URL handoff.
+        self.call('join-ready')
         # The retained app consumes its normal deep-link path. Never print the
         # URI or return a CalledProcessError containing private command arguments.
         result = subprocess.run(['xcrun', 'simctl', 'openurl', self.device, invitation],

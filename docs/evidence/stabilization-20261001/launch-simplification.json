@@ -211,17 +211,17 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": 1791053971,
+    "observed_at": 1791054666,
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "installed_acceptance_failed",
+    "android": "installed_acceptance_running",
     "windows-x86_64": "available",
     "macos-x86_64": "available",
     "macos-aarch64": "available",
-    "ios": "installed_acceptance_running",
+    "ios": "installed_acceptance_failed",
     "source_fixes_active": true,
     "desktop_platforms_available": [
       "linux-x86_64",
@@ -284,24 +284,24 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37145140237,
-    "artifact": 11281996788,
-    "source": "dbf0fb27aa10bd914bc1eb30a7a3d2b5a6e41305",
-    "source_tree": "ec5c52e412552fac0ce4e576260a1d1cf6fa86fc",
-    "archive_sha256": "71481a189db39001383c41d12732b1138ca86b16037cead61890a89fbf726faf",
+    "run": 37146273271,
+    "artifact": 11282955213,
+    "source": "1c474a6cf61d24441056a752c66f7c8c58d69cc6",
+    "source_tree": "fecf14e661ee0ff950417c474cbdf0fb169f612d",
+    "archive_sha256": "08a2dbff9a52da2c13fb7bac1ffe15f6bede7660fb45740a939405756cc3e909",
     "full_history": true,
-    "all_python_tests": 834,
+    "all_python_tests": 835,
     "skips": 5,
-    "seconds": 36.825,
+    "seconds": 33.868,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37145392148,
+    "android": 37146767868,
     "ios": 37145392636,
     "helper": "dbf0fb27aa10bd914bc1eb30a7a3d2b5a6e41305",
-    "state": "android_failed_ios_running",
+    "state": "android_running_ios_failed",
     "previous_failed_runs": {
       "android": 37145104303,
       "ios": 37145106253
@@ -312,6 +312,16 @@
       "passed": false,
       "stage": "baseline-start",
       "fresh_pre_input_screenshot_retained": true
+    },
+    "android_helper": "1c474a6cf61d24441056a752c66f7c8c58d69cc6",
+    "ios_report": {
+      "artifact": 11282840042,
+      "sha256": "003f80aa371cbcc586089e73026ccccfa8c582a1c6c52f4931cf5c6eb8bc4377",
+      "passed": false,
+      "stage": "baseline-start",
+      "phase": "join-review",
+      "owned_device_binding_passed": true,
+      "clone_used": false
     }
   },
   "retained_workstation_failures": {
@@ -338,8 +348,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "dbf0fb27aa10bd914bc1eb30a7a3d2b5a6e41305",
-  "native_helper_qualification": "operations/native-helper-dbf0fb2-qualified-724.json",
+  "native_helper_source": "1c474a6cf61d24441056a752c66f7c8c58d69cc6",
+  "native_helper_qualification": "operations/native-helper-1c474a6-qualified-731.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -362,7 +372,7 @@
     "ios_first_run_controls_revealed": true,
     "ios_capture_only_first_pre_input_failure": true,
     "owned_unique_editable_composer": true,
-    "ios_os_invitation_activation": "cold",
+    "ios_os_invitation_activation": "warm, OS activation observed without another XCTest activation; actual follow-up required",
     "warm_ios_link_qualified": false,
     "native_text_and_description_labels": true,
     "public_runner_progress_categories": true,
@@ -372,7 +382,8 @@
     "xctest_setup_before_command_deadline": true,
     "owned_preview_scopes_nickname_field": true,
     "files_dialog_closed": true,
-    "pixel_launcher_anr_handled": true
+    "pixel_launcher_anr_handled": true,
+    "cold_ios_link_qualified": false
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",

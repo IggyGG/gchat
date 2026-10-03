@@ -348,19 +348,19 @@ class MobileAcceptanceTests(unittest.TestCase):
                         field.replace('/>',' password="true"/>'),field.replace('[10,400][290,450]','[0,0][0,0]')):
             self.assertIsNone(android_ui.editable_composer(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
 
-    def test_ios_os_invitation_activation_fails_closed_and_uses_owned_cold_launch(self):
+    def test_ios_os_invitation_activation_fails_closed_without_a_second_launch(self):
         for code in (0,1):
             with self.subTest(exit_code=code):
                 ui=IOSUI.__new__(IOSUI);ui.device='owned-device';events=[]
-                def stop():events.append('stop')
                 def openurl(*args,**kwargs):events.append('os-link');return SimpleNamespace(returncode=code)
                 def call(op,**kwargs):events.append(op)
-                with patch.object(ui,'stop',side_effect=stop),patch('mobile_ios_ui.subprocess.run',side_effect=openurl), \
+                with patch.object(ui,'stop') as stop,patch('mobile_ios_ui.subprocess.run',side_effect=openurl), \
                      patch.object(ui,'call',side_effect=call):
                     if code:
                         with self.assertRaisesRegex(ValueError,'activation failed'):ui.join('gcoms://join#GCIR1-fixture')
                     else:ui.join('gcoms://join#GCIR1-fixture')
-                self.assertEqual(events,['stop','os-link']+([] if code else ['join']))
+                self.assertEqual(events,['join-ready','os-link']+([] if code else ['join']))
+                stop.assert_not_called()
 
     def test_invitation_field_requires_the_owned_channel_preview_and_join_control(self):
         field='<node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/>'

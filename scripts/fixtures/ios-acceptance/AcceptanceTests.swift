@@ -226,9 +226,14 @@ final class GChatAcceptanceTests: XCTestCase {
         case "unlock":
             try unlock(command["create"] as? Bool == true, try string("passphrase"))
             return true
+        case "join-ready":
+            try wait(30) { self.app.state == .runningForeground && self.element("Connect to GChat").exists }
+            return true
         case "join":
             phase = "join-arrival"
-            app.activate()
+            // simctl openurl owns activation. Observe its result without a
+            // competing XCTest launch, which can drop the invitation event.
+            try wait(30) { self.app.state == .runningForeground }
             // First-run notification settings can cover the arrival notice.
             if element("Close dialog").exists { try click("Close dialog") }
             try wait(30) { self.element("Review invitation").exists || self.element("Reconnect").exists }

@@ -1,6 +1,6 @@
 Release status, 2026-10-03: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Android and iOS installed acceptance remain incomplete; Apple encryption approval is IN_REVIEW, including France. Linux 0.1.98 is installed locally; a normal full Quit and reopen uses it.
 
-Controller 1b3fc77 is active after 834 source CI checks, 197 actual-image checks and 345 cold Kubernetes checks. Mobile helper dbf0fb2 passed 834 source checks. Its Android run was blocked before input by the emulator’s Pixel Launcher error dialog; the fresh screenshot and failed result are retained. The successor dismisses only that exact system dialog on its owned emulator, with a bounded count. All 37 focused mobile checks pass. The existing iOS run continues.
+Controller 1b3fc77 is active after 834 source CI checks, 197 actual-image checks and 345 cold Kubernetes checks. Mobile helper 1c474a6 passed 835 source checks and is active for Android. The prior Android Pixel Launcher dialog and iOS missing-invitation failures are retained. The iOS follow-up observes normal OS activation without issuing a competing XCTest activation; its actual result is still required. All 37 focused mobile checks pass; application builds and APIs are unchanged.
 
 ## Retained earlier checkpoints
 
