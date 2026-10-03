@@ -259,13 +259,40 @@ class MobileAcceptanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary));clicks=[]
             joined=ET.fromstring('<hierarchy><node text="Joined"/></hierarchy>')
+            composer=ET.fromstring('<hierarchy><node content-desc="Message or command"/></hierarchy>')
             with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
                  patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
-                 patch.object(ui,'tree',return_value=joined),patch.object(ui,'tap') as tap:
+                 patch.object(ui,'tree',side_effect=[joined,composer]),patch.object(ui,'tap') as tap:
                 ui.join('gcoms://join#GCI1-fixture')
             self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels'])
             tap.assert_called_once()
             self.assertEqual(ui.ui_observation['join_state'],'joined')
+
+    def test_join_dismisses_first_run_notifications_before_observing_the_composer(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));clicks=[]
+            screens=[ET.fromstring(xml) for xml in (
+                '<hierarchy><node text="Joined"/></hierarchy>',
+                '<hierarchy><node text="Notifications"/><node content-desc="Close dialog"/></hierarchy>',
+                '<hierarchy><node content-desc="Message or command"/></hierarchy>')]
+            with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
+                 patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
+                 patch.object(ui,'tree',side_effect=screens),patch.object(ui,'tap'),patch.object(android_ui.time,'sleep'):
+                ui.join('gcoms://join#GCI1-fixture')
+            self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels','Close dialog'])
+            self.assertTrue(ui.ui_observation['notification_dialog_dismissed'])
+
+    def test_ios_startup_pixels_require_first_creation_and_failure_before_any_input(self):
+        for create,attempted,phase in ((True,False,'unlock-start'),(True,True,'unlock-start'),
+                                      (False,False,'unlock-start'),(True,False,'unlock-passphrase')):
+            with self.subTest(create=create,attempted=attempted,phase=phase),tempfile.TemporaryDirectory() as temporary:
+                ui=IOSUI.__new__(IOSUI);ui.output=Path(temporary)/'owned';ui.device='owned-device'
+                ui.passphrase='private-test-value';ui.unlock_attempted=attempted
+                error=ValueError('public failure');error.ios_observation_phase=phase
+                with patch.object(ui,'call',side_effect=error),patch('mobile_ios_ui.ios.run') as run, \
+                     self.assertRaises(ValueError):
+                    ui.unlock(create)
+                self.assertEqual(run.call_count,int(create and not attempted and phase=='unlock-start'))
 
     def test_owned_channel_matches_combined_accessibility_name_without_other_channels(self):
         for label in ('mobile-release', '#mobile-release', '# mobile-release', '#mobile-release 2'):

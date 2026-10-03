@@ -251,7 +251,15 @@ class AndroidUI:
             self.click('Close dialog')
             self.click('Channels')
             self.tap(self.node(owned_channel))
-        self.node(self.text('Message or command'), 120)
+        def ready():
+            tree = self.tree()
+            if any(self.text('Notifications')(node) for node in tree.iter('node')) and any(
+                    self.text('Close dialog')(node) for node in tree.iter('node')):
+                self.click('Close dialog')
+                self.ui_observation['notification_dialog_dismissed'] = True
+                return False
+            return any(self.text('Message or command')(node) for node in tree.iter('node'))
+        self.until(ready, 120)
 
     def identity(self):
         tree = self.tree()

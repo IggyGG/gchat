@@ -217,11 +217,11 @@
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "installed_acceptance_running",
+    "android": "installed_acceptance_failed",
     "windows-x86_64": "available",
     "macos-x86_64": "available",
     "macos-aarch64": "available",
-    "ios": "installed_acceptance_running",
+    "ios": "installed_acceptance_failed",
     "source_fixes_active": true,
     "desktop_platforms_available": [
       "linux-x86_64",
@@ -301,7 +301,7 @@
     "android": 37132813819,
     "ios": 37132813875,
     "helper": "f66452af95843041c20fadcb5a8c6ca770968f9c",
-    "state": "installed_acceptance_running",
+    "state": "failed",
     "previous_failed_runs": {
       "android": 37131600497,
       "ios": 37131601344
@@ -341,7 +341,7 @@
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 28,
+    "focused_tests": 30,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
@@ -350,7 +350,10 @@
     "actual_peer_cleanup_independent_of_ui_verdict": true,
     "file_pane_close_details": true,
     "retained_complete_file_state_from_files_pane": true,
-    "first_run_notification_dialog_dismissed": true
+    "first_run_notification_dialog_dismissed": true,
+    "notification_dismissed_before_composer": true,
+    "ios_first_run_controls_revealed": true,
+    "ios_capture_only_first_pre_input_failure": true
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",

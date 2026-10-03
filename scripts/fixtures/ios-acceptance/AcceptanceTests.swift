@@ -104,7 +104,14 @@ final class GChatAcceptanceTests: XCTestCase {
         phase = "unlock-start"
         if launch { app.launch() }
         let button = create ? "Create identity" : "Reconnect"
+        for _ in 0..<4 {
+            if element(button).exists { break }
+            app.webViews.firstMatch.swipeUp()
+        }
         try wait(30) { self.element(button).exists }
+        // Revealing the submit control can place the passphrase above the fold.
+        app.webViews.firstMatch.swipeDown()
+        app.webViews.firstMatch.swipeDown()
         phase = "unlock-passphrase"
         try type(app.webViews.secureTextFields.firstMatch, passphrase)
         if create {
@@ -127,6 +134,7 @@ final class GChatAcceptanceTests: XCTestCase {
 
     func publicObservation() -> [String: Bool] {
         return ["review_invitation": element("Review invitation").exists,
+            "create_identity": element("Create identity").exists,
             "reconnect": element("Reconnect").exists,
             "connect_to_gchat": element("Connect to GChat").exists,
             "close_dialog": element("Close dialog").exists,
@@ -241,7 +249,14 @@ final class GChatAcceptanceTests: XCTestCase {
                 try wait { channel.exists && channel.isHittable }
                 channel.tap()
             }
-            try wait(30) { self.element("Message or command").exists }
+            try wait(30) {
+                let close = self.element("Close dialog")
+                if self.element("Notifications").exists && close.exists && close.isHittable {
+                    close.tap()
+                    return false
+                }
+                return self.element("Message or command").exists
+            }
             return true
         case "identity":
             if element("Notifications").exists && element("Close dialog").exists {

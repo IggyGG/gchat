@@ -23,7 +23,7 @@ UI_PHASES = frozenset(('ready', 'finish', 'stop', 'unlock', 'join', 'identity', 
     'unlock-start', 'unlock-passphrase', 'unlock-confirm', 'unlock-submit', 'unlock-ready',
     'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
     'export-picker', 'export-unlock', 'export-result'))
-UI_CONTROLS = frozenset(('review_invitation', 'reconnect', 'connect_to_gchat',
+UI_CONTROLS = frozenset(('review_invitation', 'create_identity', 'reconnect', 'connect_to_gchat',
     'close_dialog', 'nickname', 'joined', 'composer', 'webview', 'foreground'))
 
 
@@ -138,6 +138,7 @@ class IOSUI:
         self.bodies = set()
         self.installed = False
         self.active_binary_sha256 = None
+        self.unlock_attempted = False
         runtime = ios.simulator_runtime()
         types = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
         devices = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
@@ -210,7 +211,20 @@ class IOSUI:
         self.call('stop')
 
     def unlock(self, create=False):
-        self.call('unlock', create=create, passphrase=self.passphrase)
+        fresh = create and not self.unlock_attempted
+        self.unlock_attempted = True
+        try:
+            self.call('unlock', create=create, passphrase=self.passphrase)
+        except Exception as error:
+            # A new owned simulator, before the first input or invitation, is
+            # the only iOS screen eligible for retained startup pixels.
+            if fresh and getattr(error, 'ios_observation_phase', None) == 'unlock-start':
+                try:
+                    ios.run(['xcrun', 'simctl', 'io', self.device, 'screenshot',
+                             self.output.parent / 'fresh-startup.png'], timeout=30)
+                except Exception:
+                    pass
+            raise
 
     def join(self, invitation):
         require(invitation.startswith('gcoms:') and len(invitation.encode()) <= 180000,
