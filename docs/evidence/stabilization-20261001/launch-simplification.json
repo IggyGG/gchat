@@ -54,8 +54,8 @@
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "1b3fc77583930f2804c06c05b2b113c967d68967",
-  "active_controller_kubernetes_checks": 345,
+  "active_controller_source": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
+  "active_controller_kubernetes_checks": 365,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -211,13 +211,13 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": 1791056713,
+    "observed_at": 1791066404,
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "installed_acceptance_failed",
+    "android": "installed_acceptance_running",
     "windows-x86_64": "available",
     "macos-x86_64": "available",
     "macos-aarch64": "available",
@@ -247,8 +247,8 @@
     "automatic_retry": true,
     "uploaded": false
   },
-  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:8e06c8b605400a2d804bdf725052e232793eccd3f24ccf5076376fb57331571e",
-  "controller_qualification_sha256": "a5bdc81f86e1411960352b3d6c0dd58bb9027befcfa700373c43aed1ca1741aa",
+  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:4d769ee158eb7e649d7021eb505ccfe51b5fef8a94b729f6a45bcae53bf3a4e5",
+  "controller_qualification_sha256": "f6bd995d6f6b489472cc4c2a7f99853f77e7bf833fa3a37ba925c9fa99a2018c",
   "remaining_launch_source_corrections": {
     "ios_completed_original_evidence_validated": true,
     "original_ios_provider_adapter_proof": "operations/actual-ios-lifecycle-adapter-588.json",
@@ -298,29 +298,12 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37156866508,
-    "ios": 37156870933,
-    "helper": "e2a791f57e50412bf41997ea8f47c32c3c4aac7a",
-    "state": "both_failed",
-    "android_report": {
-      "artifact": 11286223294,
-      "sha256": "bba347eb9b0cc5a5f3af98f6a1d1683d0d17e76247e3e04a9da33fff56bc032d",
-      "passed": false,
-      "failure": "nickname_exact_input_confirmation_timeout",
-      "invitation_preview_present": true,
-      "receipt": "operations/android-helper-e2a791f-result-780.zip"
-    },
-    "ios_report": {
-      "artifact": 11286535238,
-      "sha256": "36cca17c180041dbc4cbe5e051e7eb11d169a6f7b8ac0c1f9ef932ede6834a22",
-      "passed": false,
-      "failure": "aggregate_join_bridge_command_timeout",
-      "both_password_inputs_passed": true,
-      "last_phase": "join-connected",
-      "runner_exit_code": 0,
-      "cleanup_passed": true,
-      "receipt": "operations/ios-helper-e2a791f-result-781.zip"
-    }
+    "android": null,
+    "ios": null,
+    "helper": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
+    "state": "derived_requests_reserved",
+    "android_request": "77690d6eb52fe492035c084c1c0b1e49034b532b2df46c34b20e5d7a9b948594",
+    "ios_request": "ca59e90c38063fa21f62af905bea2ddd88855a721a8b64c7b281d4bb02aaea1a"
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -346,8 +329,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "e2a791f57e50412bf41997ea8f47c32c3c4aac7a",
-  "native_helper_qualification": "operations/native-helper-e2a791f-qualified-773.json",
+  "native_helper_source": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
+  "native_helper_qualification": "operations/native-helper-7f423f8-qualified-785.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -437,12 +420,9 @@
   "controller_runtime": {
     "schema": 1,
     "passed": true,
-    "source": {
-      "commit": "1b3fc77583930f2804c06c05b2b113c967d68967",
-      "tree": "6cb7ec8e9a7b560c9ec1c3b9bf27721de4b7a1f8"
-    },
+    "source": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
     "inventory_sha256": "8356587bbe5d033d8edd37470aa3b5dea81e7e803dd06a2d4069ad759cf90fb6",
-    "source_files_verified": 233,
+    "source_files_verified": 237,
     "tests": 197,
     "suites": [
       "release_config_test",
@@ -465,7 +445,9 @@
     "source_unchanged": true,
     "production_controller_revision_tested": true,
     "configuration_digest": "sha256:7c0e3baff5bee8cbe8529a0167c001bbded088eaf8bd9c8d22fece6bf5883cd0",
-    "log_sha256": "a2abd067fe8a454bdd5dd4e4f53d6d7a9e9c1edd09eb9fbe8b01aca0a4499acf"
+    "log_sha256": "a2abd067fe8a454bdd5dd4e4f53d6d7a9e9c1edd09eb9fbe8b01aca0a4499acf",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:4d769ee158eb7e649d7021eb505ccfe51b5fef8a94b729f6a45bcae53bf3a4e5",
+    "actual_runtime_controls": 214
   },
   "controller_placement": {
     "node": "triform-3",
@@ -565,11 +547,36 @@
         "cleanup_passed": true,
         "receipt": "operations/ios-helper-c19f881-result-768.zip"
       }
+    },
+    {
+      "android": 37156866508,
+      "ios": 37156870933,
+      "helper": "e2a791f57e50412bf41997ea8f47c32c3c4aac7a",
+      "state": "both_failed",
+      "android_report": {
+        "artifact": 11286223294,
+        "sha256": "bba347eb9b0cc5a5f3af98f6a1d1683d0d17e76247e3e04a9da33fff56bc032d",
+        "passed": false,
+        "failure": "nickname_exact_input_confirmation_timeout",
+        "invitation_preview_present": true,
+        "receipt": "operations/android-helper-e2a791f-result-780.zip"
+      },
+      "ios_report": {
+        "artifact": 11286535238,
+        "sha256": "36cca17c180041dbc4cbe5e051e7eb11d169a6f7b8ac0c1f9ef932ede6834a22",
+        "passed": false,
+        "failure": "aggregate_join_bridge_command_timeout",
+        "both_password_inputs_passed": true,
+        "last_phase": "join-connected",
+        "runner_exit_code": 0,
+        "cleanup_passed": true,
+        "receipt": "operations/ios-helper-e2a791f-result-781.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
     "source_implemented": true,
-    "active": false,
+    "active": true,
     "status_codes": [
       502,
       503,
@@ -577,7 +584,11 @@
     ],
     "original_dispatch_preserved": true,
     "backoff_and_retry_count_bounded": true,
-    "controller_image_qualification_required": true
+    "controller_image_qualification_required": false,
+    "qualification": "operations/controller-provider-qualified-788.json",
+    "runtime_controls": 214,
+    "kubernetes_controls": 365,
+    "source_ci_controls": 854
   },
   "fleet_headroom_maintenance": {
     "nodes": 8,
