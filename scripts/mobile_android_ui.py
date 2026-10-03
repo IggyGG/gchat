@@ -365,7 +365,7 @@ class AndroidUI:
             return None
         self.tap(self.until(find, 120)[0])
         if action != 'Save file…':
-            self.click('Close details')
+            self.click('Close dialog')
 
     def progress(self, name, size):
         self.names.add(name)
@@ -380,7 +380,7 @@ class AndroidUI:
         # pane still reports the exact file's verified completion state.
         self.tap(self.node(lambda node: named_control(node, 'Files:')))
         complete = completed_file_row(self.tree(), name, self.names)
-        self.click('Close details')
+        self.click('Close dialog')
         return size if complete else None
 
     def cache_hash(self, ident):

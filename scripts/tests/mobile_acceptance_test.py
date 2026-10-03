@@ -407,7 +407,7 @@ class MobileAcceptanceTests(unittest.TestCase):
         self.assertFalse(android_ui.completed_file_row(tree,'bounded-mobile.bin',names))
         self.assertFalse(android_ui.completed_file_row(tree,'absent.bin',names))
 
-    def test_file_action_closes_its_details_pane_after_accept_without_dismissing_picker(self):
+    def test_file_action_closes_its_files_dialog_after_accept_without_dismissing_picker(self):
         for action in ('Download & share','Save file…'):
             with self.subTest(action=action),tempfile.TemporaryDirectory() as temporary:
                 ui,_,_=self.owned_android_ui(Path(temporary))
@@ -418,7 +418,7 @@ class MobileAcceptanceTests(unittest.TestCase):
                      patch.object(ui,'tree',return_value=tree),patch.object(ui,'click') as click:
                     ui.file_action('baseline-cache.bin',action)
                 if action=='Save file…':click.assert_not_called()
-                else:click.assert_called_once_with('Close details')
+                else:click.assert_called_once_with('Close dialog')
 
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):

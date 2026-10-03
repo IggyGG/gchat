@@ -173,7 +173,7 @@ final class GChatAcceptanceTests: XCTestCase {
         button.tap()
         let target = try row(name, action: action)
         target.buttons.matching(NSPredicate(format: "label == %@", action)).firstMatch.tap()
-        if action != "Save file…" { try click("Close details") }
+        if action != "Save file…" { try click("Close dialog") }
     }
 
     func request(_ path: String, _ value: [String: Any]) throws -> [String: Any] {
@@ -337,7 +337,7 @@ final class GChatAcceptanceTests: XCTestCase {
             button.tap()
             let file = try row(name)
             let complete = allLabels(file).contains { $0.contains(" · complete · ") }
-            try click("Close details")
+            try click("Close dialog")
             if complete { return size }
             return NSNull()
         case "export":

@@ -50,7 +50,7 @@
     "policy_backup_retained": true
   },
   "controller_image_active": true,
-  "fleet_launched": true,
+  "fleet_launched": false,
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
@@ -211,9 +211,9 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": 1791046461,
+    "observed_at": 1791052849,
     "complete": false,
-    "infrastructure": "deployed",
+    "infrastructure": "recovering",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
@@ -284,15 +284,15 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37137437420,
-    "artifact": 11279435555,
-    "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
-    "source_tree": "84e13e2adeb431547039cc2b7f9edec4360533e7",
-    "archive_sha256": "f156963836edc28cddc692868f17faec84145b00ae8a74b050ff0b18b86f305c",
+    "run": 37138641615,
+    "artifact": 11279786127,
+    "source": "63729bba846bd77ee1c3f8851881c995b5d0440a",
+    "source_tree": "b6c8fd2a6a808c8436f0ff0665a67fa459590984",
+    "archive_sha256": "21fd58765683e1732ac2688df8cc49be143a08b6948b1eaf871f7e65ca013a78",
     "full_history": true,
-    "all_python_tests": 827,
+    "all_python_tests": 829,
     "skips": 5,
-    "seconds": 40.497,
+    "seconds": 35.659,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
@@ -345,8 +345,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
-  "native_helper_qualification": "operations/native-helper-7525311-qualified-707.json",
+  "native_helper_source": "63729bba846bd77ee1c3f8851881c995b5d0440a",
+  "native_helper_qualification": "operations/native-helper-63729bb-qualified-712.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -362,7 +362,7 @@
     "ios_baseline_installed_before_xctest": true,
     "runtime_runner_diagnostics": true,
     "actual_peer_cleanup_independent_of_ui_verdict": true,
-    "file_pane_close_details": true,
+    "file_pane_close_details": false,
     "retained_complete_file_state_from_files_pane": true,
     "first_run_notification_dialog_dismissed": true,
     "notification_dismissed_before_composer": true,
@@ -377,7 +377,8 @@
     "owned_clones_cleaned": true,
     "clone_caused_previous_failure_proven": false,
     "xctest_setup_before_command_deadline": true,
-    "owned_preview_scopes_nickname_field": true
+    "owned_preview_scopes_nickname_field": true,
+    "files_dialog_closed": true
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",
@@ -392,5 +393,16 @@
     "status_command": "python3 scripts/release.py status",
     "user_linger_enabled": true
   },
-  "public_feed_readback": "operations/public-feed-readback-687.json"
+  "public_feed_readback": "operations/public-feed-readback-687.json",
+  "deployment_recovery": {
+    "anchor_eviction_at": "2026-10-03T17:55:34Z",
+    "cause": "node ephemeral-storage pressure",
+    "original_failure_retained": true,
+    "owned_rollback_completed": true,
+    "new_controller_source": "1b3fc77583930f2804c06c05b2b113c967d68967",
+    "actual_image_checks": 197,
+    "kubernetes_checks": 345,
+    "active": false,
+    "qualified_receipt": "operations/controller-eviction-qualified-721.json"
+  }
 }
