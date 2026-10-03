@@ -361,19 +361,19 @@ class MobileAcceptanceTests(unittest.TestCase):
                 ui.unlock(create=True)
             self.assertEqual(tree.call_count,2)
 
-    def test_ios_os_invitation_activation_fails_closed_without_a_second_launch(self):
-        for code in (0,1):
-            with self.subTest(exit_code=code):
-                ui=IOSUI.__new__(IOSUI);ui.device='owned-device';events=[]
-                def openurl(*args,**kwargs):events.append('os-link');return SimpleNamespace(returncode=code)
-                def call(op,**kwargs):events.append(op)
-                with patch.object(ui,'stop') as stop,patch('mobile_ios_ui.subprocess.run',side_effect=openurl), \
-                     patch.object(ui,'call',side_effect=call):
-                    if code:
-                        with self.assertRaisesRegex(ValueError,'activation failed'):ui.join('gcoms://join#GCIR1-fixture')
-                    else:ui.join('gcoms://join#GCIR1-fixture')
-                self.assertEqual(events,['join-ready','os-link']+([] if code else ['join']))
-                stop.assert_not_called()
+    def test_ios_invitation_form_uses_private_bridge_input_without_relaunch(self):
+        ui=IOSUI.__new__(IOSUI);ui.device='owned-device'
+        link='gcoms://join#GCIR1-fixture'
+        with patch.object(ui,'stop') as stop,patch('mobile_ios_ui.subprocess.run') as process, \
+             patch.object(ui,'call') as call:
+            ui.join(link)
+        call.assert_called_once_with('join',invitation=link)
+        stop.assert_not_called();process.assert_not_called()
+        for invalid in ('https://private.invalid','gcoms:'+'x'*180000):
+            with self.subTest(invalid_size=len(invalid)),patch.object(ui,'call') as call, \
+                 self.assertRaisesRegex(ValueError,'bounded mobile'):
+                ui.join(invalid)
+            call.assert_not_called()
 
     def test_invitation_field_requires_the_owned_channel_preview_and_join_control(self):
         field='<node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/>'

@@ -211,17 +211,17 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": 1791055230,
+    "observed_at": 1791056177,
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "installed_acceptance_failed",
+    "android": "installed_acceptance_running",
     "windows-x86_64": "available",
     "macos-x86_64": "available",
     "macos-aarch64": "available",
-    "ios": "installed_acceptance_pending",
+    "ios": "installed_acceptance_failed",
     "source_fixes_active": true,
     "desktop_platforms_available": [
       "linux-x86_64",
@@ -284,24 +284,24 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37147015973,
-    "artifact": 11283041287,
-    "source": "913bbbb024058735dc0a00dd0325983d034b3be1",
-    "source_tree": "ab541a95ec4d4c1189158fc74b89734af139244e",
-    "archive_sha256": "9239ff9881464829932ce523645c0fd2cd8e48bc1e16c5ff979c46efb9df8489",
+    "run": 37147566648,
+    "artifact": 11282396995,
+    "source": "4e549958bcf59154efbf64db0e1f37d04ba770a5",
+    "source_tree": "a43e21457c860656f7f704eac5bf72e7dd761fd5",
+    "archive_sha256": "ec1486226c9681ae296282d518c5e8f8aad58b03f8d68b53ff13c1382434a729",
     "full_history": true,
-    "all_python_tests": 835,
+    "all_python_tests": 836,
     "skips": 5,
-    "seconds": 35.185,
+    "seconds": 33.956,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37146767868,
-    "ios": 37145392636,
+    "android": 37147804662,
+    "ios": 37147511341,
     "helper": "dbf0fb27aa10bd914bc1eb30a7a3d2b5a6e41305",
-    "state": "android_failed_ios_pending",
+    "state": "android_running_ios_failed",
     "previous_failed_runs": {
       "android": 37145104303,
       "ios": 37145106253
@@ -314,13 +314,13 @@
       "first_input_and_identity_creation_reached": true,
       "invitation_review_reached": true
     },
-    "android_helper": "1c474a6cf61d24441056a752c66f7c8c58d69cc6",
+    "android_helper": "4e549958bcf59154efbf64db0e1f37d04ba770a5",
     "ios_report": {
-      "artifact": 11282840042,
-      "sha256": "003f80aa371cbcc586089e73026ccccfa8c582a1c6c52f4931cf5c6eb8bc4377",
+      "artifact": 11282798417,
+      "sha256": "9d9515000ee6709e782b3fbebc9c1119d96b5b9484382c7a1b4a04dfa06f4c43",
       "passed": false,
       "stage": "baseline-start",
-      "phase": "join-review",
+      "phase": "join-arrival",
       "owned_device_binding_passed": true,
       "clone_used": false
     },
@@ -350,8 +350,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "913bbbb024058735dc0a00dd0325983d034b3be1",
-  "native_helper_qualification": "operations/native-helper-913bbbb-qualified-734.json",
+  "native_helper_source": "4e549958bcf59154efbf64db0e1f37d04ba770a5",
+  "native_helper_qualification": "operations/native-helper-4e54995-qualified-738.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -374,7 +374,7 @@
     "ios_first_run_controls_revealed": true,
     "ios_capture_only_first_pre_input_failure": true,
     "owned_unique_editable_composer": true,
-    "ios_os_invitation_activation": "warm, OS activation observed without another XCTest activation; actual follow-up required",
+    "ios_os_invitation_activation": "failed; original warm and cold outcomes retained",
     "warm_ios_link_qualified": false,
     "native_text_and_description_labels": true,
     "public_runner_progress_categories": true,
@@ -386,7 +386,8 @@
     "files_dialog_closed": true,
     "pixel_launcher_anr_handled": true,
     "cold_ios_link_qualified": false,
-    "android_waits_for_actual_unlocked_view": true
+    "android_waits_for_actual_unlocked_view": true,
+    "ios_installed_journey_entry": "visible_form, awaiting actual result"
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",
@@ -453,6 +454,8 @@
     "image_and_state_unchanged": true,
     "watchdog_scheduled_passes": 2,
     "prior_unscheduled_failures_preserved": true,
-    "receipt": "operations/controller-placement-qualified-736.json"
+    "receipt": "operations/controller-placement-qualified-736.json",
+    "scheduled_compaction_success": true,
+    "maintenance_originals_preserved": true
   }
 }

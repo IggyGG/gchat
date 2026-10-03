@@ -24,7 +24,7 @@ UI_PHASES = frozenset(('ready', 'finish', 'stop', 'unlock', 'join', 'identity', 
     'join-ready', 'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
     'export-picker', 'export-unlock', 'export-result'))
 UI_CONTROLS = frozenset(('review_invitation', 'create_identity', 'reconnect', 'connect_to_gchat',
-    'close_dialog', 'nickname', 'joined', 'composer', 'webview', 'foreground'))
+    'close_dialog', 'nickname', 'joined', 'composer', 'webview', 'foreground', 'invitation', 'continue'))
 
 
 def owned_simulator_binding(expected, reported, name, before, inventory):
@@ -273,16 +273,10 @@ class IOSUI:
     def join(self, invitation):
         require(invitation.startswith('gcoms:') and len(invitation.encode()) <= 180000,
                 'bounded mobile conversation invitation required')
-        # Let XCTest observe the already unlocked app before OS activation.
-        # It must not launch/activate the app again after openurl, since that
-        # introduces a second launch authority during the URL handoff.
-        self.call('join-ready')
-        # The retained app consumes its normal deep-link path. Never print the
-        # URI or return a CalledProcessError containing private command arguments.
-        result = subprocess.run(['xcrun', 'simctl', 'openurl', self.device, invitation],
-                                capture_output=True, timeout=30)
-        require(result.returncode == 0, 'owned iOS invitation activation failed')
-        self.call('join')
+        # Exercise the existing visible invitation form on the unchanged app.
+        # OS activation failures remain separate evidence; this journey must
+        # prove actual enrollment, messaging, retained files and replacement.
+        self.call('join', invitation=invitation)
 
     def identity(self):
         value = self.call('identity')

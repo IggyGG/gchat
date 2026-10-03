@@ -4,6 +4,8 @@ Routine release commands, worker limits and frozen input rules are described bel
 
 Retained signing and native qualification can feed client acceptance and publication directly through registered provider bindings. A failed iOS verification may use one separately frozen helper after its exact terminal failure and original request are retained. Unknown dispatches continue reconciliation. This handoff correction is active in the qualified 2b2478e controller.
 
+The installed iOS journey uses the existing visible invitation form. OS link arrival remains failed and is tracked separately; form acceptance cannot qualify it. The retained cold-start failure is consistent with the [upstream iOS scene URL issue](https://github.com/tauri-apps/tao/issues/1248); the warm failure remains independently unexplained.
+
 ## Routine release operation
 
 The GitHub `release-signing` environment must permit `release/gchat-*` and

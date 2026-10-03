@@ -59,6 +59,7 @@ def main():
     report = {'schema': 1, 'passed': False, 'platform': target, 'sources': manifest['sources'],
         'release_id': manifest['release_id'], 'application_rebuilt': False, 'application_resigned': False,
         'personal_profiles_accessed': False, 'physical_device_qualified': False, 'ui_driven': True,
+        'invitation_entry': 'visible_form' if target == 'ios' else 'os_link',
         'invitation_removed': False, 'installation_cleanup': []}
     invitation = root / 'invitation.private'
     journey, ui, peer = None, None, None

@@ -141,6 +141,8 @@ final class GChatAcceptanceTests: XCTestCase {
             "nickname": element("Your nickname in this channel").exists,
             "joined": element("Joined").exists,
             "composer": element("Message or command").exists,
+            "invitation": app.webViews.textViews.matching(NSPredicate(format: "label == %@", "Invitation")).firstMatch.exists,
+            "continue": element("Continue").exists,
             "webview": app.webViews.firstMatch.exists,
             "foreground": app.state == .runningForeground]
     }
@@ -226,22 +228,18 @@ final class GChatAcceptanceTests: XCTestCase {
         case "unlock":
             try unlock(command["create"] as? Bool == true, try string("passphrase"))
             return true
-        case "join-ready":
-            try wait(30) { self.app.state == .runningForeground && self.element("Connect to GChat").exists }
-            return true
         case "join":
             phase = "join-arrival"
-            // simctl openurl owns activation. Observe its result without a
-            // competing XCTest launch, which can drop the invitation event.
-            try wait(30) { self.app.state == .runningForeground }
+            try wait(30) { self.app.state == .runningForeground && self.element("Connect to GChat").exists }
             // First-run notification settings can cover the arrival notice.
             if element("Close dialog").exists { try click("Close dialog") }
-            try wait(30) { self.element("Review invitation").exists || self.element("Reconnect").exists }
-            // Opening an OS link can suspend and lock the app. Unlock in place
-            // so its in-memory pending invitation survives; do not relaunch.
-            if element("Reconnect").exists { try unlock(false, passphrase, launch: false) }
             phase = "join-review"
-            try click("Review invitation")
+            let invitation = try string("invitation")
+            try require(invitation.hasPrefix("gcoms:") && invitation.utf8.count <= 180000)
+            let field = app.webViews.textViews.matching(NSPredicate(format: "label == %@", "Invitation")).firstMatch
+            try type(field, invitation)
+            try require((field.value as? String) == invitation)
+            try click("Continue")
             phase = "join-preview"
             try wait(120) { self.element("Your nickname in this channel").exists }
             phase = "join-input"
