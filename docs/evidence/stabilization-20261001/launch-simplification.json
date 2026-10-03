@@ -243,9 +243,10 @@
   },
   "external_ios_prerequisite": {
     "declaration_state": "IN_REVIEW",
-    "available_on_french_store": true,
     "automatic_retry": true,
-    "uploaded": false
+    "uploaded": false,
+    "includes_france": true,
+    "latest_read_only_observation_utc": "2026-10-03 23:18:26 UTC"
   },
   "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:4d769ee158eb7e649d7021eb505ccfe51b5fef8a94b729f6a45bcae53bf3a4e5",
   "controller_qualification_sha256": "f6bd995d6f6b489472cc4c2a7f99853f77e7bf833fa3a37ba925c9fa99a2018c",
@@ -329,8 +330,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "c8477aec869b05ba91417654175e641f6523f0d6",
-  "native_helper_qualification": "operations/native-helper-c8477ae-qualified-797.json",
+  "native_helper_source": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
+  "native_helper_qualification": "operations/native-helper-c9d75af-qualified-802.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -716,6 +717,18 @@
     "clipboard_cleared_after_success_or_failure": true,
     "android_exact_prefilled_invitation_required": true,
     "focused_controls_passed": 57,
-    "native_acceptance_passed": false
+    "native_acceptance_passed": false,
+    "qualified_source": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
+    "source_controls_passed": 861
+  },
+  "mobile_provider_attempts": {
+    "android": 37162032762,
+    "ios": 37162034981,
+    "helper": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
+    "state": "both_in_progress",
+    "requests": {
+      "android": "7a84322745fc87776bd97d62a3c036d9c4b5752a0fc9fc72d189c945e957bb4e",
+      "ios": "4c95514c4217fff0017ba477fbbf9d9e70a740281eeb9eb7974e131420ad63e8"
+    }
   }
 }
