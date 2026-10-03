@@ -1,3 +1,13 @@
+The original Windows and Apple Silicon 0.1.98 archives now pass independent
+verification of signatures, frozen source inputs, native CI receipts and installed
+offline lifecycle/cleanup. The original Windows archive has 58,003,839 bytes; the
+Mac archive has 71,818,229 bytes. Their provider hashes match. The shared release
+policy records three existing explicit 64-member capacity exclusions and retains
+the separate mandatory stress.mls64 gate. Twenty-two policy controls in each repo
+reject unreviewed and cross-project exclusions and a missing capacity receipt.
+The original failed independent check is retained. Installed-network acceptance
+and the remaining native platforms still have to pass; no API changed.
+
 The native network and rollback fixtures now select the existing one-person
 invitation policy once, then wait for saved enrollment and the active channel
 projection. The earlier canary repeatedly opened the invitation chooser, so it

@@ -1,0 +1,60 @@
+{
+  "scope": "Original signed Windows/Apple Silicon artifacts, sources and offline installed lifecycle; live acceptance required",
+  "observed_at": "2026-10-03T00:37:59.019766+00:00",
+  "qualification_policy_sha256": "80fb52a4571c7fbdfa5a5893b177efba9f31ef128627ebac732d2e1351b8dea1",
+  "existing_64_member_capacity_exclusions_recorded": true,
+  "required_capacity_gate": "stress.mls64",
+  "new_unknown_exclusions_refused": true,
+  "cross_project_exclusions_refused": true,
+  "original_independent_failure_retained": true,
+  "policy_controls_each_repository": 22,
+  "python_tests": 703,
+  "existing_skips": 5,
+  "application_api_changed": false,
+  "results": [
+    {
+      "platform": "windows-x86_64",
+      "provider_run": 37065235449,
+      "artifact": 11257462896,
+      "archive_sha256": "sha256:f2d2ba63f663ee4cd6a6b972d7026fb75526f237f370fffbe1e2e7db872891b8",
+      "archive_bytes": 58003839,
+      "sources": {
+        "gchat": {
+          "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+          "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+        },
+        "gcoms": {
+          "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+          "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+        }
+      },
+      "original_provider_passed": true,
+      "independent_release_handler_passed": true,
+      "installed_network_acceptance_qualified": false,
+      "fleet_activation_qualified": false
+    },
+    {
+      "platform": "macos-aarch64",
+      "provider_run": 37065218186,
+      "artifact": 11256994702,
+      "archive_sha256": "sha256:44d8b4e14180ce9aea755ca966249cf122f251de235871ea2c2153b2fafd7601",
+      "archive_bytes": 71818229,
+      "sources": {
+        "gchat": {
+          "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+          "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+        },
+        "gcoms": {
+          "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+          "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+        }
+      },
+      "original_provider_passed": true,
+      "independent_release_handler_passed": true,
+      "installed_network_acceptance_qualified": false,
+      "fleet_activation_qualified": false
+    }
+  ],
+  "raw_independent_receipt_sha256": "809cc5470dd8d453514aee9a14378fb7b4cb00e4ff8d32fe915c3502d742a268",
+  "L0_source_paths": 805
+}

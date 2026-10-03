@@ -2,8 +2,8 @@
   "schema": 1,
   "scope": "Live controller bootstrap and desktop/mobile acceptance implementation; full release still open",
   "controller": {
-    "gchat_commit": "3792ae8b907646df237feb2846f2f4f4b8f64742",
-    "image": "sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea",
+    "gchat_commit": "7fe37807a26c0a0b698bd6325f621700cd3750fa",
+    "image": "sha256:663b876547554e7222e990f2a5b9a9cef706a5545b92ee255b3983a60d81d96f",
     "ready": true,
     "containers": 2,
     "restarts": 0,
@@ -14,16 +14,17 @@
     "previous_digest_retained_and_repaired": true,
     "desktop_acceptance_recipes_active": true,
     "initial_native_baselines_bound": true,
-    "configuration_digest": "sha256:fdfcd17e5264f21974d832653cbeda8d1269656d077d03e060839cf1737a0968",
-    "archive_sha256": "79ded299888fb2422602d3cee478c47ee2bdb9cd5c013176457d91e0ae43788e",
-    "observed_at": "2026-10-02T21:47:28.496413+00:00",
+    "configuration_digest": "sha256:ae4f6c9fd8c61c054d2fcf8b6228f360d590f60dda49229e981d2a473a60e087",
+    "archive_sha256": "c7f368f0e3f027a947ef703687ac78fea57136303096238f368769d0157159c9",
+    "observed_at": "2026-10-03T00:41:15.694530+00:00",
     "independent_validation_complete": true,
-    "previous_digest": "sha256:af8a802e9d3a2f0efacff69b700e9ba63fb3d4e3f2f3854de7489ba7af8aa1a5",
+    "previous_digest": "sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea",
     "mobile_acceptance_recipes_active": true,
     "initial_mobile_baselines_bound": true,
-    "validation_tests": 130,
-    "deployment_generation": 59,
-    "source_files_verified": 219
+    "validation_tests": 141,
+    "deployment_generation": 60,
+    "source_files_verified": 219,
+    "network_fixture_tests": 14
   },
   "hosted_test_retention": {
     "rooms": 18,
@@ -98,9 +99,9 @@
     }
   },
   "component_validation": {
-    "python_tests": 685,
+    "python_tests": 703,
     "python_skipped": 5,
-    "controller_validation_tests": 130
+    "controller_validation_tests": 141
   },
   "open": [
     "Mobile SDK combinations; desktop native source 1654677 passes all four platforms and 40 size comparisons",
@@ -838,6 +839,30 @@
       "validation_tests": 113,
       "deployment_generation": 56,
       "source_files_verified": 219
+    },
+    {
+      "gchat_commit": "3792ae8b907646df237feb2846f2f4f4b8f64742",
+      "image": "sha256:b12539653427dba061bae5ec441e3a061c0c705acc35e3f391cfe63187961fea",
+      "ready": true,
+      "containers": 2,
+      "restarts": 0,
+      "serial_targets": 17,
+      "native_hosts_observed": 8,
+      "scoped_role_enforced": true,
+      "watchdog_last_success": "2026-10-02T21:38:06Z",
+      "previous_digest_retained_and_repaired": true,
+      "desktop_acceptance_recipes_active": true,
+      "initial_native_baselines_bound": true,
+      "configuration_digest": "sha256:fdfcd17e5264f21974d832653cbeda8d1269656d077d03e060839cf1737a0968",
+      "archive_sha256": "79ded299888fb2422602d3cee478c47ee2bdb9cd5c013176457d91e0ae43788e",
+      "observed_at": "2026-10-02T21:47:28.496413+00:00",
+      "independent_validation_complete": true,
+      "previous_digest": "sha256:af8a802e9d3a2f0efacff69b700e9ba63fb3d4e3f2f3854de7489ba7af8aa1a5",
+      "mobile_acceptance_recipes_active": true,
+      "initial_mobile_baselines_bound": true,
+      "validation_tests": 130,
+      "deployment_generation": 59,
+      "source_files_verified": 219
     }
   ],
   "mobile_baselines": {
@@ -932,7 +957,46 @@
     "build_headroom_gate_unchanged": true,
     "full_fleet_qualification": false,
     "new_builds_processed_by_updated_recipe": 1,
-    "new_recipe_archives_and_paths_retained": true
+    "new_recipe_archives_and_paths_retained": true,
+    "public_sdk": {
+      "scope": "Actual qualified hourly maintenance recipe; fleet and client acceptance remain open",
+      "source": {
+        "commit": "477f76b2302711eae9e352888a29a30f5a3e0c63",
+        "tree": "2535e60fc726d7810af708330a76f1fcd18154fa"
+      },
+      "image": "127.0.0.1:30444/ghost/gchat-release@sha256:cec239395b8590d060c9694edd865deb7fab2df64e8db147b6ae4131e731a896",
+      "configuration": "sha256:d3a535a9640953fdb2b7a07a18376ba64c95fb2451189c1ccee58ffe1eabf3fc",
+      "archive_sha256": "a1fe2cf712d5a5734c0af876905f61408ca19996c4153aaf75582a3e996733a9",
+      "actual_image_tests": 141,
+      "source_hashes_verified": 219,
+      "independent_kubernetes_job_passed": true,
+      "job": "gchat-compaction-477f76b-298",
+      "job_passed": true,
+      "completed_at": 1790986870,
+      "publications_verified": 23,
+      "public_archive_copies_shared": 120,
+      "estimated_reclaimed_bytes": 8409079808,
+      "free_bytes_after": 21635923968,
+      "required_reserve_bytes": 17179869184,
+      "reserve_restored": true,
+      "every_archive_path_retained": true,
+      "original_provider_archives_retained": true,
+      "private_provider_archives_shared": false,
+      "independent_watchdog_unchanged": true,
+      "main_controller_unchanged": true,
+      "registry_eviction_recovered_by_kubernetes": true,
+      "disk_limits_unchanged": true,
+      "native_installed_acceptance_passed": false,
+      "full_fleet_activated": false,
+      "raw_evidence_sha256": {
+        "maintenance-kubernetes-proof-297.json": "cfce70a25ea13409a12a6697ed76ddc5b0b955ea73c5a956957cab1972e208ba",
+        "compaction-actual-report-298.json": "7f8fc636b62a71c56d5a70ed516ee3297b89f6ca6f97a18203939fd754b8139b",
+        "compaction-job-observed-298.json": "77e49c17640686675ee69fa0e8ee27cc9463e893040fc4564d62100d3aae39fa"
+      },
+      "independent_changed_paths_reauthenticated": 120,
+      "independent_unique_archive_hashes": 48,
+      "independent_paths_receipt_sha256": "5b9c1cdc05aeb78aaf3598b2910cd60d28196611aef6b5de54f3f39e7dc7e202"
+    }
   },
   "controller_runtime_gate": {
     "implemented": true,
@@ -1863,5 +1927,57 @@
     "automatic_rollback_passed": true,
     "corrected_inventory_sha256": "ccab1697a60d17ab8671f0da0cb3aba8c4206b775f56d450a64fdf65a967f496",
     "api_changed": false
+  },
+  "invitation_fixture": {
+    "scope": "Qualification fixture correction only; installed messaging/file acceptance remains required",
+    "original_release": {
+      "gchat": {
+        "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+        "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+      },
+      "gcoms": {
+        "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+        "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+      }
+    },
+    "original_canary_passed": false,
+    "original_canary_elapsed_seconds": 240.60674285469577,
+    "original_client_connections": [
+      {
+        "client": 0,
+        "elapsed_seconds": 56.323529332876205
+      },
+      {
+        "client": 1,
+        "elapsed_seconds": 119.78569468390197
+      }
+    ],
+    "original_stage_deadline_preserved": true,
+    "original_grant_revoked": true,
+    "original_children_stopped": true,
+    "original_profiles_removed": true,
+    "original_binary_unchanged": true,
+    "cause": "The fixture polls /invite policy options instead of selecting one person; saved joins require enrollment polling",
+    "correction": "Select the one-person policy exactly once; await the same enrollment and its active primary channel; preserve legacy immediate joins",
+    "existing_api_2_used": true,
+    "application_api_or_protocol_changed": false,
+    "covered_receipts_and_file_bounds_unchanged": true,
+    "focused_network_and_rollback_controls": 19,
+    "python_tests": 702,
+    "existing_skips": 5,
+    "corrected_installed_network_qualified": false,
+    "codematch": "unreachable",
+    "source_sha256": {
+      "scripts/test-native-network.py": "139bd32a9ef88cfb6d0f250495729723f6928367f5df42e21357fe1d08cf520a",
+      "scripts/test-native-upgrade.py": "4b842f71fb19656a55211ebac37347a29143d92e30eb4a7722b1cbbb8f9f7c2d",
+      "scripts/mobile_installed_journey.py": "ddfa32f6cd4f5db333e2d86d343a8ed732eeaca4626a8c2b2abf90a801e8a4c8",
+      "scripts/macos-rollback.py": "89fd6930bb58b5f3a382e23bfe9079cf57dc23c9e1127d9b907cc1f9dd9a755d",
+      "scripts/windows-rollback.py": "239b8256169d402addc97eff8912312b01fa3fbe87171392bb36f23a0f05b81b"
+    },
+    "L0_source_paths": 804,
+    "stable_methods": 18,
+    "optional_methods": 3,
+    "api_2_fixtures_unchanged": true,
+    "controller_activation_qualified": true
   }
 }
