@@ -22,23 +22,23 @@
     "active flight is polled first; other flights cannot admit fresh acceptance, expired revalidation or publication"
   ],
   "tests": {
-    "python": 801,
+    "python": 808,
     "existing_skips": 5,
-    "log_sha256": "b53217a182900416fbce5b720c5e92e895ffdc53e668977a8c36dc9aaa01f0a2",
+    "log_sha256": "469be954b1fdd6c2b6f8ef5995d1ad62a56b2b6cfa1dfd2e23f2b32c211b173f",
     "L0_source_paths": 820,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
     "final_focused_controls": 37,
-    "single_flight_controls": 15,
+    "single_flight_controls": 16,
     "sdk_reuse_controls": 7,
     "deployment_runner_controls": 6,
     "macos_recovery_controls": 7,
     "registry_copy_controls": 5,
     "ios_retained_recovery_controls": 13,
-    "native_acceptance_controls": 35,
-    "seconds": 223.575,
-    "mobile_acceptance_controls": 14,
-    "ios_store_worker_controls": 8
+    "native_acceptance_controls": 37,
+    "seconds": 36.462,
+    "mobile_acceptance_controls": 15,
+    "ios_store_worker_controls": 9
   },
   "live_operator": {
     "installed": true,
@@ -54,8 +54,8 @@
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "3b353307c9e8bf4236a96cf18a0c11ae10c37272",
-  "active_controller_kubernetes_checks": 312,
+  "active_controller_source": "2b2478e1e71e00b3598c50bf11db68a1bb5747ea",
+  "active_controller_kubernetes_checks": 319,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -71,9 +71,9 @@
     "first_and_final_full_canaries_passed": true
   },
   "pending_native_qualification": [
-    "Android, Windows and both Mac installed acceptance and publication",
-    "Corrected unchanged-IPA verification and installed iOS acceptance",
-    "Apple France-inclusive encryption declaration approval and actual store publication"
+    "Android and iOS installed acceptance",
+    "Android store publication",
+    "Apple France-inclusive encryption approval and iOS store publication"
   ],
   "sdk_original_push_matrix_success": true,
   "all_stage_flight_admission_active": true,
@@ -211,17 +211,17 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": "2026-10-03T11:14:58.237217+00:00",
+    "observed_at": "2026-10-03T12:30:50.712680+00:00",
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "acceptance_running",
-    "windows-x86_64": "acceptance_running",
-    "macos-x86_64": "acceptance_running",
+    "android": "installed_acceptance_running",
+    "windows-x86_64": "available",
+    "macos-x86_64": "available",
     "macos-aarch64": "available",
-    "ios": "retained_verification_passed",
+    "ios": "installed_acceptance_running",
     "source_fixes_active": true,
     "desktop_platforms_available": [
       "linux-x86_64",
@@ -247,8 +247,8 @@
     "automatic_retry": true,
     "uploaded": false
   },
-  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:feb90cadac31525120021cdc250fd531474582d554f3b4f618c1d877785cd8f7",
-  "controller_qualification_sha256": "3675f4e4b16aaac0b02ace063a0f428104a3ec2fc5ae42b24be40f4c5484634c",
+  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b9d2b2e93f3e3a66b8d0aa321f3d0579b20cf03fbc62d5919d4e7c5d2d6d93fd",
+  "controller_qualification_sha256": "201ba6c5843a3a20a172c1c5c172a4c36bf7d6770784cecaffe915cf20f1a4a9",
   "remaining_launch_source_corrections": {
     "ios_completed_original_evidence_validated": true,
     "original_ios_provider_adapter_proof": "operations/actual-ios-lifecycle-adapter-588.json",
@@ -280,6 +280,28 @@
     "read_only_ios_prerequisite": true,
     "store_serialization_preserved": true,
     "private_safe_android_control_diagnostics": true,
-    "controller_activated": false
+    "controller_activated": true,
+    "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
+  },
+  "automatic_source_gate": {
+    "run": 37122181374,
+    "artifact": 11274145775,
+    "source": "2b2478e1e71e00b3598c50bf11db68a1bb5747ea",
+    "full_history": true,
+    "all_python_tests": 808,
+    "passed": true,
+    "source_audit_and_contracts": true,
+    "workflow": "contracts-check.yml"
+  },
+  "current_mobile_providers": {
+    "android": 37122972931,
+    "ios": 37123018106,
+    "helper": "2b2478e1e71e00b3598c50bf11db68a1bb5747ea"
+  },
+  "retained_workstation_failures": {
+    "run": "operations/release-mobile-final-python-615.log",
+    "timing_failures": 6,
+    "scheduler_fixture_corrected": true,
+    "all_checks_passed_on_ci_run": 37122181374
   }
 }
