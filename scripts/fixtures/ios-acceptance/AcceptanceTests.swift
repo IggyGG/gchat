@@ -202,6 +202,9 @@ final class GChatAcceptanceTests: XCTestCase {
             return true
         case "join":
             phase = "join-arrival"
+            app.activate()
+            // First-run notification settings can cover the arrival notice.
+            if element("Close dialog").exists { try click("Close dialog") }
             try wait(30) { self.element("Review invitation").exists || self.element("Reconnect").exists }
             // Opening an OS link can suspend and lock the app. Unlock in place
             // so its in-memory pending invitation survives; do not relaunch.
@@ -215,7 +218,13 @@ final class GChatAcceptanceTests: XCTestCase {
             phase = "join-accept"
             try click("Join")
             phase = "join-connected"
-            try wait(120) { self.element("Message or command").exists }
+            try wait(120) { self.element("Message or command").exists || self.element("Joined").exists }
+            if element("Joined").exists {
+                try click("Close dialog")
+                try click("Channels")
+                try click("mobile-release")
+            }
+            try wait(30) { self.element("Message or command").exists }
             return true
         case "identity":
             let network = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Network:")).firstMatch

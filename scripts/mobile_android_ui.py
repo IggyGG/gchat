@@ -222,6 +222,21 @@ class AndroidUI:
                           and node.get('password') != 'true')
         self.type(field, 'mobile')
         self.click('Join')
+        # A new network joins asynchronously and presents its saved enrollment
+        # in a modal. Its Joined state does not select the conversation.
+        def admitted():
+            tree = self.tree()
+            if any(self.text('Message or command')(node) for node in tree.iter('node')):
+                return 'selected'
+            if any(self.text('Joined')(node) for node in tree.iter('node')):
+                return 'joined'
+            return None
+        state = self.until(admitted, 120)
+        self.ui_observation['join_state'] = state
+        if state == 'joined':
+            self.click('Close dialog')
+            self.click('Channels')
+            self.click('mobile-release')
         self.node(self.text('Message or command'), 120)
 
     def identity(self):

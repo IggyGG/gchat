@@ -254,6 +254,17 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertNotIn('inputs_confirmed',ui.ui_observation)
             self.assertFalse(ui.input_started)
 
+    def test_android_join_selects_the_channel_after_async_enrollment_modal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));clicks=[]
+            joined=ET.fromstring('<hierarchy><node text="Joined"/></hierarchy>')
+            with patch.object(ui,'shell'),patch.object(ui,'node',return_value=ET.Element('node')), \
+                 patch.object(ui,'type'),patch.object(ui,'click',side_effect=clicks.append), \
+                 patch.object(ui,'tree',return_value=joined):
+                ui.join('gcoms://join#GCI1-fixture')
+            self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels','mobile-release'])
+            self.assertEqual(ui.ui_observation['join_state'],'joined')
+
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):
             _, specs, *_ = mobile_fixture(target)
