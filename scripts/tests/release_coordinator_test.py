@@ -28,7 +28,7 @@ class CoordinatorTests(unittest.TestCase):
         script.write_text('import time\nfrom pathlib import Path\nwhile not Path(' +
                           repr(str(release_worker)) + ').exists(): time.sleep(0.01)\nraise SystemExit(75)\n')
         recipe = {'run': [sys.executable, str(script)], 'reconcile': [sys.executable, str(script)], 'timeout': 10}
-        c = Coordinator(self.root, {'nonblocking_workers': True, 'maximum_workers': 2,
+        c = Coordinator(self.root, {'nonblocking_workers': True, 'maximum_workers': 2, 'minimum_free_bytes': 0,
             'workers': {p: {'build': recipe} for p in ('linux-x86_64', 'windows-x86_64')}})
         self.addCleanup(c.ledger.close)
         self.addCleanup(c.close_workers)
@@ -52,7 +52,8 @@ class CoordinatorTests(unittest.TestCase):
     def test_nonblocking_worker_zero_exit_without_receipt_cannot_pass(self):
         import sys
         recipe = {'run': [sys.executable, '-c', 'pass'], 'reconcile': [sys.executable, '-c', 'pass']}
-        c = Coordinator(self.root, {'nonblocking_workers': True, 'workers': {'linux-x86_64': {'build': recipe}}})
+        c = Coordinator(self.root, {'nonblocking_workers': True, 'minimum_free_bytes': 0,
+                                  'workers': {'linux-x86_64': {'build': recipe}}})
         self.addCleanup(c.ledger.close)
         self.addCleanup(c.close_workers)
         c.ledger.add(self.manifest)

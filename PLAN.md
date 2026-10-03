@@ -1,3 +1,5 @@
+The asynchronous coordinator fixtures explicitly use zero storage reserve in their owned, bounded scratch directory so they can run in the actual controller image's 256 MiB test tmpfs. Production retains its 16 GiB reserve and storage refusal controls. The original failed image gate is retained; corrected image qualification is required.
+
 ## Launch simplification (2026-10-03, in progress)
 
 DEPLOY-STABLE: operator commands, concurrent artifact workers, ten-minute source settlement and reviewed rollout boundary checks are implemented. The failing one-person invitation lacked publication scope; the original signed Linux package contains the qualified replacement operator, now installed with old binary and policy backups retained. New short checks cannot satisfy full file recovery. All 720 Python tests pass with five existing skips; actual fleet/native/local activation and subsequent unattended release remain required. See `docs/evidence/stabilization-20261001/launch-simplification.json`.

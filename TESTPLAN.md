@@ -1,3 +1,5 @@
+The asynchronous coordinator fixtures explicitly use zero storage reserve in their owned, bounded scratch directory so they can run in the actual controller image's 256 MiB test tmpfs. Production retains its 16 GiB reserve and storage refusal controls. The original failed image gate is retained; corrected image qualification is required.
+
 ## Simplified release controls (2026-10-03)
 
 Run `python3 -m unittest discover -s scripts/tests -p "*_test.py"` with a short SSD TMPDIR; 720 tests pass with five existing skips. Require queued controls to use the sole coordinator and original effects, immutable manifests, rollback observations, no private status paths, concurrent platform progress, zero-exit-without-receipt rejection and bounded workers. Short messaging checks require covered ACKs in both directions and complete cleanup and cannot substitute for full interrupted-file checks at rollout boundaries. Legacy bootstrap grants remain revocable but cannot be renewed for invitation publication. The compiled original replacement operator passes an isolated grant/revoke check; fleet and installed acceptance remain separate.
