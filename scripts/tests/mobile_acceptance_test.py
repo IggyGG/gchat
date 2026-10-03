@@ -210,13 +210,26 @@ class MobileAcceptanceTests(unittest.TestCase):
             with self.subTest(create=create,typed=typed,field=field),tempfile.TemporaryDirectory() as temporary:
                 ui,_,_=self.owned_android_ui(Path(temporary));ui.input_started=typed
                 observations=[ET.Element('node'),TimeoutError] if field else [TimeoutError]
-                with patch.object(ui,'launch'),patch.object(ui,'node',side_effect=observations), \
+                with patch.object(ui,'launch'),patch.object(ui,'scroll_to_top'),patch.object(ui,'node',side_effect=observations), \
                      patch.object(ui,'shell',return_value='fixture-process'), \
                      patch.object(android_ui.android,'screenshot') as screenshot, \
                      self.assertRaises(TimeoutError):
                     ui.unlock(create=create)
                 self.assertEqual(screenshot.call_count,int(create and not typed))
                 self.assertNotIn('fixture-private-value',json.dumps(ui.ui_observation))
+
+    def test_android_unlock_returns_from_submit_to_password_fields_before_entering_text(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));events=[]
+            def node(predicate,*args):
+                events.append('find-control')
+                return ET.Element('node')
+            with patch.object(ui,'launch'),patch.object(ui,'node',side_effect=node), \
+                 patch.object(ui,'scroll_to_top',side_effect=lambda:events.append('reveal-fields')), \
+                 patch.object(ui,'type',side_effect=lambda *args:events.append('enter-text')), \
+                 patch.object(ui,'click'),patch.object(ui,'until'),patch.object(ui,'no_listener'):
+                ui.unlock(create=True)
+            self.assertEqual(events,['find-control','reveal-fields','find-control','enter-text','find-control','enter-text'])
 
     def test_android_input_waits_for_keyboard_and_exact_focused_value_before_back(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -361,6 +374,30 @@ class MobileAcceptanceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'owned XCTest runner exited'):
                 bridge.call('ready',timeout=60,alive=lambda:False)
         finally:
+            bridge.close()
+
+    def test_xctest_failure_phase_is_public_and_private_values_are_rejected(self):
+        bridge=Bridge();errors=[]
+        def caller():
+            try:bridge.call('join',timeout=5)
+            except ValueError as error:errors.append(error)
+        def post(path,value):
+            request=Request(bridge.url+path,data=json.dumps(value).encode(),headers={
+                'Content-Type':'application/json','Authorization':'Bearer '+bridge.token})
+            with urlopen(request,timeout=5) as response:return json.load(response)
+        worker=threading.Thread(target=caller)
+        try:
+            worker.start();command=post('/next',{'ready':True})
+            with self.assertRaises(HTTPError) as denied:
+                post('/result',{'id':command['id'],'passed':False,'phase':'private-invitation'})
+            self.assertEqual(denied.exception.code,400);denied.exception.close()
+            post('/result',{'id':command['id'],'passed':False,'phase':'join-preview'})
+            worker.join(timeout=5)
+            self.assertEqual(len(errors),1)
+            self.assertEqual(errors[0].ios_observation_phase,'join-preview')
+            self.assertNotIn('private',str(errors[0]))
+        finally:
+            worker.join(timeout=5) if worker.ident is not None else None
             bridge.close()
 
     def test_ios_runner_diagnostics_exclude_private_logs_and_retain_static_failure_categories(self):

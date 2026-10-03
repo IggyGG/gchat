@@ -18,6 +18,11 @@ from release_network_canary import module
 
 ios = module('ios-build')
 lifecycle = module('ios-lifecycle')
+UI_PHASES = frozenset(('ready', 'finish', 'stop', 'unlock', 'join', 'identity', 'send',
+    'received', 'delivered', 'history', 'file_action', 'progress', 'export',
+    'unlock-start', 'unlock-passphrase', 'unlock-confirm', 'unlock-submit', 'unlock-ready',
+    'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
+    'export-picker', 'export-unlock', 'export-result'))
 
 
 def runner_diagnostics(path, exit_code, polls):
@@ -64,6 +69,7 @@ class Bridge:
                     elif self.path == '/result':
                         require(re.fullmatch('[0-9a-f]{32}', value.get('id', ''))
                                 and type(value.get('passed')) is bool
+                                and (value.get('phase') is None or value['phase'] in UI_PHASES)
                                 and len(json.dumps(value).encode()) <= 65536,
                                 'invalid XCTest result')
                         with owner.ready:
@@ -101,7 +107,10 @@ class Bridge:
                 require(alive is None or alive(), 'owned XCTest runner exited')
                 self.ready.wait(min(remaining, 1) if alive is not None else remaining)
             result = self.results.pop(ident)
-        require(result['passed'] is True, 'installed iOS UI observation failed')
+        if result['passed'] is not True:
+            error = ValueError('installed iOS UI observation failed')
+            error.ios_observation_phase = result.get('phase')
+            raise error
         return result.get('value')
 
     def close(self):

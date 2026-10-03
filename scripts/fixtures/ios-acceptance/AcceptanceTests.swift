@@ -11,6 +11,7 @@ final class GChatAcceptanceTests: XCTestCase {
     var passphrase = ""
     var endpoint = ""
     var token = ""
+    var phase = "ready"
 
     func require(_ value: Bool) throws {
         if !value { throw Failure.observation }
@@ -96,17 +97,22 @@ final class GChatAcceptanceTests: XCTestCase {
         control.tap()
     }
 
-    func unlock(_ create: Bool, _ value: String) throws {
+    func unlock(_ create: Bool, _ value: String, launch: Bool = true) throws {
         passphrase = value
-        app.launch()
+        phase = "unlock-start"
+        if launch { app.launch() }
         let button = create ? "Create identity" : "Reconnect"
         try wait(30) { self.element(button).exists }
+        phase = "unlock-passphrase"
         try type(app.webViews.secureTextFields.firstMatch, passphrase)
         if create {
+            phase = "unlock-confirm"
             try require(app.webViews.secureTextFields.count == 2)
             try type(app.webViews.secureTextFields.element(boundBy: 1), passphrase)
         }
+        phase = "unlock-submit"
         try click(button)
+        phase = "unlock-ready"
         try wait(120) {
             !self.element(button).exists &&
             (self.element("Connect to GChat").exists || self.element("Message or command").exists)
@@ -179,6 +185,7 @@ final class GChatAcceptanceTests: XCTestCase {
 
     func perform(_ command: [String: Any]) throws -> Any {
         guard let op = command["op"] as? String else { throw Failure.protocolBinding }
+        phase = op
         func string(_ name: String) throws -> String {
             guard let value = command[name] as? String else { throw Failure.protocolBinding }
             return value
@@ -194,10 +201,20 @@ final class GChatAcceptanceTests: XCTestCase {
             try unlock(command["create"] as? Bool == true, try string("passphrase"))
             return true
         case "join":
+            phase = "join-arrival"
+            try wait(30) { self.element("Review invitation").exists || self.element("Reconnect").exists }
+            // Opening an OS link can suspend and lock the app. Unlock in place
+            // so its in-memory pending invitation survives; do not relaunch.
+            if element("Reconnect").exists { try unlock(false, passphrase, launch: false) }
+            phase = "join-review"
             try click("Review invitation")
+            phase = "join-preview"
             try wait(120) { self.element("Your nickname in this channel").exists }
+            phase = "join-input"
             try type(app.webViews.textFields.firstMatch, "mobile")
+            phase = "join-accept"
             try click("Join")
+            phase = "join-connected"
             try wait(120) { self.element("Message or command").exists }
             return true
         case "identity":
@@ -270,6 +287,7 @@ final class GChatAcceptanceTests: XCTestCase {
             return NSNull()
         case "export":
             let name = try string("name")
+            phase = "export-picker"
             try fileAction(name, "Save file…")
             try wait(30) {
                 self.element("On My iPhone").exists || self.element("Save").exists ||
@@ -281,7 +299,11 @@ final class GChatAcceptanceTests: XCTestCase {
             else if element("Downloads").exists && element("Downloads").isHittable { try click("Downloads") }
             if element("Save").exists { try click("Save") } else { try click("Export") }
             try wait(30) { self.app.webViews.firstMatch.exists }
-            if element("Reconnect").exists { try unlock(false, passphrase) }
+            if element("Reconnect").exists {
+                phase = "export-unlock"
+                try unlock(false, passphrase, launch: false)
+            }
+            phase = "export-result"
             var saved = ""
             try wait(60) {
                 saved = self.allLabels(self.app.webViews.firstMatch).first {
@@ -312,7 +334,7 @@ final class GChatAcceptanceTests: XCTestCase {
                 _ = try request("/result", ["id": id, "passed": true, "value": value])
                 if command["op"] as? String == "finish" { return }
             } catch {
-                _ = try? request("/result", ["id": id, "passed": false])
+                _ = try? request("/result", ["id": id, "passed": false, "phase": phase])
                 // Never attach or print a hierarchy, screenshot, invitation,
                 // passphrase, command arguments or raw UI values.
                 XCTFail("The retained application's UI command failed.")

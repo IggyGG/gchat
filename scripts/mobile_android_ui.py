@@ -133,6 +133,15 @@ class AndroidUI:
         x1, y1, x2, y2 = android.ui_bounds(node)
         self.shell('input', 'tap', (x1 + x2) // 2, (y1 + y2) // 2)
 
+    def scroll_to_top(self):
+        bounds = [android.ui_bounds(node) for node in self.tree().iter('node')
+                  if node.get('package') == android.PACKAGE and android.ui_bounds(node)]
+        require(bounds, 'owned Android application viewport unavailable')
+        x1, y1, x2, y2 = max(bounds, key=lambda box: (box[2]-box[0])*(box[3]-box[1]))
+        for _ in range(2):
+            self.shell('input', 'swipe', (x1+x2)//2, y1+(y2-y1)//4,
+                       (x1+x2)//2, y1+3*(y2-y1)//4, '250')
+
     def type(self, node, value):
         self.ui_observation['input_target_bounds'] = android.ui_bounds(node)
         self.tap(node)
@@ -179,6 +188,9 @@ class AndroidUI:
         button = 'Create identity' if create else 'Reconnect'
         try:
             self.node(self.text(button))
+            # Revealing the submit button may hide the fields above the fold.
+            # WebView can retain positive, clipped bounds under the header.
+            self.scroll_to_top()
             for _ in range(2 if create else 1):
                 field = self.node(lambda node: node.get('package') == android.PACKAGE
                                   and node.get('password') == 'true' and not node.get('text'))

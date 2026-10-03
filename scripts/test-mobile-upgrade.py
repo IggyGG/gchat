@@ -144,6 +144,8 @@ def main():
         if target == 'ios' and hasattr(error, 'ios_setup_diagnostics'):
             report['runner_setup'] = error.ios_setup_diagnostics
             report['installation_cleanup'].append(error.owned_device_cleanup)
+        if target == 'ios' and getattr(error, 'ios_observation_phase', None) is not None:
+            report['ui_observation'] = {'phase': error.ios_observation_phase}
     finally:
         if target == 'android' and ui is not None:
             report['ui_observation'] = dict(ui.ui_observation)
