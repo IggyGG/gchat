@@ -47,15 +47,15 @@
         "request": "ios93-retained-lifecycle-20261003-54c3622"
       },
       "verification": {
-        "controller": "60f3c66929731390d3f4568fd0e2951209f021e0",
-        "ref": "release/qualification-ios-installed-60f3c6692973",
-        "request": "3ae709c3006398062e57ba5b425cd6df9cc42d93bc7ec52e5e1cc5ea9bb768eb"
+        "controller": "70e35e1685ba89f4040d0984df493ec546397ff9",
+        "ref": "release/qualification-ios-installed-70e35e1685ba",
+        "request": "4497bc95b75958ffa67baa37a87ef4ab5494b9c1edbde4b685d58843a8ae269e"
       },
       "previous_verification": {
-        "controller": "54c3622174aaf8af05a5daad0280f1dd5b1f416a",
-        "ref": "release/qualification-ios-installed-54c3622174aa",
-        "request": "ios93-retained-verified-20261003-54c3622",
-        "run": 37112219593
+        "controller": "60f3c66929731390d3f4568fd0e2951209f021e0",
+        "ref": "release/qualification-ios-installed-60f3c6692973",
+        "request": "3ae709c3006398062e57ba5b425cd6df9cc42d93bc7ec52e5e1cc5ea9bb768eb",
+        "run": 37116236835
       }
     }
   ]
