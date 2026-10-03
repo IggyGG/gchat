@@ -429,6 +429,21 @@ class CoordinatorTests(unittest.TestCase):
         self.assertEqual(calls[:7],[latest]*7);self.assertEqual(calls[7:],[old]*7)
         self.assertEqual(c.ledger.target(old,'android')['state'],'building')
 
+    def test_original_store_lane_reconciles_before_background_artifacts_and_after_active_release(self):
+        c=Coordinator(self.root,{'workers':{},'single_flight':True});self.addCleanup(c.ledger.close)
+        old=c.ledger.add(candidate(1))
+        for state in ('building','verifying','verified','submitting'):
+            c.ledger.transition(old,'ios',state,evidence='a'*64)
+        active=c.ledger.add(candidate(2));latest=c.ledger.add(candidate(3))
+        atomic_json(self.root/'deployment/desired.json',{'release_id':active})
+        with patch.object(c,'step') as step,patch.object(c,'reconcile_deployment'):
+            c.tick()
+        calls=[call.args for call in step.call_args_list]
+        self.assertTrue(all(release==active for release,platform in calls[:7]))
+        self.assertEqual(calls[7],(old,'ios'))
+        self.assertEqual(calls[8][0],latest)
+        self.assertEqual(c.ledger.target(old,'ios')['state'],'submitting')
+
     def test_archive_traversal_and_symlink_rejected(self):
         import zipfile
         for name in ('../escape','/absolute','C:/windows','back\\slash','file:stream','file\0hidden'):

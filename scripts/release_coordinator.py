@@ -484,7 +484,9 @@ class Coordinator:
         active = select(self.state, self.ledger)['active'] if self.config.get('single_flight', False) else None
         rows = self.ledger.db.execute('''SELECT p.candidate,p.platform FROM platforms p
             JOIN candidates c ON c.id=p.candidate
-            ORDER BY (p.candidate=?) DESC,c.seq DESC,p.rowid''', (active,)).fetchall()
+            ORDER BY (p.candidate=?) DESC,
+                (p.platform IN ('ios','android') AND p.state IN ('submitting','processing','in_review')) DESC,
+                c.seq DESC,p.rowid''', (active,)).fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
         self.reconcile_deployment()
