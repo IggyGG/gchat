@@ -69,6 +69,15 @@ def invitation_nickname(tree):
     return editable_composer(tree) if preview and join else None
 
 
+def invitation_form(tree):
+    nodes = list(tree.iter('node'))
+    owned = [node for node in nodes if node.get('package') == android.PACKAGE]
+    if not any(AndroidUI.text('Invitation')(node) for node in owned): return None
+    if not any(AndroidUI.text('Continue')(node) for node in owned): return None
+    field = editable_composer(tree)
+    return field if field is not None and field.get('text', '') in ('', 'Paste an invitation') else None
+
+
 def message_bodies(values, known_bodies):
     # Android can merge inline timestamp/nickname/body text into one label.
     # Match complete canary tokens, never prefixes inside another message.
@@ -332,7 +341,25 @@ class AndroidUI:
                    '-d', shlex.quote(invitation), android.PACKAGE)
         self.click('Review invitation')
         self.scroll_to_top()
-        field = self.until(lambda: (node,) if (node := invitation_nickname(self.tree())) is not None else None, 120)[0]
+        def enrollment_input():
+            tree = self.tree()
+            nickname = invitation_nickname(tree)
+            if nickname is not None: return ('nickname', nickname)
+            form = invitation_form(tree)
+            return ('invitation', form) if form is not None else None
+        kind, field = self.until(enrollment_input, 120)
+        if kind == 'invitation':
+            # An OS link may arrive without preserving its value. Exercise the
+            # real form, and never report this fallback as OS-link qualification.
+            require(re.fullmatch(r'gcoms://join#GCIR1-[A-Za-z0-9_-]+', invitation)
+                    and len(invitation.encode()) <= 2048, 'bounded compact form invitation required')
+            self.ui_observation['invitation_entry'] = 'os_link_with_visible_form'
+            self.type(field, invitation)
+            self.click('Continue')
+            self.scroll_to_top()
+            field = self.until(lambda: (node,) if (node := invitation_nickname(self.tree())) is not None else None, 120)[0]
+        else:
+            self.ui_observation['invitation_entry'] = 'os_link'
         self.type(field, 'mobile')
         self.click('Join')
         # A new network joins asynchronously and presents its saved enrollment

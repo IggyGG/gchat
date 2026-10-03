@@ -156,6 +156,7 @@ def main():
     finally:
         if target == 'android' and ui is not None:
             report['ui_observation'] = dict(ui.ui_observation)
+            report['invitation_entry'] = ui.ui_observation.get('invitation_entry', 'os_link')
         invitation.unlink(missing_ok=True)
         report['invitation_removed'] = not invitation.exists()
         if journey is not None:

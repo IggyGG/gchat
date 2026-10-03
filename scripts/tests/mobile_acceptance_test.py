@@ -287,6 +287,47 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(clicks,['Review invitation','Join','Close dialog','Channels','Close dialog'])
             self.assertTrue(ui.ui_observation['notification_dialog_dismissed'])
 
+    def test_android_join_uses_visible_blank_form_without_qualifying_os_link(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));clicks=[];typed=[]
+            screens=[ET.fromstring(xml) for xml in (
+                '<hierarchy><node package="boo.gchat.app" text="Invitation"/><node package="boo.gchat.app" text="Continue"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/></hierarchy>',
+                '<hierarchy><node text="Join #mobile-release on Canary"/><node text="Join"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/></hierarchy>',
+                '<hierarchy><node text="Message or command"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]"/></hierarchy>',
+                '<hierarchy><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]"/></hierarchy>')]
+            invitation='gcoms://join#GCIR1-private_fixture'
+            with patch.object(ui,'shell'),patch.object(ui,'type',side_effect=lambda n,v:typed.append(v)), \
+                 patch.object(ui,'click',side_effect=clicks.append),patch.object(ui,'tree',side_effect=screens), \
+                 patch.object(ui,'scroll_to_top'):
+                ui.join(invitation)
+            self.assertEqual(clicks,['Review invitation','Continue','Join'])
+            self.assertEqual(typed,[invitation,'mobile'])
+            self.assertEqual(ui.ui_observation['invitation_entry'],'os_link_with_visible_form')
+            self.assertNotIn('private_fixture',json.dumps(ui.ui_observation))
+
+    def test_android_invitation_form_requires_owned_blank_field_and_both_controls(self):
+        controls='<node package="boo.gchat.app" text="Invitation"/><node package="boo.gchat.app" text="Continue"/>'
+        field='<node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/>'
+        self.assertIsNotNone(android_ui.invitation_form(ET.fromstring('<hierarchy>'+controls+field+'</hierarchy>')))
+        self.assertIsNotNone(android_ui.invitation_form(ET.fromstring('<hierarchy>'+controls+
+            field.replace('bounds=', 'text="Paste an invitation" bounds=')+'</hierarchy>')))
+        for changed in (field,controls.replace('Invitation','Message')+field,
+                        controls.replace('Continue','Send')+field, controls.replace('boo.gchat.app','another.app')+field,
+                        controls+field.replace('bounds=', 'text="private-existing-input" bounds='),controls+field+field):
+            with self.subTest(changed=changed):
+                self.assertIsNone(android_ui.invitation_form(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
+
+    def test_android_form_fallback_refuses_long_or_legacy_invitation(self):
+        form=ET.fromstring('<hierarchy><node package="boo.gchat.app" text="Invitation"/><node package="boo.gchat.app" text="Continue"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/></hierarchy>')
+        for invitation in ('gcoms://join#GCI1-private_fixture','gcoms://join#GCIR1-'+'x'*2048):
+            with self.subTest(size=len(invitation)),tempfile.TemporaryDirectory() as temporary:
+                ui,_,_=self.owned_android_ui(Path(temporary))
+                with patch.object(ui,'shell'),patch.object(ui,'click'),patch.object(ui,'scroll_to_top'), \
+                     patch.object(ui,'tree',return_value=form),patch.object(ui,'type') as typed, \
+                     self.assertRaisesRegex(ValueError,'bounded compact'):
+                    ui.join(invitation)
+                typed.assert_not_called()
+
     def test_ios_startup_pixels_require_first_creation_and_failure_before_any_input(self):
         for create,attempted,phase in ((True,False,'unlock-start'),(True,True,'unlock-start'),
                                       (False,False,'unlock-start'),(True,False,'unlock-passphrase')):

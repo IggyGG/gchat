@@ -187,13 +187,17 @@ class IOSUI:
         self.device = self.device.upper()
         self.base_device = self.device
         self.owned_devices = {self.device}
+        setup_stage = 'simulator_boot'
         try:
             ios.run(['xcrun', 'simctl', 'boot', self.device], timeout=120)
+            setup_stage = 'simulator_boot_ready'
             ios.run(['xcrun', 'simctl', 'bootstatus', self.device, '-b'], timeout=180)
             # XCTest must attach to a simulator that already has the unchanged
             # application, as the retained lifecycle worker does.
             if initial is not None:
+                setup_stage = 'initial_install'
                 self.install(initial)
+            setup_stage = 'xctest_project'
             self.bridge = Bridge()
             runner = output / 'runner'
             runner.mkdir()
@@ -220,6 +224,7 @@ class IOSUI:
                            if key not in ('GH_TOKEN', 'GITHUB_TOKEN', 'GCHAT_NETWORK_INVITATION')}
             self.runner = subprocess.Popen(list(map(str, command)), stdout=self.log,
                                            stderr=subprocess.STDOUT, env=environment)
+            setup_stage = 'xctest_start'
             self.bridge.wait_running(self.deadline(), lambda: self.runner.poll() is None)
             ready = self.call('ready', maximum=240)
             require(isinstance(ready, dict) and set(ready) == {'device'}, 'XCTest device receipt missing')
@@ -239,6 +244,7 @@ class IOSUI:
             error.ios_setup_diagnostics = runner_diagnostics(
                 output / 'xctest.private.log', self.runner.poll() if self.runner is not None else None,
                 self.bridge.polls if self.bridge is not None else 0)
+            error.ios_setup_diagnostics['setup_stage'] = setup_stage
             raise
 
     def call(self, op, maximum=120, **values):
