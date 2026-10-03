@@ -1,3 +1,5 @@
+Native acceptance recovery must retain terminal provider failures even when no report was uploaded. Cover one derived frozen follow-up, unchanged signed application inputs, original authority cleanup, source/inventory tampering refusal, and no retry for missing success, expired or ambiguous reports or a truncated provider inventory. Focused run 514 passes all 31 acceptance controls; full run 516 passes 781 tests with five existing skips in 30.501 seconds. Keep provider branch rejection annotations and original failed runs separate from the corrected results.
+
 The asynchronous coordinator fixtures explicitly use zero storage reserve in their owned, bounded scratch directory so they can run in the actual controller image's 256 MiB test tmpfs. Production retains its 16 GiB reserve and storage refusal controls. The original failed image gate is retained; corrected image qualification is required.
 
 ## Simplified release controls (2026-10-03)

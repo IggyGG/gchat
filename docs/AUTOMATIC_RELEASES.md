@@ -1,5 +1,13 @@
 ## Routine release operation
 
+The GitHub `release-signing` environment must permit `release/gchat-*` and
+`release/qualification-*` branches. Qualification refs are immutable and bound to
+the exact helper commit. Keep all other environment protection rules. A terminal
+provider failure before report upload retains its run and empty artifact inventory,
+cleans its authority, and permits one derived request from a different frozen
+helper. A lost or still-running request is reconciled instead of resubmitted;
+missing successful reports never become passes.
+
 Use `python3 scripts/release.py status` for the selected release, actual deployment
 versions and platform waiting/failure states. `resume --platform linux-x86_64`
 queues an operator retry of its original stage; `resume` also retries the selected

@@ -1,3 +1,5 @@
+Terminal GitHub rejection before report upload is now retained as a failed provider outcome with its exact run, artifact inventory and revoked request. A separately frozen helper can dispatch one derived follow-up while preserving the original failure; unknown requests, missing successful reports, expired/ambiguous archives and changed evidence cannot qualify. The release-signing environment now permits the frozen `release/qualification-*` branch family, preserving every existing protection rule. All 31 acceptance controls and 781 full Python tests pass with five existing skips (30.501 seconds); qualified controller activation follows.
+
 The asynchronous coordinator fixtures explicitly use zero storage reserve in their owned, bounded scratch directory so they can run in the actual controller image's 256 MiB test tmpfs. Production retains its 16 GiB reserve and storage refusal controls. The original failed image gate is retained; corrected image qualification is required.
 
 ## Launch simplification (2026-10-03, in progress)

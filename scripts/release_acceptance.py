@@ -35,6 +35,7 @@ WORKFLOW = 'native-acceptance.yml'
 MOBILE_WORKFLOW = 'mobile-acceptance.yml'
 PREFIX = 'Native acceptance '
 TARGETS = ('linux-x86_64', 'windows-x86_64', 'macos-aarch64', 'macos-x86_64', 'android', 'ios')
+FAILED_CONCLUSIONS = ('failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required')
 
 
 def qualification_revision(config, manifest):
@@ -86,15 +87,26 @@ def failed_followup(state, config, manifest, target, work, request, intent, revi
     run = json.loads(run_path.read_text())
     expected = intent.get('qualification_commit', manifest['sources']['gchat']['commit'])
     workflow = MOBILE_WORKFLOW if target in ('android', 'ios') else WORKFLOW
+    if proof.get('failure_kind') == 'provider-no-report':
+        artifacts_path = work / 'acceptance-artifacts.json'
+        artifacts = json.loads(artifacts_path.read_text())
+        archive_matches = (proof.get('archive_sha256') is None and not archive.exists()
+                           and proof.get('artifacts_sha256') == digest(artifacts_path)
+                           and isinstance(artifacts.get('artifacts'), list)
+                           and len(artifacts['artifacts']) < 100
+                           and not any(item.get('name') == 'acceptance-' + request
+                                       for item in artifacts['artifacts']))
+    else:
+        archive_matches = proof.get('archive_sha256') == digest(archive)
     if (intent.get('request') != request or intent.get('sources') != manifest['sources']
             or intent.get('target') != target
             or proof.get('request') != request or proof.get('sources') != manifest['sources']
             or proof.get('release_id') != manifest['release_id'] or proof.get('target') != target
             or proof.get('qualification_commit') != expected or proof.get('passed') is not False
-            or proof.get('run_sha256') != digest(run_path) or proof.get('archive_sha256') != digest(archive)
+            or proof.get('run_sha256') != digest(run_path) or not archive_matches
             or proof.get('intent_sha256') != digest(work / 'acceptance-intent.json')
             or run.get('status') != 'completed' or run.get('head_sha') != expected
-            or run.get('conclusion') not in ('failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required')
+            or run.get('conclusion') not in FAILED_CONCLUSIONS
             or run.get('event') != 'workflow_dispatch' or run.get('path') != '.github/workflows/' + workflow
             or run.get('display_title') != PREFIX + request
             or run.get('head_repository', {}).get('full_name') != 'IggyGG/gchat'
@@ -349,6 +361,23 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
     atomic_json(work / 'acceptance-run.json', run)
     artifacts = gh(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']
     selected = [item for item in artifacts if item['name'] == 'acceptance-' + request and not item['expired']]
+    if (run.get('conclusion') in FAILED_CONCLUSIONS
+            and len(artifacts) < 100
+            and not any(item['name'] == 'acceptance-' + request for item in artifacts)
+            and not (work / 'acceptance.zip').exists()):
+        # Environment/runner rejection can finish before an upload step exists.
+        # Retain that terminal provider outcome rather than inventing an archive
+        # or retrying the original, already revoked request.
+        atomic_json(work / 'acceptance-artifacts.json', {'artifacts': artifacts})
+        atomic_json(work / 'acceptance-failed.json', {
+            'request': request, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+            'target': target, 'qualification_commit': expected_worker, 'passed': False,
+            'failure_kind': 'provider-no-report', 'run_sha256': digest(work / 'acceptance-run.json'),
+            'archive_sha256': None, 'artifacts_sha256': digest(work / 'acceptance-artifacts.json'),
+            'intent_sha256': digest(marker)})
+        handled, result = failed_followup(state, config, manifest, target, work, request, intent, revision)
+        if handled:
+            return result
     if len(selected) != 1: raise ValueError('native acceptance report is missing or ambiguous')
     artifact = selected[0]; archive = work / 'acceptance.zip'
     if not re.fullmatch('sha256:[0-9a-f]{64}', artifact.get('digest', '')) or type(artifact.get('size_in_bytes')) is not int or not 0 < artifact['size_in_bytes'] <= 256 * 1024**2:

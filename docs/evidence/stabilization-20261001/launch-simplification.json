@@ -22,9 +22,9 @@
     "active flight is polled first; other flights cannot admit fresh acceptance, expired revalidation or publication"
   ],
   "tests": {
-    "python": 778,
+    "python": 781,
     "existing_skips": 5,
-    "log_sha256": "47a773895f0f4c15f25ce08a24b06dab6bcab8e10440f282d56682dd19b290cd",
+    "log_sha256": "5de57b0ad66d5804f4c5f22e2c69443cc175f3bc7eb75c96d243c7e66ce8481b",
     "L0_source_paths": 820,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
@@ -34,7 +34,8 @@
     "deployment_runner_controls": 6,
     "macos_recovery_controls": 7,
     "registry_copy_controls": 5,
-    "ios_retained_recovery_controls": 10
+    "ios_retained_recovery_controls": 10,
+    "native_acceptance_controls": 31
   },
   "live_operator": {
     "installed": true,
@@ -182,5 +183,21 @@
   "ios_retained_lifecycle_provider": {
     "id": 37098523009,
     "state": "queued"
+  },
+  "native_provider_branch_rejection": {
+    "platforms": [
+      "linux-x86_64",
+      "windows-x86_64",
+      "macos-aarch64"
+    ],
+    "original_runs": [
+      37105014881,
+      37104980360,
+      37104986614
+    ],
+    "environment_pattern_corrected": "release/qualification-*",
+    "existing_rules_preserved": true,
+    "original_failed_outcomes_retained": true,
+    "new_acceptance_passed": false
   }
 }

@@ -172,6 +172,86 @@ class NativeAcceptanceTests(unittest.TestCase):
                 acceptance.failed_followup(work, {}, manifest, target, work, request, intent, '9'*40)
             collect.assert_not_called()
 
+    def rejected_provider(self, work, conclusion='failure', artifacts=None):
+        manifest, inputs, _, _, _ = fixture()
+        request = '1'*64; target = inputs['target']
+        grant = work / 'grant.json'; grant.write_text('{}')
+        intent = {'request': request, 'sources': manifest['sources'], 'target': target,
+                  'qualification_commit': '7'*40, 'cleaned': True, 'dispatch_reserved': True}
+        atomic_json(work / 'acceptance-intent.json', intent)
+        run = {'id': 10, 'status': 'completed', 'conclusion': conclusion, 'head_sha': '7'*40,
+               'event': 'workflow_dispatch', 'path': '.github/workflows/native-acceptance.yml',
+               'display_title': acceptance.PREFIX + request,
+               'head_repository': {'full_name': 'IggyGG/gchat'}}
+        def api(path, **kwargs):
+            if path.startswith('git/commits/'):
+                return {'sha': path.rsplit('/', 1)[-1], 'tree': {'sha': '9'*40}}
+            if path.endswith('/dispatches'): return None
+            if '/artifacts?' in path: return {'artifacts': artifacts or []}
+            return {'workflow_runs': [run]}
+        config = {'grant_config': str(grant), 'qualification_commit': '7'*40}
+        return manifest, inputs, request, intent, run, config, api
+
+    def test_rejected_provider_without_report_retains_failure_and_dispatches_one_frozen_followup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            manifest, inputs, request, intent, run, config, api = self.rejected_provider(work)
+            with patch.object(acceptance, 'gh', side_effect=api) as provider_api, \
+                 patch.object(acceptance, 'provider', return_value=inputs['current']), \
+                 patch.object(acceptance, 'baseline', return_value=inputs['baseline']), \
+                 patch.object(acceptance, 'qualification_ref', side_effect=lambda c: 'release/qualification-' + c), \
+                 patch.object(acceptance, 'ssh', return_value=b'{"invitation":"fixture-with-no-authority"}') as ssh, \
+                 patch.object(acceptance.subprocess, 'run'):
+                self.assertIsNone(acceptance.collect(work, {**config, 'qualification_commit': '8'*40},
+                                                    manifest, inputs['target'], work, request))
+                retained = {path.name: path.read_bytes() for path in work.glob('acceptance-*.json')}
+                self.assertIsNone(acceptance.collect(work, {**config, 'qualification_commit': '9'*40},
+                                                    manifest, inputs['target'], work, request))
+                posts = [call for call in provider_api.call_args_list if call.args[0].endswith('/dispatches')]
+                self.assertEqual(len(posts), 1)
+                self.assertEqual(posts[0].kwargs['body']['inputs']['qualification_commit'], '8'*40)
+                self.assertNotEqual(posts[0].kwargs['body']['inputs']['request_id'], request)
+                self.assertEqual(posts[0].kwargs['body']['inputs']['gchat_commit'], manifest['sources']['gchat']['commit'])
+                ssh.assert_called_once()
+                for name, value in retained.items(): self.assertEqual((work / name).read_bytes(), value)
+            self.assertFalse((work / 'acceptance.zip').exists())
+            proof = json.loads((work / 'acceptance-failed.json').read_text())
+            self.assertFalse(proof['passed']); self.assertEqual(proof['failure_kind'], 'provider-no-report')
+            self.assertIsNone(proof['archive_sha256'])
+            self.assertEqual(json.loads((work / 'acceptance-run.json').read_text()), run)
+
+    def test_missing_success_ambiguous_expired_or_truncated_archives_cannot_become_retained_failure(self):
+        item = {'name': 'acceptance-' + '1'*64, 'expired': False}
+        for conclusion, artifacts in [('success', []), ('failure', [item, item]),
+                                       ('failure', [{**item, 'expired': True}]),
+                                       ('failure', [{'name': 'other', 'expired': False}]*100)]:
+            with self.subTest(conclusion=conclusion, artifacts=len(artifacts)), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                manifest, inputs, request, _, _, config, api = self.rejected_provider(work, conclusion, artifacts)
+                with patch.object(acceptance, 'gh', side_effect=api), \
+                     self.assertRaisesRegex(ValueError, 'missing or ambiguous'):
+                    acceptance.collect(work, config, manifest, inputs['target'], work, request)
+                self.assertFalse((work / 'acceptance-failed.json').exists())
+
+    def test_no_report_failure_requires_a_different_helper_and_unchanged_provider_inventory(self):
+        for mutation in ('inventory', 'added-archive', 'run', 'intent'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                manifest, inputs, request, intent, _, config, api = self.rejected_provider(work)
+                with patch.object(acceptance, 'gh', side_effect=api), \
+                     self.assertRaisesRegex(ValueError, 'original reports retained'):
+                    acceptance.collect(work, config, manifest, inputs['target'], work, request)
+                self.assertFalse((work / 'acceptance-followup.json').exists())
+                if mutation == 'inventory':
+                    atomic_json(work / 'acceptance-artifacts.json', {'artifacts': [{'name': 'changed'}]})
+                elif mutation == 'added-archive': (work / 'acceptance.zip').write_bytes(b'changed')
+                elif mutation == 'run': atomic_json(work / 'acceptance-run.json', {'status': 'success'})
+                else: atomic_json(work / 'acceptance-intent.json', {**intent, 'cleaned': False})
+                with patch.object(acceptance, 'collect') as collector, \
+                     self.assertRaisesRegex(ValueError, 'outcome changed'):
+                    acceptance.failed_followup(work, config, manifest, inputs['target'], work, request, intent, '8'*40)
+                collector.assert_not_called()
+
     def test_baseline_rotates_to_available_predecessor_and_keeps_seed_as_fallback(self):
         with tempfile.TemporaryDirectory() as temporary, closing(Ledger(Path(temporary) / 'ledger.sqlite')) as ledger:
             root = Path(temporary)
