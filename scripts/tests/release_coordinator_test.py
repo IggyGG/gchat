@@ -434,7 +434,8 @@ class CoordinatorTests(unittest.TestCase):
         old=c.ledger.add(candidate(1))
         for state in ('building','verifying','verified','submitting'):
             c.ledger.transition(old,'ios',state,evidence='a'*64)
-        active=c.ledger.add(candidate(2));latest=c.ledger.add(candidate(3))
+        active=c.ledger.add(candidate(2));c.ledger.transition(active,'android','building')
+        latest=c.ledger.add(candidate(3))
         atomic_json(self.root/'deployment/desired.json',{'release_id':active})
         with patch.object(c,'step') as step,patch.object(c,'reconcile_deployment'):
             c.tick()

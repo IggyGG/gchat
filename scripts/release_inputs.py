@@ -18,6 +18,7 @@ CONTROL_FILES = frozenset({
     'scripts/release_ledger.py', 'scripts/release_maintenance.py',
     'scripts/release.py', 'scripts/release_control.py',
     'scripts/release_flight.py', 'scripts/tests/release_flight_test.py',
+    '.github/workflows/contracts-check.yml',
     'scripts/release_deployment_runner.py', 'scripts/tests/release_deployment_runner_test.py',
     'scripts/release_deployment.py', 'scripts/release_host_worker.py',
     'scripts/release_host_install.py', 'release/automation/kubernetes.yaml',
