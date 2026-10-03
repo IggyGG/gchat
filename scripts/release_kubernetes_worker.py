@@ -255,8 +255,8 @@ def run(target, manifest, stage, output):
     current_partition = current['spec'].get('updateStrategy', {}).get('rollingUpdate', {}).get('partition', 0)
     if actual != desired or (partition is not None and current_partition != partition):
         patch_images(target, current, desired, partition)
-    expected_image = expected if stage == 'activate' else next(iter(before['images'].values()))
-    observation = observe(target, expected_image)
+    observed_image = expected if stage == 'activate' else next(iter(before['images'].values()))
+    observation = observe(target, observed_image)
     if not observation['healthy'] or not observation['matches']: return None
     if identities(target) != before['identities']:
         raise ValueError('relay identities changed during rollout')

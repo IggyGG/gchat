@@ -11,6 +11,25 @@ import release_kubernetes_worker as worker
 
 
 class KubernetesWorkerTests(unittest.TestCase):
+    def test_worker_entry_point_observes_the_qualified_bundle_without_preparation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = {'release_id': 'b' * 64, 'sources': {'gchat': 'original', 'gcoms': 'companion'}}
+            directory = root / manifest['release_id']
+            directory.mkdir()
+            build = {'sources': manifest['sources'], 'qualified': True, 'images': {'gcnode': self.image}}
+            (directory / 'build.json').write_text(json.dumps(build))
+            target = {**self.target, 'artifact_root': str(root), 'image': 'gcnode'}
+            observed = {'healthy': True, 'matches': True, 'running': {'image': self.image}}
+            with patch.object(worker, 'observe', return_value=observed) as observe:
+                self.assertEqual(worker.run(target, manifest, 'observe', root / 'result.json'), observed)
+                observe.assert_called_once_with(target, self.image)
+            build['qualified'] = False
+            (directory / 'build.json').write_text(json.dumps(build))
+            with patch.object(worker, 'observe') as observe, self.assertRaisesRegex(ValueError, 'qualified'):
+                worker.run(target, manifest, 'observe', root / 'result.json')
+            observe.assert_not_called()
+
     def test_independent_controller_pin_requires_complete_sealed_native_qualification(self):
         import hashlib
         import controller_runtime

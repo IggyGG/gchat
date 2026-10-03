@@ -14,9 +14,9 @@
     "full checks of matching boundary targets without restarting unchanged services"
   ],
   "tests": {
-    "python": 725,
+    "python": 726,
     "existing_skips": 5,
-    "log_sha256": "02b694d86f08d422da5f3a6832776c8301b1800a85febec48f7ad53369448755",
+    "log_sha256": "79bb15edac6b5d515c3ad31a2cc8ebf7a820ffe01ab5d23e36018e371ffd3043",
     "L0_source_paths": 809,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
@@ -31,9 +31,13 @@
     "production_grants_unchanged": true,
     "policy_backup_retained": true
   },
-  "controller_image_active": false,
+  "controller_image_active": true,
   "fleet_launched": false,
   "local_new_release_active": false,
   "native_acceptance_complete": false,
-  "sdk_1_0_qualified": false
+  "sdk_1_0_qualified": false,
+  "active_controller_source": "749eb913bfd9587ce18f44a422623d3176729247",
+  "active_controller_kubernetes_checks": 203,
+  "live_worker_entry_failure_retained": true,
+  "entry_point_fix_requires_new_image": true
 }
