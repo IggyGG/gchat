@@ -136,6 +136,14 @@ class KubernetesWorkerTests(unittest.TestCase):
         report = self.observe()
         self.assertTrue(report['matches']); self.assertFalse(report['healthy'])
 
+    def test_evicted_configured_image_cannot_qualify_actual_running_image_or_health(self):
+        self.pod['spec']={'containers':[{'name':'gcnode','image':self.image}],
+                          'initContainers':[{'name':'gcnode-keygen','image':self.image}]}
+        self.pod['status']={'conditions':[{'type':'Ready','status':'False'}]}
+        report=self.observe()
+        self.assertTrue(report['configured_matches'])
+        self.assertFalse(report['healthy']);self.assertFalse(report['matches'])
+
     def test_patch_updates_only_named_images_and_partition(self):
         before = copy.deepcopy(self.current)
         with patch.object(worker, 'kubectl') as command:
@@ -165,7 +173,7 @@ class KubernetesWorkerTests(unittest.TestCase):
                   'pod_images': {name: old for name in self.target['containers']},
                   'partition': 2, 'identities': {'identity': 'unchanged'}}
         self.target.update(pod='gc-anchor-1', ordinal=1)
-        failed = {'metadata': {'uid': 'failed-pod'}}
+        failed = {'metadata': {'uid': 'failed-pod', 'resourceVersion': '123'}}
         replacement = {'metadata': {'uid': 'restored-pod'}}
         healthy = {'healthy': True, 'matches': True, 'running': {}}
         with tempfile.TemporaryDirectory() as tmp, \
@@ -173,13 +181,17 @@ class KubernetesWorkerTests(unittest.TestCase):
                 patch.object(worker, 'patch_images') as patch_images, \
                 patch.object(worker, 'observe', return_value=healthy), \
                 patch.object(worker, 'identities', return_value=before['identities']), \
-                patch.object(worker, 'resource', return_value=self.current):
+                patch.object(worker, 'resource', return_value=self.current), \
+                patch.object(worker.subprocess, 'run') as delete:
             journal = Path(tmp) / 'before.json'
             self.assertIsNone(worker.rollback_stateful(self.target, self.current, before, journal))
             self.assertTrue(journal.is_file())
             self.assertEqual(patch_images.call_args.kwargs, {'on_delete': True})
             self.assertEqual(patch_images.call_args.args[2], before['pod_images'])
-            self.assertEqual(kubectl.call_args.args[1:], ('delete', 'pod', 'gc-anchor-1', '--wait=false'))
+            self.assertEqual(delete.call_args.args[0],['kubectl','delete','--raw',
+                '/api/v1/namespaces/ghost-com/pods/gc-anchor-1','-f','-'])
+            self.assertEqual(json.loads(delete.call_args.kwargs['input'])['preconditions'],
+                             {'uid':'failed-pod','resourceVersion':'123'})
             # A lost delete reply resumes from the retained failed UID. The new
             # pod and every healthy higher ordinal must survive reconciliation.
             kubectl.reset_mock(); kubectl.return_value = json.dumps(replacement).encode()
@@ -188,6 +200,37 @@ class KubernetesWorkerTests(unittest.TestCase):
             self.assertEqual(patch_images.call_args.args[2:], (before['images'], 2))
             self.assertFalse(any('delete' in call.args for call in kubectl.call_args_list))
             self.assertEqual(json.loads(journal.read_text())['rollback']['state'], 'complete')
+
+    def test_rollback_reconciles_kubernetes_replacement_without_deleting_foreign_image(self):
+        old='registry/gcnode@sha256:'+'b'*64
+        for image,allowed in ((self.image,True),('registry/other@sha256:'+'c'*64,False)):
+            with self.subTest(image=image),tempfile.TemporaryDirectory() as tmp:
+                before={'images':{name:old for name in self.target['containers']},
+                    'pod_images':{name:old for name in self.target['containers']},'partition':2,
+                    'identities':{},'rollback':{'pod_uid':'original-pod','state':'replacing'}}
+                pod={'metadata':{'uid':'kubernetes-replacement','resourceVersion':'456'},
+                    'spec':{'containers':[{'name':'gcnode','image':image}],
+                            'initContainers':[{'name':'gcnode-keygen','image':image}]}}
+                with patch.object(worker,'kubectl',return_value=json.dumps(pod).encode()), \
+                     patch.object(worker,'patch_images'), \
+                     patch.object(worker,'observe',return_value={'healthy':True,'matches':False}), \
+                     patch.object(worker,'delete_owned_pod') as delete:
+                    journal=Path(tmp)/'before.json'
+                    if allowed:
+                        self.assertIsNone(worker.rollback_stateful(self.target,self.current,before,journal,self.image))
+                        self.assertEqual(json.loads(journal.read_text())['rollback']['pod_uid'],'kubernetes-replacement')
+                        delete.assert_called_once_with(self.target,pod)
+                    else:
+                        with self.assertRaisesRegex(ValueError,'outside the recorded rollback'):
+                            worker.rollback_stateful(self.target,self.current,before,journal,self.image)
+                        delete.assert_not_called()
+
+    def test_owned_pod_deletion_requires_both_preconditions(self):
+        for metadata in ({'uid':'pod'},{'resourceVersion':'1'},{}):
+            with self.subTest(metadata=metadata),patch.object(worker.subprocess,'run') as delete, \
+                 self.assertRaisesRegex(ValueError,'UID and resource version'):
+                worker.delete_owned_pod(self.target,{'metadata':metadata})
+            delete.assert_not_called()
 
 
 if __name__ == '__main__': unittest.main()

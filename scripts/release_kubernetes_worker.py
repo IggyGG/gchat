@@ -45,14 +45,19 @@ def observe(target, expected):
         for p in live)
     images = []
     matches = bool(live)
+    configured_matches = bool(live)
     for pod in live:
+        configured = {c['name']: c['image'] for group in ('containers', 'initContainers')
+                      for c in pod.get('spec', {}).get(group, [])}
         states = {c['name']: c for c in [*pod.get('status', {}).get('containerStatuses', []),
                                         *pod.get('status', {}).get('initContainerStatuses', [])]}
         for name in target['containers']:
             actual = states.get(name, {}).get('imageID', '')
             matches = matches and image_digest(actual) == image_digest(expected)
+            configured_matches = configured_matches and image_digest(configured.get(name, '')) == image_digest(expected)
             images.append({'pod_uid': pod['metadata']['uid'], 'container': name, 'image_id': actual})
-    return {'healthy': healthy, 'matches': bool(matches), 'running': {'images': images}}
+    return {'healthy': healthy, 'matches': bool(matches), 'configured_matches': bool(configured_matches),
+            'running': {'images': images}}
 
 
 def images(spec, names):
@@ -98,7 +103,18 @@ def patch_images(target, current, replacement, partition=None, on_delete=False):
     kubectl(target, 'patch', target['kind'], target['name'], '--type=strategic', '-p', json.dumps(patch))
 
 
-def rollback_stateful(target, current, before, journal):
+def delete_owned_pod(target, pod):
+    metadata = pod['metadata']
+    if not metadata.get('uid') or not metadata.get('resourceVersion'):
+        raise ValueError('owned pod deletion requires UID and resource version')
+    options = {'apiVersion': 'v1', 'kind': 'DeleteOptions', 'preconditions': {
+        'uid': metadata['uid'], 'resourceVersion': metadata['resourceVersion']}}
+    subprocess.run(['kubectl', 'delete', '--raw', '/api/v1/namespaces/' + target['namespace']
+                    + '/pods/' + target['pod'], '-f', '-'], input=json.dumps(options).encode(),
+                   stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, timeout=120)
+
+
+def rollback_stateful(target, current, before, journal, candidate_image=None):
     # A lower ordinal's previous template may already be the new image from
     # the higher ordinal. Its own running image is the rollback authority.
     # Freeze automatic rolling while replacing just the failed pod, then
@@ -111,8 +127,18 @@ def rollback_stateful(target, current, before, journal):
         if (current['spec'].get('updateStrategy', {}).get('type') != 'OnDelete'
                 or images(current['spec'], target['containers']) != before['pod_images']):
             patch_images(target, current, before['pod_images'], on_delete=True)
+        if pod['metadata']['uid'] != before['rollback']['pod_uid']:
+            observed = observe(target, next(iter(before['pod_images'].values())))
+            if not observed['matches']:
+                actual = images({'template': {'spec': pod['spec']}}, target['containers'])
+                if candidate_image is None or any(value not in (before['pod_images'][name], candidate_image)
+                                                   for name, value in actual.items()):
+                    raise ValueError('replacement pod image is outside the recorded rollback')
+                before['rollback']['pod_uid'] = pod['metadata']['uid']
+                atomic_json(journal, before)
         if pod['metadata']['uid'] == before['rollback']['pod_uid']:
-            kubectl(target, 'delete', 'pod', target['pod'], '--wait=false')
+            if not pod['metadata'].get('deletionTimestamp'):
+                delete_owned_pod(target, pod)
             return None
         observed = observe(target, next(iter(before['pod_images'].values())))
         if not observed['healthy'] or not observed['matches']: return None
@@ -261,7 +287,7 @@ def run(target, manifest, stage, output):
     if any(actual[name] not in (before['images'][name], before.get('pod_images', {}).get(name), expected) for name in actual):
         raise ValueError('another operator changed the target image')
     if stage == 'rollback' and target['kind'] == 'statefulset':
-        return rollback_stateful(target, current, before, journal)
+        return rollback_stateful(target, current, before, journal, expected)
     partition = (target['ordinal'] if stage == 'activate' else before['partition']) if target['kind'] == 'statefulset' else None
     current_partition = current['spec'].get('updateStrategy', {}).get('rollingUpdate', {}).get('partition', 0)
     if actual != desired or (partition is not None and current_partition != partition):

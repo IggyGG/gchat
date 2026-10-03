@@ -107,6 +107,25 @@ class DeploymentTests(unittest.TestCase):
         self.assertFalse(self.tick())
         self.assertEqual([name for name, stage in self.calls if stage == 'activate'], ['relay-2'])
 
+    def test_evicted_deployed_image_waits_for_kubernetes_without_rollback(self):
+        for _ in range(3): self.tick()
+        self.calls.clear()
+        self.live['relay-2'].update(healthy=False, matches=False, configured_matches=True)
+        self.assertFalse(self.tick())
+        self.assertTrue(all(stage == 'observe' for _, stage in self.calls))
+        report=json.loads((self.root/'deployment'/self.manifest['release_id']/'journal.json').read_text())
+        self.assertEqual(report['state'],'deploying')
+        self.assertEqual(report['targets']['relay-2']['state'],'deployed')
+        self.live['relay-2'].update(healthy=True, matches=True)
+        self.assertTrue(self.tick())
+
+    def test_foreign_configured_image_still_requires_repair(self):
+        for _ in range(3): self.tick()
+        self.calls.clear()
+        self.live['relay-2'].update(healthy=False, matches=False, configured_matches=False)
+        self.assertFalse(self.tick())
+        self.assertIn(('relay-2','activate'),self.calls)
+
     def test_crash_after_activation_observes_and_checks_before_advancing(self):
         ordinary = self.worker
         def crash(target, stage, *args):

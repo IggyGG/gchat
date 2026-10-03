@@ -1,10 +1,10 @@
 # GChat
 
-Release status, 2026-10-03: all 17 infrastructure targets are healthy; Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Android and iOS installed acceptance remain incomplete. Apple encryption approval is IN_REVIEW, including France. Linux 0.1.98 is installed locally; the open desktop needs a normal full Quit and reopen to use it.
+Release status, 2026-10-03: Linux, Windows, both Mac architectures and SDK 0.1.98 are published. The 17-target deployment is recovering from a Kubernetes anchor eviction; original rollback evidence is retained. Android and iOS installed acceptance remain incomplete. Apple encryption approval is IN_REVIEW, including France. Linux 0.1.98 is installed locally; a normal full Quit and reopen uses it.
 
-Controller 2b2478e remains active. Native helper 7525311 passed 827 CI tests with five existing skips. Both actual mobile runs failed; their original reports are retained. The next helper separates XCTest startup from UI commands within the existing setup deadline and recognizes Android’s channel preview plus its unique nickname field without relying on a missing accessibility label. Signed applications, API 2/3, rollback and file deadlines stay unchanged. Full launch requires passing mobile acceptance and store availability.
+Controller 2b2478e remains active; mobile helper 63729bb passed 829 CI checks with five existing skips and is mounted for both queued retries. The controller correction waits for Kubernetes to recover an already deployed image, preserves actual runtime/health requirements, and completes a recorded rollback if Kubernetes replaced its pod. Pod deletion requires the observed UID and resource version; an unrelated image is refused. The 27 focused deployment controls pass. Actual controller image qualification is still required before activation.
 
-Routine releases: push `main`; automation builds, verifies, deploys and publishes. Use `python3 scripts/release.py status` to inspect progress, `resume` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
+Routine releases: push `main`; automation builds, verifies, deploys and publishes. Inspect with `python3 scripts/release.py status`; use `resume` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
 
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the

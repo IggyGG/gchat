@@ -210,6 +210,13 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
             if len(unhealthy) > 1:
                 report['reason'] = 'More than one target is unhealthy; rollout deferred'
                 return False
+            if unhealthy and observations[unhealthy[0]['id']].get('configured_matches') is True and (
+                    report['targets'][unhealthy[0]['id']].get('state') == 'deployed'):
+                # Kubernetes can replace an evicted pod with the same installed
+                # image. Keep publication waiting for actual health; this is
+                # not a new activation or authority to roll back an old release.
+                report['reason'] = 'Installed image is waiting for Kubernetes health recovery'
+                return False
             if not pending:
                 report.update(state='deployed', observed_at=now)
                 report.pop('reason', None)
