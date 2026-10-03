@@ -47,9 +47,15 @@
         "request": "ios93-retained-lifecycle-20261003-54c3622"
       },
       "verification": {
+        "controller": "60f3c66929731390d3f4568fd0e2951209f021e0",
+        "ref": "release/qualification-ios-installed-60f3c6692973",
+        "request": "3ae709c3006398062e57ba5b425cd6df9cc42d93bc7ec52e5e1cc5ea9bb768eb"
+      },
+      "previous_verification": {
         "controller": "54c3622174aaf8af05a5daad0280f1dd5b1f416a",
         "ref": "release/qualification-ios-installed-54c3622174aa",
-        "request": "ios93-retained-verified-20261003-54c3622"
+        "request": "ios93-retained-verified-20261003-54c3622",
+        "run": 37112219593
       }
     }
   ]
