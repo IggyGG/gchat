@@ -1,0 +1,106 @@
+# Production release registry. Migrate and verify existing data before applying
+# this Deployment; retain the original registry-data PVC for rollback.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: registry-data-replicated-hel
+  namespace: ghost-com
+  labels:
+    app: registry
+    app.kubernetes.io/part-of: gchat-release
+    triform.io/storage-intent: durable
+    triform.io/storage-lifecycle: retained
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: triform-replicated-hel-2x
+  resources:
+    requests:
+      storage: 48Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry
+  namespace: ghost-com
+  annotations:
+    ghost-com.io/deployment-scope: gchat-release
+  labels:
+    app: registry
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: registry
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values: [hel1]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [triform-1, triform-5]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: registry
+          image: docker.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: registry
+              containerPort: 5000
+          startupProbe:
+            tcpSocket:
+              port: registry
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            tcpSocket:
+              port: registry
+            periodSeconds: 10
+            timeoutSeconds: 2
+          livenessProbe:
+            tcpSocket:
+              port: registry
+            periodSeconds: 20
+            timeoutSeconds: 2
+          env:
+            - name: REGISTRY_STORAGE_DELETE_ENABLED
+              value: "true"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/registry
+              subPath: registry
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: registry-data-replicated-hel

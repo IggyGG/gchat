@@ -87,6 +87,8 @@ class InputTests(unittest.TestCase):
             for path in ('release/downloads.json', 'scripts/website.py',
                          'scripts/release_inventory.py', 'scripts/release_sdk.py',
                          'scripts/macos-package.py', '.github/workflows/macos-package.yml',
+                         'scripts/release_macos_recovery.py', 'release/automation/qualification/native-recoveries.json',
+                         'scripts/copy-release-registry.py', 'release/automation/registry.yaml',
                          '.github/workflows/macos-rollback.yml', 'scripts/macos-rollback.py',
                          '.github/workflows/release-tools-check.yml',
                          'scripts/acceptance_delivery.py', 'scripts/release_acceptance_delivery.py',

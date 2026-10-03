@@ -50,6 +50,11 @@ def validate_runs(manifest, target, original, followup):
 
 
 def collect(manifest, target, work, original):
+    if target.startswith('macos'):
+        from release_macos_recovery import rule_for, collect as collect_macos
+        rule = rule_for(manifest, target)
+        if rule is not None:
+            return collect_macos(manifest, target, work, original, rule)
     if target == 'ios':
         from release_ios_recovery import collect as collect_ios
         return collect_ios(manifest, work, original)

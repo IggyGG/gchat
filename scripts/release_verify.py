@@ -36,7 +36,8 @@ def verify(manifest, platform, directory, output, tools=None):
         from release_ios_recovery import verify as verify_ios
         return verify_ios(manifest, directory, output)
     expected = {p: v['commit'] for p, v in manifest['sources'].items()}
-    reports = list(directory.rglob('build.json'))
+    recovered_macos = platform.startswith('macos') and (directory.parent / 'macos-recovery.json').is_file()
+    reports = [directory / 'signed/build.json'] if recovered_macos else list(directory.rglob('build.json'))
     reports = [p for p in reports if not any(part in ('inputs', 'build', 'native-tests', 'infrastructure') for part in p.relative_to(directory).parts[:-1])]
     if len(reports) != 1: raise ValueError('native build receipt missing or ambiguous')
     report = reports[0]; build = json.loads(report.read_text()); root = report.parent
@@ -124,12 +125,18 @@ def verify(manifest, platform, directory, output, tools=None):
                 load_module('windows-build').collect(root, expected)
         elif platform.startswith('macos'):
             mac = load_module('macos-build')
-            evidence = root / 'evidence'; candidate = json.loads((evidence / 'candidate.json').read_text())
-            mac.validate_sources(candidate, evidence)
-            for project in ('gchat', 'gcoms'):
-                name = 'native.' + project + '.' + platform
-                result = json.loads(mac.file_reference(evidence, candidate['checks'][name]).read_text())
-                mac.validate_report(name, result, candidate, evidence, candidate['artifacts'])
+            if recovered_macos:
+                from release_macos_recovery import verify as verify_macos
+                verify_macos(manifest, platform, directory, root, load_module('macos-package'))
+                evidence = directory / 'retry-evidence/original-native/evidence'
+                candidate = json.loads((evidence / 'candidate.json').read_text())
+            else:
+                evidence = root / 'evidence'; candidate = json.loads((evidence / 'candidate.json').read_text())
+                mac.validate_sources(candidate, evidence)
+                for project in ('gchat', 'gcoms'):
+                    name = 'native.' + project + '.' + platform
+                    result = json.loads(mac.file_reference(evidence, candidate['checks'][name]).read_text())
+                    mac.validate_report(name, result, candidate, evidence, candidate['artifacts'])
             mac.verify_application_smoke(root, build, mac.file_reference(evidence, candidate['sources']['gchat']['archive']))
         for item in build['files']:
             path = root / item['name']
@@ -155,6 +162,9 @@ def verify(manifest, platform, directory, output, tools=None):
     followup_evidence = []
     if platform == 'windows-x86_64' and (directory.parent / 'recovery/binding.json').is_file():
         followup_evidence = [p for p in (directory.parent / 'recovery').rglob('*') if p.is_file() and p.suffix in ('.json', '.zip', '.tar')]
+    if recovered_macos:
+        followup_evidence = [directory.parent / 'native.zip', directory.parent / 'macos-recovery.json',
+                            *sorted((directory.parent / 'macos-recovery').iterdir())]
     for path in [report, *artifacts, *followup_evidence]:
         name = sha(path) + '-' + path.name
         destination = retained / name

@@ -53,6 +53,23 @@ positive GChat paired-source qualification is still required. The package uses
 the frozen requested source pair and must pass actual signing, notarization and
 installed DMG lifecycle checks. Retained packaging tooling changes require a new
 controller qualification rather than another application release.
+`release/automation/qualification/native-recoveries.json` registers an exact
+candidate, target, original failed run/archive and separately frozen package
+follow-up. A running or queued follow-up keeps the original build pending without
+another dispatch. Successful results require independent validation of the whole
+provider ZIP, original native evidence, source pair, helper archive and installed
+smoke; signed updater and acceptance gates still follow. An operator may provide
+the same registry through `GCHAT_NATIVE_RECOVERIES`. Missing registrations and
+failed/cancelled follow-ups cannot become passes.
+
+The production image registry is declared by `release/automation/registry.yaml`.
+It uses a retained replicated volume and avoids node 5's recurring disk pressure.
+For a storage move, provision the new claim and mount the old claim read-only in
+an isolated copy worker. Stop the registry writer, run `copy-release-registry.py`
+with `--writer-stopped`, and require its complete byte/mode receipt before a guarded
+Deployment switch. Keep the original claim and Deployment specification for
+rollback; restore that specification if activation fails. Apply the production
+manifest for subsequent operations rather than the legacy development cache.
 SDK qualification is cached per completed matrix. A hit requires identical Git
 entries for every build, test, toolchain, feature, workflow and policy input; only
 individually reviewed prose/status files are excluded. The controller rechecks the
