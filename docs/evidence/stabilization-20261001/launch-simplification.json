@@ -246,7 +246,13 @@
     "automatic_retry": true,
     "uploaded": false,
     "includes_france": true,
-    "latest_read_only_observation_utc": "2026-10-03 23:18:26 UTC"
+    "read_only_observation": {
+      "state": "IN_REVIEW",
+      "includes_france": true,
+      "observed_at": 1791070395,
+      "read_only": true
+    },
+    "observation_receipt": "operations/apple-encryption-current-803.json"
   },
   "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:4d769ee158eb7e649d7021eb505ccfe51b5fef8a94b729f6a45bcae53bf3a4e5",
   "controller_qualification_sha256": "f6bd995d6f6b489472cc4c2a7f99853f77e7bf833fa3a37ba925c9fa99a2018c",
@@ -299,12 +305,14 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": null,
-    "ios": null,
-    "helper": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
-    "state": "derived_requests_reserved",
-    "android_request": "77690d6eb52fe492035c084c1c0b1e49034b532b2df46c34b20e5d7a9b948594",
-    "ios_request": "ca59e90c38063fa21f62af905bea2ddd88855a721a8b64c7b281d4bb02aaea1a"
+    "android": 37162032762,
+    "ios": 37162034981,
+    "helper": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
+    "state": "both_in_progress",
+    "requests": {
+      "android": "7a84322745fc87776bd97d62a3c036d9c4b5752a0fc9fc72d189c945e957bb4e",
+      "ios": "4c95514c4217fff0017ba477fbbf9d9e70a740281eeb9eb7974e131420ad63e8"
+    }
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -720,15 +728,5 @@
     "native_acceptance_passed": false,
     "qualified_source": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
     "source_controls_passed": 861
-  },
-  "mobile_provider_attempts": {
-    "android": 37162032762,
-    "ios": 37162034981,
-    "helper": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
-    "state": "both_in_progress",
-    "requests": {
-      "android": "7a84322745fc87776bd97d62a3c036d9c4b5752a0fc9fc72d189c945e957bb4e",
-      "ios": "4c95514c4217fff0017ba477fbbf9d9e70a740281eeb9eb7974e131420ad63e8"
-    }
   }
 }
