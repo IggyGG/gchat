@@ -274,6 +274,9 @@ class Coordinator:
                     effect_kind = 'acceptance-after-' + previous['id']
                     atomic_json(pointer, {'kind': effect_kind})
         effect = self.ledger.effect(manifest['release_id'], platform, effect_kind)
+        from release_flight import can_execute
+        if not can_execute(self, manifest['release_id'], platform, stage, effect_kind):
+            return None
         work = self.state / 'jobs' / effect['id']
         work.mkdir(parents=True, exist_ok=True)
         source = work / 'candidate.json'
@@ -460,8 +463,11 @@ class Coordinator:
             except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
                 atomic_json(self.state / 'coalescing-blocked.json',
                             {'reason': type(error).__name__, 'at': int(time.time())})
+        from release_flight import select
+        active = select(self.state, self.ledger)['active'] if self.config.get('single_flight', False) else None
         rows = self.ledger.db.execute('''SELECT p.candidate,p.platform FROM platforms p
-            JOIN candidates c ON c.id=p.candidate ORDER BY c.seq DESC,p.rowid''').fetchall()
+            JOIN candidates c ON c.id=p.candidate
+            ORDER BY (p.candidate=?) DESC,c.seq DESC,p.rowid''', (active,)).fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
         self.reconcile_deployment()

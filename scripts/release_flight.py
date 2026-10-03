@@ -1,4 +1,4 @@
-"""Admit one release's new builds while retaining already dispatched work."""
+"""Admit one release's new work while retaining already dispatched requests."""
 import json
 from pathlib import Path
 from release_coordinator import atomic_json
@@ -38,9 +38,9 @@ def select(state, ledger):
     return result
 
 
-def already_dispatched(state, ledger, release, platform):
+def already_dispatched(state, ledger, release, platform, kind='build'):
     effect = ledger.db.execute('''SELECT id,state,external_id FROM effects
-        WHERE candidate=? AND platform=? AND kind='build' ''', (release, platform)).fetchone()
+        WHERE candidate=? AND platform=? AND kind=? ''', (release, platform, kind)).fetchone()
     if effect is None:
         return False
     root = Path(state) / 'jobs' / effect['id']
@@ -48,7 +48,14 @@ def already_dispatched(state, ledger, release, platform):
 
 
 def can_build(coordinator, release, platform):
+    return can_execute(coordinator, release, platform, 'build', 'build')
+
+
+def can_execute(coordinator, release, platform, stage, kind):
     if not coordinator.config.get('single_flight', False):
         return True
+    if stage in ('verify', 'observe'):
+        return True  # Retain completed artifacts and observe external store reviews.
     flight = select(coordinator.state, coordinator.ledger)
-    return release == flight['active'] or already_dispatched(coordinator.state, coordinator.ledger, release, platform)
+    return release == flight['active'] or already_dispatched(coordinator.state, coordinator.ledger,
+                                                            release, platform, kind)

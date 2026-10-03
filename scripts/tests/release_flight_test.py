@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_coordinator import Coordinator, atomic_json
 from release_automation_test import candidate
-from release_flight import select, can_build
+from release_flight import select, can_build, can_execute
 
 
 class FlightTests(unittest.TestCase):
@@ -40,6 +40,35 @@ class FlightTests(unittest.TestCase):
         atomic_json(self.root / 'jobs' / effect['id'] / 'attempted.json', {'request_id': effect['id']})
         self.assertTrue(can_build(self.controller, self.releases[1], 'ios'))
         self.assertEqual(self.controller.ledger.effect(self.releases[1], 'ios', 'build')['id'], effect['id'])
+
+    def test_older_release_cannot_start_new_acceptance_or_expired_revalidation(self):
+        from unittest.mock import patch
+        release = self.releases[1]
+        self.controller.config['workers'] = {'ios': {'acceptance': {
+            'run': ['unused'], 'reconcile': ['unused']}}}
+        with patch('release_coordinator.subprocess.run') as run:
+            self.assertIsNone(self.controller.execute(self.controller.ledger.manifest(release), 'ios', 'acceptance'))
+        run.assert_not_called()
+        self.assertFalse(can_execute(self.controller, release, 'ios', 'acceptance', 'acceptance-after-old'))
+        self.assertTrue(can_execute(self.controller, release, 'ios', 'verify', 'verify'))
+        self.assertTrue(can_execute(self.controller, release, 'ios', 'observe', 'observe-123'))
+
+    def test_original_acceptance_dispatch_stays_reconcilable_outside_active_flight(self):
+        release = self.releases[1]
+        effect = self.controller.ledger.effect(release, 'ios', 'acceptance')
+        self.assertFalse(can_execute(self.controller, release, 'ios', 'acceptance', 'acceptance'))
+        atomic_json(self.root / 'jobs' / effect['id'] / 'attempted.json', {'request_id': effect['id']})
+        self.assertTrue(can_execute(self.controller, release, 'ios', 'acceptance', 'acceptance'))
+        self.assertEqual(self.controller.ledger.effect(release, 'ios', 'acceptance')['id'], effect['id'])
+
+    def test_active_release_is_polled_before_newer_and_older_retained_work(self):
+        from unittest.mock import patch
+        with patch.object(self.controller, 'step') as step, patch.object(self.controller, 'reconcile_deployment'):
+            self.controller.tick()
+        releases = [call.args[0] for call in step.call_args_list]
+        first_other = next(i for i, release in enumerate(releases) if release != self.releases[0])
+        self.assertTrue(all(release == self.releases[0] for release in releases[:first_other]))
+        self.assertEqual(releases[first_other], self.releases[2])
 
     def test_store_reviews_do_not_hold_the_next_internal_release(self):
         # These owned ledger fixtures model completed upstream gates. No actual

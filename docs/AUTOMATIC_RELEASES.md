@@ -15,7 +15,7 @@ coordinator's polling or status updates. Each step has a deadline and source-bou
 receipt. Status exposes active stages, deadlines and controller observation age.
 Rollback requests remain queued while a deployment owns its lock. Production defaults admit
 one active release and expose one newest pending release. A blocked active release
-holds new admission; already dispatched provider requests retain their original
+holds new build, acceptance and publication admission. The active release is polled first; already dispatched provider requests retain their original
 identity and keep being reconciled. Once all internal stages finish, mobile
 processing/review may continue while the next release starts. The scheduler never
 selects an older pending candidate after a newer one completes. Completed stages and
