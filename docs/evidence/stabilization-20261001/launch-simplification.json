@@ -284,27 +284,27 @@
     "actual_android_seed_selection": "operations/android-qualified-seed-selection-623.json"
   },
   "automatic_source_gate": {
-    "run": 37133829149,
-    "artifact": 11277409593,
-    "source": "86280609cedb4cffed9cd8c709e2a2365f3cebc4",
-    "source_tree": "74b69d76d81fe14872ea95f053c94911534df16c",
-    "archive_sha256": "b0e118252ae28ed90725cc751fefecef21fc6dabc4e6026304f2e9fe750092ba",
+    "run": 37135371353,
+    "artifact": 11277882534,
+    "source": "03c2be814fd5b369b687a7aa7bcf014bdc962d96",
+    "source_tree": "36f565b2d0e4b256c3a4a31ca9b503ffe7bb6cc7",
+    "archive_sha256": "d84756a84d10f1deb4517def24f270e7bb215613f632a5e13923e6cf8aac72fc",
     "full_history": true,
-    "all_python_tests": 823,
+    "all_python_tests": 825,
     "skips": 5,
-    "seconds": 31.532,
+    "seconds": 29.115,
     "passed": true,
     "source_audit_and_contracts": true,
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37134035645,
-    "ios": 37134037366,
-    "helper": "86280609cedb4cffed9cd8c709e2a2365f3cebc4",
+    "android": 37135536417,
+    "ios": 37135537692,
+    "helper": "03c2be814fd5b369b687a7aa7bcf014bdc962d96",
     "state": "failed",
     "previous_failed_runs": {
-      "android": 37132813819,
-      "ios": 37132813875
+      "android": 37134035645,
+      "ios": 37134037366
     }
   },
   "retained_workstation_failures": {
@@ -331,8 +331,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "86280609cedb4cffed9cd8c709e2a2365f3cebc4",
-  "native_helper_qualification": "operations/native-helper-8628060-qualified-696.json",
+  "native_helper_source": "03c2be814fd5b369b687a7aa7bcf014bdc962d96",
+  "native_helper_qualification": "operations/native-helper-03c2be8-qualified-700.json",
   "mobile_ui_corrections": {
     "source": "41d81d3b1b63596f664747265ff8d5f73bc7ded6",
     "android_keyboard_and_value_confirmation": true,
@@ -341,7 +341,7 @@
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 32,
+    "focused_tests": 33,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
@@ -356,7 +356,9 @@
     "ios_capture_only_first_pre_input_failure": true,
     "owned_unique_editable_composer": true,
     "ios_os_invitation_activation": "cold",
-    "warm_ios_link_qualified": false
+    "warm_ios_link_qualified": false,
+    "native_text_and_description_labels": true,
+    "public_runner_progress_categories": true
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",

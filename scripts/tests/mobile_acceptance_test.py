@@ -199,7 +199,8 @@ class MobileAcceptanceTests(unittest.TestCase):
             with patch.object(ui,'shell',side_effect=['','',xml]):
                 self.assertEqual(len(list(ui.tree().iter('node'))),3)
             self.assertEqual(ui.ui_observation,{'attempts':1,'errors':0,'application_nodes':3,
-                'password_fields':1,'create_identity':1,'reconnect':0})
+                'password_fields':1,'create_identity':1,'reconnect':0,
+                'public_controls':{'network':0,'files':0,'send':0,'connect_to_gchat':0,'close_dialog':0,'close_details':0}})
             with patch.object(ui,'shell',side_effect=['','', 'invalid private hierarchy']):
                 self.assertEqual(ui.tree().tag,'hierarchy')
             self.assertEqual(ui.ui_observation['last_error'],'ParseError')
@@ -299,6 +300,12 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertTrue(android_ui.owned_channel(ET.Element('node', {'text':label})),label)
         for label in ('other-mobile-release', 'mobile-release-private', '#another-channel', 'private invitation'):
             self.assertFalse(android_ui.owned_channel(ET.Element('node', {'text':label})),label)
+
+    def test_named_mobile_controls_accept_text_and_content_description(self):
+        for attribute in ('text','content-desc'):
+            self.assertTrue(android_ui.named_control(ET.Element('node',{attribute:'Network: Connected'}),'Network:'))
+            self.assertTrue(android_ui.named_control(ET.Element('node',{attribute:'Files: 2'}),'Files:'))
+            self.assertFalse(android_ui.named_control(ET.Element('node',{attribute:'Another control'}),'Network:'))
 
     def test_composer_requires_one_visible_owned_nonpassword_editable_field(self):
         field='<node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]"/>'
@@ -539,7 +546,9 @@ class MobileAcceptanceTests(unittest.TestCase):
             result=runner_diagnostics(log,65,0)
             self.assertEqual(result,{'exit_code':65,'bridge_polls':0,'compile_error_locations':['44:9'],
                 'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],
-                'ui_phases':['join-arrival'],'build_failed':True})
+                'ui_phases':['join-arrival'],'build_failed':True,
+                'runner_progress':{'swift_compile':False,'link':False,'build_description':False,
+                    'testing_started':False,'runner_launch_failure':False,'simulator_failure':False,'test_failure':False}})
             self.assertNotIn('private',json.dumps(result))
 
     def test_post_journey_artifact_check_observes_changed_bytes(self):

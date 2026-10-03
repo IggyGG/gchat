@@ -39,6 +39,12 @@ def runner_diagnostics(path, exit_code, polls):
             re.findall(r'GCHAT_ACCEPTANCE_BRIDGE_HTTP=(\d+)\b', text))),
         'ui_phases': [phase for phase in re.findall(r'GCHAT_ACCEPTANCE_UI_PHASE=([a-z-]+)\b', text)
                       if phase in UI_PHASES],
+        'runner_progress': {'swift_compile': 'SwiftCompile' in text or 'SwiftEmitModule' in text,
+            'link': '\nLd ' in text, 'build_description': 'Build description' in text,
+            'testing_started': 'Testing started' in text or 'Test Suite ' in text,
+            'runner_launch_failure': 'Failed to launch' in text or 'failed to launch' in text,
+            'simulator_failure': 'Failed to boot' in text or 'Unable to boot' in text,
+            'test_failure': '** TEST FAILED **' in text},
         'build_failed': '** TEST BUILD FAILED **' in text or '** BUILD FAILED **' in text}
 
 

@@ -27,6 +27,10 @@ def owned_channel(node):
                for key in ('text', 'content-desc'))
 
 
+def named_control(node, prefix):
+    return any(node.get(key, '').startswith(prefix) for key in ('text', 'content-desc'))
+
+
 def completed_file_row(tree, name, known_names):
     for node in reversed(list(tree.iter('node'))):
         values = labels(node)
@@ -111,7 +115,13 @@ class AndroidUI:
         self.ui_observation.update(application_nodes=len(nodes),
             password_fields=sum(node.get('password') == 'true' for node in nodes),
             create_identity=sum(self.text('Create identity')(node) for node in nodes),
-            reconnect=sum(self.text('Reconnect')(node) for node in nodes))
+            reconnect=sum(self.text('Reconnect')(node) for node in nodes),
+            public_controls={'network':sum(named_control(node, 'Network:') for node in nodes),
+                'files':sum(named_control(node, 'Files:') for node in nodes),
+                'send':sum(self.text('Send')(node) for node in nodes),
+                'connect_to_gchat':sum(self.text('Connect to GChat')(node) for node in nodes),
+                'close_dialog':sum(self.text('Close dialog')(node) for node in nodes),
+                'close_details':sum(self.text('Close details')(node) for node in nodes)})
         return tree
 
     def until(self, fn, timeout=60):
@@ -276,7 +286,7 @@ class AndroidUI:
         if any(self.text('Notifications')(node) for node in tree.iter('node')) and any(
                 self.text('Close dialog')(node) for node in tree.iter('node')):
             self.click('Close dialog')
-        self.tap(self.node(lambda node: node.get('content-desc', '').startswith('Network:')))
+        self.tap(self.node(lambda node: named_control(node, 'Network:')))
         self.click('Your identity')
         def identify():
             values = labels(self.tree())
@@ -312,7 +322,7 @@ class AndroidUI:
             if not missing:
                 break
             transcript = next((node for node in tree.iter('node')
-                if node.get('content-desc', '').endswith(' messages') and android.ui_bounds(node)), None)
+                if any(node.get(key, '').endswith(' messages') for key in ('text','content-desc')) and android.ui_bounds(node)), None)
             require(transcript is not None, 'rendered mobile transcript unavailable')
             x1, y1, x2, y2 = android.ui_bounds(transcript)
             self.shell('input', 'swipe', (x1 + x2) // 2, y1 + (y2 - y1) // 4,
@@ -323,7 +333,7 @@ class AndroidUI:
         for _ in range(scrolled):
             tree = self.tree()
             transcript = next((node for node in tree.iter('node')
-                if node.get('content-desc', '').endswith(' messages') and android.ui_bounds(node)), None)
+                if any(node.get(key, '').endswith(' messages') for key in ('text','content-desc')) and android.ui_bounds(node)), None)
             if transcript is None:
                 break
             x1, y1, x2, y2 = android.ui_bounds(transcript)
@@ -332,7 +342,7 @@ class AndroidUI:
 
     def file_action(self, name, action):
         self.names.add(name)
-        self.tap(self.node(lambda node: node.get('content-desc', '').startswith('Files:')))
+        self.tap(self.node(lambda node: named_control(node, 'Files:')))
         def find():
             for node in reversed(list(self.tree().iter('node'))):
                 values = labels(node)
@@ -357,7 +367,7 @@ class AndroidUI:
                         return int(match[1].replace(',', ''))
         # Completed transfer rows are transient. On reopen, the retained Files
         # pane still reports the exact file's verified completion state.
-        self.tap(self.node(lambda node: node.get('content-desc', '').startswith('Files:')))
+        self.tap(self.node(lambda node: named_control(node, 'Files:')))
         complete = completed_file_row(self.tree(), name, self.names)
         self.click('Close details')
         return size if complete else None
