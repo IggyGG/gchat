@@ -54,8 +54,8 @@
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "b7c0d0207d34446ca50b88ad8f4f697765be64d8",
-  "active_controller_kubernetes_checks": 283,
+  "active_controller_source": "3b353307c9e8bf4236a96cf18a0c11ae10c37272",
+  "active_controller_kubernetes_checks": 312,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -211,17 +211,17 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": "2026-10-03T10:26:33.365046+00:00",
+    "observed_at": "2026-10-03T11:14:58.237217+00:00",
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "blocked_ui_control_observation",
-    "windows-x86_64": "blocked_baseline_pipe_startup",
-    "macos-x86_64": "blocked_network_startup_deadline",
+    "android": "acceptance_running",
+    "windows-x86_64": "acceptance_running",
+    "macos-x86_64": "acceptance_running",
     "macos-aarch64": "available",
-    "ios": "blocked_retained_verification_report_shape",
+    "ios": "retained_verification_passed",
     "source_fixes_active": true
   },
   "retained_handoff_correction": {
@@ -241,8 +241,8 @@
     "automatic_retry": true,
     "uploaded": false
   },
-  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b12a9173653611a16197b15a1691750ee1960886eae663b6b49d922138383937",
-  "controller_qualification_sha256": "dd2332a4f05725e391ee88459720e9e4ec973fc23752c640a47a16e49d804ca4",
+  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:feb90cadac31525120021cdc250fd531474582d554f3b4f618c1d877785cd8f7",
+  "controller_qualification_sha256": "3675f4e4b16aaac0b02ace063a0f428104a3ec2fc5ae42b24be40f4c5484634c",
   "remaining_launch_source_corrections": {
     "ios_completed_original_evidence_validated": true,
     "original_ios_provider_adapter_proof": "operations/actual-ios-lifecycle-adapter-588.json",
@@ -250,7 +250,23 @@
     "android_existing_control_scroll": true,
     "native_connection_state_diagnostics": true,
     "external_encryption_wait_does_not_qualify_publication": true,
-    "controller_activated": false,
+    "controller_activated": true,
     "full_python_tests": 801
+  },
+  "retained_ios_verification": {
+    "run_id": 37118617630,
+    "source": "70e35e1685ba89f4040d0984df493ec546397ff9",
+    "conclusion": "success",
+    "original_ipa_preserved": true,
+    "original_failed_verifications_preserved": [
+      37112219593,
+      37116236835
+    ]
+  },
+  "local_linux_observation": {
+    "package": "0.1.98",
+    "next_fresh_launcher_uses_managed_package": true,
+    "running_desktop_uses_previous_executable": true,
+    "personal_application_restarted": false
   }
 }
