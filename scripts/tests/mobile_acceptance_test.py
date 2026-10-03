@@ -348,6 +348,40 @@ class MobileAcceptanceTests(unittest.TestCase):
                         field.replace('/>',' password="true"/>'),field.replace('[10,400][290,450]','[0,0][0,0]')):
                 self.assertIsNone(android_ui.editable_composer(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
 
+    def test_android_merged_message_labels_keep_complete_body_and_receipt_binding(self):
+        body='mr-'+('a'*32);other='mr-'+('b'*32)
+        self.assertEqual(android_ui.message_bodies(['[12:34] <sender> '+body],{body}),{body})
+        for value in (body+'-suffix','prefix'+body,body+'0',other):
+            self.assertEqual(android_ui.message_bodies([value],{body}),set())
+        tree=ET.fromstring('<hierarchy><node content-desc="[12:34] &lt;mobile&gt; '+body+' · delivered"/></hierarchy>')
+        self.assertTrue(delivery_row(tree,body,{body,other}))
+        self.assertFalse(delivery_row(tree,other,{body,other}))
+        tree=ET.fromstring('<hierarchy><node content-desc="'+body+'"/><node content-desc="'+other+' · delivered"/></hierarchy>')
+        self.assertFalse(delivery_row(tree,body,{body,other}))
+
+    def test_android_received_requires_its_own_app_label(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));body='mr-'+('a'*32)
+            for package,expected in (('boo.gchat.app',True),('android',False)):
+                tree=ET.fromstring('<hierarchy><node package="'+package+'" content-desc="[12:34] &lt;sender&gt; '+body+'"/></hierarchy>')
+                with patch.object(ui,'tree',return_value=tree):self.assertEqual(ui.received(body),expected)
+
+    def test_receive_diagnostics_never_turn_a_timeout_into_a_pass_or_replace_it(self):
+        for diagnostic_failure in (False,True):
+            journey=MobileJourney.__new__(MobileJourney);sent=[];output={'events':[]}
+            def history(_):
+                if diagnostic_failure:raise ConnectionError('private error')
+                return [{'body':sent[0],'mine':True,'delivery':'delivered'}]
+            journey.peer=SimpleNamespace(submit=lambda _,body:sent.append(body),history=history)
+            with patch.object(journey,'until',side_effect=TimeoutError('original UI deadline')), \
+                 self.assertRaisesRegex(TimeoutError,'original UI deadline'):
+                journey.ack(SimpleNamespace(received=lambda _:False),'baseline-initial',output)
+            event=output['events'][0]
+            self.assertEqual(event['event'],'rendered_receive_timeout')
+            if diagnostic_failure:self.assertEqual(event['diagnostic_error'],'ConnectionError')
+            else:self.assertIs(event['authenticated_recipient_ack'],True)
+            self.assertNotIn('private error',json.dumps(output))
+
     def test_android_unlock_waits_for_the_unlocked_view_after_opening_feedback(self):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary))

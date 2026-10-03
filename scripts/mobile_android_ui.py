@@ -66,13 +66,21 @@ def invitation_nickname(tree):
     return editable_composer(tree) if preview and join else None
 
 
+def message_bodies(values, known_bodies):
+    # Android can merge inline timestamp/nickname/body text into one label.
+    # Match complete canary tokens, never prefixes inside another message.
+    return {body for body in known_bodies if any(re.search(
+        r'(?<![A-Za-z0-9_-])' + re.escape(body) + r'(?![A-Za-z0-9_-])', value)
+        for value in values)}
+
+
 def delivery_row(tree, body, known_bodies):
     # A delivered suffix elsewhere in the transcript cannot qualify this send.
     # Require one smallest message subtree containing exactly this test body.
     for node in reversed(list(tree.iter('node'))):
         values = labels(node)
-        if body in values and any(value.strip() == '· delivered' for value in values):
-            if {value for value in values if value in known_bodies} == {body}:
+        if any(value.strip() == '· delivered' or value.rstrip().endswith(' · delivered') for value in values):
+            if message_bodies(values, known_bodies) == {body}:
                 return True
     return False
 
@@ -342,7 +350,9 @@ class AndroidUI:
 
     def received(self, body):
         self.bodies.add(body)
-        return body in labels(self.tree())
+        values = [node.get(key, '') for node in self.tree().iter('node')
+                  if node.get('package') == android.PACKAGE for key in ('text', 'content-desc')]
+        return body in message_bodies(values, {body})
 
     def delivered(self, body):
         return delivery_row(self.tree(), body, self.bodies)
@@ -355,7 +365,7 @@ class AndroidUI:
         # transcript, never a database or application instrumentation endpoint.
         for _ in range(12):
             tree = self.tree()
-            missing.difference_update(labels(tree))
+            missing.difference_update(message_bodies(labels(tree), missing))
             if not missing:
                 break
             transcript = next((node for node in tree.iter('node')

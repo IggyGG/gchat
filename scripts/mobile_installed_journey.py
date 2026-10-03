@@ -42,7 +42,19 @@ class MobileJourney:
             body = 'mr-' + uuid.uuid4().hex
             if sender == 0:
                 self.peer.submit(0, body)
-                self.until(lambda: ui.received(body))
+                try:
+                    self.until(lambda: ui.received(body))
+                except TimeoutError:
+                    # Diagnostic only: the original UI/deadline failure remains.
+                    detail = {'event': 'rendered_receive_timeout', 'phase': phase}
+                    try:
+                        rows = [row for row in self.peer.history(0) if row['body'] == body]
+                        detail.update(message_rows=len(rows), authenticated_recipient_ack=len(rows) == 1
+                            and rows[0]['mine'] and rows[0]['delivery'] == 'delivered')
+                    except Exception as error:
+                        detail['diagnostic_error'] = type(error).__name__
+                    output['events'].append(detail)
+                    raise
                 def delivered():
                     rows = [row for row in self.peer.history(0) if row['body'] == body]
                     require(len(rows) <= 1, 'duplicate covered mobile message')
