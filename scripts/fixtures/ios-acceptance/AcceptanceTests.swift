@@ -35,6 +35,15 @@ final class GChatAcceptanceTests: XCTestCase {
         target.tap()
     }
 
+    func tapVisible(_ target: XCUIElement) throws {
+        try wait { target.exists && target.isHittable }
+        let frame = target.frame
+        try require(frame.width > 0 && frame.height > 0 && app.frame.contains(frame))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            .withOffset(CGVector(dx: frame.midX - app.frame.minX,
+                                 dy: frame.midY - app.frame.minY)).tap()
+    }
+
     func dismissKeyboard() throws {
         let done = app.toolbars.buttons["Done"].firstMatch
         let hide = app.keyboards.buttons["Hide keyboard"].firstMatch
@@ -269,17 +278,24 @@ final class GChatAcceptanceTests: XCTestCase {
             if element("Notifications").exists && element("Close dialog").exists {
                 try click("Close dialog")
             }
+            phase = "identity-network"
             let network = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Network:")).firstMatch
-            try wait { network.exists && network.isHittable }
-            network.tap()
-            try click("Your identity")
-            let values = Set(allLabels(app.webViews.firstMatch))
-            let ids = values.filter { $0.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil }
-            let safety = values.filter {
-                $0.range(of: "^[A-Z2-7]{8}( [A-Z2-7]{8}){4}$", options: .regularExpression) != nil
+            try tapVisible(network)
+            phase = "identity-details"
+            try tapVisible(element("Your identity"))
+            phase = "identity-value"
+            var ids = Set<String>()
+            var safety = Set<String>()
+            try wait {
+                let values = Set(self.allLabels(self.app.webViews.firstMatch))
+                ids = values.filter { $0.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil }
+                safety = values.filter {
+                    $0.range(of: "^[A-Z2-7]{8}( [A-Z2-7]{8}){4}$", options: .regularExpression) != nil
+                }
+                return ids.count == 1 && safety.count == 1
             }
-            try require(ids.count == 1 && safety.count == 1)
             let identity = ids.first! + "\n" + safety.first!
+            phase = "identity-close"
             try click("Close dialog")
             return identity
         case "send":

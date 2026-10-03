@@ -350,8 +350,23 @@ class AndroidUI:
 
     def received(self, body):
         self.bodies.add(body)
-        values = [node.get(key, '') for node in self.tree().iter('node')
-                  if node.get('package') == android.PACKAGE for key in ('text', 'content-desc')]
+        tree = self.tree()
+        nodes = [node for node in tree.iter('node') if node.get('package') == android.PACKAGE]
+        values = [node.get(key, '') for node in nodes for key in ('text', 'content-desc')]
+        transcript = next((node for node in nodes if any(node.get(key, '').endswith(' messages')
+            for key in ('text', 'content-desc'))), None)
+        all_values = labels(tree)
+        self.ui_observation['receive_view'] = {
+            'owned_channel_title': any(value == '#mobile-release' for value in values),
+            'transcript_present': transcript is not None,
+            'transcript_bounds': android.ui_bounds(transcript) if transcript is not None else None,
+            'transcript_nodes': sum(1 for _ in transcript.iter('node')) if transcript is not None else 0,
+            'beginning_visible': '*** Beginning of this conversation' in values,
+            'loading_visible': 'Loading…' in values,
+            'body_token_any_package': body in message_bodies(all_values, {body}),
+            'body_after_whitespace_removal': any(body in re.sub(r'\s+', '', value) for value in values),
+            'body_hex_visible': any(body[3:] in value for value in values),
+            'canary_prefix_labels': sum('mr-' in value for value in values)}
         return body in message_bodies(values, {body})
 
     def delivered(self, body):

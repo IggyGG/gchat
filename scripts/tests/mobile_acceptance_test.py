@@ -366,6 +366,19 @@ class MobileAcceptanceTests(unittest.TestCase):
                 tree=ET.fromstring('<hierarchy><node package="'+package+'" content-desc="[12:34] &lt;sender&gt; '+body+'"/></hierarchy>')
                 with patch.object(ui,'tree',return_value=tree):self.assertEqual(ui.received(body),expected)
 
+    def test_android_receive_view_diagnostics_keep_text_private_and_do_not_override_visibility(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));body='mr-'+('a'*32)
+            tree=ET.fromstring('<hierarchy><node package="boo.gchat.app" content-desc="#mobile-release messages" '
+                'bounds="[10,100][290,390]"><node package="boo.gchat.app" text="private conversation text"/>'
+                '<node package="boo.gchat.app" text="*** Beginning of this conversation"/></node></hierarchy>')
+            with patch.object(ui,'tree',return_value=tree):self.assertFalse(ui.received(body))
+            observation=ui.ui_observation['receive_view']
+            self.assertTrue(observation['transcript_present']);self.assertTrue(observation['beginning_visible'])
+            self.assertEqual(observation['transcript_nodes'],3)
+            self.assertEqual(observation['transcript_bounds'],(10,100,290,390))
+            self.assertNotIn('private',json.dumps(observation));self.assertNotIn(body,json.dumps(observation))
+
     def test_receive_diagnostics_never_turn_a_timeout_into_a_pass_or_replace_it(self):
         for diagnostic_failure in (False,True):
             journey=MobileJourney.__new__(MobileJourney);sent=[];output={'events':[]}
@@ -642,15 +655,19 @@ class MobileAcceptanceTests(unittest.TestCase):
             log=Path(temporary)/'xctest.private.log'
             log.write_text('private-token private-invitation /private/profile/path\n'
                 '/private/build/AcceptanceTests.swift:44:9: error: private error text\n'
+                '/private/build/AcceptanceTests.swift:282: error: Failed to tap private text\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_CONFIGURATION=1\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=-1022\n'
                 'GCHAT_ACCEPTANCE_UI_PHASE=join-arrival\n'
+                'GCHAT_ACCEPTANCE_UI_PHASE=identity-network\n'
                 'GCHAT_ACCEPTANCE_UI_PHASE=private-invitation\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_HTTP=403\n** TEST BUILD FAILED **\n')
             result=runner_diagnostics(log,65,0)
             self.assertEqual(result,{'exit_code':65,'bridge_polls':0,'compile_error_locations':['44:9'],
+                'runtime_error_locations':['282'],
+                'ui_error_categories':{'tap_failed':True,'snapshot_failed':False,'not_hittable':False,'no_matches':False},
                 'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],
-                'ui_phases':['join-arrival'],'build_failed':True,
+                'ui_phases':['join-arrival','identity-network'],'build_failed':True,
                 'runner_progress':{'swift_compile':False,'link':False,'build_description':False,
                     'testing_started':False,'runner_launch_failure':False,'simulator_failure':False,'test_failure':False}})
             self.assertNotIn('private',json.dumps(result))

@@ -22,6 +22,7 @@ UI_PHASES = frozenset(('ready', 'finish', 'stop', 'unlock', 'join', 'identity', 
     'received', 'delivered', 'history', 'file_action', 'progress', 'export',
     'unlock-start', 'unlock-passphrase', 'unlock-confirm', 'unlock-submit', 'unlock-ready',
     'join-ready', 'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
+    'identity-network', 'identity-details', 'identity-value', 'identity-close',
     'export-picker', 'export-unlock', 'export-result'))
 UI_CONTROLS = frozenset(('review_invitation', 'create_identity', 'reconnect', 'connect_to_gchat',
     'close_dialog', 'nickname', 'joined', 'composer', 'webview', 'foreground', 'invitation', 'continue'))
@@ -44,6 +45,11 @@ def runner_diagnostics(path, exit_code, polls):
     text = Path(path).read_text(errors='replace')[-16 * 1024**2:] if Path(path).is_file() else ''
     return {'exit_code': exit_code, 'bridge_polls': polls,
         'compile_error_locations': sorted(set(re.findall(r'AcceptanceTests\.swift:(\d+:\d+): error:', text))),
+        'runtime_error_locations': sorted(set(re.findall(r'AcceptanceTests\.swift:(\d+): error:', text))),
+        'ui_error_categories': {'tap_failed': 'Failed to tap' in text,
+            'snapshot_failed': 'Failed to get matching snapshot' in text,
+            'not_hittable': 'not hittable' in text,
+            'no_matches': 'No matches found' in text},
         'configuration_ready': 'GCHAT_ACCEPTANCE_BRIDGE_CONFIGURATION=1' in text,
         'transport_codes': sorted(set(int(value) for value in
             re.findall(r'GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=(-?\d+)\b', text))),
