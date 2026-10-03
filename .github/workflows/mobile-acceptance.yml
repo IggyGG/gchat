@@ -184,3 +184,4 @@ jobs:
             acceptance/delivery.json
             acceptance/rollback/report.json
             acceptance/network/report.json
+            acceptance/fresh-startup.png

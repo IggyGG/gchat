@@ -303,5 +303,22 @@
     "timing_failures": 6,
     "scheduler_fixture_corrected": true,
     "all_checks_passed_on_ci_run": 37122181374
+  },
+  "mobile_native_adapter_correction": {
+    "passed_static_preflight": true,
+    "source_file_sha256": "166098cc732f10f99866cdb90a249bb7c0d46ca50497c1a14bf72f901f1968c6",
+    "current_ios_original_verdict_preserved": false,
+    "scope": "actual cached iOS input and every pre-install archive/authority/executable reference; Mac codesign and installed UI remain required",
+    "actual_cached_preflight": "operations/actual-ios-original-adapter-658.json",
+    "focused_tests": 16,
+    "focused_passed": true,
+    "l0_paths": 820,
+    "contracts_unchanged": true,
+    "installed_acceptance_complete": false,
+    "previous_failed_runs": {
+      "ios": 37124581743,
+      "android": 37124594329
+    },
+    "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered"
   }
 }

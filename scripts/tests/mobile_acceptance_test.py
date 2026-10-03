@@ -73,9 +73,18 @@ class MobileAcceptanceTests(unittest.TestCase):
             report['signing_cleanup']=reference('cleanup.json',{'passed':True})
             report['simulator']=reference('lifecycle.json',{'passed':True})
             report['simulator_binding']={'verification':reference('linked.json',{'passed':True})}
+            import io
+            import zipfile
+            nested=io.BytesIO()
+            with zipfile.ZipFile(nested,'w') as bundle:
+                bundle.writestr('ios-output/build.json',original)
+                bundle.writestr('ios-output/simulator-app.zip',b'original simulator archive')
+            files['ios-verification/original-artifact.zip']=nested.getvalue()
+            reviewed['artifact_sha256']=hashlib.sha256(nested.getvalue()).hexdigest()
+            config['original_sha256']=reviewed['artifact_sha256']
+            registry.write_text(json.dumps({'schema':1,'recoveries':[config]}))
             files['ios-verification/build.json']=canonical(report)
             archive=root/'provider.zip'
-            import zipfile
             with zipfile.ZipFile(archive,'w') as bundle:
                 for name,data in files.items(): bundle.writestr(name,data)
             rule.update(sha256=inputs.digest(archive),size=archive.stat().st_size)
@@ -101,9 +110,11 @@ class MobileAcceptanceTests(unittest.TestCase):
                 item=inputs.acquire('current',spec,'ios',root,manifest)
                 self.assertIs(item['build']['passed'],False)
                 self.assertTrue(json.loads(item['retained_lifecycle'].read_text())['passed'])
-                (item['root'].parents[1]/'lifecycle.json').write_text('{"passed":false}')
+                self.assertEqual((item['root']/'simulator-app.zip').read_bytes(),b'original simulator archive')
+                verification_root=item['retained_lifecycle'].parent
+                item['retained_lifecycle'].write_text('{"passed":false}')
                 with self.assertRaisesRegex(ValueError,'reference changed'):
-                    recovery.reference(report['simulator'],item['root'].parents[1])
+                    recovery.reference(report['simulator'],verification_root)
                 for invalid in ('workflow','request','candidate','registration'):
                     with self.subTest(invalid=invalid):
                         changed_run=copy.deepcopy(run); changed=copy.deepcopy(spec)
@@ -195,10 +206,11 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertNotIn('private',json.dumps(ui.ui_observation))
 
     def test_android_startup_capture_is_limited_to_the_fresh_owned_screen_before_any_input(self):
-        for create,typed in ((True,False),(True,True),(False,False)):
-            with self.subTest(create=create,typed=typed),tempfile.TemporaryDirectory() as temporary:
+        for create,typed,field in ((True,False,False),(True,False,True),(True,True,True),(False,False,True)):
+            with self.subTest(create=create,typed=typed,field=field),tempfile.TemporaryDirectory() as temporary:
                 ui,_,_=self.owned_android_ui(Path(temporary));ui.input_started=typed
-                with patch.object(ui,'launch'),patch.object(ui,'node',side_effect=TimeoutError), \
+                observations=[ET.Element('node'),TimeoutError] if field else [TimeoutError]
+                with patch.object(ui,'launch'),patch.object(ui,'node',side_effect=observations), \
                      patch.object(ui,'shell',return_value='fixture-process'), \
                      patch.object(android_ui.android,'screenshot') as screenshot, \
                      self.assertRaises(TimeoutError):

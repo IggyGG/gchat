@@ -104,7 +104,20 @@ def acquire(name, spec, target, output, manifest=None):
                  (report['signing_cleanup'], report['simulator'], report['simulator_binding']['verification'])]
         require(all(json.loads(path.read_text()).get('passed') is True for path in gates),
                 'retained iOS verification gate failed')
-        return {'root': original_path.parent, 'build': original, 'build_manifest': original_path,
+        # Verification uploads retain the complete original as a nested ZIP;
+        # their extracted evidence projection omits large simulator artifacts.
+        # Recover only those exact reviewed bytes, never the projection's stale
+        # native paths or a freshly rebuilt simulator.
+        original_archive = report_path.parent / 'original-artifact.zip'
+        require(digest(original_archive) == reviewed['artifact_sha256'],
+                'retained original iOS archive differs')
+        intact = root / 'intact-original'
+        extract(original_archive, intact)
+        intact_build = intact / 'ios-output/build.json'
+        require(digest(intact_build) == report['original_build']['sha256']
+                and intact_build.stat().st_size == report['original_build']['size'],
+                'retained original iOS build differs')
+        return {'root': intact_build.parent, 'build': original, 'build_manifest': intact_build,
                 'retained_lifecycle': gates[1], 'archive_sha256': spec['archive'], 'sources': spec['sources']}
     expected_name = f'android-{spec["sources"]["gchat"]}-{spec["sources"]["gcoms"]}' if target == 'android' else (
         f'ios-{spec["sources"]["gchat"]}-{spec["sources"]["gcoms"]}-{report.get("build_number")}')

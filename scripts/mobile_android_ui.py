@@ -171,6 +171,10 @@ class AndroidUI:
         button = 'Create identity' if create else 'Reconnect'
         try:
             self.node(self.text(button))
+            for _ in range(2 if create else 1):
+                field = self.node(lambda node: node.get('package') == android.PACKAGE
+                                  and node.get('password') == 'true' and not node.get('text'))
+                self.type(field, self.passphrase)
         except (TimeoutError, ValueError):
             # This fresh owned AVD has received no identity, passphrase, channel
             # or invitation. Never capture a reopened or populated app screen.
@@ -182,10 +186,6 @@ class AndroidUI:
                 except Exception as error:
                     self.ui_observation['startup_capture_error'] = type(error).__name__
             raise
-        for _ in range(2 if create else 1):
-            field = self.node(lambda node: node.get('package') == android.PACKAGE
-                              and node.get('password') == 'true' and not node.get('text'))
-            self.type(field, self.passphrase)
         self.click(button)
         self.until(lambda: not any(self.text(button)(node) for node in self.tree().iter('node')), 120)
         self.no_listener()
