@@ -61,6 +61,13 @@ provider ZIP, original native evidence, source pair, helper archive and installe
 smoke; signed updater and acceptance gates still follow. An operator may provide
 the same registry through `GCHAT_NATIVE_RECOVERIES`. Missing registrations and
 failed/cancelled follow-ups cannot become passes.
+An `ios-retained` registration also binds the failed original IPA, its retained
+simulator lifecycle run and the frozen verification helper. Collection waits for
+the lifecycle provider's success, then records a durable request before dispatching
+unchanged-IPA verification with upload disabled. Lost replies reconcile that same
+request; duplicate providers or changed inputs fail. Signed-IPA verification still
+requires the original failed verdict, immutable archive and native lifecycle
+evidence. Native acceptance and store submission follow independently.
 
 The production image registry is declared by `release/automation/registry.yaml`.
 It uses a retained replicated volume and avoids node 5's recurring disk pressure.

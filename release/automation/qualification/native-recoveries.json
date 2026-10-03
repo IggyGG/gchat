@@ -22,6 +22,35 @@
       "controller_commit": "558727405852d0d20b05bcb0ce012c87d258a49b",
       "controller_tree": "b3ca98deb8cd98291f18759834deaeffb9b6298e",
       "request_id": "macintel93-retained-native-20261003-5587274"
+    },
+    {
+      "kind": "ios-retained",
+      "release_id": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+      "target": "ios",
+      "sources": {
+        "gchat": {
+          "commit": "52d28d733cfef44df5e5e6db984d51178955f5ab",
+          "tree": "d58be23a243d449ff3e03031f497dbed8c3763b5"
+        },
+        "gcoms": {
+          "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+          "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+        }
+      },
+      "original_run": 37065253240,
+      "original_artifact": 11263848885,
+      "original_sha256": "251925d0cdc2b2cc19d176e6090a36f69ccf8b0ea933c509a98ed000ba226f67",
+      "ipa": "87866b66d9f0c1ca4632dfe530e5661003ec1609a1dd1f85ff292b7879f75266",
+      "lifecycle": {
+        "run": 37098523009,
+        "controller": "54c3622174aaf8af05a5daad0280f1dd5b1f416a",
+        "request": "ios93-retained-lifecycle-20261003-54c3622"
+      },
+      "verification": {
+        "controller": "54c3622174aaf8af05a5daad0280f1dd5b1f416a",
+        "ref": "release/qualification-ios-installed-54c3622174aa",
+        "request": "ios93-retained-verified-20261003-54c3622"
+      }
     }
   ]
 }
