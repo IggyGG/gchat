@@ -56,6 +56,9 @@ def validate_inputs(value):
 def acquire(name, spec, target, output, manifest=None):
     validate_provider(spec)
     require(target in TARGETS, 'mobile artifact cannot use desktop binding rules')
+    recovered = spec.get('recovery')
+    if recovered is not None:
+        require(target == 'ios' and recovered.get('kind') == 'ios-retained', 'unknown retained mobile recovery')
     run = gh(f'actions/runs/{spec["run"]}')
     root = output / name; root.mkdir()
     archive = root / 'artifact.zip'
@@ -65,7 +68,7 @@ def acquire(name, spec, target, output, manifest=None):
     require(run.get('status') == 'completed' and run.get('conclusion') == 'success'
             and run.get('head_sha') == spec['controller']
             and run.get('head_repository', {}).get('full_name') == 'IggyGG/gchat'
-            and run.get('path') == f'.github/workflows/{target}-release.yml'
+            and run.get('path') == ('.github/workflows/ios-verify.yml' if recovered else f'.github/workflows/{target}-release.yml')
             and run.get('event') == 'workflow_dispatch'
             and artifact.get('workflow_run', {}).get('id') == spec['run']
             and (retained or artifact.get('expired') is False)
@@ -82,6 +85,27 @@ def acquire(name, spec, target, output, manifest=None):
     extract(archive, root / 'original')
     report_path = root / 'original' / spec['manifest']
     report = json.loads(report_path.read_text())
+    if recovered:
+        from release_pair import validate
+        import release_ios_recovery as recovery
+        candidate = validate(recovered['candidate'])
+        rule = recovered['rule']; reviewed = recovery.reviewed_inputs(candidate, rule)
+        require(recovered['inputs'] == reviewed and spec['manifest'] == 'ios-verification/build.json'
+                and {key: value['commit'] for key, value in candidate['sources'].items()} == spec['sources']
+                and (manifest is None or candidate == manifest), 'retained iOS acceptance candidate differs')
+        recovery.validate_run(candidate, run, artifact, rule)
+        recovery.validate_report(candidate, report, rule, reviewed)
+        require(artifact.get('name') == 'ios-verified-' + rule['request'], 'retained iOS verification artifact name differs')
+        original_path = recovery.reference(report['original_build'], report_path.parent)
+        original = json.loads(original_path.read_text())
+        require(original.get('passed') is False
+                and original.get('sources') == candidate['sources'], 'retained original iOS verdict/source changed')
+        gates = [recovery.reference(item, report_path.parent) for item in
+                 (report['signing_cleanup'], report['simulator'], report['simulator_binding']['verification'])]
+        require(all(json.loads(path.read_text()).get('passed') is True for path in gates),
+                'retained iOS verification gate failed')
+        return {'root': original_path.parent, 'build': original, 'build_manifest': original_path,
+                'retained_lifecycle': gates[1], 'archive_sha256': spec['archive'], 'sources': spec['sources']}
     expected_name = f'android-{spec["sources"]["gchat"]}-{spec["sources"]["gcoms"]}' if target == 'android' else (
         f'ios-{spec["sources"]["gchat"]}-{spec["sources"]["gcoms"]}-{report.get("build_number")}')
     require(artifact.get('name') == expected_name, 'retained mobile artifact name differs')
@@ -132,7 +156,8 @@ def ios_application(item, pin, output):
             and build.get('application', {}).get('profile', {}).get('certificate_sha256') == pin,
             'retained iOS publisher differs')
     for key in ('simulator', 'signing_cleanup', 'simulator_linked_authority'):
-        proof_path = lifecycle.relocated(build[key], root)
+        proof_path = (item['retained_lifecycle'] if key == 'simulator' and 'retained_lifecycle' in item
+                      else lifecycle.relocated(build[key], root))
         require(json.loads(proof_path.read_text()).get('passed') is True,
                 'retained iOS native authority/signing gate failed')
     archive = lifecycle.relocated(build['simulator_archive'], root)

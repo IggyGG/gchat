@@ -13,6 +13,7 @@ import release_store_worker as worker
 from release_ios_recovery import RULE, INPUTS
 from release_pair import canonical
 from release_ios_recovery_test import manifest
+import release_ios_recovery as recovery
 
 
 class IosUploadTests(unittest.TestCase):
@@ -69,6 +70,36 @@ class IosUploadTests(unittest.TestCase):
         self.assertEqual(inputs['gchat_commit'], INPUTS['gchat_commit'])
         self.assertEqual(inputs['gcoms_commit'], INPUTS['gcoms_commit'])
         self.assertIs(inputs['upload_testflight'], True)
+
+    def test_registered_retained_upload_uses_reviewed_sources_and_original_ipa_once(self):
+        from release_ios_recovery_test import RegisteredIosTests
+        case=RegisteredIosTests(); case.setUp()
+        self.manifest=case.manifest
+        config=case.config
+        reviewed={**INPUTS,'run_id':config['original_run'],'artifact_id':config['original_artifact'],
+                  'artifact_sha256':config['original_sha256'],'build_number':self.manifest['versions']['ios'],
+                  **{p+'_commit':self.manifest['sources'][p]['commit'] for p in ('gchat','gcoms')},
+                  'simulator':{'mode':'retained_original','run_id':config['lifecycle']['run'],
+                               'controller_commit':config['lifecycle']['controller'],
+                               'request_id':config['lifecycle']['request']}}
+        rule={'release_id':self.manifest['release_id'],'registration':config,'original_run':config['original_run'],
+              'ipa':config['ipa'],'controller':config['verification']['controller'],
+              'request':config['verification']['request'],'inputs':reviewed,'sha256':'f'*64}
+        root=self.work/'build'; root.mkdir()
+        path=root/'ios-recovery.json'; path.write_bytes(canonical(rule))
+        self.proof['evidence']=[{'path':'native.zip','sha256':rule['sha256']},
+                                {'path':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}]
+        self.invoke(); self.invoke()
+        posts=[call for call in self.gh.call_args_list if call.kwargs.get('method')=='POST']
+        self.assertEqual(len(posts),1)
+        self.assertEqual(posts[0].kwargs['body']['ref'],config['verification']['ref'])
+        values=posts[0].kwargs['body']['inputs']
+        self.assertEqual(values['gchat_commit'],reviewed['gchat_commit'])
+        self.assertEqual(values['artifact_sha256'],config['original_sha256'])
+        self.assertIs(values['upload_testflight'],True)
+        path.write_text('{}')
+        with self.assertRaisesRegex(ValueError,'not source-bound'): self.invoke()
+        self.assertEqual(len([call for call in self.gh.call_args_list if call.kwargs.get('method')=='POST']),1)
 
     def test_unknown_dispatch_is_not_retried(self):
         (self.work/'upload-dispatch.json').write_text(json.dumps({'at': time.time()-1801, 'request': self.request}))

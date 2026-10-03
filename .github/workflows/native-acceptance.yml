@@ -39,6 +39,7 @@ jobs:
     env:
       REQUEST: ${{ inputs.request_id }}
       DELIVERY_URL: ${{ inputs.delivery_url }}
+      GCHAT_ISOLATED_SIGNING_WORKER: '1'
     steps:
       - name: Preserve source bytes
         run: git config --global core.autocrlf false

@@ -1,3 +1,5 @@
+Retained signing and native qualification can feed client acceptance and publication directly through registered provider bindings. A failed iOS verification may use one separately frozen helper after its exact terminal failure and original request are retained. Unknown dispatches continue reconciliation. This handoff correction is source-only until the qualified controller image is activated.
+
 ## Routine release operation
 
 The GitHub `release-signing` environment must permit `release/gchat-*` and

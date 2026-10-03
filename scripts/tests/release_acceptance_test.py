@@ -57,6 +57,112 @@ def fixture():
     return manifest, specs, report, rollback, network
 
 
+def retained_build(root, manifest, target, main, build, metadata, run, flag):
+    directory = acceptance.job(root, manifest, target, 'build'); directory.mkdir(parents=True)
+    archive = directory / 'native.zip'
+    with zipfile.ZipFile(archive, 'w') as bundle:
+        bundle.writestr(main, json.dumps(build))
+        bundle.writestr('retry-evidence/gcoms-native/build.json', '{"passed":false}')
+        bundle.writestr('ios-verification/original/ios-output/build.json', '{"passed":false}')
+    for name, value in metadata.items(): atomic_json(directory / name, value)
+    common = {'schema':1, 'release_id':manifest['release_id'], 'sources':manifest['sources'],
+              'platform':target, 'passed':True, 'source_unchanged':True}
+    references = [{'path':name, 'sha256':acceptance.digest(directory / name)}
+                  for name in ('native.zip', *metadata)]
+    atomic_json(directory / 'receipt.json', {**common, 'stage':'build', 'external_id':str(run),
+                                           flag:True, 'evidence':references})
+    verified = acceptance.job(root, manifest, target, 'verify'); verified.mkdir(parents=True)
+    retained = []
+    for ref in references:
+        name = 'verified/' + ref['sha256'] + '-' + Path(ref['path']).name
+        path = verified / name; path.parent.mkdir(exist_ok=True)
+        path.write_bytes((directory / ref['path']).read_bytes())
+        retained.append({'path':name, 'sha256':ref['sha256']})
+    atomic_json(verified / 'receipt.json', {**common, 'stage':'verify', flag:True, 'evidence':retained})
+    return directory
+
+
+class RetainedProviderTests(unittest.TestCase):
+    def test_registered_mac_provider_reaches_native_signature_checks_without_worker_field_or_ambiguous_reports(self):
+        from release_macos_recovery_test import MacRecoveryTests
+        case = MacRecoveryTests(); case.setUp()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            metadata = {'macos-recovery.json':case.rule, 'macos-recovery/original-run.json':case.original,
+                        'macos-recovery/followup-run.json':case.followup,
+                        'macos-recovery/followup-artifact.json':case.artifact}
+            build = {'sources':{k:v['commit'] for k,v in case.manifest['sources'].items()}, 'target':case.target}
+            directory = retained_build(root, case.manifest, case.target, 'signed/build.json', build,
+                                       metadata, case.followup['id'], 'retained_macos_followup')
+            # The real existing Mac verifier retains the archive/rule hashes,
+            # but its receipt predates a dedicated recovered-provider flag.
+            verified = acceptance.job(root, case.manifest, case.target, 'verify') / 'receipt.json'
+            proof = json.loads(verified.read_text()); proof.pop('retained_macos_followup'); atomic_json(verified, proof)
+            case.artifact.update(digest='sha256:'+acceptance.digest(directory/'native.zip'),
+                                 size_in_bytes=(directory/'native.zip').stat().st_size)
+            atomic_json(directory/'macos-recovery/followup-artifact.json',case.artifact)
+            proof = json.loads((directory/'receipt.json').read_text())
+            next(ref for ref in proof['evidence'] if ref['path'].endswith('followup-artifact.json'))['sha256'] = acceptance.digest(directory/'macos-recovery/followup-artifact.json')
+            atomic_json(directory/'receipt.json',proof)
+            spec = acceptance.provider(root, case.manifest, case.target)
+            self.assertEqual(spec['manifest'],'signed/build.json')
+            self.assertEqual(spec['artifact'],case.artifact['id'])
+            self.assertNotIn('worker',proof)
+            self.assertEqual(delivery.provider_metadata(directory/'native.zip',spec,case.target)['name'],case.target+'-package')
+            driver = acceptance.module('macos-rollback')
+            def archive_copy(bound, destination):
+                destination.write_bytes((directory/'native.zip').read_bytes())
+                return delivery.provider_metadata(directory/'native.zip',bound,case.target)
+            for invalid in (None, 'workflow', 'request', 'unregistered'):
+                with self.subTest(invalid=invalid):
+                    run = copy.deepcopy(case.followup); bound = copy.deepcopy(spec)
+                    if invalid=='workflow': run['path']='.github/workflows/other.yml'
+                    if invalid=='request': run['display_title']='another request'
+                    if invalid=='unregistered': bound.pop('recovery')
+                    out=root/str(invalid); out.mkdir()
+                    with patch.dict(driver.INPUTS,{'target':case.target,'current':bound},clear=True), \
+                         patch.object(driver,'gh',return_value=run), \
+                         patch.object(driver,'acceptance_archive',side_effect=archive_copy), \
+                         patch.object(driver.installer,'publisher_identity',side_effect=RuntimeError('native-signature-stage')):
+                        if invalid is None:
+                            with self.assertRaisesRegex(RuntimeError,'native-signature-stage'): driver.acquire('current',out,None)
+                        else:
+                            with self.assertRaises(ValueError): driver.acquire('current',out,None)
+            (directory/'macos-recovery/followup-run.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError,'worker evidence changed'): acceptance.provider(root,case.manifest,case.target)
+
+    def test_registered_ios_provider_keeps_original_failed_report_and_uses_verified_wrapper(self):
+        from release_ios_recovery_test import IosRecoveryTests
+        import release_ios_recovery as recovery
+        case=IosRecoveryTests(); case.setUp()
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            rule={**recovery.RULE, 'sha256':'0'*64}
+            metadata={'ios-recovery.json':rule,'ios-followup-run.json':case.run,'ios-followup-artifact.json':case.artifact}
+            directory=retained_build(root,case.manifest,'ios','ios-verification/build.json',case.report,
+                                     metadata,case.run['id'],'retained_ios_followup')
+            rule.update(sha256=acceptance.digest(directory/'native.zip'),size=(directory/'native.zip').stat().st_size)
+            # The legacy registration is immutable; this fixture registers its
+            # synthetic archive explicitly without altering production data.
+            case.artifact.update(digest='sha256:'+rule['sha256'],size_in_bytes=rule['size'])
+            for name,value in (('ios-recovery.json',rule),('ios-followup-artifact.json',case.artifact)):
+                atomic_json(directory/name,value)
+            proof=json.loads((directory/'receipt.json').read_text())
+            for ref in proof['evidence']: ref['sha256']=acceptance.digest(directory/ref['path'])
+            atomic_json(directory/'receipt.json',proof)
+            with patch.object(recovery,'RULE',rule),patch.object(recovery,'INPUTS',recovery.INPUTS):
+                spec=acceptance.provider(root,case.manifest,'ios')
+            self.assertEqual(spec['manifest'],'ios-verification/build.json')
+            self.assertEqual(spec['controller'],case.run['head_sha'])
+            self.assertEqual(spec['recovery']['inputs'],recovery.INPUTS)
+            self.assertEqual(delivery.provider_metadata(directory/'native.zip',spec,'ios')['name'],
+                             'ios-verified-'+rule['request'])
+            with zipfile.ZipFile(directory/'native.zip') as archive:
+                self.assertIs(json.loads(archive.read('ios-verification/original/ios-output/build.json'))['passed'],False)
+            (directory/'ios-followup-artifact.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError,'worker evidence changed'): acceptance.provider(root,case.manifest,'ios')
+
+
 class NativeAcceptanceTests(unittest.TestCase):
     def test_production_controller_revision_is_the_default_and_legacy_requests_remain_explicit(self):
         manifest = candidate()

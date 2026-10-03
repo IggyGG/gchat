@@ -71,6 +71,53 @@ def registered(manifest):
     return config
 
 
+def verification_marker(manifest, work, config, intent, api):
+    marker = work / 'ios-retained-verification-dispatch.json'
+    if not marker.exists() or json.loads(marker.read_text())['intent'] == intent:
+        return marker
+    old = json.loads(marker.read_text())['intent']
+    previous = config.get('previous_verification', {})
+    require(previous.get('controller') == old.get('controller') and previous.get('request') == old.get('request')
+            and previous.get('ref') == old.get('ref') and type(previous.get('run')) is int
+            and previous['run'] > 0 and old.get('inputs') == intent['inputs']
+            and intent['controller'] != old['controller']
+            and intent['request'] == hashlib.sha256(__import__('release_pair').canonical(
+                ['ios-retained-verification-followup', old['request'], intent['controller']])).hexdigest(),
+            'iOS retained verification intent changed without a reviewed failed predecessor')
+    failed = api(f'actions/runs/{previous["run"]}')
+    require(failed.get('id') == previous['run'] and failed.get('head_sha') == old['controller']
+            and failed.get('head_branch') == old['ref'] and failed.get('path') == '.github/workflows/ios-verify.yml'
+            and failed.get('display_title') == 'iOS retained verification ' + old['request']
+            and failed.get('head_repository', {}).get('full_name') == 'IggyGG/gchat'
+            and failed.get('event') == 'workflow_dispatch' and failed.get('status') == 'completed'
+            and failed.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'),
+            'iOS verification predecessor is unknown or did not fail on its frozen source')
+    directory = work / 'ios-retained-verification-followups' / intent['controller']
+    directory.mkdir(parents=True, exist_ok=True)
+    failure = directory / 'original-failure.json'
+    if failure.exists():
+        proof = json.loads(failure.read_text())
+        require(proof.get('passed') is False and proof.get('release_id') == manifest['release_id']
+                and proof.get('sources') == manifest['sources'] and proof.get('original_intent_sha256') == sha(marker)
+                and proof.get('run_sha256') == sha(directory/'original-failed-run.json')
+                and proof.get('artifacts_sha256') == sha(directory/'original-failed-artifacts.json'),
+                'retained iOS verification failure evidence changed')
+    else:
+        inventory = api(f'actions/runs/{previous["run"]}/artifacts?per_page=100')
+        require(isinstance(inventory.get('artifacts'), list) and len(inventory['artifacts']) < 100,
+                'iOS failed verification artifact inventory is incomplete')
+        atomic_json(directory / 'original-failed-run.json', failed)
+        atomic_json(directory / 'original-failed-artifacts.json', inventory)
+        atomic_json(failure, {'passed':False, 'release_id':manifest['release_id'],
+                    'sources':manifest['sources'], 'original_intent_sha256':sha(marker),
+                    'run_sha256':sha(directory/'original-failed-run.json'),
+                    'artifacts_sha256':sha(directory/'original-failed-artifacts.json')})
+    replacement = directory / 'dispatch.json'
+    require(not replacement.exists() or json.loads(replacement.read_text())['intent'] == intent,
+            'iOS verification follow-up intent changed')
+    return replacement
+
+
 def retained_followup(manifest, work, original, config):
     from release_jobs import gh
     require(original.get('id') == config['original_run'] and original.get('status') == 'completed'
@@ -104,9 +151,7 @@ def retained_followup(manifest, work, original, config):
     verification = config['verification']
     intent = {'controller': verification['controller'], 'ref': verification['ref'],
               'request': verification['request'], 'inputs': inputs}
-    marker = work / 'ios-retained-verification-dispatch.json'
-    if marker.exists():
-        require(json.loads(marker.read_text())['intent'] == intent, 'iOS retained verification intent changed')
+    marker = verification_marker(manifest, work, config, intent, gh)
     runs = []
     for page in range(1, 11):
         items = gh(f'actions/workflows/ios-verify.yml/runs?event=workflow_dispatch&per_page=100&page={page}')['workflow_runs']
@@ -206,9 +251,7 @@ def validate_report(manifest, report, rule=RULE, inputs=INPUTS):
             'iOS signed identity or version differs')
 
 
-def verify(manifest, directory, output):
-    work = directory.parent
-    rule = json.loads((work / 'ios-recovery.json').read_text())
+def reviewed_inputs(manifest, rule):
     inputs = INPUTS
     if rule != RULE:
         config = registered(manifest)
@@ -224,24 +267,33 @@ def verify(manifest, directory, output):
                 and inputs['simulator']['controller_commit'] == config['lifecycle']['controller']
                 and inputs['simulator']['request_id'] == config['lifecycle']['request']
                 and inputs['simulator']['mode'] == 'retained_original', 'iOS recovery inputs differ')
+    return inputs
+
+
+def reference(item, root):
+    parts = PurePosixPath(item['path']).parts
+    require(parts.count('ios-verification') == 1, 'unexpected iOS reference root')
+    relative = Path(*parts[parts.index('ios-verification') + 1:])
+    require(relative.parts and '..' not in relative.parts and '\\' not in item['path'], 'unsafe iOS reference')
+    path = root / relative
+    require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(root.resolve())
+            and sha(path) == item['sha256'] and path.stat().st_size == item['size'],
+            'iOS native reference changed')
+    return path
+
+
+def verify(manifest, directory, output):
+    work = directory.parent
+    rule = json.loads((work / 'ios-recovery.json').read_text())
+    inputs = reviewed_inputs(manifest, rule)
     validate_run(manifest, json.loads((work / 'ios-followup-run.json').read_text()),
                  json.loads((work / 'ios-followup-artifact.json').read_text()), rule)
     require(sha(work / 'native.zip') == rule['sha256'], 'iOS native archive changed')
     root = directory / 'ios-verification'; report_path = root / 'build.json'
     report = json.loads(report_path.read_text()); validate_report(manifest, report, rule, inputs)
-    def reference(item):
-        parts = PurePosixPath(item['path']).parts
-        require(parts.count('ios-verification') == 1, 'unexpected iOS reference root')
-        relative = Path(*parts[parts.index('ios-verification') + 1:])
-        require(relative.parts and '..' not in relative.parts, 'unsafe iOS reference')
-        path = root / relative
-        require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(root.resolve())
-                and sha(path) == item['sha256'] and path.stat().st_size == item['size'],
-                'iOS native reference changed')
-        return path
-    ipa = reference(report['application']['ipa'])
-    retained = [report_path, ipa, reference(report['original_build']), reference(report['signing_cleanup']),
-                reference(report['simulator']), reference(report['simulator_binding']['verification'])]
+    ipa = reference(report['application']['ipa'], root)
+    retained = [report_path, ipa, reference(report['original_build'], root), reference(report['signing_cleanup'], root),
+                reference(report['simulator'], root), reference(report['simulator_binding']['verification'], root)]
     require(json.loads(retained[2].read_text())['passed'] is False, 'original failed iOS verdict changed')
     for path in retained[3:]: require(json.loads(path.read_text()).get('passed') is True, 'iOS follow-up gate failed')
     with zipfile.ZipFile(work / 'native.zip') as archive:

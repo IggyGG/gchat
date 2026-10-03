@@ -30,6 +30,7 @@ def load(name):
 
 
 from release_jobs import gh, extract, acceptance_archive
+import release_macos_recovery as recovery
 
 MOUNTS = []
 INPUTS = {}
@@ -58,6 +59,15 @@ def validate_inputs(value):
 
 def acquire(name, output, commands):
     bound = INPUTS[name]
+    registered = bound.get('recovery')
+    if registered is not None:
+        smoke.require(registered.get('kind') == 'macos-package', 'unknown retained Mac recovery')
+        rule = registered['rule']
+        reviewed = recovery.rule_for({'release_id': rule['release_id'], 'sources': rule['sources']}, INPUTS['target'])
+        smoke.require(rule == reviewed and rule['followup_run'] == bound['run']
+                      and rule['controller_commit'] == bound['controller']
+                      and {k: v['commit'] for k, v in rule['sources'].items()} == bound['sources']
+                      and bound['manifest'] == 'signed/build.json', 'retained Mac recovery registration differs')
     run = gh(f"actions/runs/{bound['run']}")
     root = output / name; root.mkdir()
     archive = root / 'artifact.zip'
@@ -66,7 +76,10 @@ def acquire(name, output, commands):
     if not retained: artifact = gh(f"actions/artifacts/{bound['artifact']}")
     smoke.require(run.get('status') == 'completed' and run.get('conclusion') == 'success'
                   and run.get('head_repository', {}).get('full_name') == 'IggyGG/gchat'
-                  and run.get('path') in ('.github/workflows/macos-release.yml', '.github/workflows/macos-notarize.yml')
+                  and (run.get('path') == '.github/workflows/macos-package.yml' and
+                       run.get('display_title') == 'Forgejo macOS package ' + rule['request_id'] and
+                       artifact.get('name') == INPUTS['target'] + '-package' if registered else
+                       run.get('path') in ('.github/workflows/macos-release.yml', '.github/workflows/macos-notarize.yml'))
                   and run.get('head_sha') == bound['controller'] and run.get('event') == 'workflow_dispatch'
                   and artifact.get('workflow_run', {}).get('id') == bound['run']
                   and (retained or artifact.get('expired') is False)

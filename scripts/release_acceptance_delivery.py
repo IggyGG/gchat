@@ -62,10 +62,18 @@ def provider_metadata(path, spec, target):
         if build.get('passed') is not True or build.get('sources_unchanged') is not True:
             raise ValueError('retained mobile archive has no successful original build')
         name = f'{target}-{spec["sources"]["gchat"]}-{spec["sources"]["gcoms"]}'
-        if target == 'ios': name += '-' + build['build_number']
+        if target == 'ios' and spec.get('recovery') is None: name += '-' + build['build_number']
     else:
         sources = build.get('sources'); name = target
         if build.get('target') != target: raise ValueError('retained desktop archive target differs')
+    recovery = spec.get('recovery')
+    if recovery is not None:
+        if target == 'ios' and recovery.get('kind') == 'ios-retained':
+            name = 'ios-verified-' + recovery['rule']['request']
+        elif target.startswith('macos') and recovery.get('kind') == 'macos-package':
+            name = target + '-package'
+        else:
+            raise ValueError('unknown retained acceptance recovery')
     if sources != spec['sources']: raise ValueError('retained acceptance archive source differs')
     return {'id': spec['artifact'], 'digest': 'sha256:' + spec['archive'], 'size_in_bytes': path.stat().st_size,
             'workflow_run': {'id': spec['run']}, 'name': name, 'retained_locally': True}

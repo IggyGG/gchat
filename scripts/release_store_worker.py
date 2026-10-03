@@ -30,9 +30,17 @@ def ios_build(api,config,manifest,build_job,work):
     recovered=proof.get('retained_ios_followup') is True
     workflow='ios-upload.yml';title='GChat iOS upload ';controller=manifest['sources']['gchat']['commit']
     if recovered:
-        from release_ios_recovery import RULE, INPUTS
-        if manifest['release_id']!=RULE['release_id']:raise ValueError('unregistered retained iOS upload')
-        workflow='ios-verify.yml';title='iOS retained verification ';controller=RULE['controller']
+        from release_ios_recovery import RULE, reviewed_inputs
+        rule_path=build_job/'ios-recovery.json'
+        if rule_path.is_file():
+            if not any(e['path']=='ios-recovery.json' and e['sha256']==digest(rule_path) for e in proof['evidence']):
+                raise ValueError('retained iOS upload registration is not source-bound')
+            rule=json.loads(rule_path.read_text())
+        else:
+            rule=RULE  # Legacy retained release before registrations were data.
+        if manifest['release_id']!=rule['release_id']:raise ValueError('unregistered retained iOS upload')
+        reviewed=reviewed_inputs(manifest,rule)
+        workflow='ios-verify.yml';title='iOS retained verification ';controller=rule['controller']
     runs=gh('actions/workflows/'+workflow+'/runs?event=workflow_dispatch&per_page=100')['workflow_runs']
     matches=[r for r in runs if r.get('display_title')==title+request]
     if len(matches)>1:raise ValueError('duplicate Apple upload workers require reconciliation')
@@ -41,13 +49,13 @@ def ios_build(api,config,manifest,build_job,work):
             if builds:raise ValueError('Apple build number is already used without this source-bound upload')
             archive=next(e['sha256'] for e in proof['evidence'] if e['path']=='native.zip')
             if recovered:
-                if archive!=RULE['sha256']:raise ValueError('retained iOS archive differs before upload')
-                inputs={'request_id':request,'original_run_id':str(INPUTS['run_id']),
-                    'artifact_id':str(INPUTS['artifact_id']),'artifact_sha256':INPUTS['artifact_sha256'],
-                    'simulator_input':json.dumps(INPUTS['simulator']),
-                    'gchat_commit':INPUTS['gchat_commit'],'gcoms_commit':INPUTS['gcoms_commit'],
-                    'build_number':INPUTS['build_number'],'upload_testflight':True}
-                ref='release/gchat-'+controller[:16]
+                if archive!=rule['sha256']:raise ValueError('retained iOS archive differs before upload')
+                inputs={'request_id':request,'original_run_id':str(reviewed['run_id']),
+                    'artifact_id':str(reviewed['artifact_id']),'artifact_sha256':reviewed['artifact_sha256'],
+                    'simulator_input':json.dumps(reviewed['simulator']),
+                    'gchat_commit':reviewed['gchat_commit'],'gcoms_commit':reviewed['gcoms_commit'],
+                    'build_number':reviewed['build_number'],'upload_testflight':True}
+                ref=rule['registration']['verification']['ref'] if 'registration' in rule else 'release/gchat-'+controller[:16]
             else:
                 inputs={'request_id':request,'release_manifest':base64.b64encode(canonical(manifest)).decode(),
                         'artifact_id':str(proof['worker']['artifact_id']),'artifact_sha256':archive}

@@ -155,20 +155,65 @@ def digest(path):
     with Path(path).open('rb') as stream: return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def retained_provider(directory, manifest, target, proof, verified, archive_sha):
+    def bound(name):
+        path = directory / name
+        refs = [ref for ref in proof['evidence'] if ref['path'] == name]
+        if len(refs) != 1 or refs[0]['sha256'] != digest(path):
+            raise ValueError('retained acceptance provider metadata is not source-bound')
+        return json.loads(path.read_text())
+    if proof.get('retained_macos_followup') is True:
+        import release_macos_recovery as recovery
+        rule = recovery.rule_for(manifest, target)
+        if rule is None or bound('macos-recovery.json') != rule:
+            raise ValueError('retained Mac acceptance registration differs')
+        for name, expected_sha in (('macos-recovery.json', digest(directory / 'macos-recovery.json')),
+                                   ('native.zip', archive_sha)):
+            if not any(ref['path'].endswith('-' + name) and ref['sha256'] == expected_sha
+                       for ref in verified['evidence']):
+                raise ValueError('retained Mac archive/registration has no independent verification')
+        run = bound('macos-recovery/followup-run.json')
+        artifact = bound('macos-recovery/followup-artifact.json')
+        if not recovery.validate_runs(manifest, target, rule, bound('macos-recovery/original-run.json'), run):
+            raise ValueError('retained Mac acceptance provider is incomplete')
+        recovery.validate_artifact(artifact, run, target)
+        report = 'signed/build.json'
+        metadata = {'kind': 'macos-package', 'rule': rule}
+    elif proof.get('retained_ios_followup') is True:
+        import release_ios_recovery as recovery
+        if target != 'ios' or verified.get('retained_ios_followup') is not True:
+            raise ValueError('retained iOS acceptance target/verification differs')
+        rule = bound('ios-recovery.json')
+        inputs = recovery.reviewed_inputs(manifest, rule)
+        run = bound('ios-followup-run.json'); artifact = bound('ios-followup-artifact.json')
+        recovery.validate_run(manifest, run, artifact, rule)
+        report = 'ios-verification/build.json'
+        metadata = {'kind': 'ios-retained', 'rule': rule, 'inputs': inputs, 'candidate': manifest}
+    else:
+        return None
+    if str(run['id']) != proof['external_id'] or artifact['digest'] != 'sha256:' + archive_sha:
+        raise ValueError('retained acceptance archive/provider differs')
+    return {'run': run['id'], 'artifact': artifact['id'], 'controller': run['head_sha'],
+            'manifest': report, 'recovery': metadata}
+
+
 def provider(state, manifest, target):
     directory = job(state, manifest, target, 'build')
+    receipts = {}
     for stage in ('build', 'verify'):
         receipt = job(state, manifest, target, stage) / 'receipt.json'
         if not receipt.is_file(): return None
-        read_receipt(receipt, manifest, target, stage)
-    proof, _ = read_receipt(directory / 'receipt.json', manifest, target, 'build')
+        receipts[stage], _ = read_receipt(receipt, manifest, target, stage)
+    proof = receipts['build']
     archive = directory / 'native.zip'
     sha = digest(archive)
     if not any(ref['path'] == 'native.zip' and ref['sha256'] == sha for ref in proof['evidence']):
         raise ValueError('acceptance provider archive is not source-bound')
+    retained = retained_provider(directory, manifest, target, proof, receipts['verify'], sha)
     with zipfile.ZipFile(archive) as source:
-        reports = [name for name in source.namelist() if name.endswith('build.json') and not any(
-            part in ('inputs', 'build', 'native-tests', 'infrastructure') for part in Path(name).parts[:-1])]
+        reports = ([name for name in source.namelist() if name == retained['manifest']] if retained else
+                   [name for name in source.namelist() if name.endswith('build.json') and not any(
+                       part in ('inputs', 'build', 'native-tests', 'infrastructure') for part in Path(name).parts[:-1])])
         if len(reports) != 1: raise ValueError('acceptance provider build report is ambiguous')
         build = json.loads(source.read(reports[0]))
     expected = {k: v['commit'] for k, v in manifest['sources'].items()}
@@ -180,8 +225,8 @@ def provider(state, manifest, target):
         sources = build.get('sources')
     if sources != expected or (target not in ('android', 'ios') and build.get('target') != target):
         raise ValueError('acceptance provider target/source differs')
-    result = {'run': int(proof['external_id']), 'artifact': proof['worker']['artifact_id'],
-              'controller': proof['worker']['workflow_commit'], 'archive': sha,
+    result = {**(retained or {'run': int(proof['external_id']), 'artifact': proof['worker']['artifact_id'],
+                           'controller': proof['worker']['workflow_commit']}), 'archive': sha,
               'sources': sources, 'manifest': reports[0], 'conclusion': 'success'}
     if target == 'windows-x86_64':
         executables = [item for item in build['executables'] if item['name'] == 'gchat-desktop.exe']

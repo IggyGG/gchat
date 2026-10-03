@@ -53,7 +53,11 @@ def simulator_run_binding(run, artifact, spec):
             and run.get('event') == 'workflow_dispatch' and run.get('status') == 'completed'
             and run.get('conclusion') in ('success', 'failure') and run.get('path') == '.github/workflows/ios-lifecycle.yml',
             'simulator workflow did not finish on the bound controller')
-    ios.policy.release_ref(run['head_branch'])
+    branch = run['head_branch']
+    qualified = ('release/qualification-' + spec['controller_commit'],
+                 'release/qualification-ios-installed-' + spec['controller_commit'][:12])
+    if not (spec.get('mode') == 'retained_original' and branch in qualified):
+        ios.policy.release_ref(branch)
     require(re.fullmatch('[A-Za-z0-9_-]+', spec['request_id'])
             and artifact.get('id') == spec['artifact_id']
             and artifact.get('name') == 'ios-lifecycle-' + spec['request_id']

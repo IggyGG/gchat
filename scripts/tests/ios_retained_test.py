@@ -233,6 +233,13 @@ class SameSourceSimulatorTests(unittest.TestCase):
                     'workflow_run': {'id': 101}, 'digest': 'sha256:' + '5' * 64}
         retained.simulator_run_binding(run, artifact, self.sim_spec)
         retained.simulator_run_binding(run | {'conclusion': 'failure'}, artifact, self.sim_spec)
+        qualified = {**self.sim_spec, 'mode':'retained_original'}
+        for branch in ('release/qualification-'+self.sim_spec['controller_commit'],
+                       'release/qualification-ios-installed-'+self.sim_spec['controller_commit'][:12]):
+            retained.simulator_run_binding(run | {'head_branch':branch}, artifact, qualified)
+            with self.assertRaises(ValueError): retained.simulator_run_binding(run | {'head_branch':branch},artifact,self.sim_spec)
+        with self.assertRaises(ValueError):
+            retained.simulator_run_binding(run | {'head_branch':'release/qualification-ios-installed-'+'0'*12},artifact,qualified)
         for key, value in (('conclusion', 'cancelled'), ('path', '.github/workflows/ios-release.yml'),
                            ('head_sha', '7' * 40), ('event', 'pull_request')):
             with self.subTest(key=key), self.assertRaises(ValueError):

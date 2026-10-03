@@ -1,5 +1,6 @@
 """Retained iOS qualification must bind the existing IPA and original failure."""
 import copy
+import hashlib
 import sys
 from pathlib import Path
 import unittest
@@ -108,6 +109,54 @@ class RegisteredIosTests(unittest.TestCase):
         if endpoint.startswith('git/ref/heads/'): return {'object': {'sha': self.config['verification']['controller']}}
         if endpoint.endswith('/dispatches'): return None
         raise AssertionError(endpoint)
+
+    def corrected_verification(self, work):
+        with patch('release_jobs.gh',side_effect=self.provider):
+            worker.retained_followup(self.manifest,work,self.original,self.config)
+        old=json.loads((work/'ios-retained-verification-dispatch.json').read_text())['intent']
+        config=copy.deepcopy(self.config)
+        config['previous_verification']={**self.config['verification'],'run':999}
+        config['verification']={'controller':'7'*40,'ref':'release/qualification-ios-installed-'+'7'*12,
+                                'request':hashlib.sha256(__import__('release_pair').canonical(
+                                    ['ios-retained-verification-followup',old['request'],'7'*40])).hexdigest()}
+        failed={'id':999,'head_sha':old['controller'],'head_branch':old['ref'],
+                'display_title':'iOS retained verification '+old['request'],
+                'path':'.github/workflows/ios-verify.yml','head_repository':{'full_name':'IggyGG/gchat'},
+                'event':'workflow_dispatch','status':'completed','conclusion':'failure'}
+        return config,failed
+
+    def test_one_corrected_verification_preserves_failure_and_reconciles_lost_dispatch_reply(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work=Path(temporary); config,failed=self.corrected_verification(work)
+            original=(work/'ios-retained-verification-dispatch.json').read_bytes()
+            def provider(endpoint,**kwargs):
+                if endpoint=='actions/runs/999': return failed
+                if endpoint=='actions/runs/999/artifacts?per_page=100': return {'artifacts':[]}
+                if endpoint.startswith('git/ref/heads/'): return {'object':{'sha':config['verification']['controller']}}
+                if endpoint.endswith('/dispatches'): raise subprocess.TimeoutExpired('provider',1)
+                return self.provider(endpoint,**kwargs)
+            with patch('release_jobs.gh',side_effect=provider) as api:
+                self.assertIsNone(worker.retained_followup(self.manifest,work,self.original,config))
+                self.assertIsNone(worker.retained_followup(self.manifest,work,self.original,config))
+                self.assertEqual(sum(call.kwargs.get('method')=='POST' for call in api.call_args_list),1)
+                self.assertEqual((work/'ios-retained-verification-dispatch.json').read_bytes(),original)
+                directory=work/'ios-retained-verification-followups'/('7'*40)
+                self.assertIs(json.loads((directory/'original-failure.json').read_text())['passed'],False)
+                (directory/'original-failed-artifacts.json').write_text('{}')
+                with self.assertRaisesRegex(ValueError,'failure evidence changed'):
+                    worker.retained_followup(self.manifest,work,self.original,config)
+                self.assertEqual(sum(call.kwargs.get('method')=='POST' for call in api.call_args_list),1)
+
+    def test_corrected_verification_refuses_unknown_successful_or_changed_predecessor(self):
+        for changed in ({'status':'in_progress'}, {'conclusion':'success'}, {'head_sha':'0'*40}):
+            with self.subTest(changed=changed),tempfile.TemporaryDirectory() as temporary:
+                work=Path(temporary); config,failed=self.corrected_verification(work); failed.update(changed)
+                def provider(endpoint,**kwargs):
+                    if endpoint=='actions/runs/999': return failed
+                    return self.provider(endpoint,**kwargs)
+                with patch('release_jobs.gh',side_effect=provider) as api,self.assertRaisesRegex(ValueError,'predecessor'):
+                    worker.retained_followup(self.manifest,work,self.original,config)
+                self.assertFalse(any(call.kwargs.get('method')=='POST' for call in api.call_args_list))
 
     def test_queued_lifecycle_waits_without_dispatching_or_changing_original(self):
         with tempfile.TemporaryDirectory() as root, patch('release_jobs.gh', return_value={**self.lifecycle, 'status': 'queued', 'conclusion': None}) as gh:

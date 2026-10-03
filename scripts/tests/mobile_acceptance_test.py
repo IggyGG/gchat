@@ -1,4 +1,5 @@
 import copy
+import os
 import hashlib
 import json
 from pathlib import Path
@@ -20,6 +21,8 @@ from mobile_ios_ui import Bridge
 import release_acceptance as acceptance
 import mobile_android_ui as android_ui
 from release_acceptance_test import fixture
+from release_automation_test import candidate
+from release_pair import canonical
 from release_network_canary import module
 
 
@@ -35,6 +38,74 @@ def mobile_fixture(target='android'):
 
 
 class MobileAcceptanceTests(unittest.TestCase):
+    def test_verified_retained_ios_handoff_preserves_original_failure_and_checks_all_gate_bytes(self):
+        import release_ios_recovery as recovery
+        from release_macos_recovery import REGISTRY
+        from release_ios_recovery_test import IosRecoveryTests
+        case=IosRecoveryTests(); case.setUp()
+        manifest=candidate(); manifest['policy']['ios_certificate_sha256']='a'*64
+        manifest['release_id']=hashlib.sha256(canonical({k:v for k,v in manifest.items() if k!='release_id'})).hexdigest()
+        config=copy.deepcopy(next(v for v in json.loads(REGISTRY.read_text())['recoveries'] if v['kind']=='ios-retained'))
+        config.update(release_id=manifest['release_id'],sources=manifest['sources'])
+        reviewed={**recovery.INPUTS, 'run_id':config['original_run'],'artifact_id':config['original_artifact'],
+                  'artifact_sha256':config['original_sha256'],'build_number':manifest['versions']['ios'],
+                  **{p+'_commit':manifest['sources'][p]['commit'] for p in ('gchat','gcoms')},
+                  'simulator':{'mode':'retained_original','run_id':config['lifecycle']['run'],
+                               'controller_commit':config['lifecycle']['controller'],
+                               'request_id':config['lifecycle']['request']}}
+        rule={'release_id':manifest['release_id'],'run':123,'artifact':456,'controller':config['verification']['controller'],
+              'request':config['verification']['request'],'original_run':config['original_run'],
+              'ipa':config['ipa'],'inputs':reviewed,'registration':config}
+        report=copy.deepcopy(case.report)
+        report.update(sources=manifest['sources'],inputs=reviewed)
+        report['application'].update(ipa={'sha256':config['ipa']},build_number=manifest['versions']['ios'],
+                                     marketing_version=manifest['versions']['linux-x86_64'])
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary); registry=root/'registry.json'
+            registry.write_text(json.dumps({'schema':1,'recoveries':[config]}))
+            files={'ios-verification/original/ios-output/build.json':canonical({'passed':False,'sources':manifest['sources']})}
+            def reference(name,value):
+                path='ios-verification/'+name; data=canonical(value); files[path]=data
+                return {'path':'/native/'+path,'sha256':hashlib.sha256(data).hexdigest(),'size':len(data)}
+            original=files['ios-verification/original/ios-output/build.json']
+            report['original_build']={'path':'/native/ios-verification/original/ios-output/build.json',
+                                      'sha256':hashlib.sha256(original).hexdigest(),'size':len(original)}
+            report['signing_cleanup']=reference('cleanup.json',{'passed':True})
+            report['simulator']=reference('lifecycle.json',{'passed':True})
+            report['simulator_binding']={'verification':reference('linked.json',{'passed':True})}
+            files['ios-verification/build.json']=canonical(report)
+            archive=root/'provider.zip'
+            import zipfile
+            with zipfile.ZipFile(archive,'w') as bundle:
+                for name,data in files.items(): bundle.writestr(name,data)
+            rule.update(sha256=inputs.digest(archive),size=archive.stat().st_size)
+            run={'id':rule['run'],'head_sha':rule['controller'],'path':'.github/workflows/ios-verify.yml',
+                 'head_repository':{'full_name':'IggyGG/gchat'},'display_title':'iOS retained verification '+rule['request'],
+                 'event':'workflow_dispatch','status':'completed','conclusion':'success'}
+            artifact={'id':rule['artifact'],'expired':False,'workflow_run':{'id':rule['run']},
+                      'digest':'sha256:'+rule['sha256'],'size_in_bytes':rule['size'],'name':'ios-verified-'+rule['request']}
+            spec={'run':rule['run'],'artifact':rule['artifact'],'archive':rule['sha256'],'controller':rule['controller'],
+                  'sources':{p:v['commit'] for p,v in manifest['sources'].items()},'manifest':'ios-verification/build.json',
+                  'conclusion':'success','recovery':{'kind':'ios-retained','candidate':manifest,'rule':rule,'inputs':reviewed}}
+            def retained(bound,destination): destination.write_bytes(archive.read_bytes()); return artifact
+            with patch.dict(os.environ,{'GCHAT_NATIVE_RECOVERIES':str(registry)}), \
+                 patch.object(inputs,'gh',return_value=run),patch.object(inputs,'acceptance_archive',side_effect=retained):
+                item=inputs.acquire('current',spec,'ios',root,manifest)
+                self.assertIs(item['build']['passed'],False)
+                self.assertTrue(json.loads(item['retained_lifecycle'].read_text())['passed'])
+                (item['root'].parents[1]/'lifecycle.json').write_text('{"passed":false}')
+                with self.assertRaisesRegex(ValueError,'reference changed'):
+                    recovery.reference(report['simulator'],item['root'].parents[1])
+                for invalid in ('workflow','request','candidate','registration'):
+                    with self.subTest(invalid=invalid):
+                        changed_run=copy.deepcopy(run); changed=copy.deepcopy(spec)
+                        if invalid=='workflow': changed_run['path']='.github/workflows/ios-release.yml'
+                        if invalid=='request': changed_run['display_title']='another request'
+                        if invalid=='candidate': changed['recovery']['candidate']=candidate(2)
+                        if invalid=='registration': changed['recovery']['rule']['registration']['ipa']='0'*64
+                        with patch.object(inputs,'gh',return_value=changed_run),self.assertRaises(ValueError):
+                            inputs.acquire(invalid,changed,'ios',root,manifest)
+
     def owned_android_ui(self, root, *, sdk_setup=False, qemu=True, avd=True, installed=False):
         def command(argv, **kwargs):
             args = tuple(argv[3:])
