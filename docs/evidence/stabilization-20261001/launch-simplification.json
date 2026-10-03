@@ -22,9 +22,9 @@
     "active flight is polled first; other flights cannot admit fresh acceptance, expired revalidation or publication"
   ],
   "tests": {
-    "python": 753,
+    "python": 761,
     "existing_skips": 5,
-    "log_sha256": "d266fbc689af6e0b9b3b471b8a518bc9b1cb2e1ed41b418e6365ad5106bd9610",
+    "log_sha256": "ef8fd5ed5a3d84e8bbf486a27effd7ee42e5b3a4841cb7b37f4a4a8db08b7019",
     "L0_source_paths": 814,
     "retained_failed_run": "352: six lifecycle fixture IPC failures",
     "isolated_lifecycle_tests": 17,
@@ -47,8 +47,8 @@
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "e43654f99341f43c727e78567e06d99ab21fed10",
-  "active_controller_kubernetes_checks": 232,
+  "active_controller_source": "d80c44dbe7aa6d8610359073ab5c33d18ff5189a",
+  "active_controller_kubernetes_checks": 239,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -58,14 +58,14 @@
   "sdk_qualification_reuse_active": true,
   "release_filesystem_gib": 160,
   "fleet_progress": {
-    "native_relays_deployed_and_healthy": 8,
-    "inventory_targets": 17,
-    "first_full_canary_passed": true,
-    "full_canary_authenticated_acks": 6,
-    "full_canary_file_bytes": 16777216,
-    "full_canary_file_completion_seconds": 122.685681,
-    "full_canary_total_seconds": 240.031106,
-    "remaining_blocker": "rollout resumed; remaining Kubernetes targets and final full canary are pending"
+    "completed": 14,
+    "total": 17,
+    "remaining": [
+      "catalog",
+      "push",
+      "controller"
+    ],
+    "catalog_requires_verified_previous_init_image": true
   },
   "pending_native_qualification": [
     "Intel Mac installer: retained original GComs resume fixture failure",
@@ -82,5 +82,38 @@
     "archives": 12,
     "original_source_labels_preserved": true,
     "original_cancelled_run_preserved": true
-  }
+  },
+  "sdk_0_1_98_available": true,
+  "sdk_latest_preserved": "0.1.102",
+  "retained_macos_native_reuse": {
+    "schema": 1,
+    "project": "gcoms",
+    "target": "macos-x86_64",
+    "requested_source": {
+      "commit": "8f8fdb36bc898e6af3fe00dbf044da6f837fb640",
+      "tree": "f0cab6c74e9f1075b8344ded39d2303c00f0dd24"
+    },
+    "qualification_source": {
+      "commit": "79b7daa83c45db5aacfba9931379fe9332f3b768",
+      "tree": "64b1c50ba35e285a7436aa413109d69dd9a85c49"
+    },
+    "qualification_inputs_sha256": "be96b414fee0da6ab81a4dcde79705fc7b67552a40fe64d8d5c5f299087d0bd3",
+    "provider_run": 37085789491,
+    "provider_archive": {
+      "sha256": "6099c5f644dd7986d1507b52a7e7f4de35f8e4f04ede538115d05792138f29a8",
+      "size": 75731750
+    },
+    "original_report": {
+      "sha256": "58b27490d1bbb29e231be6b2a794a7d90c07fce3b3ae5b4301f0cb226581baf3",
+      "size": 3101
+    },
+    "qualified_report": {
+      "sha256": "fc14b89277fbe03a9512462001e543232704fe6e2c5d7bfbffd786cfdc59d258",
+      "size": 3846
+    },
+    "original_verdict_preserved": true,
+    "native_tests_rerun": false
+  },
+  "retained_macos_packaging_complete": false,
+  "source_discovery_active": false
 }

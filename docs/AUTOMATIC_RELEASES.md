@@ -44,6 +44,15 @@ revocation before updating its root-owned policy. Original operators and policy
 backups remain retained.
 
 The release publisher preserves original provider archives and source receipts.
+Retained Mac packaging accepts an optional `gcoms_native_input` containing the
+original successful provider run, artifact and SHA-256. It verifies every GComs
+source byte and executable mode except individually reviewed status files, the
+exact native workflow recipe, architecture and full compiler/Python/platform
+environment. The original failed report remains unchanged and the original
+positive GChat paired-source qualification is still required. The package uses
+the frozen requested source pair and must pass actual signing, notarization and
+installed DMG lifecycle checks. Retained packaging tooling changes require a new
+controller qualification rather than another application release.
 SDK qualification is cached per completed matrix. A hit requires identical Git
 entries for every build, test, toolchain, feature, workflow and policy input; only
 individually reviewed prose/status files are excluded. The controller rechecks the

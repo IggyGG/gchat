@@ -158,6 +158,124 @@ class NativeReceiptTest(unittest.TestCase):
         self.save()
         return package.verify_native(self.root, self.target, {name: value['commit'] for name, value in self.sources.items()})
 
+    def reuse_fixture(self):
+        import shutil
+        self.save()
+        output = self.root / 'owned-reuse'; output.mkdir()
+        original = output / 'original-native'
+        shutil.copytree(self.evidence, original / 'evidence')
+        self.root, self.evidence = original, original / 'evidence'
+        def source_archive(name, files, destination=None):
+            content = io.BytesIO()
+            with tarfile.open(fileobj=content, mode='w') as archive:
+                for path, data in files.items():
+                    info = tarfile.TarInfo(path); info.size = len(data); info.mode = 0o644
+                    archive.addfile(info, io.BytesIO(data))
+            if destination is None:
+                return self.write('sources/' + name + '.tar', content.getvalue())
+            target = destination / 'sources' / (name + '.tar'); target.parent.mkdir(exist_ok=True)
+            target.write_bytes(content.getvalue())
+            return {'path': 'sources/' + name + '.tar', 'sha256': package.digest(target)}
+        files = {'Cargo.toml': b'pinned', 'scripts/ci.py': b'full gate', 'crates/core/lib.rs': b'code', 'README.md': b'old'}
+        workflow = {'.github/workflows/macos-release.yml': b'pinned native environment and workflow'}
+        for name, data in [('gcoms', files), ('gchat', workflow)]:
+            self.candidate['sources'][name]['archive'] = source_archive(name, data)
+            self.inputs['source_archive_sha256'][name] = self.candidate['sources'][name]['archive']['sha256']
+        for report in self.reports.values():
+            report['environment'].update(platform='owned Darwin fixture', rustc='pinned Rust fixture', python='3.12.10')
+        self.save()
+        good = output / 'gcoms-native'; shutil.copytree(self.evidence, good / 'evidence')
+        qualified = copy.deepcopy(self.candidate)
+        qualified['sources']['gcoms'].update(commit='c' * 40, tree='d' * 40)
+        qualified['sources']['gcoms']['archive'] = source_archive('gcoms', {**files, 'README.md': b'new'}, good / 'evidence')
+        check = 'native.gcoms.' + self.target
+        report = copy.deepcopy(self.reports[check]); report['sources'] = package.bindings(qualified)
+        target = good / 'evidence' / 'reports' / (check + '.json'); target.write_text(json.dumps(report))
+        qualified['checks'][check]['sha256'] = package.digest(target)
+        (good / 'evidence/candidate.json').write_text(json.dumps(qualified))
+        self.reports[check].update(status='failed', exit_code=1)
+        self.reports[check]['tests']['failed'] = 1
+        self.save()
+        archive = output / 'gcoms-native.zip'
+        def seal():
+            with zipfile.ZipFile(archive, 'w') as bundle:
+                for path in good.rglob('*'):
+                    if path.is_file(): bundle.write(path, path.relative_to(good).as_posix())
+            spec = {'run_id': 12, 'artifact_id': 34, 'artifact_sha256': package.digest(archive)}
+            run = {'id': 12, 'head_sha': 'a' * 40, 'event': 'workflow_dispatch', 'status': 'completed',
+                   'conclusion': 'success', 'path': '.github/workflows/macos-release.yml',
+                   'repository': {'full_name': package.REPO}}
+            artifact = {'id': 34, 'name': self.target, 'expired': False, 'size_in_bytes': archive.stat().st_size,
+                        'digest': 'sha256:' + spec['artifact_sha256'], 'workflow_run': {'id': 12, 'head_sha': 'a' * 40}}
+            for name, value in [('input', spec), ('run', run), ('artifact', artifact)]:
+                (output / ('gcoms-native-' + name + '.json')).write_text(json.dumps(value))
+        seal()
+        return output, good, qualified, report, seal
+
+    def test_completed_same_input_native_project_reuse_preserves_original_failure(self):
+        self.reuse_fixture()
+        check = 'native.gcoms.' + self.target
+        path = package.file_reference(self.evidence, self.candidate['checks'][check]); before = path.read_bytes()
+        result = package.verify_native(self.root, self.target, {k: v['commit'] for k, v in self.sources.items()})
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(json.loads(before)['status'], 'failed')
+        self.assertEqual(result['gcoms_qualification_reuse']['requested_source'], self.sources['gcoms'])
+        self.assertEqual(result['gcoms_qualification_reuse']['qualification_source']['commit'], 'c' * 40)
+        self.assertTrue(result['gcoms_qualification_reuse']['original_verdict_preserved'])
+
+    def test_native_reuse_rejects_changed_source_environment_recipe_and_provider(self):
+        output, good, candidate, report, seal = self.reuse_fixture()
+        check = 'native.gcoms.' + self.target
+        report_path = good / 'evidence/reports' / (check + '.json')
+        original = report_path.read_bytes()
+        report['environment']['rustc'] = 'other compiler'; report_path.write_text(json.dumps(report))
+        candidate['checks'][check]['sha256'] = package.digest(report_path)
+        (good / 'evidence/candidate.json').write_text(json.dumps(candidate)); seal()
+        with self.assertRaisesRegex(ValueError, 'compiler'):
+            package.verify_native(self.root, self.target, {k: v['commit'] for k, v in self.sources.items()})
+        report_path.write_bytes(original); candidate['checks'][check]['sha256'] = package.digest(report_path)
+        (good / 'evidence/candidate.json').write_text(json.dumps(candidate)); seal()
+        source = good / 'evidence/sources/gcoms.tar'; before = source.read_bytes()
+        with tarfile.open(source, 'a') as archive:
+            info = tarfile.TarInfo('new-unclassified-input'); info.size = 7
+            archive.addfile(info, io.BytesIO(b'changed'))
+        candidate['sources']['gcoms']['archive']['sha256'] = package.digest(source)
+        (good / 'evidence/candidate.json').write_text(json.dumps(candidate)); seal()
+        with self.assertRaisesRegex(ValueError, 'policy inputs differ'):
+            package.verify_native(self.root, self.target, {k: v['commit'] for k, v in self.sources.items()})
+        source.write_bytes(before); candidate['sources']['gcoms']['archive']['sha256'] = package.digest(source)
+        workflow = good / 'evidence/sources/gchat.tar'; before = workflow.read_bytes()
+        with tarfile.open(workflow, 'w') as archive:
+            info = tarfile.TarInfo('.github/workflows/macos-release.yml'); info.size = 7
+            archive.addfile(info, io.BytesIO(b'changed'))
+        candidate['sources']['gchat']['archive']['sha256'] = package.digest(workflow)
+        (good / 'evidence/candidate.json').write_text(json.dumps(candidate)); seal()
+        with self.assertRaisesRegex(ValueError, 'environment recipe differs'):
+            package.verify_native(self.root, self.target, {k: v['commit'] for k, v in self.sources.items()})
+        workflow.write_bytes(before); candidate['sources']['gchat']['archive']['sha256'] = package.digest(workflow)
+        (good / 'evidence/candidate.json').write_text(json.dumps(candidate)); seal()
+        path = output / 'gcoms-native-run.json'; run = json.loads(path.read_text()); run['conclusion'] = 'cancelled'
+        path.write_text(json.dumps(run))
+        with self.assertRaisesRegex(ValueError, 'complete successfully'):
+            package.verify_native(self.root, self.target, {k: v['commit'] for k, v in self.sources.items()})
+        seal()
+        report_path.write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'differs from provider archive'):
+            package.verify_native(self.root, self.target, {k: v['commit'] for k, v in self.sources.items()})
+
+    def test_native_archive_fingerprint_covers_code_modes_and_unknown_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            def archive(name, text, mode=0o644):
+                path = root / name
+                with tarfile.open(path, 'w') as stream:
+                    info = tarfile.TarInfo('unclassified-input'); info.size = len(text); info.mode = mode
+                    stream.addfile(info, io.BytesIO(text))
+                return package.archive_entries(path)
+            first = archive('first.tar', b'input')
+            self.assertNotEqual(first, archive('code.tar', b'changed'))
+            self.assertNotEqual(first, archive('mode.tar', b'input', 0o755))
+
     def test_exact_native_pair_validates_without_relabeling_controller(self):
         result = self.verify()
         self.assertEqual(result['sources'], self.sources)

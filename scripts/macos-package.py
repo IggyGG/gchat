@@ -155,7 +155,10 @@ def verify_native(directory, target, expected, repositories=None, recover_omitte
     for project in ('gchat', 'gcoms'):
         check = f'native.{project}.{target}'
         report = read_json(file_reference(evidence, candidate['checks'][check]))
-        validate_report(check, report, candidate, evidence, candidate['artifacts'])
+        if project == 'gcoms' and (directory.parent / 'gcoms-native-input.json').exists():
+            reuse = verify_gcoms_qualification(directory, candidate, report, target)
+        else:
+            validate_report(check, report, candidate, evidence, candidate['artifacts'])
     provenance = evidence / 'paired-gchat'
     inputs = read_json(provenance / 'inputs.json')
     require(inputs.get('sources') == bindings(candidate) and inputs.get('target') == TARGETS[target],
@@ -177,7 +180,82 @@ def verify_native(directory, target, expected, repositories=None, recover_omitte
     reconstruction = provenance / 'cargo-config-reconstruction.json'
     if reconstruction.exists():
         result['cargo_config_reconstruction'] = reference(reconstruction)
+    if (directory.parent / 'gcoms-native-input.json').exists():
+        result['gcoms_qualification_reuse'] = reuse
     return result
+
+
+def archive_entries(path):
+    """Compare every source byte and executable bit; reject unreviewed types."""
+    result = {}
+    with tarfile.open(path) as archive:
+        for member in archive.getmembers():
+            if member.isdir():
+                continue
+            name = PurePosixPath(member.name)
+            require(member.isfile() and not name.is_absolute() and '..' not in name.parts
+                    and '\\' not in member.name and member.name not in result,
+                    'unsafe native qualification source archive')
+            result[member.name] = [bool(member.mode & 0o111),
+                                  hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest()]
+    require(bool(result), 'empty native qualification source archive')
+    return result
+
+
+def verify_gcoms_qualification(original, candidate, previous_report, target):
+    from release_inputs import GCOMS_STATUS_FILES
+    output = original.parent
+    spec = read_json(output / 'gcoms-native-input.json')
+    run = read_json(output / 'gcoms-native-run.json')
+    artifact = read_json(output / 'gcoms-native-artifact.json')
+    retained = output / 'gcoms-native'
+    evidence = retained / 'evidence'
+    qualified = read_json(evidence / 'candidate.json')
+    validate_sources(qualified, evidence)
+    verify_origin(run, artifact, spec['run_id'], spec['artifact_id'], spec['artifact_sha256'],
+                  target, qualified['sources']['gchat']['commit'])
+    require(run.get('status') == 'completed' and run.get('conclusion') == 'success',
+            'reused GComs native provider did not complete successfully')
+    archive = output / 'gcoms-native.zip'
+    require(digest(archive) == spec['artifact_sha256'] and archive.stat().st_size == artifact['size_in_bytes'],
+            'reused GComs provider archive changed')
+    # Verify extracted inputs against the immutable provider ZIP, including logs.
+    with zipfile.ZipFile(archive) as bundle:
+        for entry in bundle.infolist():
+            if entry.is_dir():
+                continue
+            path = retained / entry.filename
+            require(path.is_file() and not path.is_symlink() and
+                    path.resolve().is_relative_to(retained.resolve()), 'reused native extraction changed')
+            with bundle.open(entry) as stream:
+                require(digest(path) == hashlib.file_digest(stream, 'sha256').hexdigest(),
+                        'reused native extraction differs from provider archive')
+    check = 'native.gcoms.' + target
+    report_path = file_reference(evidence, qualified['checks'][check])
+    report = read_json(report_path)
+    validate_report(check, report, qualified, evidence, qualified['artifacts'])
+    require(qualified.get('targets') == [target] and report['environment'] == previous_report['environment']
+            and all(report['environment'].get(k) for k in ('native_target', 'platform', 'rust_host', 'rustc', 'python')),
+            'reused native architecture, compiler, Python or platform differs')
+    original_sources = original / 'evidence'
+    old_entries = archive_entries(file_reference(original_sources, candidate['sources']['gcoms']['archive']))
+    new_entries = archive_entries(file_reference(evidence, qualified['sources']['gcoms']['archive']))
+    old_inputs = {k: v for k, v in old_entries.items() if k not in GCOMS_STATUS_FILES}
+    new_inputs = {k: v for k, v in new_entries.items() if k not in GCOMS_STATUS_FILES}
+    require(old_inputs == new_inputs, 'reused GComs build, test, feature, toolchain or policy inputs differ')
+    old_workflow = archive_entries(file_reference(original_sources, candidate['sources']['gchat']['archive']))
+    new_workflow = archive_entries(file_reference(evidence, qualified['sources']['gchat']['archive']))
+    recipe = '.github/workflows/macos-release.yml'
+    require(recipe in old_workflow and old_workflow[recipe] == new_workflow.get(recipe),
+            'reused native workflow or environment recipe differs')
+    return {'schema': 1, 'project': 'gcoms', 'target': target,
+            'requested_source': bindings(candidate)['gcoms'],
+            'qualification_source': bindings(qualified)['gcoms'],
+            'qualification_inputs_sha256': hashlib.sha256(json.dumps(old_inputs, sort_keys=True).encode()).hexdigest(),
+            'provider_run': spec['run_id'], 'provider_archive': reference(archive),
+            'original_report': reference(file_reference(original_sources, candidate['checks'][check])),
+            'qualified_report': reference(report_path), 'original_verdict_preserved': True,
+            'native_tests_rerun': False}
 
 
 def prepare(args):
@@ -201,6 +279,27 @@ def prepare(args):
     require(digest(archive) == args.artifact_sha256, 'downloaded native artifact digest differs')
     retained = output / 'original-native'
     extract_archive(archive, retained)
+    if getattr(args, 'gcoms_native_input', None):
+        spec = json.loads(args.gcoms_native_input)
+        require(set(spec) == {'run_id', 'artifact_id', 'artifact_sha256'} and
+                all(type(spec[k]) is int and spec[k] > 0 for k in ('run_id', 'artifact_id')) and
+                re.fullmatch('[0-9a-f]{64}', spec['artifact_sha256']), 'invalid retained GComs native input')
+        reused_run = gh_json(f'repos/{REPO}/actions/runs/{spec["run_id"]}')
+        reused_artifact = gh_json(f'repos/{REPO}/actions/artifacts/{spec["artifact_id"]}')
+        require(reused_run.get('status') == 'completed' and reused_run.get('conclusion') == 'success'
+                and reused_artifact.get('digest') == 'sha256:' + spec['artifact_sha256']
+                and type(reused_artifact.get('size_in_bytes')) is int
+                and 0 < reused_artifact['size_in_bytes'] <= 1024 ** 3,
+                'retained GComs qualification is not a complete immutable provider result')
+        reused_archive = output / 'gcoms-native.zip'
+        with reused_archive.open('wb') as stream:
+            subprocess.run(['gh', 'api', f'repos/{REPO}/actions/artifacts/{spec["artifact_id"]}/zip'],
+                           stdout=stream, check=True, timeout=600)
+        require(digest(reused_archive) == spec['artifact_sha256'], 'retained GComs native download differs')
+        extract_archive(reused_archive, output / 'gcoms-native')
+        write_json(output / 'gcoms-native-input.json', spec)
+        write_json(output / 'gcoms-native-run.json', reused_run)
+        write_json(output / 'gcoms-native-artifact.json', reused_artifact)
     native = verify_native(retained, args.target, expected, repositories, recover_omitted_config=True)
     report = {'schema': 1, 'scope': 'macos_package_retry_existing_native', 'target': args.target,
               'controller': controller, 'sources': native['sources'], 'native': native,
@@ -350,6 +449,7 @@ def main():
     parser.add_argument('--artifact-sha256')
     parser.add_argument('--gchat-commit')
     parser.add_argument('--gcoms-commit')
+    parser.add_argument('--gcoms-native-input', help='Verified complete same-input GComs provider JSON; original reports stay intact')
     args = parser.parse_args()
     if args.phase == 'prepare':
         for name in ('native_run_id', 'artifact_id'):

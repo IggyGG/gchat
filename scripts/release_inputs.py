@@ -33,6 +33,8 @@ CONTROL_FILES = frozenset({
     'scripts/release_store_worker.py', 'scripts/release_publish.py',
     'scripts/release_feed.py', 'scripts/release_apt.py',
     'scripts/ios-lifecycle.py', 'scripts/ios-verify-retained.py',
+    'scripts/macos-package.py', '.github/workflows/macos-package.yml',
+    'scripts/tests/macos_package_test.py',
     'scripts/fixtures/ios-lifecycle/LifecycleTests.swift',
     'scripts/windows-network.py', 'scripts/test-native-network.py',
     'scripts/windows-rollback.py', 'scripts/tests/windows_rollback_test.py',

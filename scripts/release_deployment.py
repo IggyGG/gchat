@@ -155,7 +155,7 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
             else:
                 # Preserve the failed revision; a correction does not erase it.
                 write(directory / ('revision-' + report['revision'] + '-' + str(time.time_ns()) + '.json'), report)
-                report.update(revision=revision, inventory=config, state='deploying')
+                report.update(revision=revision, inventory=config, state='deploying', reason='')
                 report.pop('operator_rollback', None)
         rolling_back = any(
             item.get('state') in {'rollback_pending', 'rollback_failed'} for item in report['targets'].values())

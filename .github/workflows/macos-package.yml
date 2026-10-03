@@ -33,6 +33,10 @@ on:
         description: Optional original coordinator manifest; never the controller source identity
         required: false
         type: string
+      gcoms_native_input:
+        description: Optional successful same-input GComs run/artifact/digest JSON; original native verdicts stay intact
+        required: false
+        type: string
 permissions:
   contents: read
   actions: read
@@ -80,11 +84,13 @@ jobs:
           GCOMS_COMMIT: ${{ inputs.gcoms_commit }}
           TARGET: ${{ inputs.target }}
           GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+          GCOMS_NATIVE_INPUT: ${{ inputs.gcoms_native_input }}
         run: >-
           python3 controller/scripts/macos-package.py prepare
           --gchat gchat --gcoms gcoms --target "$TARGET" --output retry-evidence
           --native-run-id "$NATIVE_RUN_ID" --artifact-id "$ARTIFACT_ID"
           --artifact-sha256 "$ARTIFACT_SHA256" --gchat-commit "$GCHAT_COMMIT" --gcoms-commit "$GCOMS_COMMIT"
+          --gcoms-native-input "$GCOMS_NATIVE_INPUT"
       - name: Preflight protected signing certificate import
         timeout-minutes: 2
         env:
