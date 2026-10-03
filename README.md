@@ -1,3 +1,263 @@
+# GChat
+
+Release status, 2026-10-03: all 17 infrastructure targets have passed deployment and health checks. Linux, Windows, both Mac architectures and SDK 0.1.98 are available. Linux 0.1.98 is installed locally; a fresh launcher start selects it. The currently open desktop still uses its previous executable. Android and iOS installed acceptance remain in progress. Apple encryption approval is IN_REVIEW, including France, so iOS availability remains open.
+
+The deployed controller is 2b2478e, with 171 actual-image checks and 319 cold-pull Kubernetes checks passed. Native helper 22d6bc6 is independently active: 813 CI tests passed with five existing skips in 32.149 seconds; L0 checks 820 paths and API 2/3 contracts remain unchanged. Its Android driver waits for keyboard/input confirmation; iOS runner failures report bounded public categories and fail promptly on runner exit. The complete original iOS archive is recovered and hash checked before native installation. Android startup capture remains limited to a fresh owned AVD before actual text input; tapping and waiting for an unopened keyboard cannot expose a passphrase. Original failed providers remain retained.
+
+Routine releases start from a push to Forgejo `main`. The source mirror, ten-minute settlement, qualification, deployment and publication continue automatically. Inspect progress with `python3 scripts/release.py status`; use `resume` for an explicit retained failure and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and the [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
+
+The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
+adds four iPhone and four iPad screenshots plus English listing metadata to the
+iOS draft. App Store publication still requires the qualified build and Apple's
+encryption approval; the pack records its upload receipt and current status.
+
+The [Play Store creative pack](marketing/play-store/retro-v1/README.md) contains
+an old-school chat visual direction, exported graphics, a local preview and
+listing copy submitted to Google Play. Its sample-data browser captures match
+the shared UI source of published Android build 1055; submission details are
+recorded in the pack's `publication.json`.
+
+Current work follows the [reliability test plan](docs/RELIABILITY_TEST_PLAN.md):
+cluster recovery/concurrency checks, then exact-artifact platform validation.
+Historical release/device observations below are not current qualification.
+
+GChat uses the public `gcoms` Rust application API for its protocol runtime. It
+owns the chat archive and UI; GComs owns identity, encrypted protocol state,
+network enrollment, recovery, invitations and the file-transfer worker. GChat
+retains its archive, signed network settings, file-cache path/key and UI contract. The embedded backend is the
+default. To use a bundled shared service, run `gchat daemon --gcomsd
+/absolute/bundle/gcomsd --gcoms-endpoint /private/runtime/gcoms.sock` with the usual
+instance options. Each GChat profile remains independent inside that service.
+Locking/disconnecting stops that profile without stopping other applications.
+
+In-process hosts retain incoming channel and private messages in a bounded,
+encrypted protocol inbox until the chat archive is saved. Failed archive writes
+leave those messages available for retry and show an actionable storage notice;
+uncommitted history is not published. The external shared-service archive path
+keeps its existing contract and is outside this new transaction boundary. See
+the [archive transaction and rollback requirements](docs/RELIABILITY_TEST_PLAN.md#incoming-archive-transaction-candidate).
+
+Attached views share a cached projection and wait for actual archive/UI changes.
+Idle file observation does not copy the retained operation journal. Receiving,
+persistence, delivery acknowledgments and the cover schedule are unchanged.
+The [controlled idle benchmark](docs/evidence/idle-cpu-20260925/summary.json)
+measured 92.45% less CPU with four views and a large retained operation history;
+this is not an installed-client or relay-load measurement.
+Signed Linux 0.1.13 now carries this fix through the update/APT feeds.
+The website’s Linux download link follows the qualified publisher automatically,
+with immutable package links, signatures, hashes and exact source details.
+Existing unlocked instances retain their running executable until their next start;
+see the [deployment receipt](docs/evidence/idle-cpu-20260925/deployment-20260927.json).
+
+For paired-source development, validate against the matching GComs checkout with
+its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public
+registry manifests and canonical release lockfiles intact; each published download
+retains its exact source and dependency bindings in its signed release manifest.
+
+**GChat** is the reference chat application for **GComs**, with a Tauri desktop
+application, terminal client and local service built from one repository.
+The Rust API contract drives both native clients and generated TypeScript bindings.
+
+Development and release authority remains in the existing local Forgejo repository.
+Public delivery uses [IggyGG/gchat](https://github.com/IggyGG/gchat) and
+[IggyGG/gcoms](https://github.com/IggyGG/gcoms) as GitHub mirrors.
+Current downloads are signed Linux x86_64 and Android through Google Play.
+Mac and Windows updates for the current network are still being qualified; their
+earlier signed installers remain archived.
+Physical Android and iPhone checks are currently deferred. Four disposable Android
+emulators and the Mac iOS simulator passed their scoped lifecycle checks;
+[exact source/artifact bindings](docs/evidence/emulator-lifecycle-20260924/summary.json)
+remain separate from current runtime and mobile network/file qualification.
+Historical physical-device and release observations remain in [PLAN.md](PLAN.md).
+Live APNs/FCM and new store publication are not qualified by those lifecycle runs.
+Windows x86_64 and iOS
+releases are being qualified independently;
+availability and exact versions are listed on the download page. See
+[platform release delivery](docs/PLATFORM_RELEASES.md).
+Retained Windows network diagnosis can reuse a pinned signed installer via
+`windows-verify.yml` (`network_candidate: windows29`), without rebuilding it;
+aggregate fixture diagnostics preserve the original recovery deadlines.
+
+For installation and first launch, see [gchat.boo](https://gchat.boo/#downloads)
+and the [installation guide](docs/INSTALL.md). GChat includes signed Hetzner relay
+settings; users import a network invitation and do not configure relay addresses.
+The [website and delivery tooling](docs/PUBLIC_DELIVERY.md) live in this repository.
+
+Current validation covers secure connections, authentication, transport security,
+local IPC access controls, disconnect/reconnect behavior, and private file sharing.
+The shared Rust integration has a native Linux/macOS test and size matrix; see
+the [GComs integration report](https://github.com/IggyGG/gcoms/blob/main/docs/RUST_INTEGRATIONS.md).
+GChat's desktop release checks are recorded separately in the
+[release evidence procedure](docs/RELEASE_EVIDENCE.md).
+
+[Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
+authorized sources, explicit download acceptance and a bounded encrypted cache.
+Optional local [persistence diagnostics](docs/PERSISTENCE.md) measure protocol
+profile write counts, bytes and time during file-transfer investigation.
+
+## Build and run
+
+Install Rust 1.98, Node 22, npm 11 and the platform's Tauri v2 prerequisites.
+After GComs 0.1.0 packages are available from crates.io/npm:
+
+```sh
+cargo build --locked -p gchat-tui
+cargo run -p gchat-tui --bin gchat -- --help
+npm ci --ignore-scripts
+npm run check
+npm test
+npm run build
+python3 scripts/collect-notices.py
+npm run tauri -w @gchat/client -- dev
+```
+
+For development before package publication, use GComs' package-consumer staging
+script. Public manifests use versioned registry dependencies; no private Ghost
+checkout or sibling layout is required by the released project.
+
+Run `gchat paths` to inspect the existing platform profile/archive locations.
+The desktop app launches its own local service worker. `gchat daemon --interactive`
+starts a locked standalone service; attach a UI to unlock the selected instance.
+Headless deployments may use an owner-only passphrase file or private stdin pipe.
+Never put passphrases on a command line. An existing archive with a separate
+passphrase remains locked until explicitly unlocked.
+
+## Network and identity
+
+GChat bundles the existing application's signed network defaults and installed
+trust root. Joining the operated network requires an invitation. Enter it through
+the application's onboarding flow. The invitation must agree with independently
+trusted network configuration. Custom providers can be configured explicitly.
+
+An unavailable provider does not mean a profile is corrupt. Preserve the profile,
+archive, invitation and retained network state while diagnosing recovery. Do not
+create a replacement identity to repair an unavailable connection. The app preserves
+existing profile paths and formats during the GComs branding transition.
+
+GChat cannot open a retained Ghost machine/central profile as personal chat. Use
+its original scoped host. Public GChat excludes managed commands, machine agents,
+recorders and private installer/identity services.
+
+## Project map
+
+| Location | Purpose |
+| --- | --- |
+| `crates/chat-api` (`gchat-api`) | Typed chat service and shared UI schema |
+| `crates/core` (`gchat-core`) | Profile, archive, chat model and standalone service |
+| `crates/tui` (`gchat-tui`) | `gchat` terminal application and daemon entry point |
+| `ui` | Shared Svelte UI and bound RPC bridge |
+| `apps/client` | Tauri desktop client |
+| `website` | gchat.boo source; built with `scripts/website.py` |
+
+See [TESTING.md](TESTING.md), [integration](docs/INTEGRATION.md),
+[network operation](docs/NETWORK.md) and [SECURITY.md](SECURITY.md).
+GComs provides transport and typed services; GChat owns chat behavior and UI.
+
+MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
+Current downloads cover Linux x86_64 and Android through Google Play.
+Mac and Windows current-network updates are being qualified; iOS publication
+awaits Apple’s France-inclusive encryption review.
+Android lifecycle checks include emulator coverage and a limited physical-phone
+follow-up; battery and attributable live push qualification remain open. Each
+download retains its own source and validation scope. See the [release evidence procedure](docs/RELEASE_EVIDENCE.md).
+
+The preview uses GComs' rustls/XML advisory fixes and disables unused postcard
+heapless defaults. `deny.toml` records reviewed transitive-version exceptions and
+two unmaintained build-time macros (OpenMLS/libcrux and ratatui). These require
+follow-up upgrades; no runtime vulnerability is waived. The desktop dependency
+graph has its own audit and native packaging requirements. See the exact
+[dependency review and follow-up](docs/DEPENDENCIES.md).
+
+## Optional local fleet controller
+
+Desktop/headless workers accept `--fleet-config <private-file>` (`GCHAT_FLEET_CONFIG`). The file pins this existing GChat safety number and fixed component partition. The worker opens `<protocol-socket>.fleet` for registered local credentials without opening a second profile. Locking or disconnecting drains fleet connections; registry changes revoke existing connections before replacement. The private component configuration must accompany every subsequent startup of that profile. Fleet publication metadata is an opt-in file API backed by the encrypted chat archive; ordinary file replies stay compatible.
+
+## Welcome and invitation cards
+
+The shared welcome screen detects an existing identity before offering setup,
+confirms new passphrases, and offers the existing recovery guidance. Invitations
+can be saved as evergreen PNG cards and opened or dropped into GChat. Send the
+original PNG as a file: screenshots and edited images lose invitation data.
+Opening a card stages or previews it; joining still requires explicit acceptance
+of the service-validated network and channel. Text invitations remain supported.
+See [UX behavior and qualification](docs/UX-CARDS.md). No new dependencies.
+
+Locked passphrase errors appear once, beside the field, and can be retried.
+The signed local Linux package passed native first-run, retained-profile upgrade,
+invitation picker and narrow-layout checks. See the
+[installation receipt](docs/evidence/ux-cards/signed-local-summary.json); public
+installer qualification remains separate.
+
+The desktop dependency policy records exact native API version duplicates required
+by the updater's existing dependencies; see [the graph review](docs/DEPENDENCIES.md).
+
+Release file checks use a bounded 16 MiB interrupted transfer; the 1 GiB campaign runs separately. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
+
+SDK release archives are closed and hash-checked before atomic publication,
+including on Windows. Interrupted copies leave the previous index intact.
+
+The macOS release worker allows 120 seconds per browser-download socket;
+this setup budget does not change application test deadlines.
+
+Release publication accepts repeated references to the same verified artifact,
+while checking every evidence hash and rejecting ambiguous installer candidates.
+Both updater and package inputs are selected before public pointers change.
+# Release operation
+
+Production uses immutable artifacts and separately bound qualification evidence.
+See [automatic releases](docs/AUTOMATIC_RELEASES.md) for conservative source-change
+classification, single-flight admission, and the owner-approved
+Windows 4 MiB recovery check. A tooling update or policy decision is not a native
+application pass.
+
+The `scripts/hosted-live.py` qualification driver exercises real hosted GChat
+daemons on the installed protected network, with creator-offline admission,
+covered receipts, moderation, restart and a 16 MiB resumed file. It retains
+private profiles/evidence and waits for explicit network-operator provisioning
+of its generated channel ID. Running it is not an installed-release claim.
+
+Hosted live qualification reports correctness and latency independently. The
+first completed protected-network two-client journey verified messages, policies,
+offline recovery and a resumed 16 MiB file, but missed small-room receipt and
+file-resume timing targets. See docs/evidence/irc-hosted-live-20260930/summary.json;
+it does not qualify the 64-member or native installed release gates.
+
+The later two-piece hosted file window passes the two-client live correctness
+and latency journey, including interrupted 16MiB resume and covered completion.
+See `docs/evidence/irc-hosted-live-20260930/window-07.json`. Large-room capacity
+and native installed release qualification remain separate.
+
+The integrated client uses IPC26 for hosted channels and modern files while
+preserving released legacy owner recovery. Update the paired daemon and client
+together; unpublished task IPC23/24 dialects are refused. Legacy Channel recovery
+remains an explicit owner action; hosted policy uses its own verified controls.
+
+The current merged hosted implementation passes its two-client protected-network
+journey, including covered delivery receipts and interrupted 16 MiB verification.
+`scripts/hosted-capacity.py` provides separate 12-member smoke and 64-member
+application campaigns. The full 64-member campaign passes covered delivery,
+recovery, file resume, removal/replacement and cleanup; see the
+[qualification receipt](docs/evidence/irc-hosted-capacity-20260930/capacity-64-01-pass.json).
+Native installed publication remains separately gated.
+
+Hosted channels show progress while catching up on a large membership backlog.
+The count reflects updates already applied, without estimating an unknown total.
+Ordinary offline-message recovery retains its ten-second qualification target;
+long membership replay is measured separately. Delivery status still requires
+authenticated recipient acknowledgments on the covered channel.
+
+The paired implementation passes 1,142 GComs tests, 194 GChat tests, 63 UI tests,
+all 22 archive consumers and Linux desktop compilation. These source checks and
+the 64-member campaign do not imply publication of a new native installer.
+
+Hosted channels retain the 64-member maximum, including the owner. Operators
+may lower it with `/mode +l` (2–64); clients and the service enforce the ceiling.
+
+
+# Retained earlier stabilization checkpoints
+
+These notes preserve earlier outcomes and implementation details. Current deployment and worker status are stated at the top of this README; old pending states below are not current launch claims.
+
 Mobile follow-up (2026-10-03): native helper 8eced78 passed all 809 CI controls in 36.064 seconds. The actual iOS current and baseline archives/executables/signing checks passed; its XCTest bridge did not start before its original deadline. Its helper now reports only static compiler locations, numeric transport/HTTP codes and configuration/exit categories, and notices a dead runner immediately. Android reached its first password input, then lost the app before confirmation: text input now waits for the actual IME and exact focused value before Back, using the existing native smoke helper. No production app is rebuilt or resigned. Both original failures are retained; actual installed acceptance remains required.
 
 Current launch (2026-10-03): all 17 infrastructure targets are deployed and healthy. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Controller 2b2478e is active with both containers ready, no restarts, 171 actual-image checks and 319 cold-pull Kubernetes checks. The automatic source gate passed 808 tests with five existing skips in 36.462 seconds. Android and iOS installed acceptance remain incomplete after explicit native worker failures; their reports are retained. Apple encryption approval remains IN_REVIEW, including France. Linux 0.1.98 is installed and selected on a fresh launcher start; the open desktop still uses its previous executable. Full launch remains open on the mobile gates and external store availability.
@@ -534,252 +794,3 @@ Current paired GComs source selects responsive profile 46: messages are eligible
 immediately, with independent randomized interactive cover. Timing/activity privacy
 is unqualified. See [production policy](docs/PRODUCTION_RELEASE.md); this source
 change is not a claim that installed/store artifacts have been updated.
-
-# GChat
-
-The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
-adds four iPhone and four iPad screenshots plus English listing metadata to the
-iOS draft. App Store publication still requires the qualified build and Apple's
-encryption approval; the pack records its upload receipt and current status.
-
-The [Play Store creative pack](marketing/play-store/retro-v1/README.md) contains
-an old-school chat visual direction, exported graphics, a local preview and
-listing copy submitted to Google Play. Its sample-data browser captures match
-the shared UI source of published Android build 1055; submission details are
-recorded in the pack's `publication.json`.
-
-Current work follows the [reliability test plan](docs/RELIABILITY_TEST_PLAN.md):
-cluster recovery/concurrency checks, then exact-artifact platform validation.
-Historical release/device observations below are not current qualification.
-
-GChat uses the public `gcoms` Rust application API for its protocol runtime. It
-owns the chat archive and UI; GComs owns identity, encrypted protocol state,
-network enrollment, recovery, invitations and the file-transfer worker. GChat
-retains its archive, signed network settings, file-cache path/key and UI contract. The embedded backend is the
-default. To use a bundled shared service, run `gchat daemon --gcomsd
-/absolute/bundle/gcomsd --gcoms-endpoint /private/runtime/gcoms.sock` with the usual
-instance options. Each GChat profile remains independent inside that service.
-Locking/disconnecting stops that profile without stopping other applications.
-
-In-process hosts retain incoming channel and private messages in a bounded,
-encrypted protocol inbox until the chat archive is saved. Failed archive writes
-leave those messages available for retry and show an actionable storage notice;
-uncommitted history is not published. The external shared-service archive path
-keeps its existing contract and is outside this new transaction boundary. See
-the [archive transaction and rollback requirements](docs/RELIABILITY_TEST_PLAN.md#incoming-archive-transaction-candidate).
-
-Attached views share a cached projection and wait for actual archive/UI changes.
-Idle file observation does not copy the retained operation journal. Receiving,
-persistence, delivery acknowledgments and the cover schedule are unchanged.
-The [controlled idle benchmark](docs/evidence/idle-cpu-20260925/summary.json)
-measured 92.45% less CPU with four views and a large retained operation history;
-this is not an installed-client or relay-load measurement.
-Signed Linux 0.1.13 now carries this fix through the update/APT feeds.
-The website’s Linux download link follows the qualified publisher automatically,
-with immutable package links, signatures, hashes and exact source details.
-Existing unlocked instances retain their running executable until their next start;
-see the [deployment receipt](docs/evidence/idle-cpu-20260925/deployment-20260927.json).
-
-For paired-source development, validate against the matching GComs checkout with
-its `scripts/check-gchat.py --gchat /absolute/gchat --offline` command. Keep public
-registry manifests and canonical release lockfiles intact; each published download
-retains its exact source and dependency bindings in its signed release manifest.
-
-**GChat** is the reference chat application for **GComs**, with a Tauri desktop
-application, terminal client and local service built from one repository.
-The Rust API contract drives both native clients and generated TypeScript bindings.
-
-Development and release authority remains in the existing local Forgejo repository.
-Public delivery uses [IggyGG/gchat](https://github.com/IggyGG/gchat) and
-[IggyGG/gcoms](https://github.com/IggyGG/gcoms) as GitHub mirrors.
-Current downloads are signed Linux x86_64 and Android through Google Play.
-Mac and Windows updates for the current network are still being qualified; their
-earlier signed installers remain archived.
-Physical Android and iPhone checks are currently deferred. Four disposable Android
-emulators and the Mac iOS simulator passed their scoped lifecycle checks;
-[exact source/artifact bindings](docs/evidence/emulator-lifecycle-20260924/summary.json)
-remain separate from current runtime and mobile network/file qualification.
-Historical physical-device and release observations remain in [PLAN.md](PLAN.md).
-Live APNs/FCM and new store publication are not qualified by those lifecycle runs.
-Windows x86_64 and iOS
-releases are being qualified independently;
-availability and exact versions are listed on the download page. See
-[platform release delivery](docs/PLATFORM_RELEASES.md).
-Retained Windows network diagnosis can reuse a pinned signed installer via
-`windows-verify.yml` (`network_candidate: windows29`), without rebuilding it;
-aggregate fixture diagnostics preserve the original recovery deadlines.
-
-For installation and first launch, see [gchat.boo](https://gchat.boo/#downloads)
-and the [installation guide](docs/INSTALL.md). GChat includes signed Hetzner relay
-settings; users import a network invitation and do not configure relay addresses.
-The [website and delivery tooling](docs/PUBLIC_DELIVERY.md) live in this repository.
-
-Current validation covers secure connections, authentication, transport security,
-local IPC access controls, disconnect/reconnect behavior, and private file sharing.
-The shared Rust integration has a native Linux/macOS test and size matrix; see
-the [GComs integration report](https://github.com/IggyGG/gcoms/blob/main/docs/RUST_INTEGRATIONS.md).
-GChat's desktop release checks are recorded separately in the
-[release evidence procedure](docs/RELEASE_EVIDENCE.md).
-
-[Private file sharing](docs/FILES.md) adds verified pieces, restart, multiple
-authorized sources, explicit download acceptance and a bounded encrypted cache.
-Optional local [persistence diagnostics](docs/PERSISTENCE.md) measure protocol
-profile write counts, bytes and time during file-transfer investigation.
-
-## Build and run
-
-Install Rust 1.98, Node 22, npm 11 and the platform's Tauri v2 prerequisites.
-After GComs 0.1.0 packages are available from crates.io/npm:
-
-```sh
-cargo build --locked -p gchat-tui
-cargo run -p gchat-tui --bin gchat -- --help
-npm ci --ignore-scripts
-npm run check
-npm test
-npm run build
-python3 scripts/collect-notices.py
-npm run tauri -w @gchat/client -- dev
-```
-
-For development before package publication, use GComs' package-consumer staging
-script. Public manifests use versioned registry dependencies; no private Ghost
-checkout or sibling layout is required by the released project.
-
-Run `gchat paths` to inspect the existing platform profile/archive locations.
-The desktop app launches its own local service worker. `gchat daemon --interactive`
-starts a locked standalone service; attach a UI to unlock the selected instance.
-Headless deployments may use an owner-only passphrase file or private stdin pipe.
-Never put passphrases on a command line. An existing archive with a separate
-passphrase remains locked until explicitly unlocked.
-
-## Network and identity
-
-GChat bundles the existing application's signed network defaults and installed
-trust root. Joining the operated network requires an invitation. Enter it through
-the application's onboarding flow. The invitation must agree with independently
-trusted network configuration. Custom providers can be configured explicitly.
-
-An unavailable provider does not mean a profile is corrupt. Preserve the profile,
-archive, invitation and retained network state while diagnosing recovery. Do not
-create a replacement identity to repair an unavailable connection. The app preserves
-existing profile paths and formats during the GComs branding transition.
-
-GChat cannot open a retained Ghost machine/central profile as personal chat. Use
-its original scoped host. Public GChat excludes managed commands, machine agents,
-recorders and private installer/identity services.
-
-## Project map
-
-| Location | Purpose |
-| --- | --- |
-| `crates/chat-api` (`gchat-api`) | Typed chat service and shared UI schema |
-| `crates/core` (`gchat-core`) | Profile, archive, chat model and standalone service |
-| `crates/tui` (`gchat-tui`) | `gchat` terminal application and daemon entry point |
-| `ui` | Shared Svelte UI and bound RPC bridge |
-| `apps/client` | Tauri desktop client |
-| `website` | gchat.boo source; built with `scripts/website.py` |
-
-See [TESTING.md](TESTING.md), [integration](docs/INTEGRATION.md),
-[network operation](docs/NETWORK.md) and [SECURITY.md](SECURITY.md).
-GComs provides transport and typed services; GChat owns chat behavior and UI.
-
-MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
-Current downloads cover Linux x86_64 and Android through Google Play.
-Mac and Windows current-network updates are being qualified; iOS publication
-awaits Apple’s France-inclusive encryption review.
-Android lifecycle checks include emulator coverage and a limited physical-phone
-follow-up; battery and attributable live push qualification remain open. Each
-download retains its own source and validation scope. See the [release evidence procedure](docs/RELEASE_EVIDENCE.md).
-
-The preview uses GComs' rustls/XML advisory fixes and disables unused postcard
-heapless defaults. `deny.toml` records reviewed transitive-version exceptions and
-two unmaintained build-time macros (OpenMLS/libcrux and ratatui). These require
-follow-up upgrades; no runtime vulnerability is waived. The desktop dependency
-graph has its own audit and native packaging requirements. See the exact
-[dependency review and follow-up](docs/DEPENDENCIES.md).
-
-## Optional local fleet controller
-
-Desktop/headless workers accept `--fleet-config <private-file>` (`GCHAT_FLEET_CONFIG`). The file pins this existing GChat safety number and fixed component partition. The worker opens `<protocol-socket>.fleet` for registered local credentials without opening a second profile. Locking or disconnecting drains fleet connections; registry changes revoke existing connections before replacement. The private component configuration must accompany every subsequent startup of that profile. Fleet publication metadata is an opt-in file API backed by the encrypted chat archive; ordinary file replies stay compatible.
-
-## Welcome and invitation cards
-
-The shared welcome screen detects an existing identity before offering setup,
-confirms new passphrases, and offers the existing recovery guidance. Invitations
-can be saved as evergreen PNG cards and opened or dropped into GChat. Send the
-original PNG as a file: screenshots and edited images lose invitation data.
-Opening a card stages or previews it; joining still requires explicit acceptance
-of the service-validated network and channel. Text invitations remain supported.
-See [UX behavior and qualification](docs/UX-CARDS.md). No new dependencies.
-
-Locked passphrase errors appear once, beside the field, and can be retried.
-The signed local Linux package passed native first-run, retained-profile upgrade,
-invitation picker and narrow-layout checks. See the
-[installation receipt](docs/evidence/ux-cards/signed-local-summary.json); public
-installer qualification remains separate.
-
-The desktop dependency policy records exact native API version duplicates required
-by the updater's existing dependencies; see [the graph review](docs/DEPENDENCIES.md).
-
-Release file checks use a bounded 16 MiB interrupted transfer; the 1 GiB campaign runs separately. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
-
-SDK release archives are closed and hash-checked before atomic publication,
-including on Windows. Interrupted copies leave the previous index intact.
-
-The macOS release worker allows 120 seconds per browser-download socket;
-this setup budget does not change application test deadlines.
-
-Release publication accepts repeated references to the same verified artifact,
-while checking every evidence hash and rejecting ambiguous installer candidates.
-Both updater and package inputs are selected before public pointers change.
-# Release operation
-
-Production uses immutable artifacts and separately bound qualification evidence.
-See [automatic releases](docs/AUTOMATIC_RELEASES.md) for conservative source-change
-classification, paused admission during stabilization, and the owner-approved
-Windows 4 MiB recovery check. A tooling update or policy decision is not a native
-application pass.
-
-The `scripts/hosted-live.py` qualification driver exercises real hosted GChat
-daemons on the installed protected network, with creator-offline admission,
-covered receipts, moderation, restart and a 16 MiB resumed file. It retains
-private profiles/evidence and waits for explicit network-operator provisioning
-of its generated channel ID. Running it is not an installed-release claim.
-
-Hosted live qualification reports correctness and latency independently. The
-first completed protected-network two-client journey verified messages, policies,
-offline recovery and a resumed 16 MiB file, but missed small-room receipt and
-file-resume timing targets. See docs/evidence/irc-hosted-live-20260930/summary.json;
-it does not qualify the 64-member or native installed release gates.
-
-The later two-piece hosted file window passes the two-client live correctness
-and latency journey, including interrupted 16MiB resume and covered completion.
-See `docs/evidence/irc-hosted-live-20260930/window-07.json`. Large-room capacity
-and native installed release qualification remain separate.
-
-The integrated client uses IPC25 for hosted channels and modern files while
-preserving released legacy owner recovery. Update the paired daemon and client
-together; unpublished task IPC23/24 dialects are refused. Legacy Channel recovery
-remains an explicit owner action; hosted policy uses its own verified controls.
-
-The current merged hosted implementation passes its two-client protected-network
-journey, including covered delivery receipts and interrupted 16 MiB verification.
-`scripts/hosted-capacity.py` provides separate 12-member smoke and 64-member
-application campaigns. The full 64-member campaign passes covered delivery,
-recovery, file resume, removal/replacement and cleanup; see the
-[qualification receipt](docs/evidence/irc-hosted-capacity-20260930/capacity-64-01-pass.json).
-Native installed publication remains separately gated.
-
-Hosted channels show progress while catching up on a large membership backlog.
-The count reflects updates already applied, without estimating an unknown total.
-Ordinary offline-message recovery retains its ten-second qualification target;
-long membership replay is measured separately. Delivery status still requires
-authenticated recipient acknowledgments on the covered channel.
-
-The paired implementation passes 1,142 GComs tests, 194 GChat tests, 63 UI tests,
-all 22 archive consumers and Linux desktop compilation. These source checks and
-the 64-member campaign do not imply publication of a new native installer.
-
-Hosted channels retain the 64-member maximum, including the owner. Operators
-may lower it with `/mode +l` (2–64); clients and the service enforce the ceiling.

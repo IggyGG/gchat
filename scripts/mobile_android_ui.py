@@ -134,11 +134,12 @@ class AndroidUI:
         self.shell('input', 'tap', (x1 + x2) // 2, (y1 + y2) // 2)
 
     def type(self, node, value):
-        self.input_started = True
+        self.ui_observation['input_target_bounds'] = android.ui_bounds(node)
         self.tap(node)
         # WebView focus and the IME arrive asynchronously. Pressing Back before
         # the keyboard appears closes the app instead of dismissing the IME.
         android.wait_keyboard(self.shell, True)
+        self.input_started = True
         self.shell('input', 'text', shlex.quote(value.replace(' ', '%s')))
         self.until(lambda: any(child.get('focused') == 'true' and child.get('text') == value
                               for child in self.tree().iter('node')), 10)

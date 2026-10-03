@@ -239,6 +239,7 @@ class MobileAcceptanceTests(unittest.TestCase):
                 ui.type(ET.Element('node'),'fixture-private-value')
             shell.assert_not_called()
             self.assertNotIn('inputs_confirmed',ui.ui_observation)
+            self.assertFalse(ui.input_started)
 
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):
