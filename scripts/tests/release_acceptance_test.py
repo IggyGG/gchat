@@ -164,6 +164,18 @@ class RetainedProviderTests(unittest.TestCase):
 
 
 class NativeAcceptanceTests(unittest.TestCase):
+    def test_provider_outage_classification_preserves_auth_and_non_provider_failures(self):
+        for status in (502,503,504):
+            error=subprocess.CalledProcessError(1,['gh','api','private-input'],stderr=f'gh: outage (HTTP {status})'.encode())
+            self.assertTrue(acceptance.provider_temporarily_unavailable(error))
+        self.assertTrue(acceptance.provider_temporarily_unavailable(subprocess.TimeoutExpired(('gh','api','private-input'),60)))
+        for command,stderr in ((['gh','api'],b'HTTP 403'),(['gh','api'],b'HTTP 404'),
+                               (['gh','api'],b'certificate verification failed'),(['ssh','private-host'],b'HTTP 503'),
+                               (['gh','secret'],b'HTTP 503')):
+            self.assertFalse(acceptance.provider_temporarily_unavailable(
+                subprocess.CalledProcessError(1,command,stderr=stderr)))
+        self.assertFalse(acceptance.provider_temporarily_unavailable(subprocess.TimeoutExpired(['ssh','private-host'],60)))
+
     def test_production_controller_revision_is_the_default_and_legacy_requests_remain_explicit(self):
         manifest = candidate()
         with patch.dict(acceptance.os.environ, GCHAT_CONTROLLER_REVISION='7'*40):

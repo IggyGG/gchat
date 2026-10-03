@@ -19,6 +19,7 @@ from release_network_canary import module
 ios = module('ios-build')
 lifecycle = module('ios-lifecycle')
 UI_PHASES = frozenset(('ready', 'finish', 'stop', 'unlock', 'join', 'identity', 'send',
+    'join_invitation', 'join_accept', 'join_connected', 'join_select',
     'received', 'delivered', 'history', 'file_action', 'progress', 'export',
     'unlock-start', 'unlock-passphrase', 'unlock-confirm', 'unlock-submit', 'unlock-ready',
     'join-ready', 'join-arrival', 'join-review', 'join-preview', 'join-input', 'join-accept', 'join-connected',
@@ -292,7 +293,13 @@ class IOSUI:
         # Exercise the existing visible invitation form on the unchanged app.
         # OS activation failures remain separate evidence; this journey must
         # prove actual enrollment, messaging, retained files and replacement.
-        self.call('join', invitation=invitation)
+        # Each actual UI stage keeps its original 120-second command limit;
+        # the enclosing installed journey still has its original 600 seconds.
+        self.call('join_invitation', invitation=invitation)
+        self.call('join_accept')
+        state = self.call('join_connected')
+        require(state in ('joined', 'selected'), 'actual iOS enrollment state unavailable')
+        self.call('join_select', joined=state == 'joined')
 
     def identity(self):
         value = self.call('identity')

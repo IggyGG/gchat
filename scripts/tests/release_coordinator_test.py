@@ -341,6 +341,34 @@ class CoordinatorTests(unittest.TestCase):
         self.assertEqual(seen,[['first'],['recover']])
         self.assertEqual(c.ledger.target(release,'android')['state'],'building')
 
+    def test_provider_unavailable_exit_automatically_reconciles_original_effect(self):
+        c=Coordinator(self.root,{'minimum_free_bytes':0,'automatic_recovery':True,
+            'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})
+        self.addCleanup(c.ledger.close);release=c.ledger.add(self.manifest)
+        results=[type('Result',(),{'returncode':76})(),type('Result',(),{'returncode':75})()]
+        with patch('release_coordinator.subprocess.run',side_effect=results) as worker:
+            c.step(release,'android');effect=c.ledger.effect(release,'android','build')
+            recovery=json.loads(c.recovery_path(release,'android').read_text())
+            self.assertTrue(recovery['transient']);self.assertEqual(recovery['attempts'],1)
+            c.step(release,'android');self.assertEqual(worker.call_count,1)
+            with patch('release_coordinator.time.time',return_value=recovery['retry_at']):c.step(release,'android')
+        self.assertEqual([call.args[0] for call in worker.call_args_list],[['first'],['recover']])
+        self.assertEqual(c.ledger.effect(release,'android','build')['id'],effect['id'])
+        self.assertEqual(c.ledger.effect(release,'android','build')['state'],'reserved')
+
+    @unittest.skipUnless(os.name == 'posix', 'controller uses POSIX process groups')
+    def test_nonblocking_provider_unavailable_exit_retains_effect_and_cannot_pass(self):
+        recipe={'run':[sys.executable,'-c','raise SystemExit(76)'],
+                'reconcile':[sys.executable,'-c','raise SystemExit(76)']}
+        c=Coordinator(self.root,{'minimum_free_bytes':0,'nonblocking_workers':True,
+            'workers':{'android':{'build':recipe}}})
+        self.addCleanup(c.ledger.close);self.addCleanup(c.close_workers);c.ledger.add(self.manifest)
+        c.execute(self.manifest,'android','build');effect=c.ledger.effect(self.manifest['release_id'],'android','build')
+        next(iter(c.running_workers.values()))['process'].wait(timeout=5)
+        with self.assertRaises(ConnectionError):c.execute(self.manifest,'android','build')
+        self.assertEqual(c.ledger.effect(self.manifest['release_id'],'android','build')['id'],effect['id'])
+        self.assertEqual(c.ledger.effect(self.manifest['release_id'],'android','build')['state'],'reserved')
+
     def test_deterministic_failure_only_resumes_after_worker_revision_changes(self):
         c=Coordinator(self.root,{'minimum_free_bytes':0,'automatic_recovery':True,
             'workers':{'android':{'build':{'run':['first'],'reconcile':['recover']}}}})

@@ -514,12 +514,29 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
             'evidence': [{'path': 'acceptance.zip', 'sha256': digest(archive)}]}
 
 
+def provider_temporarily_unavailable(error):
+    command = error.cmd
+    github = isinstance(command, (list, tuple)) and len(command) >= 2 and list(command[:2]) == ['gh', 'api']
+    stderr = error.stderr or b''
+    if isinstance(stderr, str): stderr = stderr.encode()
+    return bool(github and (isinstance(error, subprocess.TimeoutExpired)
+        or re.search(rb'\bHTTP (?:502|503|504)\b', stderr)))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument('--state', type=Path, required=True)
     parser.add_argument('--config', type=Path, required=True); args = parser.parse_args(); os.umask(0o077)
     output = Path(os.environ['GCHAT_RELEASE_RECEIPT'])
-    result = collect(args.state, json.loads(args.config.read_text()), validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text())),
-        os.environ['GCHAT_RELEASE_TARGET'], output.parent, os.environ['GCHAT_RELEASE_REQUEST_ID'])
+    try:
+        result = collect(args.state, json.loads(args.config.read_text()), validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text())),
+            os.environ['GCHAT_RELEASE_TARGET'], output.parent, os.environ['GCHAT_RELEASE_REQUEST_ID'])
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        if provider_temporarily_unavailable(error):
+            # The coordinator retries its durable request with bounded backoff.
+            # Dispatch intent survives; an unknown submission is reconciled.
+            print('Native provider temporarily unavailable; original request retained')
+            raise SystemExit(76)
+        raise
     if result is None: raise SystemExit(75)
     atomic_json(output, result)
 

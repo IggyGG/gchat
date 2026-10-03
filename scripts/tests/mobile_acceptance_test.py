@@ -238,13 +238,14 @@ class MobileAcceptanceTests(unittest.TestCase):
     def test_android_input_waits_for_keyboard_and_exact_focused_value_before_back(self):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary));events=[]
-            node=ET.Element('node',{'focused':'true','text':'fixture-private-value'})
+            node=ET.Element('node',{'package':'boo.gchat.app','class':'android.widget.EditText',
+                'focused':'true','text':'fixture-private-value'})
             with patch.object(ui,'tap',side_effect=lambda n:events.append('tap')), \
                  patch.object(android_ui.android,'wait_keyboard',side_effect=lambda shell,up:events.append('keyboard-up' if up else 'keyboard-down')), \
                  patch.object(ui,'shell',side_effect=lambda *args:events.append(args[:2])), \
                  patch.object(ui,'tree',side_effect=lambda:events.append('observed-input') or node):
                 ui.type(node,'fixture-private-value')
-            self.assertEqual(events,['tap','keyboard-up',('input','text'),'observed-input',('input','keyevent'),'keyboard-down'])
+            self.assertEqual(events,['tap','keyboard-up','observed-input',('input','text'),'observed-input',('input','keyevent'),'keyboard-down'])
             self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
             self.assertNotIn('fixture-private-value',json.dumps(ui.ui_observation))
 
@@ -257,6 +258,41 @@ class MobileAcceptanceTests(unittest.TestCase):
             shell.assert_not_called()
             self.assertNotIn('inputs_confirmed',ui.ui_observation)
             self.assertFalse(ui.input_started)
+
+    def test_android_keyboard_presence_does_not_replace_intended_field_focus(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            target=ET.Element('node',{'package':'boo.gchat.app','class':'android.widget.EditText',
+                'resource-id':'nickname','content-desc':'Your nickname in this channel'})
+            wrong=ET.Element('node',{'package':'another.app','class':'android.widget.EditText',
+                'focused':'true','resource-id':'nickname','content-desc':'Your nickname in this channel'})
+            def check(fn,*args):
+                self.assertFalse(fn());raise TimeoutError('focus observation')
+            with patch.object(ui,'tap'),patch.object(android_ui.android,'wait_keyboard'), \
+                 patch.object(ui,'tree',return_value=wrong),patch.object(ui,'until',side_effect=check), \
+                 patch.object(ui,'shell') as shell,self.assertRaises(TimeoutError):
+                ui.type(target,'mobile')
+            shell.assert_not_called();self.assertFalse(ui.input_started)
+
+    def test_android_changed_case_diagnostic_does_not_accept_modified_input(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));calls=[]
+            target=ET.Element('node',{'package':'boo.gchat.app','class':'android.widget.EditText',
+                'resource-id':'nickname','focused':'true','text':'Mobile'})
+            def check(fn,*args):
+                calls.append(fn())
+                if len(calls)==2:raise TimeoutError('exact input observation')
+                return calls[-1]
+            with patch.object(ui,'tap'),patch.object(android_ui.android,'wait_keyboard'), \
+                 patch.object(ui,'tree',return_value=target),patch.object(ui,'until',side_effect=check), \
+                 patch.object(ui,'shell') as shell,self.assertRaises(TimeoutError):
+                ui.type(target,'mobile')
+            self.assertEqual(calls,[True,False])
+            self.assertEqual(ui.ui_observation['input_value']['case_changed_fields'],1)
+            self.assertEqual(ui.ui_observation['input_value']['exact_value_fields'],0)
+            self.assertNotIn('Mobile',json.dumps(ui.ui_observation))
+            self.assertNotIn('inputs_confirmed',ui.ui_observation)
+            self.assertFalse(any(call.args[:2]==('input','keyevent') for call in shell.call_args_list))
 
     def test_android_join_selects_the_channel_after_async_enrollment_modal(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -477,9 +513,11 @@ class MobileAcceptanceTests(unittest.TestCase):
         ui=IOSUI.__new__(IOSUI);ui.device='owned-device'
         link='gcoms://join#GCIR1-fixture'
         with patch.object(ui,'stop') as stop,patch('mobile_ios_ui.subprocess.run') as process, \
-             patch.object(ui,'call') as call:
+             patch.object(ui,'call',side_effect=[True,True,'joined',True]) as call:
             ui.join(link)
-        call.assert_called_once_with('join',invitation=link)
+        self.assertEqual([(c.args,c.kwargs) for c in call.call_args_list], [
+            (('join_invitation',),{'invitation':link}), (('join_accept',),{}),
+            (('join_connected',),{}), (('join_select',),{'joined':True})])
         stop.assert_not_called();process.assert_not_called()
         for invalid in ('https://private.invalid','gcoms:'+'x'*180000):
             with self.subTest(invalid_size=len(invalid)),patch.object(ui,'call') as call, \
@@ -494,6 +532,17 @@ class MobileAcceptanceTests(unittest.TestCase):
         for changed in (field, preview.replace('mobile-release','another-channel')+field,
                         preview.replace('Join"','Connect"')+field, preview+field+field):
             self.assertIsNone(android_ui.invitation_nickname(ET.fromstring('<hierarchy>'+changed+'</hierarchy>')))
+
+    def test_ios_staged_join_requires_actual_admission_before_selection(self):
+        for state in ('selected','joined',None,'unknown'):
+            with self.subTest(state=state):
+                ui=IOSUI.__new__(IOSUI)
+                with patch.object(ui,'call',side_effect=[True,True,state,True]) as call:
+                    if state in ('selected','joined'):ui.join('gcoms://join#GCIR1-private_fixture')
+                    else:
+                        with self.assertRaisesRegex(ValueError,'actual iOS enrollment'):ui.join('gcoms://join#GCIR1-private_fixture')
+                self.assertEqual(call.call_count,4 if state in ('selected','joined') else 3)
+                if call.call_count==4:self.assertEqual(call.call_args.kwargs,{'joined':state=='joined'})
 
     def test_xctest_startup_uses_setup_budget_before_issuing_ui_commands(self):
         bridge=Bridge()

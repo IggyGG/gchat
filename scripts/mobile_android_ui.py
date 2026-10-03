@@ -265,10 +265,26 @@ class AndroidUI:
         # WebView focus and the IME arrive asynchronously. Pressing Back before
         # the keyboard appears closes the app instead of dismissing the IME.
         android.wait_keyboard(self.shell, True)
+        self.until(lambda: any(child.get('package') == android.PACKAGE
+            and child.get('class') == 'android.widget.EditText' and child.get('focused') == 'true'
+            and child.get('password', 'false') == node.get('password', 'false')
+            and all(child.get(key, '') == node.get(key, '') for key in ('resource-id', 'content-desc'))
+            for child in self.tree().iter('node')), 10)
         self.input_started = True
         self.shell('input', 'text', shlex.quote(value.replace(' ', '%s')))
-        self.until(lambda: any(child.get('focused') == 'true' and child.get('text') == value
-                              for child in self.tree().iter('node')), 10)
+        def confirmed():
+            fields = [child for child in self.tree().iter('node') if child.get('package') == android.PACKAGE
+                and child.get('class') == 'android.widget.EditText'
+                and child.get('password', 'false') == node.get('password', 'false')
+                and all(child.get(key, '') == node.get(key, '') for key in ('resource-id', 'content-desc'))]
+            self.ui_observation['input_value'] = {'expected_length':len(value),'matching_fields':len(fields),
+                'focused_fields':sum(child.get('focused') == 'true' for child in fields),
+                'value_lengths':[len(child.get('text', '')) for child in fields],
+                'exact_value_fields':sum(child.get('text') == value for child in fields),
+                'case_changed_fields':sum(child.get('text', '').casefold() == value.casefold()
+                    and child.get('text') != value for child in fields)}
+            return any(child.get('focused') == 'true' and child.get('text') == value for child in fields)
+        self.until(confirmed, 10)
         self.shell('input', 'keyevent', '4')
         android.wait_keyboard(self.shell, False)
         self.ui_observation['inputs_confirmed'] = self.ui_observation.get('inputs_confirmed', 0) + 1

@@ -27,5 +27,220 @@
   "anchor_identity_volume_preserved": true,
   "disk_pressure": false,
   "eviction_threshold_changed": false,
-  "ext4_reserve_recovery": "operations/node5-reserve-recovery-757.json"
+  "ext4_reserve_recovery": "operations/node5-reserve-recovery-757.json",
+  "fleet": {
+    "observed_at": 1791065147,
+    "nodes": [
+      {
+        "node": "triform-1",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 183060295680,
+          "at": 1791065103,
+          "before_available_bytes": 183060295680,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 938524024832,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      },
+      {
+        "node": "triform-2",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 133170491392,
+          "at": 1791065119,
+          "before_available_bytes": 133170491392,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 350453293056,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      },
+      {
+        "node": "triform-3",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 196669034496,
+          "at": 1791065116,
+          "before_available_bytes": 196669034496,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 350409261056,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      },
+      {
+        "node": "triform-4",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 41437822976,
+          "at": 1791065111,
+          "before_available_bytes": 41437822976,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 210108399616,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      },
+      {
+        "node": "triform-5",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 167222185984,
+          "at": 1791065119,
+          "before_available_bytes": 167222185984,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 942487273472,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      },
+      {
+        "node": "triform-6",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 36805058560,
+          "at": 1791065115,
+          "before_available_bytes": 36805058560,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 105021104128,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      },
+      {
+        "node": "triform-7",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 53162074112,
+          "at": 1791065105,
+          "before_available_bytes": 53162074112,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 105021104128,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      },
+      {
+        "node": "triform-8",
+        "ssh_passed": true,
+        "service": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled",
+          "Result": "success",
+          "ExecMainStatus": "0"
+        },
+        "status": {
+          "after_available_bytes": 56358113280,
+          "at": 1791065113,
+          "before_available_bytes": 56358113280,
+          "headroom_ok": true,
+          "minimum_free_percent": 17,
+          "schema": 1,
+          "total_bytes": 105021104128,
+          "unused_image_cleanup": false
+        },
+        "scheduled_run_passed": true
+      }
+    ],
+    "all_eight_timers_enabled_and_active": true,
+    "all_eight_scheduled_checks_passed": true,
+    "receipt": "operations/fleet-headroom-scheduled-779.json",
+    "node4_original_insufficient_prune_retained": "operations/fleet-headroom-readback-777.json",
+    "node4_reserve_recovery": {
+      "schema": 1,
+      "node": "triform-4",
+      "at": 1791065083,
+      "device": "/dev/md2",
+      "filesystem": "ext4",
+      "before": {
+        "Block count": 52395776,
+        "Reserved block count": 2619788,
+        "Block size": 4096
+      },
+      "after": {
+        "Block count": 52395776,
+        "Reserved block count": 523957,
+        "Block size": 4096
+      },
+      "before_available_bytes": 32846278656,
+      "after_available_bytes": 41430802432,
+      "total_bytes": 210108399616,
+      "files_deleted": false,
+      "eviction_threshold_changed": false,
+      "restore_argv": [
+        "tune2fs",
+        "-r",
+        "2619788",
+        "/dev/md2"
+      ],
+      "headroom_check": {
+        "after_available_bytes": 41430720512,
+        "at": 1791065083,
+        "before_available_bytes": 41430720512,
+        "headroom_ok": true,
+        "minimum_free_percent": 17,
+        "schema": 1,
+        "total_bytes": 210108399616,
+        "unused_image_cleanup": false
+      }
+    }
+  }
 }

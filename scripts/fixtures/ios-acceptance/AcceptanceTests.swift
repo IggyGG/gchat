@@ -255,7 +255,7 @@ final class GChatAcceptanceTests: XCTestCase {
         case "unlock":
             try unlock(command["create"] as? Bool == true, try string("passphrase"))
             return true
-        case "join":
+        case "join_invitation":
             phase = "join-arrival"
             try wait(30) { self.app.state == .runningForeground && self.element("Connect to GChat").exists }
             // First-run notification settings can cover the arrival notice.
@@ -267,15 +267,22 @@ final class GChatAcceptanceTests: XCTestCase {
             try type(field, invitation)
             try require((field.value as? String) == invitation)
             try click("Continue")
+            return true
+        case "join_accept":
             phase = "join-preview"
             try wait(120) { self.element("Your nickname in this channel").exists }
             phase = "join-input"
             try type(app.webViews.textFields.firstMatch, "mobile")
             phase = "join-accept"
             try click("Join")
+            return true
+        case "join_connected":
             phase = "join-connected"
             try wait(120) { self.element("Message or command").exists || self.element("Joined").exists }
-            if element("Joined").exists {
+            return element("Joined").exists ? "joined" : "selected"
+        case "join_select":
+            if command["joined"] as? Bool == true {
+                try require(element("Joined").exists)
                 try click("Close dialog")
                 try click("Channels")
                 let channel = app.descendants(matching: .any).matching(NSPredicate(
@@ -283,6 +290,7 @@ final class GChatAcceptanceTests: XCTestCase {
                 try wait { channel.exists && channel.isHittable }
                 channel.tap()
             }
+            phase = "join-ready"
             try wait(30) {
                 let close = self.element("Close dialog")
                 if self.element("Notifications").exists && close.exists && close.isHittable {

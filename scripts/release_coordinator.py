@@ -304,6 +304,8 @@ class Coordinator:
             del self.running_workers[effect['id']]
             if process.returncode == 75:
                 return None
+            if process.returncode == 76:
+                raise ConnectionError(stage + ' provider temporarily unavailable; original request retained')
             if process.returncode:
                 raise ValueError(stage + ' worker failed; inspect retained worker log')
             if not output.is_file():
@@ -366,6 +368,8 @@ class Coordinator:
                                     stderr=subprocess.STDOUT, timeout=recipe.get('timeout', 120))
         if result.returncode == 75:
             return None  # asynchronous job accepted/running; next cycle reconciles
+        if result.returncode == 76:
+            raise ConnectionError(stage + ' provider temporarily unavailable; original request retained')
         if result.returncode:
             raise ValueError(stage + ' worker failed; inspect retained worker log')
         report, digest = read_receipt(output, manifest, platform, stage)
