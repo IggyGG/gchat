@@ -1,3 +1,29 @@
+## Routine release operation
+
+Use `python3 scripts/release.py status` for the selected release, actual deployment
+versions and platform waiting/failure states. `resume --platform linux-x86_64`
+queues an operator retry of its original stage; `resume` also retries the selected
+deployment. `rollback` queues restoration of recorded infrastructure versions.
+These commands use the running coordinator and never create a second ledger writer.
+Store publications cannot be rolled back by that command. Use `--json` for status
+integration and `--state PATH` only when operating on a local controller state.
+
+New source changes settle for ten minutes. Three artifact workers can progress
+concurrently, while infrastructure activation stays serial. Completed stages and
+provider request IDs survive retries. A failed or unknown operation remains explicit.
+The operator inventory can select `network_check_policy: boundaries-v1`: full
+covered messaging/interrupted-file checks run at the first and final targets;
+intermediate targets run covered bidirectional messaging within 300 seconds plus
+their running-version/health checks. The original every-target policy remains the
+default for existing inventories. A short check cannot qualify file recovery.
+
+Canaries receive expiring bootstrap and invitation-publication scope, zero name
+quota and no server authority. Legacy bootstrap-only grants remain revocable.
+Catalog preparation with `canary_operator: true` installs the qualified companion
+operator from the same infrastructure receipt and verifies an isolated grant and
+revocation before updating its root-owned policy. Original operators and policy
+backups remain retained.
+
 The release publisher preserves original provider archives and source receipts.
 `release_compaction.py --state /state` verifies each completed build's original
 archive before sharing identical extraction files. It preserves every path and

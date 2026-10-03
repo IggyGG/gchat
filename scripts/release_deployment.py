@@ -24,6 +24,14 @@ def inventory(config):
     targets = config.get('targets', [])
     if not targets or len({t['id'] for t in targets}) != len(targets):
         raise ValueError('deployment inventory is empty or repeats a target')
+    policy = config.get('network_check_policy', 'every-target-v1')
+    if policy not in ('every-target-v1', 'boundaries-v1'):
+        raise ValueError('unknown deployment network check policy')
+    if policy == 'boundaries-v1':
+        targets = [{**target, 'network_check': 'full' if i in (0, len(targets) - 1) else 'chat'}
+                   for i, target in enumerate(targets)]
+    elif any(target.get('network_check', 'full') != 'full' for target in targets):
+        raise ValueError('short network checks require the reviewed boundary policy')
     for target in targets:
         if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,63}', target['id']):
             raise ValueError('invalid deployment target identity')
@@ -82,6 +90,31 @@ def invoke(target, stage, manifest, directory, previous=None):
     return proof
 
 
+def request_rollback(state, release):
+    """Queue recorded targets for the single deployment owner; no direct effects."""
+    import fcntl
+    root = Path(state) / 'deployment'
+    desired = json.loads((root / 'desired.json').read_text())
+    if desired['release_id'] != release:
+        raise ValueError('only the selected deployment can be rolled back')
+    with (root / 'rollout.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        owner = root / 'owner.json'
+        if owner.is_file() and json.loads(owner.read_text())['release_id'] != release:
+            raise ValueError('another rollout owns deployment')
+        path = root / release / 'journal.json'
+        report = json.loads(path.read_text())
+        eligible = [value for value in report['targets'].values()
+                    if value.get('state') in ('deployed', 'activating', 'rollback_pending', 'rollback_failed')]
+        if not eligible or any(not item.get('previous') for item in eligible):
+            raise ValueError('no recorded deployment with complete rollback observations')
+        for item in eligible:
+            item.update(state='rollback_pending', retry_at=0)
+        report.update(state='blocked', operator_rollback=True, reason='Operator requested restoration of recorded previous versions')
+        write(path, report)
+        write(owner, {'release_id': release})
+
+
 def reconcile(state, manifest, config, worker=invoke, now=None):
     """One bounded serial step. False means publication must keep waiting.
 
@@ -120,22 +153,37 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                 # Preserve the failed revision; a correction does not erase it.
                 write(directory / ('revision-' + report['revision'] + '-' + str(time.time_ns()) + '.json'), report)
                 report.update(revision=revision, inventory=config, state='deploying')
+                report.pop('operator_rollback', None)
         rolling_back = any(
             item.get('state') in {'rollback_pending', 'rollback_failed'} for item in report['targets'].values())
+        if report.get('operator_rollback') and not rolling_back:
+            owner.unlink(missing_ok=True)
+            return False
         if report['state'] == 'blocked' and not rolling_back:
             if not any(item.get('state') == 'activating' for item in report['targets'].values()):
                 owner.unlink(missing_ok=True)
             return False
         try:
             if rolling_back:
-                for target in targets:
+                rollback_targets = (list(reversed([t for t in targets if t['id'] != 'controller']))
+                                    + [t for t in targets if t['id'] == 'controller']) if report.get('operator_rollback') else targets
+                for target in rollback_targets:
                     item = report['targets'].get(target['id'], {})
                     if item.get('state') not in {'rollback_pending', 'rollback_failed'}:
                         continue
                     if now < item.get('retry_at', 0): return False
                     item['retry_at'] = now + 60
                     proof = worker(target, 'rollback', manifest, directory / target['id'], item['previous'])
-                    if proof is not None: item['state'] = 'rolled_back'
+                    if proof is not None:
+                        observed = worker(target, 'observe', manifest, directory / target['id'])
+                        if observed is None or not observed.get('healthy'):
+                            return False
+                        item['observed'] = observed
+                        item['state'] = 'rolled_back'
+                        if report.get('operator_rollback') and not any(v.get('state') in
+                                {'rollback_pending', 'rollback_failed'} for v in report['targets'].values()):
+                            report.update(state='rolled_back', reason='Recorded previous versions restored')
+                            owner.unlink(missing_ok=True)
                     return False
                 return False
             report['state'] = 'deploying'

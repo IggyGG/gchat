@@ -62,12 +62,16 @@ class Journey:
         self.root.mkdir(parents=True, exist_ok=False)
         m.private_directory(self.root)
         self.start = time.monotonic()
-        self.deadline = self.start + 600
+        self.budget = 300 if getattr(args, 'mode', 'full') == 'chat' else 600
+        self.deadline = self.start + self.budget
         self.children = []
         self.clients = {}
         self.ids = {}
         self.passphrase = secrets.token_urlsafe(32)
         self.report = {'schema': 1, 'passed': False, 'scope': 'actual packaged service network messaging and bounded interrupted file recovery', 'binary_sha256': m.digest(args.binary), 'started_at': m.timestamp(), 'events': []}
+        self.report['mode'] = getattr(args, 'mode', 'full')
+        if self.report['mode'] == 'chat':
+            self.report['scope'] = 'packaged service covered bidirectional messaging; file qualification is separate'
         self.report['harness'] = m.reference(Path(__file__))
         self.report['ipc_helper'] = m.reference(Path(m.__file__))
 
@@ -78,7 +82,7 @@ class Journey:
 
     def timeout(self, maximum=120):
         left = min(maximum, self.deadline - time.monotonic())
-        m.require(left > 0, 'original 600-second journey deadline')
+        m.require(left > 0, f'original {getattr(self, "budget", 600)}-second journey deadline')
         return left
 
     def until(self, fn, maximum=120):
@@ -134,7 +138,24 @@ class Journey:
         return self.call(i, 'files', request={'action': action, **data})['snapshot']
 
     def submit(self, i, text):
-        return self.call(i, 'submit', operation_id=uuid.uuid4().hex, conversation=getattr(self, 'channel', None), text=text)
+        operation = uuid.uuid4().hex
+        # Retain the command name and token, never its arguments or message body.
+        command = text.split()[0] if text.startswith('/') else 'message'
+        response = self.call(i, 'submit', allow_error=True, operation_id=operation,
+                             conversation=getattr(self, 'channel', None), text=text)
+        if response.get('kind') == 'error':
+            failure = {'client': i, 'command': command, 'operation_id': operation,
+                       'code': response.get('code', 'invalid')}
+            self.report['failed_operation'] = failure
+            # Application details may contain private URLs. Keep them in the
+            # owner-only fixture, outside the public journey report and stdout.
+            path = self.root / 'operation-error.json'
+            path.write_text(json.dumps({**failure, 'message': str(response.get('message', ''))[:4096]}) + '\n')
+            m.private_fixture_path(path, directory=False)
+            self.event('operation_failed', **failure)
+            raise ValueError(f"application rejected {command}: {failure['code']}; inspect private operation-error.json")
+        self.event('operation_completed', client=i, command=command, operation_id=operation)
+        return response
 
     def history(self, i):
         return self.call(i, 'history', conversation=self.channel, before=None, limit=200)['page']['messages']
@@ -235,6 +256,61 @@ class Journey:
             h.update(block)
         return h.hexdigest()
 
+    def transfer(self):
+        ident = uuid.uuid4().hex
+        self.files(0, 'prepare', id=ident, conversation=self.channel, name='bounded.bin', size_bytes=str(self.args.bytes))
+        h = hashlib.sha256()
+        for piece in range(self.args.bytes // PIECE):
+            block = hashlib.shake_256(f'bounded-native-{piece}'.encode()).digest(PIECE)
+            h.update(block)
+            self.io(0, ident, piece, True, block)
+        expected = h.hexdigest()
+        self.files(0, 'commit', id=ident)
+        self.until(lambda: self.row(1, ident))
+        started = time.monotonic()
+        self.files(1, 'accept', id=ident)
+
+        def partial():
+            row = self.row(1, ident)
+            n = int(row['verified_bytes'])
+            m.require(n < self.args.bytes, 'file completed before required interruption')
+            return n if n >= PIECE else None
+        retained = self.until(partial, 60)
+        self.stop(1, True)
+        self.start_client(1, False)
+        row = self.row(1, ident)
+        m.require(int(row['verified_bytes']) >= retained, 'verified pieces lost')
+        self.event('pieces_retained', bytes=retained)
+        self.chat('during')
+        # Owner accepted slower 16 MiB delivery on 2026-09-29. The
+        # separately authorized, retained Windows 4 MiB gate stays at 180s.
+        completion_budget = 360 if self.args.bytes == 16777216 else 180
+        self.report['completion_budget_seconds'] = completion_budget
+        remaining = completion_budget - (time.monotonic() - started)
+        m.require(remaining > 0, 'file completion deadline')
+        last_progress = float('-inf')
+
+        def completed():
+            nonlocal last_progress
+            row = self.row(1, ident)
+            now = time.monotonic()
+            if now - last_progress >= 5 or row['state'] == 'complete':
+                self.event('file_progress', **{key: row.get(key) for key in
+                    ('state', 'verified_bytes', 'size_bytes', 'sources', 'verified_sources', 'completed_by')})
+                last_progress = now
+            return row['state'] == 'complete'
+        self.until(completed, remaining)
+        completion = time.monotonic() - started
+        m.require(completion <= completion_budget, 'late file completion')
+        m.require(self.export(ident) == expected, 'export hash mismatch')
+        self.chat('after')
+        before = self.history(1)
+        self.stop(1)
+        self.start_client(1, False)
+        m.require(self.history(1) == before, 'history changed after orderly reopen')
+        m.require(self.export(ident) == expected, 'reopened export hash mismatch')
+        self.report['file_check'] = {'bytes': self.args.bytes, 'sha256': expected, 'completion_elapsed_seconds': completion, 'abrupt_stop': True, 'verified_pieces_retained': True, 'hash_verified_after_reopen': True}
+
     def run(self):
         try:
             self.report['inputs'] = m.validate_artifacts(self.args.binary, self.args.build_manifest, self.args.native_receipt)
@@ -246,58 +322,8 @@ class Journey:
             code = self.invitation()
             self.join_peer(code)
             self.chat('before')
-            ident = uuid.uuid4().hex
-            self.files(0, 'prepare', id=ident, conversation=self.channel, name='bounded.bin', size_bytes=str(self.args.bytes))
-            h = hashlib.sha256()
-            for piece in range(self.args.bytes // PIECE):
-                block = hashlib.shake_256(f'bounded-native-{piece}'.encode()).digest(PIECE)
-                h.update(block)
-                self.io(0, ident, piece, True, block)
-            expected = h.hexdigest()
-            self.files(0, 'commit', id=ident)
-            self.until(lambda: self.row(1, ident))
-            started = time.monotonic()
-            self.files(1, 'accept', id=ident)
-
-            def partial():
-                row = self.row(1, ident)
-                n = int(row['verified_bytes'])
-                m.require(n < self.args.bytes, 'file completed before required interruption')
-                return n if n >= PIECE else None
-            retained = self.until(partial, 60)
-            self.stop(1, True)
-            self.start_client(1, False)
-            row = self.row(1, ident)
-            m.require(int(row['verified_bytes']) >= retained, 'verified pieces lost')
-            self.event('pieces_retained', bytes=retained)
-            # Owner accepted slower 16 MiB delivery on 2026-09-29. The
-            # separately authorized, retained Windows 4 MiB gate stays at 180s.
-            completion_budget = 360 if self.args.bytes == 16777216 else 180
-            self.report['completion_budget_seconds'] = completion_budget
-            remaining = completion_budget - (time.monotonic() - started)
-            m.require(remaining > 0, 'file completion deadline')
-            last_progress = float('-inf')
-
-            def completed():
-                nonlocal last_progress
-                row = self.row(1, ident)
-                now = time.monotonic()
-                if now - last_progress >= 5 or row['state'] == 'complete':
-                    self.event('file_progress', **{key: row.get(key) for key in
-                        ('state', 'verified_bytes', 'size_bytes', 'sources', 'verified_sources', 'completed_by')})
-                    last_progress = now
-                return row['state'] == 'complete'
-            self.until(completed, remaining)
-            completion = time.monotonic() - started
-            m.require(completion <= completion_budget, 'late file completion')
-            m.require(self.export(ident) == expected, 'export hash mismatch')
-            self.chat('after')
-            before = self.history(1)
-            self.stop(1)
-            self.start_client(1, False)
-            m.require(self.history(1) == before, 'history changed after orderly reopen')
-            m.require(self.export(ident) == expected, 'reopened export hash mismatch')
-            self.report['file_check'] = {'bytes': self.args.bytes, 'sha256': expected, 'completion_elapsed_seconds': completion, 'abrupt_stop': True, 'verified_pieces_retained': True, 'hash_verified_after_reopen': True}
+            if getattr(self.args, 'mode', 'full') == 'full':
+                self.transfer()
             self.report['passed'] = True
         except Exception as e:
             self.report['error'] = type(e).__name__ + ': ' + str(e)
@@ -328,7 +354,7 @@ class Journey:
                                        ('build_manifest', self.args.build_manifest),
                                        ('native_receipt', self.args.native_receipt)])
                 self.report['passed'] = self.report['passed'] and self.report['inputs_unchanged']
-            self.report['passed'] = self.report['passed'] and self.report['binary_unchanged'] and (self.report['elapsed_seconds'] <= 600)
+            self.report['passed'] = self.report['passed'] and self.report['binary_unchanged'] and (self.report['elapsed_seconds'] <= self.budget)
             (self.root / 'report.json').write_text(json.dumps(self.report, indent=2))
             print(json.dumps({'passed': self.report['passed'], 'error': self.report.get('error')}), flush=True)
         return 0 if self.report['passed'] else 1
@@ -347,6 +373,7 @@ if __name__ == '__main__':
         p.add_argument('--invitation', type=Path, required=True)
         p.add_argument('--output', type=Path, required=True)
         p.add_argument('--bytes', type=int, default=16777216)
+        p.add_argument('--mode', choices=('full', 'chat'), default='full')
         a = p.parse_args()
         a.binary_sha256 = m.digest(a.binary)
         validate_file_bytes(a.bytes, os.name)

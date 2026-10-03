@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "implemented": [
+    "operator status/resume/rollback through the existing coordinator",
+    "three concurrent artifact workers with source-bound receipts and deadlines",
+    "600-second source settlement",
+    "full rollout boundary checks and separate 300-second covered-messaging checks",
+    "canary bootstrap/invitation scope with legacy revocation",
+    "source-qualified companion grant operator preparation",
+    "private command/operation failure diagnostics",
+    "bidirectional authenticated chat during interrupted file recovery"
+  ],
+  "tests": {
+    "python": 720,
+    "existing_skips": 5,
+    "log_sha256": "2ed4f63ebd08dad9591ea5fa1d9a3a9ea0adca96a952ef3b5319930194f4f9af"
+  },
+  "live_operator": {
+    "installed": true,
+    "binary_sha256": "36ee7e1fd719b183fd8818521c4ab8d6790a0207aa4733e092213bb183bcf1ad",
+    "bytes": 1099496,
+    "old_operator_preserved": true,
+    "ephemeral_grant_and_revoke_passed": true,
+    "production_grants_unchanged": true,
+    "policy_backup_retained": true
+  },
+  "controller_image_active": false,
+  "fleet_launched": false,
+  "local_new_release_active": false,
+  "native_acceptance_complete": false,
+  "sdk_1_0_qualified": false
+}

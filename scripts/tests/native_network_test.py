@@ -50,6 +50,36 @@ class DeadlineTests(unittest.TestCase):
                 self.journey.timeout()
 
 class DiagnosticTests(unittest.TestCase):
+    def test_unknown_submit_is_not_repeated_and_private_details_stay_private(self):
+        with tempfile.TemporaryDirectory() as directory:
+            journey = network.Journey.__new__(network.Journey)
+            journey.root = Path(directory)
+            journey.report = {}
+            journey.event = Mock()
+            journey.call = Mock(return_value={'kind': 'error', 'code': 'outcome_unknown',
+                                             'message': 'private authority detail'})
+            with self.assertRaisesRegex(ValueError, 'rejected /invite: outcome_unknown'):
+                journey.submit(0, '/invite person')
+            journey.call.assert_called_once()
+            failure = journey.report['failed_operation']
+            self.assertEqual(failure['command'], '/invite')
+            self.assertEqual(len(failure['operation_id']), 32)
+            self.assertNotIn('private authority detail', json.dumps(journey.report))
+            self.assertNotIn('private authority detail', str(journey.event.call_args))
+            private = journey.root / 'operation-error.json'
+            self.assertEqual(json.loads(private.read_text())['message'], 'private authority detail')
+            if os.name != 'nt':
+                self.assertEqual(private.stat().st_mode & 0o777, 0o600)
+
+    def test_success_records_operation_identity_without_message_contents(self):
+        journey = network.Journey.__new__(network.Journey)
+        journey.event = Mock()
+        journey.call = Mock(return_value={'kind': 'applied', 'conversation': 'channel'})
+        self.assertEqual(journey.submit(1, 'private message')['kind'], 'applied')
+        journey.call.assert_called_once()
+        self.assertEqual(journey.event.call_args.kwargs['command'], 'message')
+        self.assertNotIn('private message', str(journey.event.call_args))
+
     def test_retained_small_gate_binds_exact_binary_and_original_deadlines(self):
         spec = importlib.util.spec_from_file_location('windows_network_policy', ROOT / 'windows-network.py')
         retained = importlib.util.module_from_spec(spec); spec.loader.exec_module(retained)

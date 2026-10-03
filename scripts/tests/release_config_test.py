@@ -4,6 +4,8 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from release_config import configuration
 from release_ledger import PLATFORMS
 class ConfigurationTests(unittest.TestCase):
+    def test_source_changes_have_ten_quiet_minutes_before_release(self):
+        self.assertEqual(configuration()['discovery']['settle_seconds'], 600)
     def test_installed_acceptance_is_isolated_by_platform(self):
         state=Path('/fixture/state')
         workers=configuration(state=state)['workers']

@@ -18,6 +18,54 @@ class CoordinatorTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.manifest=candidate()
+
+    @unittest.skipUnless(os.name == 'posix', 'controller uses POSIX process groups')
+    def test_nonblocking_worker_does_not_prevent_another_platform_and_reconciles_same_effect(self):
+        import sys
+        import time
+        script = self.root / 'async.py'
+        release_worker = self.root / 'release-worker'
+        script.write_text('import time\nfrom pathlib import Path\nwhile not Path(' +
+                          repr(str(release_worker)) + ').exists(): time.sleep(0.01)\nraise SystemExit(75)\n')
+        recipe = {'run': [sys.executable, str(script)], 'reconcile': [sys.executable, str(script)], 'timeout': 10}
+        c = Coordinator(self.root, {'nonblocking_workers': True, 'maximum_workers': 2,
+            'workers': {p: {'build': recipe} for p in ('linux-x86_64', 'windows-x86_64')}})
+        self.addCleanup(c.ledger.close)
+        self.addCleanup(c.close_workers)
+        c.ledger.add(self.manifest)
+        started = time.monotonic()
+        self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
+        self.assertIsNone(c.execute(self.manifest, 'windows-x86_64', 'build'))
+        self.assertLess(time.monotonic() - started, 0.5)
+        self.assertEqual(len(c.running_workers), 2)
+        effect = c.ledger.effect(self.manifest['release_id'], 'linux-x86_64', 'build')
+        pid = c.running_workers[effect['id']]['process'].pid
+        self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
+        self.assertEqual(c.running_workers[effect['id']]['process'].pid, pid)
+        release_worker.touch()
+        c.running_workers[effect['id']]['process'].wait(timeout=5)
+        self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
+        self.assertNotIn(effect['id'], c.running_workers)
+        self.assertEqual(c.ledger.effect(self.manifest['release_id'], 'linux-x86_64', 'build')['id'], effect['id'])
+
+    @unittest.skipUnless(os.name == 'posix', 'controller uses POSIX process groups')
+    def test_nonblocking_worker_zero_exit_without_receipt_cannot_pass(self):
+        import sys
+        recipe = {'run': [sys.executable, '-c', 'pass'], 'reconcile': [sys.executable, '-c', 'pass']}
+        c = Coordinator(self.root, {'nonblocking_workers': True, 'workers': {'linux-x86_64': {'build': recipe}}})
+        self.addCleanup(c.ledger.close)
+        self.addCleanup(c.close_workers)
+        c.ledger.add(self.manifest)
+        c.execute(self.manifest, 'linux-x86_64', 'build')
+        next(iter(c.running_workers.values()))['process'].wait(timeout=5)
+        with self.assertRaisesRegex(ValueError, 'without a source-bound receipt'):
+            c.execute(self.manifest, 'linux-x86_64', 'build')
+
+    def test_invalid_worker_limits_do_not_create_release_state(self):
+        for value in (0, 9, True, '3'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                Coordinator(self.root / 'unused', {'maximum_workers': value})
+            self.assertFalse((self.root / 'unused').exists())
     def test_invalid_poll_interval_cannot_create_release_state(self):
         for interval in (0, 9, 301, True, 0.5, '30', None):
             state=self.root / 'unused'

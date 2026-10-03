@@ -78,7 +78,7 @@ def verify_journey(report, manifest):
     if any(type(value) not in (int, float) or not math.isfinite(value) or value <= 0
            for value in (completion, elapsed)) or completion > elapsed:
         raise ValueError('canary durations must be finite positive measurements')
-    if (report.get('passed') is not True or report.get('inputs_unchanged') is not True
+    if (report.get('mode', 'full') != 'full' or report.get('passed') is not True or report.get('inputs_unchanged') is not True
             or report.get('binary_unchanged') is not True or report.get('children_stopped') is not True
             or report.get('temporary_profile_removed') is not True or len(acknowledgments) < 6
             or {e.get('sender') for e in acknowledgments} != {0, 1}
@@ -87,6 +87,17 @@ def verify_journey(report, manifest):
             or check.get('completion_elapsed_seconds', float('inf')) > manifest['policy']['file_qualification']['completion_seconds']
             or report.get('elapsed_seconds', float('inf')) > manifest['policy']['file_qualification']['total_seconds']):
         raise ValueError('covered network delivery, bounded recovery or cleanup did not pass')
+
+
+def verify_chat(report):
+    acknowledgments = [e for e in report.get('events', []) if e.get('event') == 'authenticated_ack']
+    elapsed = report.get('elapsed_seconds')
+    if (report.get('mode') != 'chat' or report.get('passed') is not True
+            or report.get('inputs_unchanged') is not True or report.get('binary_unchanged') is not True
+            or report.get('children_stopped') is not True or report.get('temporary_profile_removed') is not True
+            or len(acknowledgments) < 2 or {e.get('sender') for e in acknowledgments} != {0, 1}
+            or type(elapsed) not in (int, float) or not math.isfinite(elapsed) or not 0 < elapsed <= 300):
+        raise ValueError('covered bidirectional messaging or cleanup did not pass')
 
 
 def interrupted_profiles(work, state):
@@ -130,6 +141,9 @@ def interrupted_profiles(work, state):
 def run(state, manifest, target, grant_config, output):
     import fcntl
     state, output = Path(state), Path(output)
+    mode = target.get('network_check', 'full')
+    if mode not in ('full', 'chat'):
+        raise ValueError('unknown operator network check')
     owner = state / 'canaries'; owner.mkdir(mode=0o700, parents=True, exist_ok=True)
     key = hashlib.sha256(canonical([manifest['release_id'], target['id']])).hexdigest()
     with (owner / (key + '.lock')).open('a') as lock:
@@ -161,11 +175,14 @@ def run(state, manifest, target, grant_config, output):
             network.m.service_command = cli.service_command
             args = argparse.Namespace(binary=binary, build_manifest=work / 'build.json',
                 native_receipt=work / 'native-ci.json', invitation=invitation, output=work / 'journey',
-                bytes=manifest['policy']['file_qualification']['bytes'], binary_sha256=digest(binary))
+                bytes=manifest['policy']['file_qualification']['bytes'], binary_sha256=digest(binary), mode=mode)
             if network.Journey(args).run() != 0:
                 raise ValueError('installed network canary failed; retain its journey report')
             report = json.loads((work / 'journey/report.json').read_text())
-            verify_journey(report, manifest)
+            if mode == 'full':
+                verify_journey(report, manifest)
+            else:
+                verify_chat(report)
             if report['inputs']['sources'] != manifest['sources']:
                 raise ValueError('installed network journey source binding differs')
             passed = True
@@ -185,7 +202,7 @@ def run(state, manifest, target, grant_config, output):
         evidence.append({'path': (retained / 'grant-cleanup.json').relative_to(output.parent).as_posix(),
                          'sha256': digest(retained / 'grant-cleanup.json')})
         atomic_json(output, {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
-            'target': target['id'], 'passed': True, 'authenticated_delivery': True,
+            'target': target['id'], 'passed': True, 'authenticated_delivery': True, 'network_check': mode,
             'binary_sha256': digest(binary), 'completed_at': int(time.time()), 'evidence': evidence})
         return output
 

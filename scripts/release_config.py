@@ -27,11 +27,12 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
             workers[target].update({stage:recipe('release_store_worker.py','--state',state,'--config',config/'stores.json',timeout=600) for stage in ('submit','observe')})
         else:workers[target]['publish']=recipe('release_publish.py','--state',state,'--config',config/'publisher.json',timeout=900)
     workers['linux-x86_64']['infrastructure']=recipe('release_infrastructure_bundle.py','--state',state,'--config',config/'infrastructure.json',timeout=900)
-    return {'schema':1,'automatic_recovery':True,'deployment_file':str(config/'deployment.json'),
+    return {'schema':1,'automatic_recovery':True,'nonblocking_workers':True,'maximum_workers':3,
+        'deployment_file':str(config/'deployment.json'),
         'maintenance':{'apt':{'root':str(state/'public/updates/apt'),'key':'F4F6F8550D2AA952A189640D58430838AA3230BB'}},'minimum_free_bytes':16*1024**3,'workers':workers,
         'discovery':{'gchat':{'mirror':str(state/'mirrors/gchat.git'),'url':'https://github.com/IggyGG/gchat.git'},
             'gcoms':{'mirror':str(state/'mirrors/gcoms.git'),'url':'https://github.com/IggyGG/gcoms.git'},
-            'version_floor':{'desktop':'0.1.4','android':'1019','ios':'1.0.23'},'settle_seconds':60,
+            'version_floor':{'desktop':'0.1.4','android':'1019','ios':'1.0.23'},'settle_seconds':600,
             'candidate_remotes':['https://github.com/IggyGG/gchat.git'],
             'companion_remotes':['https://github.com/IggyGG/gcoms.git']}}
 

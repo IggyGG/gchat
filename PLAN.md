@@ -1,3 +1,7 @@
+## Launch simplification (2026-10-03, in progress)
+
+DEPLOY-STABLE: operator commands, concurrent artifact workers, ten-minute source settlement and reviewed rollout boundary checks are implemented. The failing one-person invitation lacked publication scope; the original signed Linux package contains the qualified replacement operator, now installed with old binary and policy backups retained. New short checks cannot satisfy full file recovery. All 720 Python tests pass with five existing skips; actual fleet/native/local activation and subsequent unattended release remain required. See `docs/evidence/stabilization-20261001/launch-simplification.json`.
+
 The original Windows and Apple Silicon 0.1.98 archives now pass independent
 verification of signatures, frozen source inputs, native CI receipts and installed
 offline lifecycle/cleanup. The original Windows archive has 58,003,839 bytes; the

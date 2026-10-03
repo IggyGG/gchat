@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from release_deployment import reconcile
+from release_deployment import reconcile, inventory, request_rollback
 
 
 @unittest.skipUnless(os.name == 'posix', 'deployment owner uses POSIX locks')
@@ -49,6 +49,30 @@ class DeploymentTests(unittest.TestCase):
         self.live['relay-2']['matches'] = False
         self.assertFalse(self.tick())
         self.assertTrue(self.live['relay-2']['matches'])
+
+    def test_short_checks_are_only_between_full_rollout_boundaries(self):
+        targets = self.config['targets']
+        config = {'targets': [targets[0], {**targets[1], 'id': 'middle'}, targets[1]],
+                  'network_check_policy': 'boundaries-v1'}
+        self.assertEqual([t['network_check'] for t in inventory(config)], ['full', 'chat', 'full'])
+        with self.assertRaises(ValueError):
+            inventory({'targets': [{**targets[0], 'network_check': 'chat'}]})
+        with self.assertRaises(ValueError):
+            inventory({**config, 'network_check_policy': 'unknown'})
+
+    def test_operator_rollback_restores_previous_targets_without_reactivation(self):
+        for _ in range(3): self.tick()
+        from release_deployment import write
+        write(self.root / 'deployment/desired.json', {'release_id': self.manifest['release_id']})
+        request_rollback(self.root, self.manifest['release_id'])
+        self.calls.clear()
+        for _ in range(4): self.tick()
+        self.assertEqual([name for name, stage in self.calls if stage == 'rollback'], ['relay-2', 'canary'])
+        self.assertFalse(any(stage == 'activate' for _, stage in self.calls))
+        self.assertFalse(any(value['matches'] for value in self.live.values()))
+        journal = json.loads((self.root / 'deployment' / self.manifest['release_id'] / 'journal.json').read_text())
+        self.assertEqual(journal['state'], 'rolled_back')
+        self.assertFalse((self.root / 'deployment/owner.json').exists())
 
     def test_failed_canary_rolls_back_and_never_advances(self):
         self.fail = ('canary', 'check')
@@ -109,7 +133,7 @@ class DeploymentTests(unittest.TestCase):
         self.config = {'targets': [self.config['targets'][1]], 'revision': 2}
         self.calls.clear()
         self.assertFalse(reconcile(self.root, self.manifest, self.config, self.worker, now=200))
-        self.assertEqual(self.calls, [('canary', 'rollback')])
+        self.assertEqual(self.calls, [('canary', 'rollback'), ('canary', 'observe')])
         self.assertFalse(self.live['canary']['matches'])
         journal = json.loads((self.root / 'deployment' / self.manifest['release_id'] / 'journal.json').read_text())
         self.assertEqual(journal['state'], 'blocked')

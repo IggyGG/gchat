@@ -1,3 +1,5 @@
+Release operations now use `python3 scripts/release.py status`, `resume` and `rollback` through the existing Kubernetes coordinator. New defaults combine source changes after ten quiet minutes and run three artifact workers concurrently. The reviewed boundary rollout policy keeps full messaging/file checks at the first and last targets, with separate covered messaging checks between them. All 720 Python checks pass with five existing skips. The qualified grant operator is installed; activation of the new controller, fleet and installed clients remains open. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
+
 The original Windows and Apple Silicon 0.1.98 archives now pass independent
 verification of signatures, frozen source inputs, native CI receipts and installed
 offline lifecycle/cleanup. The original Windows archive has 58,003,839 bytes; the

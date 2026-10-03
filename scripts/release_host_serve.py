@@ -54,11 +54,16 @@ def main():
     if len(parts) == 2 and parts[0] == 'upload':
         upload(parts[1], sys.stdin.buffer, directory)
         return
-    if len(parts) == 3 and parts[0] == 'canary' and parts[1] in ('grant', 'revoke'):
+    if len(parts) == 3 and parts[0] == 'canary' and parts[1] in ('grant', 'revoke', 'operator'):
         from release_canary_grant import operate
-        policy = json.loads(Path('/etc/gchat-release-worker.json').read_text())
+        path = Path('/etc/gchat-release-worker.json')
+        policy = json.loads(path.read_text())
         # Invitations are returned only over the private, restricted SSH pipe.
-        print(json.dumps(operate(policy, parts[1], parts[2])))
+        if parts[1] == 'operator':
+            from release_canary_grant import prepare_operator
+            print(json.dumps(prepare_operator(path, parts[2], upload_root=directory)))
+        else:
+            print(json.dumps(operate(policy, parts[1], parts[2])))
         return
     if command != 'install': raise ValueError('unsupported service command')
     raw = sys.stdin.buffer.read(65537)

@@ -27,7 +27,7 @@ class CanaryGrantTests(unittest.TestCase):
                 current = json.loads(store.read_text())
                 if argv[1] == 'grant':
                     request = json.loads(Path(argv[3]).read_text())
-                    self.assertEqual(request['scopes'], ['bootstrap'])
+                    self.assertEqual(request['scopes'], ['bootstrap', 'invitations'])
                     self.assertEqual(request['max_names'], 0)
                     secret = b'a' * 32
                     token = base64.urlsafe_b64encode(secret).decode().rstrip('=')
@@ -47,12 +47,18 @@ class CanaryGrantTests(unittest.TestCase):
                 self.assertEqual(grants.operate(policy, 'grant', 'a' * 64, state_root=root / 'work', now=101), first)
                 self.assertEqual(len(calls), 1)
                 self.assertEqual(store.stat().st_mode & 0o777, 0o640)
-                with self.assertRaisesRegex(ValueError, 'expired'):
+                # Legacy grants may still be revoked after the recipe upgrade.
+                intent = root / 'work' / ('a' * 64) / 'request.json'
+                request = json.loads(intent.read_text()); request['scopes'] = ['bootstrap']; intent.write_text(json.dumps(request))
+                current = json.loads(store.read_text()); current['grants'][0]['scopes'] = ['bootstrap']; store.write_text(json.dumps(current))
+                with self.assertRaisesRegex(ValueError, 'only be revoked'):
+                    grants.operate(policy, 'grant', 'a' * 64, state_root=root / 'work', now=102)
+                with self.assertRaisesRegex(ValueError, 'only be revoked'):
                     grants.operate(policy, 'grant', 'a' * 64, state_root=root / 'work', now=3701)
                 grants.operate(policy, 'revoke', 'a' * 64, state_root=root / 'work', now=3701)
                 grants.operate(policy, 'revoke', 'a' * 64, state_root=root / 'work', now=3702)
                 self.assertEqual(len(calls), 2)
-                with self.assertRaisesRegex(ValueError, 'revoked'):
+                with self.assertRaisesRegex(ValueError, 'only be revoked'):
                     grants.operate(policy, 'grant', 'a' * 64, state_root=root / 'work', now=102)
 
     def test_disabled_or_unbounded_authority_is_refused(self):
@@ -66,6 +72,25 @@ class CanaryGrantTests(unittest.TestCase):
                 run.assert_not_called()
             for action, ident in (('shell', 'a' * 64), ('grant', '../outside')):
                 with self.assertRaises(ValueError): grants.operate({}, action, ident, state_root=root)
+
+    def test_operator_upload_and_disabled_policy_fail_before_execution(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            policy = root / 'policy.json'
+            policy.write_text(json.dumps({'canary': {'operator': '/previous', 'network_id': 'network',
+                                                    'provider_urls': ['https://bootstrap.example/']}}))
+            with patch.object(grants.subprocess, 'run') as run:
+                for sha in ('../escape', 'a' * 64):
+                    with self.subTest(sha=sha), self.assertRaises(ValueError):
+                        grants.prepare_operator(policy, sha, upload_root=root,
+                            binary_root=root / 'bin', backup_root=root / 'backups')
+                artifact = root / ('gchat-release-' + 'a' * 64)
+                artifact.write_bytes(b'tampered')
+                with self.assertRaisesRegex(ValueError, 'changed'):
+                    grants.prepare_operator(policy, 'a' * 64, upload_root=root,
+                        binary_root=root / 'bin', backup_root=root / 'backups')
+                run.assert_not_called()
+            self.assertFalse((root / 'bin').exists())
 
 
 if __name__ == '__main__': unittest.main()

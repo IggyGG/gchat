@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import tempfile
@@ -75,10 +76,28 @@ class Coordinator:
         self.poll_interval = config.get('poll_interval_seconds', 30)
         if type(self.poll_interval) is not int or not 10 <= self.poll_interval <= 300:
             raise ValueError('poll_interval_seconds must be an integer between 10 and 300')
+        self.maximum_workers = config.get('maximum_workers', 3)
+        if type(self.maximum_workers) is not int or not 1 <= self.maximum_workers <= 8:
+            raise ValueError('maximum_workers must be an integer between 1 and 8')
+        if type(config.get('nonblocking_workers', False)) is not bool:
+            raise ValueError('nonblocking_workers must be a boolean')
         self.state = Path(state).resolve()
         self.state.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(self.state / 'ledger.sqlite')
         self.config = config
+        self.running_workers = {}
+
+    def close_workers(self):
+        for item in list(self.running_workers.values()):
+            process = item['process']
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGTERM)
+                try: process.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=5)
+            item['log'].close()
+        self.running_workers.clear()
 
     def deployment_ready(self, manifest):
         if not manifest['policy'].get('deployment_required', False):
@@ -90,7 +109,9 @@ class Coordinator:
         configured = self.config.get('deployment_file')
         if not configured or not Path(configured).is_file():
             return False
-        revision = hashlib.sha256(canonical(json.loads(Path(configured).read_text()))).hexdigest()
+        from release_control import deployment_config
+        revision = hashlib.sha256(canonical(deployment_config(self.state, manifest,
+            json.loads(Path(configured).read_text())))).hexdigest()
         desired = self.state / 'deployment/desired.json'
         return (desired.is_file() and json.loads(desired.read_text())['release_id'] == manifest['release_id']
                 and report.get('state') == 'deployed' and report.get('sources') == manifest['sources']
@@ -191,7 +212,9 @@ class Coordinator:
             # the monotonic pointer only after its exact infrastructure receipt
             # is available, so queued/superseded Linux work cannot stall rollout.
             atomic_json(desired_path, {'release_id': selected['id'], 'sequence': selected['seq']})
-            reconcile(self.state, manifest, json.loads(Path(configured).read_text()))
+            from release_control import deployment_config
+            reconcile(self.state, manifest, deployment_config(self.state, manifest,
+                json.loads(Path(configured).read_text())))
         except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
             atomic_json(self.state / 'public/deployment.json', {
                 'schema': 1, 'release_id': selected['id'], 'state': 'blocked',
@@ -234,6 +257,28 @@ class Coordinator:
         if not source.exists():
             source.write_bytes(encoded)
         output = work / 'receipt.json'
+        pending = self.running_workers.get(effect['id'])
+        if pending:
+            process = pending['process']
+            if process.poll() is None:
+                if time.monotonic() < pending['deadline']:
+                    return None
+                os.killpg(process.pid, signal.SIGTERM)
+                try: process.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=5)
+                pending['log'].close()
+                del self.running_workers[effect['id']]
+                raise subprocess.TimeoutExpired(pending['argv'], pending['timeout'])
+            pending['log'].close()
+            del self.running_workers[effect['id']]
+            if process.returncode == 75:
+                return None
+            if process.returncode:
+                raise ValueError(stage + ' worker failed; inspect retained worker log')
+            if not output.is_file():
+                raise ValueError(stage + ' worker finished without a source-bound receipt')
         # A dispatch receipt is durable before the next polling cycle. On restart
         # its absence means an unknown external outcome, not permission to repeat.
         marker = work / 'attempted.json'
@@ -252,6 +297,25 @@ class Coordinator:
         environment = dict(os.environ, GCHAT_RELEASE_MANIFEST=str(source),
                            GCHAT_RELEASE_RECEIPT=str(output), GCHAT_RELEASE_TARGET=platform,
                            GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'])
+        if self.config.get('nonblocking_workers', False):
+            if len(self.running_workers) >= self.maximum_workers:
+                return None
+            log_path = work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')
+            log = log_path.open('xb')
+            atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
+            try:
+                process = subprocess.Popen(argv, env=environment, cwd=work, stdout=log,
+                                           stderr=subprocess.STDOUT, start_new_session=True)
+            except OSError:
+                log.close()
+                raise
+            timeout = recipe.get('timeout', 120)
+            self.running_workers[effect['id']] = {'process': process, 'log': log, 'argv': argv,
+                'release_id': manifest['release_id'], 'platform': platform, 'stage': stage,
+                'timeout': timeout, 'deadline': time.monotonic() + timeout}
+            atomic_json(work / 'progress.json', {'stage': stage, 'started_at': int(time.time()),
+                        'deadline_at': int(time.time()) + timeout, 'log': log_path.name})
+            return None
         atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
         with (work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')).open('xb') as log:
             result = subprocess.run(argv, env=environment, cwd=work, stdout=log,
@@ -330,6 +394,8 @@ class Coordinator:
             self.ledger.transition(release, platform, 'blocked', reason=message[:240])
 
     def tick(self):
+        from release_control import consume
+        consume(self)
         if self.config.get('discovery'):
             from release_discovery import discover
             try:
@@ -365,7 +431,11 @@ class Coordinator:
         for row in rows:
             self.step(row['candidate'], row['platform'])
         self.reconcile_deployment()
-        atomic_json(self.state / 'public/status.json', self.ledger.status())
+        public = self.ledger.status()
+        public['observed_at'] = int(time.time())
+        public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage')}
+                                    for item in self.running_workers.values()]
+        atomic_json(self.state / 'public/status.json', public)
         os.chmod(self.state / 'public/status.json', 0o644)
 
 
@@ -395,6 +465,7 @@ def main():
                     break
                 time.sleep(controller.poll_interval)
         finally:
+            controller.close_workers()
             controller.ledger.close()
 
 

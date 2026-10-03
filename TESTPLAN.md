@@ -1,3 +1,7 @@
+## Simplified release controls (2026-10-03)
+
+Run `python3 -m unittest discover -s scripts/tests -p "*_test.py"` with a short SSD TMPDIR; 720 tests pass with five existing skips. Require queued controls to use the sole coordinator and original effects, immutable manifests, rollback observations, no private status paths, concurrent platform progress, zero-exit-without-receipt rejection and bounded workers. Short messaging checks require covered ACKs in both directions and complete cleanup and cannot substitute for full interrupted-file checks at rollout boundaries. Legacy bootstrap grants remain revocable but cannot be renewed for invitation publication. The compiled original replacement operator passes an isolated grant/revoke check; fleet and installed acceptance remain separate.
+
 The original Windows and Apple Silicon 0.1.98 archives now pass independent
 verification of signatures, frozen source inputs, native CI receipts and installed
 offline lifecycle/cleanup. The original Windows archive has 58,003,839 bytes; the

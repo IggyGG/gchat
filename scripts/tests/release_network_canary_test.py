@@ -34,5 +34,16 @@ class NetworkCanaryTests(unittest.TestCase):
             proof = copy.deepcopy(self.report); proof['file_check'][field] = value
             with self.subTest(field=field), self.assertRaises(ValueError): canary.verify_journey(proof, self.manifest)
 
+    def test_short_canary_never_qualifies_full_file_recovery(self):
+        proof = {**self.report, 'mode': 'chat'}
+        canary.verify_chat(proof)
+        with self.assertRaises(ValueError):
+            canary.verify_journey(proof, self.manifest)
+        for field, value in [('mode', 'full'), ('events', proof['events'][:1]),
+                             ('elapsed_seconds', 301), ('elapsed_seconds', float('nan')),
+                             ('children_stopped', False), ('temporary_profile_removed', False)]:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                canary.verify_chat({**proof, field: value})
+
 
 if __name__ == '__main__': unittest.main()

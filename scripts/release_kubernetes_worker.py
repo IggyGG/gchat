@@ -205,7 +205,8 @@ def run(target, manifest, stage, output):
         value = json.loads(proof.read_text())
         if (value.get('passed') is not True or value.get('authenticated_delivery') is not True
                 or value.get('release_id') != manifest['release_id'] or value.get('sources') != manifest['sources']
-                or value.get('target') != target['id']):
+                or value.get('target') != target['id']
+                or value.get('network_check', 'full') != target.get('network_check', 'full')):
             raise ValueError('canary does not bind this rollout')
         return value
     if stage not in ('activate', 'rollback'): raise ValueError('unsupported rollout stage')

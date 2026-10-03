@@ -36,7 +36,7 @@ def ssh(target, command, payload, timeout=120):
     host = target['host']
     if not re.fullmatch(r'[a-zA-Z0-9_.@-]+', host) or host.startswith('-'):
         raise ValueError('invalid operator SSH destination')
-    if command != 'install' and not re.fullmatch(r'(?:upload|canary (?:grant|revoke)) [0-9a-f]{64}', command):
+    if command != 'install' and not re.fullmatch(r'(?:upload|canary (?:grant|revoke|operator)) [0-9a-f]{64}', command):
         raise ValueError('unsupported restricted service command')
     return subprocess.run(['ssh', '-F', target['ssh_config'],
                            '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
@@ -64,10 +64,19 @@ def main():
         value = json.loads(proof_path.read_text())
         if (value.get('release_id') != manifest['release_id'] or value.get('sources') != manifest['sources']
                 or value.get('target') != target['id'] or value.get('passed') is not True
-                or value.get('authenticated_delivery') is not True):
+                or value.get('authenticated_delivery') is not True
+                or value.get('network_check', 'full') != target.get('network_check', 'full')):
             raise ValueError('network canary does not bind this deployment')
     else:
         if stage == 'prepare':
+            if target.get('canary_operator') is True:
+                operator, operator_sha = artifact({**target, 'binary_name': 'gc-network-operator'}, manifest)
+                if operator.stat().st_size > 16 * 1024 * 1024:
+                    raise ValueError('grant operator exceeds its binary budget')
+                ssh(target, 'upload ' + operator_sha, operator.read_bytes(), timeout=60)
+                prepared = json.loads(ssh(target, 'canary operator ' + operator_sha, b''))
+                if prepared.get('passed') is not True or prepared.get('sha256') != operator_sha:
+                    raise ValueError('grant operator preparation did not bind the qualified binary')
             # The remote path is content-addressed and written atomically. Never
             # execute or overwrite it until the complete upload verifies.
             # Bound memory; binaries have already been hashed and are operator-built.

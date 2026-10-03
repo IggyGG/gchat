@@ -1,4 +1,4 @@
-"""Host-owned, expiring bootstrap invitations for disposable rollout canaries."""
+"""Host-owned, expiring bootstrap/invitation authority for rollout canaries."""
 import base64
 import hashlib
 import json
@@ -6,9 +6,74 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import time
 
 from release_host_install import write
+
+
+def prepare_operator(policy_path, sha, *, upload_root=Path('/var/lib/gchat-release/uploads'),
+                     binary_root=Path('/usr/local/lib/gchat-release/operators'),
+                     backup_root=Path('/var/lib/gchat-release/operator-backups')):
+    """Install the source-qualified companion operator before catalog activation."""
+    if not re.fullmatch('[0-9a-f]{64}', sha):
+        raise ValueError('invalid operator digest')
+    policy_path = Path(policy_path)
+    raw = policy_path.read_bytes()
+    policy = json.loads(raw)
+    configured = policy.get('canary')
+    if not configured or not {'operator', 'network_id', 'provider_urls'} <= configured.keys():
+        raise ValueError('operator preparation requires the enabled host canary policy')
+    source = upload_root / ('gchat-release-' + sha)
+    if source.is_symlink() or not source.is_file() or not 0 < source.stat().st_size <= 16 * 1024 * 1024:
+        raise ValueError('operator upload is missing or unsafe')
+    data = source.read_bytes()
+    if hashlib.sha256(data).hexdigest() != sha:
+        raise ValueError('operator upload changed')
+    directory = binary_root / sha
+    for path in (binary_root, directory):
+        if path.is_symlink():
+            raise ValueError('operator directory cannot be a symlink')
+        path.mkdir(parents=True, exist_ok=True)
+        path.chmod(0o755)
+    binary = directory / 'gc-network-operator'
+    if binary.is_symlink():
+        raise ValueError('operator binary cannot be a symlink')
+    if binary.exists():
+        if binary.read_bytes() != data:
+            raise ValueError('retained operator binary changed')
+    else:
+        temporary = binary.with_suffix('.new')
+        temporary.write_bytes(data)
+        temporary.chmod(0o755)
+        os.replace(temporary, binary)
+    with tempfile.TemporaryDirectory(prefix='operator-check-', dir=directory) as temporary:
+        root = Path(temporary)
+        store, request, code = root / 'grants', root / 'request', root / 'invitation'
+        write(store, {'version': 1, 'grants': []})
+        write(request, {'network_id': configured['network_id'], 'provider_urls': configured['provider_urls'],
+                       'expires_at': int(time.time()) + 600, 'scopes': ['bootstrap', 'invitations'], 'max_names': 0})
+        subprocess.run([str(binary), 'grant', str(store), str(request), str(code)],
+                       check=True, capture_output=True, timeout=30)
+        _, _, ident = invitation(code)
+        subprocess.run([str(binary), 'revoke', str(store), ident],
+                       check=True, capture_output=True, timeout=30)
+        grants = json.loads(store.read_text())['grants']
+        if len(grants) != 1 or grants[0].get('revoked') is not True:
+            raise ValueError('operator did not revoke its diagnostic grant')
+    if configured['operator'] != str(binary):
+        backup_root.mkdir(parents=True, exist_ok=True)
+        backup = backup_root / ('policy-' + str(time.time_ns()) + '.json')
+        backup.write_bytes(raw)
+        backup.chmod(0o600)
+        configured['operator'] = str(binary)
+        ownership = policy_path.stat()
+        if policy_path.read_bytes() != raw:
+            raise ValueError('host policy changed during operator preparation')
+        write(policy_path, policy)
+        os.chown(policy_path, ownership.st_uid, ownership.st_gid)
+        policy_path.chmod(ownership.st_mode & 0o777)
+    return {'passed': True, 'sha256': sha, 'scope_checked': True, 'diagnostic_grant_revoked': True}
 
 
 def invitation(path):
@@ -50,12 +115,15 @@ def operate(policy, action, ident, *, state_root=Path('/var/lib/gchat-release/ca
             # Every authority and duration comes from the root-owned policy.
             write(intent, {'network_id': configured['network_id'],
                 'provider_urls': configured['provider_urls'], 'expires_at': now + ttl,
-                'scopes': ['bootstrap'], 'max_names': 0})
+                'scopes': ['bootstrap', 'invitations'], 'max_names': 0})
         expected = json.loads(intent.read_text())
         if (expected['network_id'] != configured['network_id']
                 or expected['provider_urls'] != configured['provider_urls']
-                or expected['scopes'] != ['bootstrap'] or expected['max_names'] != 0):
+                or expected['scopes'] not in (['bootstrap'], ['bootstrap', 'invitations'])
+                or expected['max_names'] != 0):
             raise ValueError('retained canary authority differs from host policy')
+        if action == 'grant' and expected['scopes'] != ['bootstrap', 'invitations']:
+            raise ValueError('legacy bootstrap-only canary authority can only be revoked')
 
         def operator(arguments):
             ownership = store.stat()

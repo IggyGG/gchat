@@ -16,6 +16,11 @@ CONTROL_FILES = frozenset({
     'scripts/release_inputs.py', 'scripts/release_coordinator.py',
     'scripts/release_discovery.py', 'scripts/release_config.py',
     'scripts/release_ledger.py', 'scripts/release_maintenance.py',
+    'scripts/release.py', 'scripts/release_control.py',
+    'scripts/release_deployment.py', 'scripts/release_host_worker.py',
+    'scripts/release_network_canary.py', 'scripts/release_kubernetes_worker.py',
+    'scripts/release_canary_grant.py', 'scripts/release_host_serve.py',
+    'scripts/release_evidence.py',
     'scripts/release_compaction.py', 'release/automation/compaction.yaml',
     'scripts/controller_runtime.py',
     'scripts/release_pair.py', 'release/automation/Dockerfile', 'release/automation/requirements.txt',
@@ -58,6 +63,12 @@ CONTROL_FILES = frozenset({
     'docs/evidence/stabilization-20261001/contract-checkpoint.json',
     'docs/evidence/stabilization-20261001/ios-build-allocation.json',
     'docs/evidence/stabilization-20261001/ios-passphrase-control.json',
+    'docs/evidence/stabilization-20261001/native-desktop-artifacts-verified.json',
+    'docs/evidence/stabilization-20261001/invitation-fixture-correction.json',
+    'docs/evidence/stabilization-20261001/public-sdk-compaction-activated.json',
+    'docs/evidence/stabilization-20261001/native-relay-egress-correction.json',
+    'docs/evidence/stabilization-20261001/host-install-permissions.json',
+    'docs/evidence/stabilization-20261001/launch-simplification.json',
 })
 
 # Reviewed status/validation documents do not enter GComs application code or
@@ -70,6 +81,9 @@ GCOMS_STATUS_FILES = frozenset({
     'docs/evidence/stabilization-20261001/sdk-size-policy.json',
     'docs/evidence/stabilization-20261001/sdk-native-90d7eac.json',
     'crates/file-transfer/README.md',
+    'scripts/release_evidence.py',
+    'scripts/tests/release_evidence_test.py',
+    'docs/evidence/stabilization-20261001/native-capacity-exclusion-policy.json',
 })
 
 
