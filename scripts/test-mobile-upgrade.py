@@ -124,6 +124,7 @@ def main():
         else:
             from mobile_ios_ui import IOSUI
             ui = IOSUI(owned, passphrase, deadline, initial=baseline)
+            report['owned_device_binding'] = {'passed': True, 'clone_used': ui.device != ui.base_device}
             journey = MobileJourney(current, baseline, peer, invitation, root, manifest)
             try:
                 journey.run(ui)

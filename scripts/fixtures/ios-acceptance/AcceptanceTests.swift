@@ -213,7 +213,11 @@ final class GChatAcceptanceTests: XCTestCase {
             return value
         }
         switch op {
-        case "ready", "finish":
+        case "ready":
+            guard let device = ProcessInfo.processInfo.environment["SIMULATOR_UDID"],
+                  UUID(uuidString: device) != nil else { throw Failure.protocolBinding }
+            return ["device": device]
+        case "finish":
             return true
         case "stop":
             app.terminate()

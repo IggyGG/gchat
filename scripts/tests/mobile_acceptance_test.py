@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import mobile_acceptance_inputs as inputs
 from mobile_android_ui import delivery_row
-from mobile_ios_ui import Bridge, IOSUI, runner_diagnostics
+from mobile_ios_ui import Bridge, IOSUI, owned_simulator_binding, runner_diagnostics
 from mobile_installed_journey import MobileJourney
 import release_acceptance as acceptance
 import mobile_android_ui as android_ui
@@ -306,6 +306,19 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertTrue(android_ui.named_control(ET.Element('node',{attribute:'Network: Connected'}),'Network:'))
             self.assertTrue(android_ui.named_control(ET.Element('node',{attribute:'Files: 2'}),'Files:'))
             self.assertFalse(android_ui.named_control(ET.Element('node',{attribute:'Another control'}),'Network:'))
+
+    def test_xctest_binding_accepts_only_fresh_owned_device_and_its_named_new_clone(self):
+        old='10000000-0000-0000-0000-000000000000';base='20000000-0000-0000-0000-000000000000'
+        clone='30000000-0000-0000-0000-000000000000';other='40000000-0000-0000-0000-000000000000'
+        name='GChatAcceptance-owned'
+        inventory={'devices':{'runtime':[{'udid':old,'name':'Existing device'},
+            {'udid':base,'name':name},{'udid':clone,'name':'Clone 1 of '+name},
+            {'udid':other,'name':'Another fresh device'}]}}
+        self.assertEqual(owned_simulator_binding(base,base,name,{old},inventory),base)
+        self.assertEqual(owned_simulator_binding(base,clone,name,{old},inventory),clone)
+        for reported,before in ((old,{old}),(clone,{old,clone}),(other,{old}),('private-value',{old})):
+            with self.subTest(reported=reported),self.assertRaises(ValueError):
+                owned_simulator_binding(base,reported,name,before,inventory)
 
     def test_composer_requires_one_visible_owned_nonpassword_editable_field(self):
         field='<node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]"/>'

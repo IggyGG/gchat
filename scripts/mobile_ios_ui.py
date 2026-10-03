@@ -27,6 +27,18 @@ UI_CONTROLS = frozenset(('review_invitation', 'create_identity', 'reconnect', 'c
     'close_dialog', 'nickname', 'joined', 'composer', 'webview', 'foreground'))
 
 
+def owned_simulator_binding(expected, reported, name, before, inventory):
+    require(isinstance(reported, str) and re.fullmatch(r'[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}', reported),
+            'XCTest simulator identity unavailable')
+    reported = reported.upper()
+    devices = {device['udid'].upper(): device for rows in inventory['devices'].values() for device in rows}
+    require(expected in devices and devices[expected]['name'] == name, 'owned simulator binding changed')
+    require(reported in devices and reported not in before, 'existing or unknown simulator refused')
+    require(reported == expected or re.fullmatch(r'Clone \d+ of ' + re.escape(name), devices[reported]['name']),
+            'XCTest did not use the fresh owned simulator or its new clone')
+    return reported
+
+
 def runner_diagnostics(path, exit_code, polls):
     """Public categories only; XCTest output can contain private UI data."""
     text = Path(path).read_text(errors='replace')[-16 * 1024**2:] if Path(path).is_file() else ''
@@ -148,9 +160,14 @@ class IOSUI:
         runtime = ios.simulator_runtime()
         types = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
         devices = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+        self.before_devices = {device['udid'].upper() for rows in devices.values() for device in rows}
         phone = ios.simulator_phone(runtime, types, devices)
-        self.device = ios.output(['xcrun', 'simctl', 'create', 'GChatAcceptance-' + secrets.token_hex(6), phone, runtime])
+        self.device_name = 'GChatAcceptance-' + secrets.token_hex(6)
+        self.device = ios.output(['xcrun', 'simctl', 'create', self.device_name, phone, runtime])
         require(re.fullmatch('[0-9A-Fa-f-]{36}', self.device), 'owned simulator ID differs')
+        self.device = self.device.upper()
+        self.base_device = self.device
+        self.owned_devices = {self.device}
         try:
             ios.run(['xcrun', 'simctl', 'boot', self.device], timeout=120)
             ios.run(['xcrun', 'simctl', 'bootstatus', self.device, '-b'], timeout=180)
@@ -184,7 +201,18 @@ class IOSUI:
                            if key not in ('GH_TOKEN', 'GITHUB_TOKEN', 'GCHAT_NETWORK_INVITATION')}
             self.runner = subprocess.Popen(list(map(str, command)), stdout=self.log,
                                            stderr=subprocess.STDOUT, env=environment)
-            self.call('ready', maximum=240)
+            ready = self.call('ready', maximum=240)
+            require(isinstance(ready, dict) and set(ready) == {'device'}, 'XCTest device receipt missing')
+            inventory = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', '--json']))
+            actual = owned_simulator_binding(self.device, ready['device'], self.device_name,
+                                             self.before_devices, inventory)
+            if actual != self.device:
+                self.device = actual
+                self.owned_devices.add(actual)
+                self.installed = False
+                self.active_binary_sha256 = None
+                require(initial is not None, 'unchanged baseline required on the owned XCTest clone')
+                self.install(initial)
         except Exception as error:
             cleaned = self.cleanup()
             error.owned_device_cleanup = cleaned
@@ -322,8 +350,24 @@ class IOSUI:
             self.log.close()
         if self.bridge is not None:
             self.bridge.close()
-        report = {}
+        reports = []
         if self.device is not None:
-            lifecycle.cleanup_device(self.device, report)
-        return {'passed': report.get('cleanup_complete') is True and not errors,
-                'errors': errors + report.get('cleanup_errors', [])}
+            try:
+                inventory = json.loads(ios.output(['xcrun', 'simctl', 'list', 'devices', '--json']))
+                present = {device['udid'] for rows in inventory['devices'].values() for device in rows}
+                for rows in inventory['devices'].values():
+                    for device in rows:
+                        if device['udid'].upper() not in self.before_devices and re.fullmatch(
+                                r'Clone \d+ of '+re.escape(self.device_name), device['name']):
+                            self.owned_devices.add(device['udid'])
+                for device in self.owned_devices:
+                    report = {}
+                    if device in present:
+                        lifecycle.cleanup_device(device, report)
+                    else:
+                        report['cleanup_complete'] = True
+                    reports.append(report)
+            except Exception as error:
+                errors.append(type(error).__name__)
+        return {'passed': bool(reports) and all(report.get('cleanup_complete') is True for report in reports) and not errors,
+                'errors': errors + [error for report in reports for error in report.get('cleanup_errors', [])]}

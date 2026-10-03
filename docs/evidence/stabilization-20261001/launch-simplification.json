@@ -341,7 +341,7 @@
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 33,
+    "focused_tests": 34,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
@@ -358,7 +358,10 @@
     "ios_os_invitation_activation": "cold",
     "warm_ios_link_qualified": false,
     "native_text_and_description_labels": true,
-    "public_runner_progress_categories": true
+    "public_runner_progress_categories": true,
+    "xctest_device_bound_to_fresh_owned_inventory": true,
+    "owned_clones_cleaned": true,
+    "clone_caused_previous_failure_proven": false
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",
