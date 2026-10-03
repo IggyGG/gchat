@@ -46,6 +46,8 @@ def runner_diagnostics(path, exit_code, polls):
     return {'exit_code': exit_code, 'bridge_polls': polls,
         'compile_error_locations': sorted(set(re.findall(r'AcceptanceTests\.swift:(\d+:\d+): error:', text))),
         'runtime_error_locations': sorted(set(re.findall(r'AcceptanceTests\.swift:(\d+): error:', text))),
+        'observation_failure_lines': sorted(set(int(value) for value in
+            re.findall(r'GCHAT_ACCEPTANCE_OBSERVATION_FAILURE=(\d+)\b', text))),
         'ui_error_categories': {'tap_failed': 'Failed to tap' in text,
             'snapshot_failed': 'Failed to get matching snapshot' in text,
             'not_hittable': 'not hittable' in text,

@@ -39,7 +39,9 @@ class MobileJourney:
 
     def ack(self, ui, phase, output):
         for sender in (0, 1):
-            body = 'mr-' + uuid.uuid4().hex
+            # Fit one readable token in a narrow native transcript. Message IDs
+            # and covered recipient signatures still establish delivery binding.
+            body = 'mr-' + uuid.uuid4().hex[:16]
             if sender == 0:
                 self.peer.submit(0, body)
                 try:

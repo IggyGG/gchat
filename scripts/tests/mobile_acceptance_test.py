@@ -372,12 +372,35 @@ class MobileAcceptanceTests(unittest.TestCase):
             tree=ET.fromstring('<hierarchy><node package="boo.gchat.app" content-desc="#mobile-release messages" '
                 'bounds="[10,100][290,390]"><node package="boo.gchat.app" text="private conversation text"/>'
                 '<node package="boo.gchat.app" text="*** Beginning of this conversation"/></node></hierarchy>')
-            with patch.object(ui,'tree',return_value=tree):self.assertFalse(ui.received(body))
+            with patch.object(ui,'tree',return_value=tree),patch.object(ui,'rendered_lines',return_value=[]):
+                self.assertFalse(ui.received(body))
             observation=ui.ui_observation['receive_view']
             self.assertTrue(observation['transcript_present']);self.assertTrue(observation['beginning_visible'])
             self.assertEqual(observation['transcript_nodes'],3)
             self.assertEqual(observation['transcript_bounds'],(10,100,290,390))
             self.assertNotIn('private',json.dumps(observation));self.assertNotIn(body,json.dumps(observation))
+
+    def test_pixel_observer_excludes_text_outside_the_owned_transcript(self):
+        header='level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n'
+        rows='5\t1\t1\t1\t1\t1\t10\t20\t50\t12\t95\tprivate-invitation\n'
+        rows+='5\t1\t2\t1\t1\t1\t15\t130\t150\t12\t95\tmr-aaaaaaaaaaaaaaaa\n'
+        rows+='5\t1\t2\t1\t1\t2\t170\t130\t70\t12\t95\tdelivered\n'
+        lines=android_ui.pixel_lines(header+rows,(0,100,320,500))
+        self.assertEqual(lines,[{'text':'mr-aaaaaaaaaaaaaaaa delivered','top':130,'bottom':142}])
+        self.assertNotIn('private',json.dumps(lines))
+
+    def test_pixel_receipt_remains_bound_to_one_complete_message_and_its_adjacent_status(self):
+        body='mr-aaaaaaaaaaaaaaaa';other='mr-bbbbbbbbbbbbbbbb';known={body,other}
+        line={'text':body,'top':100,'bottom':112}
+        receipt={'text':'· delivered','top':116,'bottom':128}
+        self.assertTrue(android_ui.pixel_delivered([line,receipt],body,known))
+        self.assertTrue(android_ui.pixel_delivered([line,dict(receipt,top=100,bottom=112)],body,known))
+        for changed in ([line,dict(receipt,top=200)],
+                        [line,dict(receipt,text=other+' · delivered')],
+                        [dict(line,text=body+'-suffix'),receipt],
+                        [dict(line,text=body+' '+other+' delivered')],
+                        [dict(line,text=other),receipt]):
+            self.assertFalse(android_ui.pixel_delivered(changed,body,known))
 
     def test_receive_diagnostics_never_turn_a_timeout_into_a_pass_or_replace_it(self):
         for diagnostic_failure in (False,True):
@@ -660,11 +683,13 @@ class MobileAcceptanceTests(unittest.TestCase):
                 'GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=-1022\n'
                 'GCHAT_ACCEPTANCE_UI_PHASE=join-arrival\n'
                 'GCHAT_ACCEPTANCE_UI_PHASE=identity-network\n'
+                'GCHAT_ACCEPTANCE_OBSERVATION_FAILURE=72\n'
                 'GCHAT_ACCEPTANCE_UI_PHASE=private-invitation\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_HTTP=403\n** TEST BUILD FAILED **\n')
             result=runner_diagnostics(log,65,0)
             self.assertEqual(result,{'exit_code':65,'bridge_polls':0,'compile_error_locations':['44:9'],
                 'runtime_error_locations':['282'],
+                'observation_failure_lines':[72],
                 'ui_error_categories':{'tap_failed':True,'snapshot_failed':False,'not_hittable':False,'no_matches':False},
                 'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],
                 'ui_phases':['join-arrival','identity-network'],'build_failed':True,

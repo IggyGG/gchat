@@ -298,38 +298,45 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37149270449,
-    "ios": 37148780839,
-    "helper": "7a9616308f5291c0e42f6a8bf804db0c687b1ba2",
+    "android": 37150879135,
+    "ios": 37150886456,
+    "helper": "750b6b46529d0f3e65100a4915859ec7e1d5f91a",
     "state": "both_failed",
     "previous_failed_runs": {
       "android": 37145104303,
       "ios": 37145106253
     },
     "android_report": {
-      "artifact": 11283486732,
-      "sha256": "3b7d0b4b2dd1b020c721088b0c69a43485d100bb1dc275b472be4db3fe8e4314",
+      "artifact": 11283604360,
+      "sha256": "06c5e8e8fa96f20a0a000962fbef9b0eea5d0c26cef25f735b6eef1b867b03ed",
       "passed": false,
       "stage": "baseline-start",
       "identity_and_join_passed": true,
-      "failure": "incoming_rendered_message_timeout",
       "authenticated_recipient_ack": true,
-      "receipt": "operations/android-helper-7a96163-result-748.zip"
+      "owned_channel_title": true,
+      "transcript_nodes": 1,
+      "transcript_bounds": [
+        0,
+        125,
+        320,
+        555
+      ],
+      "failure": "incoming_rendered_message_timeout",
+      "receipt": "operations/android-helper-750b6b4-result-753.zip"
     },
-    "android_helper": "7a9616308f5291c0e42f6a8bf804db0c687b1ba2",
+    "android_helper": "750b6b46529d0f3e65100a4915859ec7e1d5f91a",
     "ios_report": {
-      "artifact": 11282523937,
-      "sha256": "61d1e8328584e1ecae128322cbebf1d80cfd34b63ced59f1e07047be801d19fa",
+      "artifact": 11284211613,
+      "sha256": "daf3eb5a5b1fe6539bd9f73ce6be9ef74cb5a919786981d610ea21687aa41bb3",
       "passed": false,
       "stage": "baseline-start",
-      "phase": "identity",
+      "phase": "unlock-passphrase",
       "owned_device_binding_passed": true,
       "clone_used": false,
       "invitation_entry": "visible_form",
-      "join_passed": true,
-      "receipt": "operations/ios-helper-710d1d0-result-746.zip"
+      "receipt": "operations/ios-helper-750b6b4-result-752.zip"
     },
-    "ios_helper": "710d1d04fe97017905c3f5de075ef705e3a4b4ba"
+    "ios_helper": "750b6b46529d0f3e65100a4915859ec7e1d5f91a"
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -355,8 +362,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "7a9616308f5291c0e42f6a8bf804db0c687b1ba2",
-  "native_helper_qualification": "operations/native-helper-7a96163-qualified-745.json",
+  "native_helper_source": "750b6b46529d0f3e65100a4915859ec7e1d5f91a",
+  "native_helper_qualification": "operations/native-helper-750b6b4-qualified-750.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -365,7 +372,7 @@
     "ios_existing_app_activated": true,
     "ios_pending_invitation_unlock_in_place": true,
     "public_ui_phases_only": true,
-    "focused_tests": 42,
+    "focused_tests": 44,
     "focused_passed": true,
     "installed_acceptance_complete": false,
     "combined_owned_channel_accessibility_name": true,
@@ -396,7 +403,10 @@
     "complete_canary_tokens_in_combined_android_labels": true,
     "timeout_keeps_original_failure": true,
     "android_transcript_diagnostics": "successor, awaiting native result",
-    "ios_identity_coordinate_navigation": "successor, awaiting native result"
+    "ios_identity_coordinate_navigation": "successor, awaiting native result",
+    "android_pixel_observer": "successor, awaiting native result; no image or recognized text retention",
+    "native_worker_dependency": "Ubuntu tesseract-ocr",
+    "ios_assertion_locations": "successor, static lines only"
   },
   "routine_automation": {
     "source_mirror_timer": "gchat-source-mirror.timer",

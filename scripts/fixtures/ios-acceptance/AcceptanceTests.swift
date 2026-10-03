@@ -15,14 +15,17 @@ final class GChatAcceptanceTests: XCTestCase {
         didSet { print("GCHAT_ACCEPTANCE_UI_PHASE=\(phase)") }
     }
 
-    func require(_ value: Bool) throws {
-        if !value { throw Failure.observation }
+    func require(_ value: Bool, line: UInt = #line) throws {
+        if !value {
+            print("GCHAT_ACCEPTANCE_OBSERVATION_FAILURE=\(line)")
+            throw Failure.observation
+        }
     }
 
-    func wait(_ seconds: TimeInterval = 60, _ check: @escaping () -> Bool) throws {
+    func wait(_ seconds: TimeInterval = 60, line: UInt = #line, _ check: @escaping () -> Bool) throws {
         let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in check() }, object: nil)], timeout: seconds)
-        try require(result == .completed)
+        try require(result == .completed, line: line)
     }
 
     func element(_ label: String) -> XCUIElement {
@@ -56,11 +59,17 @@ final class GChatAcceptanceTests: XCTestCase {
 
     func type(_ field: XCUIElement, _ value: String) throws {
         try wait(20) { field.exists }
-        for _ in 0..<4 {
-            if field.isHittable { break }
-            app.webViews.firstMatch.swipeUp()
+        let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
+        try wait(20) { main.exists }
+        for _ in 0..<6 {
+            if field.isHittable && main.frame.contains(field.frame) { break }
+            if field.frame.midY < main.frame.minY {
+                app.webViews.firstMatch.swipeDown()
+            } else {
+                app.webViews.firstMatch.swipeUp()
+            }
         }
-        try require(field.isHittable)
+        try require(field.isHittable && main.frame.contains(field.frame))
         var focused = false
         for _ in 0..<3 {
             let frame = field.frame

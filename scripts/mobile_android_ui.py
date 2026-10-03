@@ -3,7 +3,10 @@
 UI hierarchies and invitation values stay in memory. No application endpoint,
 debug build, WebView instrumentation or personal-device operation is used.
 """
+import csv
 import hashlib
+import io
+import os
 from pathlib import Path
 import re
 import shlex
@@ -81,6 +84,34 @@ def delivery_row(tree, body, known_bodies):
         values = labels(node)
         if any(value.strip() == '· delivered' or value.rstrip().endswith(' · delivered') for value in values):
             if message_bodies(values, known_bodies) == {body}:
+                return True
+    return False
+
+
+def pixel_lines(tsv, bounds):
+    """Recognized words wholly inside the owned, visible transcript only."""
+    x1, y1, x2, y2 = bounds
+    lines = {}
+    for row in csv.DictReader(io.StringIO(tsv), delimiter='\t'):
+        if row['level'] != '5' or not row['text'].strip(): continue
+        x, y, width, height = (int(row[key]) for key in ('left', 'top', 'width', 'height'))
+        if width <= 0 or height <= 0 or not (x1 <= x and y1 <= y and x+width <= x2 and y+height <= y2): continue
+        key = tuple(row[key] for key in ('page_num', 'block_num', 'par_num', 'line_num'))
+        lines.setdefault(key, []).append((x, y, width, height, row['text']))
+    return sorted([{'text': ' '.join(word[4] for word in sorted(words)),
+        'top': min(word[1] for word in words), 'bottom': max(word[1]+word[3] for word in words)}
+        for words in lines.values()], key=lambda line: line['top'])
+
+
+def pixel_delivered(lines, body, known_bodies):
+    for index, line in enumerate(lines):
+        if message_bodies([line['text']], known_bodies) != {body}: continue
+        if re.search(r'\bdelivered\b', line['text']): return True
+        # A wrapped receipt must be the next line and contain only its status.
+        if index+1 < len(lines):
+            following = lines[index+1]
+            if re.fullmatch(r'[^\w]*delivered[^\w]*', following['text']) and (
+                line['top'] <= following['top'] <= line['bottom']+1.5*(line['bottom']-line['top'])):
                 return True
     return False
 
@@ -348,6 +379,24 @@ class AndroidUI:
         self.type(field, body)
         self.click('Send')
 
+    def rendered_lines(self, tree):
+        transcript = next((node for node in tree.iter('node') if node.get('package') == android.PACKAGE
+            and any(node.get(key, '').endswith(' messages') for key in ('text', 'content-desc'))
+            and android.ui_bounds(node)), None)
+        if transcript is None: return []
+        # Pixels and OCR text stay in memory; neither is written or uploaded.
+        pixels = self.command('exec-out', 'screencap', '-p', binary=True)
+        left = min(20, self.deadline()-time.monotonic())
+        require(left > 0, 'original mobile journey deadline')
+        result = subprocess.run(['tesseract', 'stdin', 'stdout', '--psm', '11', 'tsv'],
+            input=pixels, capture_output=True, timeout=left, env={**os.environ, 'OMP_THREAD_LIMIT': '1'})
+        require(result.returncode == 0, 'owned Android pixel observation failed')
+        self.ui_observation['pixel_observer_used'] = True
+        lines = pixel_lines(result.stdout.decode(), android.ui_bounds(transcript))
+        self.ui_observation['pixel_lines_count'] = len(lines)
+        self.ui_observation['pixel_canary_prefix_lines'] = sum('mr-' in line['text'] for line in lines)
+        return lines
+
     def received(self, body):
         self.bodies.add(body)
         tree = self.tree()
@@ -367,10 +416,12 @@ class AndroidUI:
             'body_after_whitespace_removal': any(body in re.sub(r'\s+', '', value) for value in values),
             'body_hex_visible': any(body[3:] in value for value in values),
             'canary_prefix_labels': sum('mr-' in value for value in values)}
-        return body in message_bodies(values, {body})
+        if body in message_bodies(values, {body}): return True
+        return body in message_bodies([line['text'] for line in self.rendered_lines(tree)], {body})
 
     def delivered(self, body):
-        return delivery_row(self.tree(), body, self.bodies)
+        tree = self.tree()
+        return delivery_row(tree, body, self.bodies) or pixel_delivered(self.rendered_lines(tree), body, self.bodies)
 
     def history(self, bodies):
         self.bodies.update(bodies)
@@ -381,6 +432,8 @@ class AndroidUI:
         for _ in range(12):
             tree = self.tree()
             missing.difference_update(message_bodies(labels(tree), missing))
+            if missing:
+                missing.difference_update(message_bodies([line['text'] for line in self.rendered_lines(tree)], missing))
             if not missing:
                 break
             transcript = next((node for node in tree.iter('node')
