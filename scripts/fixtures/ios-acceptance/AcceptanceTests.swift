@@ -158,8 +158,14 @@ final class GChatAcceptanceTests: XCTestCase {
         request.httpBody = try JSONSerialization.data(withJSONObject: value)
         let ready = DispatchSemaphore(value: 0)
         var answer: [String: Any]?
-        URLSession.shared.dataTask(with: request) { data, response, _ in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             defer { ready.signal() }
+            if let error = error as NSError? {
+                print("GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=\(error.code)")
+            }
+            if let response = response as? HTTPURLResponse, response.statusCode != 200 {
+                print("GCHAT_ACCEPTANCE_BRIDGE_HTTP=\(response.statusCode)")
+            }
             guard (response as? HTTPURLResponse)?.statusCode == 200,
                   let data = data, data.count <= 196608,
                   let decoded = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
@@ -294,6 +300,7 @@ final class GChatAcceptanceTests: XCTestCase {
         continueAfterFailure = false
         endpoint = ProcessInfo.processInfo.environment["GCHAT_TEST_BRIDGE_URL"] ?? ""
         token = ProcessInfo.processInfo.environment["GCHAT_TEST_BRIDGE_TOKEN"] ?? ""
+        print("GCHAT_ACCEPTANCE_BRIDGE_CONFIGURATION=\(endpoint.hasPrefix("http://127.0.0.1:") && !token.isEmpty ? 1 : 0)")
         try require(endpoint.hasPrefix("http://127.0.0.1:") && !token.isEmpty)
         let end = ProcessInfo.processInfo.systemUptime + 1500
         while ProcessInfo.processInfo.systemUptime < end {

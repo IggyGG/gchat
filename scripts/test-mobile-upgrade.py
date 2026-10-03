@@ -141,6 +141,9 @@ def main():
         report['error'] = type(error).__name__
         report['error_frames'] = error_frames(error)
         report['stage'] = journey.stage if journey is not None else 'retained-inputs-or-device-setup'
+        if target == 'ios' and hasattr(error, 'ios_setup_diagnostics'):
+            report['runner_setup'] = error.ios_setup_diagnostics
+            report['installation_cleanup'].append(error.owned_device_cleanup)
     finally:
         if target == 'android' and ui is not None:
             report['ui_observation'] = dict(ui.ui_observation)
@@ -154,17 +157,20 @@ def main():
                 atomic_json(path / 'report.json', value)
         else:
             try:
-                result = ui.cleanup() if ui is not None else {'passed': False}
+                result = ui.cleanup() if ui is not None else None
             except Exception as error:
                 result = {'passed': False, 'error': type(error).__name__}
-            report['installation_cleanup'].append(result)
+            if result is not None:
+                report['installation_cleanup'].append(result)
+            elif not report['installation_cleanup']:
+                report['installation_cleanup'].append({'passed': False})
         if target == 'ios':
             for work, mount in reversed(desktop.mac.MOUNTS):
                 try:
                     result = desktop.mac.installer.cleanup_installation(
                         desktop.mac.installer.Commands(root, {'commands': []}),
                         work, mount, True, children_stopped=(
-                            journey is not None and journey.report.get('children_stopped') is True))
+                            journey is None or journey.report.get('children_stopped') is True))
                     report['installation_cleanup'].append(result)
                 except Exception as error:
                     report['installation_cleanup'].append({'passed': False, 'error': type(error).__name__})

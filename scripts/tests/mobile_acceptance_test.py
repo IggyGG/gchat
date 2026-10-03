@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import mobile_acceptance_inputs as inputs
 from mobile_android_ui import delivery_row
-from mobile_ios_ui import Bridge
+from mobile_ios_ui import Bridge, runner_diagnostics
 import release_acceptance as acceptance
 import mobile_android_ui as android_ui
 from release_acceptance_test import fixture
@@ -218,6 +218,28 @@ class MobileAcceptanceTests(unittest.TestCase):
                 self.assertEqual(screenshot.call_count,int(create and not typed))
                 self.assertNotIn('fixture-private-value',json.dumps(ui.ui_observation))
 
+    def test_android_input_waits_for_keyboard_and_exact_focused_value_before_back(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));events=[]
+            node=ET.Element('node',{'focused':'true','text':'fixture-private-value'})
+            with patch.object(ui,'tap',side_effect=lambda n:events.append('tap')), \
+                 patch.object(android_ui.android,'wait_keyboard',side_effect=lambda shell,up:events.append('keyboard-up' if up else 'keyboard-down')), \
+                 patch.object(ui,'shell',side_effect=lambda *args:events.append(args[:2])), \
+                 patch.object(ui,'tree',side_effect=lambda:events.append('observed-input') or node):
+                ui.type(node,'fixture-private-value')
+            self.assertEqual(events,['tap','keyboard-up',('input','text'),'observed-input',('input','keyevent'),'keyboard-down'])
+            self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
+            self.assertNotIn('fixture-private-value',json.dumps(ui.ui_observation))
+
+    def test_android_missing_keyboard_never_types_or_sends_back(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            with patch.object(ui,'tap'),patch.object(android_ui.android,'wait_keyboard',side_effect=ValueError), \
+                 patch.object(ui,'shell') as shell,self.assertRaises(ValueError):
+                ui.type(ET.Element('node'),'fixture-private-value')
+            shell.assert_not_called()
+            self.assertNotIn('inputs_confirmed',ui.ui_observation)
+
     def test_mobile_inputs_require_distinct_releases_and_matching_native_peer(self):
         for target in ('android', 'ios'):
             _, specs, *_ = mobile_fixture(target)
@@ -321,6 +343,7 @@ class MobileAcceptanceTests(unittest.TestCase):
             worker.join(timeout=5)
             self.assertFalse(worker.is_alive())
             self.assertEqual(answers, [True])
+            self.assertEqual(bridge.polls,1)
             with self.assertRaises(HTTPError) as duplicate:
                 post('/result', {'id': command['id'], 'passed': True, 'value': True})
             self.assertEqual(duplicate.exception.code, 400)
@@ -330,6 +353,27 @@ class MobileAcceptanceTests(unittest.TestCase):
         finally:
             worker.join(timeout=5) if worker.ident is not None else None
             bridge.close()
+
+    def test_xctest_bridge_stops_waiting_when_its_owned_runner_exits(self):
+        bridge=Bridge()
+        try:
+            with self.assertRaisesRegex(ValueError,'owned XCTest runner exited'):
+                bridge.call('ready',timeout=60,alive=lambda:False)
+        finally:
+            bridge.close()
+
+    def test_ios_runner_diagnostics_exclude_private_logs_and_retain_static_failure_categories(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            log=Path(temporary)/'xctest.private.log'
+            log.write_text('private-token private-invitation /private/profile/path\n'
+                '/private/build/AcceptanceTests.swift:44:9: error: private error text\n'
+                'GCHAT_ACCEPTANCE_BRIDGE_CONFIGURATION=1\n'
+                'GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=-1022\n'
+                'GCHAT_ACCEPTANCE_BRIDGE_HTTP=403\n** TEST BUILD FAILED **\n')
+            result=runner_diagnostics(log,65,0)
+            self.assertEqual(result,{'exit_code':65,'bridge_polls':0,'compile_error_locations':['44:9'],
+                'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],'build_failed':True})
+            self.assertNotIn('private',json.dumps(result))
 
     def test_post_journey_artifact_check_observes_changed_bytes(self):
         driver = module('test-mobile-upgrade')

@@ -20,11 +20,25 @@ ios = module('ios-build')
 lifecycle = module('ios-lifecycle')
 
 
+def runner_diagnostics(path, exit_code, polls):
+    """Public categories only; XCTest output can contain private UI data."""
+    text = Path(path).read_text(errors='replace')[-16 * 1024**2:] if Path(path).is_file() else ''
+    return {'exit_code': exit_code, 'bridge_polls': polls,
+        'compile_error_locations': sorted(set(re.findall(r'AcceptanceTests\.swift:(\d+:\d+): error:', text))),
+        'configuration_ready': 'GCHAT_ACCEPTANCE_BRIDGE_CONFIGURATION=1' in text,
+        'transport_codes': sorted(set(int(value) for value in
+            re.findall(r'GCHAT_ACCEPTANCE_BRIDGE_TRANSPORT=(-?\d+)\b', text))),
+        'http_status_codes': sorted(set(int(value) for value in
+            re.findall(r'GCHAT_ACCEPTANCE_BRIDGE_HTTP=(\d+)\b', text))),
+        'build_failed': '** TEST BUILD FAILED **' in text or '** BUILD FAILED **' in text}
+
+
 class Bridge:
     def __init__(self):
         self.token = secrets.token_urlsafe(32)
         self.commands = queue.Queue()
         self.results = {}
+        self.polls = 0
         self.ready = threading.Condition()
         owner = self
 
@@ -42,6 +56,7 @@ class Bridge:
                     value = json.loads(self.rfile.read(size))
                     if self.path == '/next':
                         require(value == {'ready': True}, 'invalid XCTest poll')
+                        owner.polls += 1
                         try:
                             result = owner.commands.get(timeout=3)
                         except queue.Empty:
@@ -74,7 +89,7 @@ class Bridge:
         self.thread.start()
         self.url = 'http://127.0.0.1:' + str(self.server.server_port)
 
-    def call(self, op, timeout=120, **values):
+    def call(self, op, timeout=120, alive=None, **values):
         ident = uuid.uuid4().hex
         with self.ready:
             self.results[ident] = None
@@ -83,7 +98,8 @@ class Bridge:
             while self.results[ident] is None:
                 remaining = end - time.monotonic()
                 require(remaining > 0, 'original XCTest command deadline')
-                self.ready.wait(remaining)
+                require(alive is None or alive(), 'owned XCTest runner exited')
+                self.ready.wait(min(remaining, 1) if alive is not None else remaining)
             result = self.results.pop(ident)
         require(result['passed'] is True, 'installed iOS UI observation failed')
         return result.get('value')
@@ -138,15 +154,19 @@ class IOSUI:
             self.runner = subprocess.Popen(list(map(str, command)), stdout=self.log,
                                            stderr=subprocess.STDOUT, env=environment)
             self.call('ready', maximum=240)
-        except Exception:
-            self.cleanup()
+        except Exception as error:
+            cleaned = self.cleanup()
+            error.owned_device_cleanup = cleaned
+            error.ios_setup_diagnostics = runner_diagnostics(
+                output / 'xctest.private.log', self.runner.poll() if self.runner is not None else None,
+                self.bridge.polls if self.bridge is not None else 0)
             raise
 
     def call(self, op, maximum=120, **values):
         require(self.runner is not None and self.runner.poll() is None, 'owned XCTest runner exited')
         left = min(maximum, self.deadline() - time.monotonic())
         require(left > 0, 'original mobile journey deadline')
-        return self.bridge.call(op, timeout=left, **values)
+        return self.bridge.call(op, timeout=left, alive=lambda: self.runner.poll() is None, **values)
 
     def install(self, item):
         if self.installed:

@@ -136,8 +136,15 @@ class AndroidUI:
     def type(self, node, value):
         self.input_started = True
         self.tap(node)
+        # WebView focus and the IME arrive asynchronously. Pressing Back before
+        # the keyboard appears closes the app instead of dismissing the IME.
+        android.wait_keyboard(self.shell, True)
         self.shell('input', 'text', shlex.quote(value.replace(' ', '%s')))
+        self.until(lambda: any(child.get('focused') == 'true' and child.get('text') == value
+                              for child in self.tree().iter('node')), 10)
         self.shell('input', 'keyevent', '4')
+        android.wait_keyboard(self.shell, False)
+        self.ui_observation['inputs_confirmed'] = self.ui_observation.get('inputs_confirmed', 0) + 1
 
     def no_listener(self):
         require(self.uid is not None, 'installed mobile UID unavailable')
