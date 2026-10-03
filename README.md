@@ -796,3 +796,5 @@ is unqualified. See [production policy](docs/PRODUCTION_RELEASE.md); this source
 change is not a claim that installed/store artifacts have been updated.
 
 Mobile installed acceptance uses an uppercase fixture nickname with exact native input confirmation. Simulator installs verify the retained executable hash; a timed-out install can reconcile or retry once within its original 120-second limit. No app binary is rebuilt for these worker corrections. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
+
+Mobile worker observations use complete readable canaries across adjacent wrapped transcript lines, preserving random body entropy and authenticated recipient binding. iOS fills owned test fields through the normal system Paste action, verifies the exact result, and clears the local-only clipboard immediately.

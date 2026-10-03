@@ -1,6 +1,7 @@
 """Actual mobile upgrade and covered-network journey using an installed UI."""
 import argparse
 import hashlib
+import secrets
 import shutil
 import time
 import uuid
@@ -10,6 +11,32 @@ from release_network_canary import module
 
 network = module('test-native-network')
 smoke = network.m
+
+# Familiar words render reliably in narrow native transcripts. Ten independent
+# selections from at least 128 words retain at least 70 bits of body entropy;
+# actual message IDs and recipient signatures remain unchanged.
+CANARY_WORDS = tuple('''
+apple apron arrow atlas badge baker basin beach berry birch blade bloom board boat
+book bowl brain brick broom brush cable camel candy canoe cedar chair chalk charm
+chess chest chick choir cider clock cloud coach coast coral crane creek crown
+daisy dance dawn deer desk dove dream drum eagle earth elbow ember fence fern
+field flame flask fleet flock floor flute forest frame frost fruit garden gate
+glass globe glove goat goose grape grass grove guest guide gull halo harp haven
+hazel heart hedge heron honey horse house ivory jacket jelly jewel judge kite
+ladder lake lamp leaf lemon light linen lion maple meadow melon metal mint moon
+mouse music nest ocean olive opera orbit otter paint panda paper peach pearl
+piano pine plane plate plum pond poppy porch prism rabbit raven reed river robin
+rock rose ruby saddle sail scarf seal shade shark shell shore silk slate smile
+snail snow soap song spark spoon spring star steam stone storm stove straw sun
+swan table tiger toast tower trail train tree tulip turtle valley vase velvet
+violin wagon water whale wheat wheel willow wind wing wolf wood wool wren zebra
+'''.split())
+require(len(set(CANARY_WORDS)) == len(CANARY_WORDS) and len(CANARY_WORDS) >= 128,
+        'independent readable canary words required')
+
+
+def canary_body():
+    return 'Canary ' + ' '.join(secrets.choice(CANARY_WORDS) for _ in range(10))
 
 
 class MobileJourney:
@@ -39,9 +66,7 @@ class MobileJourney:
 
     def ack(self, ui, phase, output):
         for sender in (0, 1):
-            # Fit one readable token in a narrow native transcript. Message IDs
-            # and covered recipient signatures still establish delivery binding.
-            body = 'mr-' + uuid.uuid4().hex[:16]
+            body = canary_body()
             if sender == 0:
                 self.peer.submit(0, body)
                 try:
@@ -100,7 +125,7 @@ class MobileJourney:
         require(ui.export(cache_name, 'initial') == expected, 'initial installed cached export differs')
         encrypted = ui.cache_hash(cache_id)
         require(encrypted != expected, 'cache piece is not the plaintext export')
-        retained_bodies = [row['body'] for row in self.peer.history(0) if row['body'].startswith('mr-')]
+        retained_bodies = [row['body'] for row in self.peer.history(0) if row['body'].startswith('Canary ')]
         for phase, item in (('upgraded', self.current), ('baseline', self.baseline), ('restored', self.current)):
             self.stage = 'replacement-' + phase
             ui.install(item)
@@ -113,7 +138,7 @@ class MobileJourney:
             self.rollback['phases'].append({'phase': phase, 'binary_sha256': item['binary_sha256'],
                 'same_identity': True, 'history_retained': True, 'cache_sha256': expected,
                 'encrypted_cache_sha256': encrypted, 'authenticated_bidirectional_ack': True})
-            retained_bodies = [row['body'] for row in self.peer.history(0) if row['body'].startswith('mr-')]
+            retained_bodies = [row['body'] for row in self.peer.history(0) if row['body'].startswith('Canary ')]
         self.rollback['elapsed_seconds'] = time.monotonic() - self.start
         require(self.rollback['elapsed_seconds'] <= 600, 'original mobile rollback deadline')
         self.rollback['passed'] = True

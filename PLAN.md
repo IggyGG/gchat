@@ -4,6 +4,8 @@ All eight node headroom timers are enabled and scheduled checks pass. Controller
 
 Mobile worker correction (2026-10-04): the retained 7f423f8 Android report proves that keyboard capitalization changed the nickname while focus and its length were correct. The fixture now enters uppercase MOBILE and keeps exact input confirmation. The retained iOS report failed during initial simulator installation before XCTest. Installation now reconciles the actual retained executable after a client timeout and permits one idempotent retry inside the original 120-second operation and 600-second setup budget. Changed binaries, ordinary command errors and exhausted deadlines still fail. All 53 focused mobile controls pass; new native acceptance is required. Original failures, application bytes and APIs remain unchanged.
 
+Mobile observation correction (2026-10-04): helper 0b03781 passes 857 source controls. Its Android run passes OS invitation enrollment, exact nickname entry, identity observation and authenticated recipient delivery, then fails exact pixel recognition. Its iOS run reconciles one stalled install inside 120 seconds, verifies the retained executable, then exposes dropped simulated keyboard characters. Workers now use readable random word canaries with at least 70 bits of body entropy, exact adjacent wrapped-line recognition and message-bound delivery status; iOS uses normal local-only Paste with exact value confirmation and immediate clipboard clearing. Native acceptance remains required. The failed reports and original signed apps are retained.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

@@ -83,7 +83,7 @@ def message_bodies(values, known_bodies):
     # Match complete canary tokens, never prefixes inside another message.
     return {body for body in known_bodies if any(re.search(
         r'(?<![A-Za-z0-9_-])' + re.escape(body) + r'(?![A-Za-z0-9_-])', value)
-        for value in values)}
+        for value in (' '.join(value.split()) for value in values))}
 
 
 def delivery_row(tree, body, known_bodies):
@@ -112,10 +112,30 @@ def pixel_lines(tsv, bounds):
         for words in lines.values()], key=lambda line: line['top'])
 
 
+def pixel_message_spans(lines, body):
+    for start in range(len(lines)):
+        text = ''
+        for end in range(start, min(len(lines), start+8)):
+            line = lines[end]
+            if end > start:
+                previous = lines[end-1]
+                if not (previous['top'] <= line['top'] <= previous['bottom'] +
+                        1.5*(previous['bottom']-previous['top'])): break
+            text += ' ' + line['text']
+            if message_bodies([text], {body}):
+                suffix = ' '.join(text.split()).split(body, 1)[1]
+                if re.fullmatch(r'[^\w]*(?:delivered[^\w]*)?', suffix):
+                    yield start, end, text
+                break
+
+
 def pixel_delivered(lines, body, known_bodies):
-    for index, line in enumerate(lines):
-        if message_bodies([line['text']], known_bodies) != {body}: continue
-        if re.search(r'\bdelivered\b', line['text']): return True
+    for start, index, text in pixel_message_spans(lines, body):
+        line = lines[index]
+        if message_bodies([text], known_bodies) != {body}: continue
+        # A status before the body cannot acknowledge this message.
+        suffix = ' '.join(text.split()).split(body, 1)[1]
+        if re.fullmatch(r'[^\w]*delivered[^\w]*', suffix): return True
         # A wrapped receipt must be the next line and contain only its status.
         if index+1 < len(lines):
             following = lines[index+1]
@@ -443,7 +463,7 @@ class AndroidUI:
         self.ui_observation['pixel_observer_used'] = True
         lines = pixel_lines(result.stdout.decode(), android.ui_bounds(transcript))
         self.ui_observation['pixel_lines_count'] = len(lines)
-        self.ui_observation['pixel_canary_prefix_lines'] = sum('mr-' in line['text'] for line in lines)
+        self.ui_observation['pixel_canary_prefix_lines'] = sum('Canary ' in line['text'] or 'mr-' in line['text'] for line in lines)
         return lines
 
     def received(self, body):
@@ -464,9 +484,9 @@ class AndroidUI:
             'body_token_any_package': body in message_bodies(all_values, {body}),
             'body_after_whitespace_removal': any(body in re.sub(r'\s+', '', value) for value in values),
             'body_hex_visible': any(body[3:] in value for value in values),
-            'canary_prefix_labels': sum('mr-' in value for value in values)}
+            'canary_prefix_labels': sum('Canary ' in value or 'mr-' in value for value in values)}
         if body in message_bodies(values, {body}): return True
-        return body in message_bodies([line['text'] for line in self.rendered_lines(tree)], {body})
+        return next(pixel_message_spans(self.rendered_lines(tree), body), None) is not None
 
     def delivered(self, body):
         tree = self.tree()
@@ -482,7 +502,9 @@ class AndroidUI:
             tree = self.tree()
             missing.difference_update(message_bodies(labels(tree), missing))
             if missing:
-                missing.difference_update(message_bodies([line['text'] for line in self.rendered_lines(tree)], missing))
+                lines = self.rendered_lines(tree)
+                missing.difference_update(body for body in list(missing)
+                    if next(pixel_message_spans(lines, body), None) is not None)
             if not missing:
                 break
             transcript = next((node for node in tree.iter('node')

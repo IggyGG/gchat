@@ -467,6 +467,22 @@ class MobileAcceptanceTests(unittest.TestCase):
         self.assertEqual(lines,[{'text':'mr-aaaaaaaaaaaaaaaa delivered','top':130,'bottom':142}])
         self.assertNotIn('private',json.dumps(lines))
 
+    def test_wrapped_readable_canary_requires_every_exact_word_and_its_own_status(self):
+        body='Canary apple arrow beach birch cloud dawn eagle forest grape river'
+        first={'text':'[12:34] sender> Canary apple arrow beach birch','top':100,'bottom':112}
+        second={'text':'cloud dawn eagle forest grape river','top':116,'bottom':128}
+        receipt={'text':'· delivered','top':132,'bottom':144}
+        self.assertTrue(android_ui.pixel_delivered([first,second,receipt],body,{body}))
+        for changed in ({**second,'text':second['text'].replace('grape','grave')},
+                        {**second,'top':170,'bottom':182},
+                        {**second,'text':second['text']+' suffix'}):
+            self.assertFalse(android_ui.pixel_delivered([first,changed,receipt],body,{body}))
+        self.assertFalse(android_ui.pixel_delivered([receipt,first,second],body,{body}))
+        self.assertFalse(android_ui.pixel_delivered([first,second,
+            {**receipt,'text':'Canary other-message · delivered'}],body,{body}))
+        self.assertEqual(android_ui.message_bodies([body.replace(' ', '\n')],{body}),{body})
+        self.assertEqual(android_ui.message_bodies([body+'-suffix'],{body}),set())
+
     def test_pixel_receipt_remains_bound_to_one_complete_message_and_its_adjacent_status(self):
         body='mr-aaaaaaaaaaaaaaaa';other='mr-bbbbbbbbbbbbbbbb';known={body,other}
         line={'text':body,'top':100,'bottom':112}

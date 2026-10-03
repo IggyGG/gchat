@@ -329,8 +329,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
-  "native_helper_qualification": "operations/native-helper-7f423f8-qualified-785.json",
+  "native_helper_source": "0b03781602a2ef22026b0165ec6e9afeb5aeec3e",
+  "native_helper_qualification": "operations/native-helper-0b03781-qualified-794.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -603,6 +603,38 @@
         "cleanup_passed": true,
         "receipt": "operations/ios-helper-7f423f8-result-792.zip"
       }
+    },
+    {
+      "android": 37159775980,
+      "ios": 37159776604,
+      "helper": "0b03781602a2ef22026b0165ec6e9afeb5aeec3e",
+      "state": "both_failed",
+      "android_report": {
+        "artifact": 11287382209,
+        "sha256": "bc663011ca170054a04164332bfb7d7142b8b3b69b68ceaf13996c787d2711fe",
+        "passed": false,
+        "failure": "incoming_complete_pixel_token_timeout",
+        "os_invitation_join_passed": true,
+        "identity_observed": true,
+        "authenticated_recipient_ack": true,
+        "exact_nickname_input": true,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-0b03781-result-796.zip"
+      },
+      "ios_report": {
+        "artifact": 11287322063,
+        "sha256": "9dbe3d9861868b14370bd8addf0b18f9e82391adea17a1a9dc80c46b75350e61",
+        "passed": false,
+        "failure": "simulated_secure_input_dropped_characters",
+        "expected_length": 64,
+        "actual_length": 34,
+        "install_attempts": 2,
+        "install_timeouts": 1,
+        "installed_binary_hash_verified": true,
+        "runner_exit_code": -9,
+        "cleanup_passed": false,
+        "receipt": "operations/ios-helper-0b03781-result-795.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -635,6 +667,17 @@
     "maximum_install_attempts": 2,
     "installed_binary_hash_required": true,
     "focused_controls_passed": 53,
+    "native_acceptance_passed": false
+  },
+  "mobile_observation_correction": {
+    "random_body_entropy_bits_at_least": 70,
+    "complete_exact_words_required": true,
+    "only_adjacent_transcript_lines": true,
+    "receipt_bound_to_complete_body": true,
+    "ios_normal_system_paste": true,
+    "clipboard_local_only": true,
+    "clipboard_expiry_seconds": 30,
+    "clipboard_cleared_after_input": true,
     "native_acceptance_passed": false
   }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import XCTest
 
 // The HTTP endpoint belongs to the XCTest process on the native worker.
@@ -84,7 +85,19 @@ final class GChatAcceptanceTests: XCTestCase {
             }
         }
         try require(focused)
-        field.typeText(value)
+        // Use the normal system Paste action. Simulated keyboard events can
+        // silently drop characters in a freshly booted WebView. Clipboard
+        // contents belong only to this disposable simulator and expire locally.
+        UIPasteboard.general.setItems([["public.utf8-plain-text": Data(value.utf8)]],
+            options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(30)])
+        defer { UIPasteboard.general.items = [] }
+        field.press(forDuration: 1)
+        let menuPaste = app.menuItems["Paste"].firstMatch
+        let buttonPaste = app.buttons["Paste"].firstMatch
+        try wait(10) { (menuPaste.exists && menuPaste.isHittable) ||
+            (buttonPaste.exists && buttonPaste.isHittable) }
+        let paste = menuPaste.exists && menuPaste.isHittable ? menuPaste : buttonPaste
+        paste.tap()
         try dismissKeyboard()
         if field.elementType == .secureTextField {
             let label = field.label
@@ -104,7 +117,7 @@ final class GChatAcceptanceTests: XCTestCase {
             try passphraseVisibility("Hide passphrase")
             try wait(10) { field.exists }
         } else {
-            try require(!((field.value as? String) ?? "").isEmpty)
+            try wait(10) { (field.value as? String) == value }
         }
     }
 
