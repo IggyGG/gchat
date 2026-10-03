@@ -54,8 +54,8 @@
   "local_new_release_active": false,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "fd7936f53853231a9acf0f8d9765435ff8a9dda9",
-  "active_controller_kubernetes_checks": 264,
+  "active_controller_source": "b7c0d0207d34446ca50b88ad8f4f697765be64d8",
+  "active_controller_kubernetes_checks": 283,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -71,9 +71,9 @@
     "first_and_final_full_canaries_passed": true
   },
   "pending_native_qualification": [
-    "Independent Intel Mac package verification and installed network acceptance",
-    "iOS retained simulator lifecycle and unchanged IPA verification",
-    "Installed network acceptance, publication and idle local activation"
+    "Android, Windows and both Mac installed acceptance and publication",
+    "Corrected unchanged-IPA verification and installed iOS acceptance",
+    "Apple France-inclusive encryption declaration approval and actual store publication"
   ],
   "sdk_original_push_matrix_success": true,
   "all_stage_flight_admission_active": true,
@@ -185,7 +185,7 @@
   "ios_retained_recovery_automatic": true,
   "ios_retained_lifecycle_provider": {
     "id": 37098523009,
-    "state": "queued"
+    "state": "success"
   },
   "native_provider_branch_rejection": {
     "platforms": [
@@ -207,30 +207,40 @@
   "active_priority_controls": {
     "focused_tests": 293,
     "existing_skips": 4,
-    "scheduling_image_active": false,
+    "scheduling_image_active": true,
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": "2026-10-03T08:51:14Z",
+    "observed_at": "2026-10-03T10:26:33.365046+00:00",
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "blocked_acceptance",
-    "windows-x86_64": "blocked_acceptance",
-    "macos-x86_64": "blocked_acceptance",
-    "macos-aarch64": "awaiting_acceptance",
-    "ios": "queued_retained_lifecycle",
-    "source_fixes_active": false
+    "android": "acceptance_running",
+    "windows-x86_64": "blocked_baseline_pipe_startup",
+    "macos-x86_64": "acceptance_running",
+    "macos-aarch64": "acceptance_running",
+    "ios": "blocked_retained_verification_report_shape",
+    "source_fixes_active": true
   },
   "retained_handoff_correction": {
     "source_validated": true,
-    "controller_activated": false,
+    "controller_activated": true,
     "actual_mac_provider_adapter_passed": true,
     "ios_lifecycle_passed": true,
     "original_ios_verification_failure_retained": true,
     "windows_isolated_signing_setup_corrected": true,
-    "original_application_sources_preserved": true
-  }
+    "original_application_sources_preserved": true,
+    "corrected_ios_verification_failure": 37116236835,
+    "windows_obsolete_seed_failure": 37116278936
+  },
+  "external_ios_prerequisite": {
+    "declaration_state": "IN_REVIEW",
+    "available_on_french_store": true,
+    "automatic_retry": true,
+    "uploaded": false
+  },
+  "active_controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:b12a9173653611a16197b15a1691750ee1960886eae663b6b49d922138383937",
+  "controller_qualification_sha256": "dd2332a4f05725e391ee88459720e9e4ec973fc23752c640a47a16e49d804ca4"
 }

@@ -1,4 +1,4 @@
-Retained signing and native qualification can feed client acceptance and publication directly through registered provider bindings. A failed iOS verification may use one separately frozen helper after its exact terminal failure and original request are retained. Unknown dispatches continue reconciliation. This handoff correction is source-only until the qualified controller image is activated.
+Retained signing and native qualification can feed client acceptance and publication directly through registered provider bindings. A failed iOS verification may use one separately frozen helper after its exact terminal failure and original request are retained. Unknown dispatches continue reconciliation. This handoff correction is active in the qualified b7c0d02 controller.
 
 ## Routine release operation
 
@@ -18,11 +18,7 @@ These commands use the running coordinator and never create a second ledger writ
 Store publications cannot be rolled back by that command. Use `--json` for status
 integration and `--state PATH` only when operating on a local controller state.
 
-Current launch status (2026-10-03): all 17 infrastructure targets are deployed;
-Linux and SDK 0.1.98 are published and the local Linux package has updated.
-The full launch remains open on Android, Windows and Intel Mac acceptance,
-Apple Silicon Mac acceptance, and the queued retained iOS lifecycle provider.
-The worker-priority changes below are tested source changes awaiting activation.
+Launch status (2026-10-03): all 17 infrastructure targets are deployed and healthy. Linux and SDK 0.1.98 are available; the local Linux package is installed at 0.1.98. The qualified b7c0d02 controller is active with two ready containers, no restarts and 283 Kubernetes controls passed. Android and both Mac acceptance checks were dispatched concurrently. Windows retained-baseline startup and the corrected iOS verification returned explicit failures; their evidence remains retained while the other providers continue. The original iOS lifecycle passed. Apple reports the France-inclusive encryption declaration IN_REVIEW, so iOS publication remains externally blocked. The full launch remains incomplete. Discovery stays active with ten-minute settlement. The worker-priority controls below are active.
 
 New source changes settle for ten minutes. Three artifact workers and up to six
 installed-client acceptance workers can progress concurrently. While the active release is incomplete, older dispatched reconciliations use at
