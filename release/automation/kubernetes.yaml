@@ -123,6 +123,17 @@ spec:
             cidr: 0.0.0.0/0
             except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
       ports: [{protocol: TCP, port: 443}, {protocol: TCP, port: 22}]
+    # Installed covered-network canaries use the approved relay fleet.
+    - to:
+        - ipBlock: {cidr: 95.217.200.179/32}
+        - ipBlock: {cidr: 95.217.118.227/32}
+        - ipBlock: {cidr: 135.181.6.55/32}
+        - ipBlock: {cidr: 157.90.35.101/32}
+        - ipBlock: {cidr: 78.46.219.146/32}
+        - ipBlock: {cidr: 65.109.79.94/32}
+        - ipBlock: {cidr: 116.202.84.152/32}
+        - ipBlock: {cidr: 49.12.172.59/32}
+      ports: [{protocol: TCP, port: 4433}]
     - to:
         - podSelector: {matchLabels: {app: registry}}
       ports: [{protocol: TCP, port: 5000}]

@@ -1,3 +1,12 @@
+The controller's installed-network canary can now reach the eight approved
+native relay addresses on TCP 4433. Its earlier egress policy allowed public
+443/22 and blocked the actual relay port; probes timed out. The corrected policy
+adds only the eight relay /32 addresses and preserves the existing rules. All
+eight connection probes pass from the actual controller. The failed journey,
+grant revocation, profile cleanup and automatic rollback remain retained. The
+normal inventory revision resumes the original rollout; covered messaging/file
+and recovery acceptance still have to pass. No application API changed.
+
 Completed public SDK archives now have source-bound duplicate compaction.
 It verifies the original build and publication receipts, every selected archive
 hash and stable provenance before sharing public copies with identical ownership

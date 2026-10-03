@@ -1783,5 +1783,85 @@
     "actual_reclaimed_bytes": 0,
     "api_changed": false,
     "native_sdk_1_0_qualified": false
+  },
+  "controller_relay_egress_correction": {
+    "relay_cidrs": [
+      "95.217.200.179/32",
+      "95.217.118.227/32",
+      "135.181.6.55/32",
+      "157.90.35.101/32",
+      "78.46.219.146/32",
+      "65.109.79.94/32",
+      "116.202.84.152/32",
+      "49.12.172.59/32"
+    ],
+    "tcp_port": 4433,
+    "approved_relay_inventory_only": true,
+    "previous_rules_preserved": true,
+    "policy_revision": "45e60e83f222b0140da4dea9792992a8002362f8cdc53110758f9bac17784db2",
+    "operator_config_cas": true,
+    "full_network_canary_passed": false,
+    "before_probe": [
+      {
+        "relay": "95.217.200.179",
+        "port": 4433,
+        "connected": false,
+        "error": "TimeoutError"
+      },
+      {
+        "relay": "95.217.118.227",
+        "port": 4433,
+        "connected": false,
+        "error": "TimeoutError"
+      }
+    ],
+    "after_probe": [
+      {
+        "relay": "95.217.200.179",
+        "port": 4433,
+        "connected": true
+      },
+      {
+        "relay": "95.217.118.227",
+        "port": 4433,
+        "connected": true
+      },
+      {
+        "relay": "135.181.6.55",
+        "port": 4433,
+        "connected": true
+      },
+      {
+        "relay": "157.90.35.101",
+        "port": 4433,
+        "connected": true
+      },
+      {
+        "relay": "78.46.219.146",
+        "port": 4433,
+        "connected": true
+      },
+      {
+        "relay": "65.109.79.94",
+        "port": 4433,
+        "connected": true
+      },
+      {
+        "relay": "116.202.84.152",
+        "port": 4433,
+        "connected": true
+      },
+      {
+        "relay": "49.12.172.59",
+        "port": 4433,
+        "connected": true
+      }
+    ],
+    "original_failed_canary_retained": true,
+    "grant_revoked": true,
+    "temporary_profiles_removed": true,
+    "automatic_rollback_passed": true,
+    "corrected_inventory_sha256": "ccab1697a60d17ab8671f0da0cb3aba8c4206b775f56d450a64fdf65a967f496",
+    "api_changed": false
   }
 }
