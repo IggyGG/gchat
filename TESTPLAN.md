@@ -8,6 +8,8 @@ Mobile observation correction (2026-10-04): helper 0b03781 passes 857 source con
 
 Owned simulator input correction (2026-10-04): retained helper c8477ae passes 858 source controls, but its iOS system Paste menu never appeared and Android remained on an invitation form before preview. iOS now copies input through simctl to the already bound fresh simulator, reads it back exactly, invokes normal Paste, and clears it after every command including failures; input never enters a shell argument or the host clipboard. Android permits the expected populated form only when its value matches the reserved invitation exactly; different or ambiguous fields remain refused. All 57 focused controls pass. Native acceptance is still required, with original deadlines and signed apps unchanged.
 
+Native follow-up (2026-10-04): retained helper c9d75af passes 861 source controls. Android now passes exact incoming rendering and its authenticated ACK; its exact outgoing message reaches the peer, then the rendered sender receipt observation times out. iOS reaches the retained executable hash check but fails the original install deadline before XCTest. The corrected worker reserves lookup/hash time inside the same 120-second install operation. Android alternates sparse and block OCR within the original observation limits and accounts for the smaller receipt font on an adjacent line, while rejecting storage/local acceptance and unrelated status. All 59 focused controls pass; native acceptance remains required.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

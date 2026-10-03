@@ -294,7 +294,9 @@ class IOSUI:
         end = min(time.monotonic() + 120, self.deadline())
         self.install_observation = {'attempts': 0, 'timeouts': 0, 'hash_verified': False}
         for attempt in range(2):
-            left = end - time.monotonic() - 10
+            # Reserve time for the container lookup and executable hashing,
+            # rather than spending the entire operation on installer clients.
+            left = end - time.monotonic() - 20
             require(left > 0, 'original simulator install deadline')
             self.install_observation['attempts'] += 1
             try:
@@ -311,7 +313,7 @@ class IOSUI:
         self.active_binary_sha256 = item['binary_sha256']
 
     def installed_matches(self, item, end):
-        left = min(10, end - time.monotonic())
+        left = min(10, end - time.monotonic() - 5)
         require(left > 0, 'original simulator install deadline')
         try:
             app = Path(ios.output(['xcrun', 'simctl', 'get_app_container', self.device,

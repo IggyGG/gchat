@@ -141,7 +141,9 @@ def pixel_delivered(lines, body, known_bodies):
         if index+1 < len(lines):
             following = lines[index+1]
             if re.fullmatch(r'[^\w]*delivered[^\w]*', following['text']) and (
-                line['top'] <= following['top'] <= line['bottom']+1.5*(line['bottom']-line['top'])):
+                # The receipt uses a smaller font on the next inherited line
+                # box. Its glyph bounds do not measure that line's pitch.
+                line['top'] <= following['top'] <= line['bottom']+2.5*(line['bottom']-line['top'])):
                 return True
     return False
 
@@ -468,7 +470,10 @@ class AndroidUI:
         pixels = self.command('exec-out', 'screencap', '-p', binary=True)
         left = min(20, self.deadline()-time.monotonic())
         require(left > 0, 'original mobile journey deadline')
-        result = subprocess.run(['tesseract', 'stdin', 'stdout', '--psm', '11', 'tsv'],
+        attempts = self.ui_observation.get('pixel_observations', 0)
+        mode = 11 if attempts % 2 == 0 else 6
+        self.ui_observation.update(pixel_observations=attempts+1, pixel_segmentation_mode=mode)
+        result = subprocess.run(['tesseract', 'stdin', 'stdout', '--psm', str(mode), 'tsv'],
             input=pixels, capture_output=True, timeout=left, env={**os.environ, 'OMP_THREAD_LIMIT': '1'})
         require(result.returncode == 0, 'owned Android pixel observation failed')
         self.ui_observation['pixel_observer_used'] = True
@@ -501,7 +506,15 @@ class AndroidUI:
 
     def delivered(self, body):
         tree = self.tree()
-        return delivery_row(tree, body, self.bodies) or pixel_delivered(self.rendered_lines(tree), body, self.bodies)
+        if delivery_row(tree, body, self.bodies): return True
+        lines = self.rendered_lines(tree)
+        spans = list(pixel_message_spans(lines, body))
+        self.ui_observation['pixel_delivery'] = {
+            'complete_body_spans': len(spans),
+            'delivered_lines': sum(bool(re.search(r'\bdelivered\b', line['text'])) for line in lines),
+            'service_accepted_lines': sum('stored by service' in line['text'] for line in lines),
+            'locally_accepted_lines': sum('accepted locally' in line['text'] for line in lines)}
+        return pixel_delivered(lines, body, self.bodies)
 
     def history(self, bodies):
         self.bodies.update(bodies)

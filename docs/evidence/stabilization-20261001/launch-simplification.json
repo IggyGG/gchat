@@ -308,7 +308,7 @@
     "android": 37162032762,
     "ios": 37162034981,
     "helper": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
-    "state": "both_in_progress",
+    "state": "both_failed",
     "requests": {
       "android": "7a84322745fc87776bd97d62a3c036d9c4b5752a0fc9fc72d189c945e957bb4e",
       "ios": "4c95514c4217fff0017ba477fbbf9d9e70a740281eeb9eb7974e131420ad63e8"
@@ -672,6 +672,34 @@
         "cleanup_passed": false,
         "receipt": "operations/ios-helper-c8477ae-result-800.zip"
       }
+    },
+    {
+      "android": 37162032762,
+      "ios": 37162034981,
+      "helper": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
+      "state": "both_failed",
+      "android_report": {
+        "artifact": 11288132301,
+        "sha256": "b1be48baf80e764e1fbea770b7df26b5fcbc1534370a19ec1c85044555b588fa",
+        "passed": false,
+        "failure": "outgoing_rendered_delivery_status_timeout",
+        "incoming_rendered_and_authenticated_ack_passed": true,
+        "exact_outgoing_input_passed": true,
+        "outgoing_received_by_peer": true,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-c9d75af-result-805.zip"
+      },
+      "ios_report": {
+        "artifact": 11287499431,
+        "sha256": "3ea386fa82bf4c885024365d3661872673c4d87631c334bbfee981edc1bbc7bf",
+        "passed": false,
+        "failure": "retained_hash_observation_after_original_install_deadline",
+        "installed_executable_hash_match_reached": true,
+        "install_timeouts": 2,
+        "bridge_polls": 0,
+        "cleanup_passed": true,
+        "receipt": "operations/ios-helper-c9d75af-result-804.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -728,5 +756,19 @@
     "native_acceptance_passed": false,
     "qualified_source": "c9d75afdf5756757954522d32bcb6cfe35d30beb",
     "source_controls_passed": 861
+  },
+  "mobile_receipt_and_install_budget_correction": {
+    "install_total_seconds": 120,
+    "install_verification_reserve_seconds": 20,
+    "executable_hash_reserve_seconds": 5,
+    "ocr_segmentation_modes": [
+      11,
+      6
+    ],
+    "exact_rendered_body_required": true,
+    "exact_delivered_status_required": true,
+    "storage_or_local_acceptance_refused": true,
+    "focused_controls_passed": 59,
+    "native_acceptance_passed": false
   }
 }

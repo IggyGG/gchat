@@ -800,3 +800,5 @@ Mobile installed acceptance uses an uppercase fixture nickname with exact native
 Mobile worker observations use complete readable canaries across adjacent wrapped transcript lines, preserving random body entropy and authenticated recipient binding. iOS fills owned test fields through the normal system Paste action, verifies the exact result, and clears the local-only clipboard immediately.
 
 Owned iOS workers use simctl to copy and verify each input in the fresh simulator before normal Paste, then clear that simulator clipboard on success or failure. Android can continue an already populated invitation form only for the exact reserved invitation.
+
+Simulator installation reserves time for container lookup and hashing within the existing deadline. Android receipt observation uses two normal OCR segmentation modes and adjacent smaller-font receipt lines; complete exact message and delivered status remain required.

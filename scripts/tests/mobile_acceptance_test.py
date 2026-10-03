@@ -524,6 +524,22 @@ class MobileAcceptanceTests(unittest.TestCase):
             {**receipt,'text':'Canary other-message · delivered'}],body,{body}))
         self.assertEqual(android_ui.message_bodies([body.replace(' ', '\n')],{body}),{body})
         self.assertEqual(android_ui.message_bodies([body+'-suffix'],{body}),set())
+        small_receipt={**receipt,'top':154,'bottom':165}
+        self.assertTrue(android_ui.pixel_delivered([first,second,small_receipt],body,{body}))
+        self.assertFalse(android_ui.pixel_delivered([first,second,
+            {**small_receipt,'top':220,'bottom':231}],body,{body}))
+
+    def test_pixel_delivery_diagnostics_do_not_expose_message_or_accept_storage_status(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));body='Canary private test words'
+            ui.bodies.add(body)
+            lines=[{'text':body+' · stored by service','top':100,'bottom':112}]
+            with patch.object(ui,'tree',return_value=ET.Element('hierarchy')), \
+                 patch.object(ui,'rendered_lines',return_value=lines):
+                self.assertFalse(ui.delivered(body))
+            self.assertEqual(ui.ui_observation['pixel_delivery']['service_accepted_lines'],1)
+            self.assertEqual(ui.ui_observation['pixel_delivery']['delivered_lines'],0)
+            self.assertNotIn('private',json.dumps(ui.ui_observation))
 
     def test_pixel_receipt_remains_bound_to_one_complete_message_and_its_adjacent_status(self):
         body='mr-aaaaaaaaaaaaaaaa';other='mr-bbbbbbbbbbbbbbbb';known={body,other}
@@ -665,7 +681,7 @@ class MobileAcceptanceTests(unittest.TestCase):
              patch('mobile_ios_ui.ios.run',side_effect=install) as run, \
              patch.object(ui,'installed_matches',side_effect=observe),self.assertRaises(TimeoutError):
             ui.install(item)
-        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[40,65])
+        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[40,55])
         self.assertLessEqual(clock[0],120)
         self.assertFalse(ui.installed)
         with tempfile.TemporaryDirectory() as temporary:
@@ -687,6 +703,16 @@ class MobileAcceptanceTests(unittest.TestCase):
              patch.object(ui,'installed_matches') as observe,self.assertRaises(subprocess.CalledProcessError):
             ui.install(item)
         self.assertEqual(run.call_count,1);observe.assert_not_called()
+
+    def test_ios_matching_installed_executable_cannot_qualify_after_original_deadline(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            app=Path(temporary);binary=app/'GChat';binary.write_bytes(b'retained executable')
+            item={'binary':binary,'binary_sha256':inputs.digest(binary)}
+            ui=IOSUI.__new__(IOSUI);ui.device='owned'
+            with patch('mobile_ios_ui.ios.output',return_value=str(app)), \
+                 patch('mobile_ios_ui.time.monotonic',side_effect=[0,120]), \
+                 self.assertRaisesRegex(ValueError,'late simulator install observation'):
+                ui.installed_matches(item,120)
 
     def test_failed_device_check_does_not_hide_actual_peer_cleanup_or_become_a_pass(self):
         with tempfile.TemporaryDirectory() as temporary:

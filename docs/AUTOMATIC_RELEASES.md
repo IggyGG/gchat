@@ -4,7 +4,7 @@ Push source to Forgejo to start a release. The existing source mirror and Kubern
 python3 scripts/release.py status
 ```
 
-Current release, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed locally; a normal full Quit and reopen uses it. Android and iOS installed acceptance are still running. Apple encryption approval remains IN_REVIEW, including France. SDK 1.0 and the subsequent unattended release remain open.
+Current release, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed locally; a normal full Quit and reopen uses it. Android and iOS installed acceptance remain incomplete after retained failures. Apple encryption approval remains IN_REVIEW, including France. SDK 1.0 and the subsequent unattended release remain open.
 
 Controller 7f423f8 is active, with temporary GitHub outage recovery and the original request IDs retained. Native helper c9d75af is qualified independently: 861 source controls, five existing skips, 57 focused mobile controls, and unchanged API 2/3 contracts. Native acceptance still has to pass against the original signed applications. Failed runs remain retained in the [launch evidence](evidence/stabilization-20261001/launch-simplification.json).
 
@@ -13,6 +13,8 @@ All eight node headroom timers are enabled. Every five minutes they check free s
 If a platform blocks, inspect its retained failure and queue its existing stage with `python3 scripts/release.py resume --platform <platform>`. The controller retains unknown external operations for reconciliation and never silently repeats them. `python3 scripts/release.py rollback` queues restoration of the recorded infrastructure versions.
 
 OS invitation arrival on iOS remains a separate failed check. Its visible invitation form can qualify enrollment and recovery, but cannot qualify OS link arrival. The retained cold-start failure is consistent with the [upstream iOS scene URL issue](https://github.com/tauri-apps/tao/issues/1248); the warm failure remains independently unexplained.
+
+Native follow-up (2026-10-04): retained helper c9d75af passes 861 source controls. Android now passes exact incoming rendering and its authenticated ACK; its exact outgoing message reaches the peer, then the rendered sender receipt observation times out. iOS reaches the retained executable hash check but fails the original install deadline before XCTest. The corrected worker reserves lookup/hash time inside the same 120-second install operation. Android alternates sparse and block OCR within the original observation limits and accounts for the smaller receipt font on an adjacent line, while rejecting storage/local acceptance and unrelated status. All 59 focused controls pass; native acceptance remains required.
 
 ## Routine release operation
 
