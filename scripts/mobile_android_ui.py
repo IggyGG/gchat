@@ -101,16 +101,33 @@ def delivery_row(tree, body, known_bodies):
 def pixel_lines(tsv, bounds):
     """Recognized words wholly inside the owned, visible transcript only."""
     x1, y1, x2, y2 = bounds
-    lines = {}
+    words = []
     for row in csv.DictReader(io.StringIO(tsv), delimiter='\t'):
         if row['level'] != '5' or not row['text'].strip(): continue
         x, y, width, height = (int(row[key]) for key in ('left', 'top', 'width', 'height'))
         if width <= 0 or height <= 0 or not (x1 <= x and y1 <= y and x+width <= x2 and y+height <= y2): continue
-        key = tuple(row[key] for key in ('page_num', 'block_num', 'par_num', 'line_num'))
-        lines.setdefault(key, []).append((x, y, width, height, row['text']))
+        words.append((x, y, width, height, row['text']))
+    # Sparse OCR assigns different block/line IDs to words on the same physical
+    # row, especially across the nickname/body/status fonts. Those IDs cannot
+    # define a rendered message line. Only geometrically overlapping words can
+    # share a row; separate message/status rows remain separate.
+    lines = []
+    for word in sorted(words, key=lambda word: (word[1], word[0])):
+        x, y, width, height, value = word
+        candidates = []
+        for index, line in enumerate(lines):
+            top = min(w[1] for w in line)
+            bottom = max(w[1]+w[3] for w in line)
+            overlap = min(bottom, y+height)-max(top, y)
+            if overlap >= 0.6*min(height, bottom-top):
+                candidates.append((abs((top+bottom)/2-(y+height/2)), index))
+        if candidates:
+            lines[min(candidates)[1]].append(word)
+        else:
+            lines.append([word])
     return sorted([{'text': ' '.join(word[4] for word in sorted(words)),
         'top': min(word[1] for word in words), 'bottom': max(word[1]+word[3] for word in words)}
-        for words in lines.values()], key=lambda line: line['top'])
+        for words in lines], key=lambda line: line['top'])
 
 
 def pixel_message_spans(lines, body):
@@ -527,6 +544,9 @@ class AndroidUI:
         spans = list(pixel_message_spans(lines, body))
         self.ui_observation['pixel_delivery'] = {
             'complete_body_spans': len(spans),
+            'body_words_expected': len(body.split()),
+            'body_words_observed': sum(any(re.search(r'(?<!\w)'+re.escape(word)+r'(?!\w)', line['text'])
+                for line in lines) for word in body.split()),
             'delivered_lines': sum(bool(re.search(r'\bdelivered\b', line['text'])) for line in lines),
             'service_accepted_lines': sum('stored by service' in line['text'] for line in lines),
             'locally_accepted_lines': sum('accepted locally' in line['text'] for line in lines)}

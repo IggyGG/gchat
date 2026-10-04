@@ -537,6 +537,39 @@ class MobileAcceptanceTests(unittest.TestCase):
         self.assertEqual(lines,[{'text':'mr-aaaaaaaaaaaaaaaa delivered','top':130,'bottom':142}])
         self.assertNotIn('private',json.dumps(lines))
 
+    def test_sparse_ocr_block_ids_cannot_split_words_on_one_physical_row(self):
+        body='Canary apple arrow beach birch cloud dawn eagle forest grape river'
+        header='level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n'
+        rows=[]
+        for index,word in enumerate(body.split()):
+            top=130 if index<6 else 156
+            left=10+(index%6)*45
+            rows.append(f'5\t1\t{index+1}\t1\t1\t1\t{left}\t{top}\t40\t18\t95\t{word}\n')
+        rows.append('5\t1\t20\t1\t1\t1\t10\t182\t70\t12\t95\tdelivered\n')
+        lines=android_ui.pixel_lines(header+''.join(rows),(0,100,320,500))
+        self.assertEqual(len(lines),3)
+        self.assertTrue(android_ui.pixel_delivered(lines,body,{body}))
+        changed=header+''.join(rows).replace('grape\n','grave\n')
+        self.assertFalse(android_ui.pixel_delivered(android_ui.pixel_lines(changed,(0,100,320,500)),body,{body}))
+        self.assertEqual(len(android_ui.pixel_lines(header+''.join(rows),(0,100,320,177))),2)
+
+    def test_delivery_word_counts_cannot_replace_exact_message_and_remain_private(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            body='Canary apple arrow beach birch cloud dawn eagle forest grape river'
+            ui.bodies.add(body)
+            lines=[{'text':body.replace('grape','grave'),'top':130,'bottom':148},
+                   {'text':'delivered','top':160,'bottom':172}]
+            with patch.object(ui,'tree',return_value=ET.Element('hierarchy')), \
+                 patch.object(ui,'rendered_lines',return_value=lines):
+                self.assertFalse(ui.delivered(body))
+            detail=ui.ui_observation['pixel_delivery']
+            self.assertEqual(detail['body_words_expected'],11)
+            self.assertEqual(detail['body_words_observed'],10)
+            self.assertEqual(detail['delivered_lines'],1)
+            self.assertEqual(detail['complete_body_spans'],0)
+            for word in body.split():self.assertNotIn(word,json.dumps(detail))
+
     def test_wrapped_readable_canary_requires_every_exact_word_and_its_own_status(self):
         body='Canary apple arrow beach birch cloud dawn eagle forest grape river'
         first={'text':'[12:34] sender> Canary apple arrow beach birch','top':100,'bottom':112}

@@ -305,13 +305,27 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37164250244,
-    "ios": 37164250144,
-    "helper": "f30bac0ec2f67936b856755ea4799e52e0407fd2",
-    "state": "both_failed",
+    "android": 37165390111,
+    "ios": 37165391714,
+    "helper": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
+    "state": "android_failed_ios_running",
     "requests": {
-      "android": "6afa603c628e78dc9f5a12d1a7300c928a6bdebdd5e0ecd617873b51136b639c",
-      "ios": "6328018b05ca991d82de46338affe1dca9da2dddc336d6a703bedafbc283dd2b"
+      "android": "42c171257ee84746908b75491c8d0a7c71d64bd465ee39dfb4e0244711d24076",
+      "ios": "d3e4d701fc85c515c38b2999aa251db64942584c182dcc46af77e0ef16ec7e74"
+    },
+    "android_report": {
+      "artifact": 11288718919,
+      "sha256": "a4b2b80ea5b4284cd5eebaa8b3bcad22dc3c6be6a5e6f6f957a1cdd2b0158535",
+      "passed": false,
+      "incoming_rendered_and_authenticated_ack_passed": true,
+      "exact_outgoing_input_passed": true,
+      "outgoing_received_by_peer": true,
+      "readable_font_selected": true,
+      "complete_body_spans": 0,
+      "delivered_lines": 1,
+      "cleanup_passed": true,
+      "failure": "exact_outgoing_visual_body_not_recognized",
+      "receipt": "operations/android-helper-2b96f76-result-821.zip"
     }
   },
   "retained_workstation_failures": {
@@ -338,8 +352,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "f30bac0ec2f67936b856755ea4799e52e0407fd2",
-  "native_helper_qualification": "operations/native-helper-f30bac0-qualified-810.json",
+  "native_helper_source": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
+  "native_helper_qualification": "operations/native-helper-2b96f76-qualified-817.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -768,6 +782,30 @@
         ],
         "cleanup_passed": false
       }
+    },
+    {
+      "android": 37165390111,
+      "ios": 37165391714,
+      "helper": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
+      "state": "android_failed_ios_running",
+      "requests": {
+        "android": "42c171257ee84746908b75491c8d0a7c71d64bd465ee39dfb4e0244711d24076",
+        "ios": "d3e4d701fc85c515c38b2999aa251db64942584c182dcc46af77e0ef16ec7e74"
+      },
+      "android_report": {
+        "artifact": 11288718919,
+        "sha256": "a4b2b80ea5b4284cd5eebaa8b3bcad22dc3c6be6a5e6f6f957a1cdd2b0158535",
+        "passed": false,
+        "incoming_rendered_and_authenticated_ack_passed": true,
+        "exact_outgoing_input_passed": true,
+        "outgoing_received_by_peer": true,
+        "readable_font_selected": true,
+        "complete_body_spans": 0,
+        "delivered_lines": 1,
+        "cleanup_passed": true,
+        "failure": "exact_outgoing_visual_body_not_recognized",
+        "receipt": "operations/android-helper-2b96f76-result-821.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -880,6 +918,16 @@
     "ios_clipboard_required": false,
     "signed_applications_unchanged": true,
     "focused_controls_passed": 62,
+    "native_acceptance_passed": false,
+    "qualified_source": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
+    "source_controls_passed": 866
+  },
+  "mobile_visual_row_correction": {
+    "ocr_block_ids_ignored_for_row_identity": true,
+    "only_geometrically_overlapping_words_grouped": true,
+    "full_exact_message_and_bound_receipt_required": true,
+    "only_word_counts_retained": true,
+    "focused_controls_passed": 64,
     "native_acceptance_passed": false
   }
 }

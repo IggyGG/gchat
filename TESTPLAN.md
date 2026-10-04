@@ -18,6 +18,8 @@ The iOS export command can invoke normal reconnect/unlock after the OS picker. I
 
 Retained helper f30bac0 verifies iOS baseline installation under the existing setup budget, then fails because the system Paste menu is absent. Android passes the incoming rendered message and authenticated ACK and receives its exact outgoing message at the peer; its OCR recognizes a delivered line but cannot match the complete outgoing body. The worker now selects the existing Readable font through normal Android UI and uses normal iOS keyboard input in eight-character chunks, requiring every exact prefix before continuing. Normal password visibility controls permit exact confirmation; clipboard staging and the missing Paste menu are removed. All 62 focused controls pass. Native acceptance remains required, and the failed reports remain retained.
 
+Android helper 2b96f76 selects the normal Readable font and passes incoming exact rendering/authenticated ACK plus exact outgoing input/peer reception, but full outgoing visual matching still fails. OCR currently uses block identifiers as rows, which can split one visual line into many blocks. The correction groups only vertically overlapping words into physical rows while retaining exact full-body and bound-delivered checks. Diagnostic word counts cannot qualify delivery and contain no message text. All 64 focused controls pass. iOS 2b96f76 remains running under its frozen request; no duplicate request is sent.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.
