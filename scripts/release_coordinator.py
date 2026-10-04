@@ -410,7 +410,7 @@ class Coordinator:
             minutes = enabled(self.config)
             if minutes and platform != 'sdk' and state not in ('processing', 'in_review'):
                 from release_flight import external_ios_wait
-                external = platform == 'ios' and state == 'submitting' and external_ios_wait(self.state, self.ledger, release)
+                external = platform == 'ios' and state in ('verified', 'submitting') and external_ios_wait(self.state, self.ledger, release)
                 budget(self.state, manifest, platform, state, paused=external)
             if state in {'verified', 'publishing', 'submitting'} and platform != 'sdk' and not self.deployment_ready(manifest):
                 return
@@ -509,10 +509,10 @@ class Coordinator:
         publishing = json.loads(desired.read_text())['release_id'] if self.minutes and desired.is_file() else None
         rows = self.ledger.db.execute('''SELECT p.candidate,p.platform FROM platforms p
             JOIN candidates c ON c.id=p.candidate
-            ORDER BY (p.candidate=? AND p.platform IN ('ios','android') AND p.state IN ('verified','submitting')) DESC,
+            ORDER BY (? IS NOT NULL AND p.candidate=? AND p.platform IN ('ios','android') AND p.state IN ('verified','submitting')) DESC,
                 (p.candidate=?) DESC,
                 (p.platform IN ('ios','android') AND p.state IN ('submitting','processing','in_review')) DESC,
-                c.seq DESC,p.rowid''', (publishing, active)).fetchall()
+                c.seq DESC,p.rowid''', (publishing, publishing, active)).fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
         if self.minutes:

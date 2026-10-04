@@ -179,3 +179,12 @@ class MinutesTests(unittest.TestCase):
         with patch.object(self.controller, 'step') as step, patch.object(self.controller, 'reconcile_deployment'):
             self.controller.tick()
         self.assertEqual(step.call_args_list[0].args, (release, 'android'))
+
+    def test_verified_ios_external_prerequisite_pauses_the_active_budget(self):
+        release = self.manifest['release_id']
+        self.controller.config['workers'] = {'ios': {'compatibility': {}}}
+        self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=? AND platform='ios'", (release,))
+        with patch('release_flight.external_ios_wait', return_value=True), \
+             patch.object(self.controller, 'deployment_ready', return_value=False):
+            self.controller.step(release, 'ios')
+        self.assertIn('paused_at', json.loads((self.root / 'routine-runs' / release / 'ios.json').read_text()))
