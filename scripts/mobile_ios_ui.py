@@ -50,7 +50,7 @@ def runner_diagnostics(path, exit_code, polls):
         'observation_failure_lines': sorted(set(int(value) for value in
             re.findall(r'GCHAT_ACCEPTANCE_OBSERVATION_FAILURE=(\d+)\b', text))),
         'input_value_diagnostics': {key.lower(): int(value) for key, value in
-            re.findall(r'GCHAT_ACCEPTANCE_INPUT_(FIELD_PRESENT|VALUE_LENGTH|EXPECTED_LENGTH|VALUE_MASKED)=(\d+)\b', text)},
+            re.findall(r'GCHAT_ACCEPTANCE_INPUT_(FIELD_PRESENT|VALUE_LENGTH|EXPECTED_LENGTH|VALUE_MASKED|TOTAL_LENGTH|CONFIRMED_LENGTH)=(\d+)\b', text)},
         'identity_diagnostics': {key.lower(): int(value) for key, value in
             re.findall(r'GCHAT_ACCEPTANCE_IDENTITY_(HEX_FIELDS|SAFETY_FIELDS|WEBVIEW_PRESENT|FOREGROUND)=(\d+)\b', text)},
         'ui_error_categories': {'tap_failed': 'Failed to tap' in text,

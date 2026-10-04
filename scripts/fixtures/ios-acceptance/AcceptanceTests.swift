@@ -58,7 +58,8 @@ final class GChatAcceptanceTests: XCTestCase {
         try wait(10) { !self.app.keyboards.firstMatch.exists && !done.exists }
     }
 
-    func type(_ field: XCUIElement, _ value: String) throws {
+    func type(_ field: XCUIElement, _ value: String, batch: Int = 8) throws {
+        try require(batch == 8 || batch == 64)
         if field.elementType == .secureTextField {
             // Use the app's normal visibility control before native input.
             // Secure edit menus are unavailable on this retained simulator.
@@ -67,7 +68,7 @@ final class GChatAcceptanceTests: XCTestCase {
             try passphraseVisibility("Show passphrase")
             let revealed = app.webViews.textFields.matching(NSPredicate(format: "label == %@", label)).firstMatch
             do {
-                try type(revealed, value)
+                try type(revealed, value, batch: batch)
             } catch {
                 try? passphraseVisibility("Hide passphrase")
                 throw error
@@ -103,11 +104,12 @@ final class GChatAcceptanceTests: XCTestCase {
         }
         try require(focused)
         // Avoid one long burst of simulated keys. Observe every exact prefix
-        // before admitting the next eight characters; changed/dropped input
+        // before admitting the next batch; changed/dropped input
         // remains a failure rather than being repaired or accepted.
         let characters = Array(value)
-        for offset in stride(from: 0, to: characters.count, by: 8) {
-            let end = min(offset + 8, characters.count)
+        print("GCHAT_ACCEPTANCE_INPUT_TOTAL_LENGTH=\(characters.count)")
+        for offset in stride(from: 0, to: characters.count, by: batch) {
+            let end = min(offset + batch, characters.count)
             field.typeText(String(characters[offset..<end]))
             let expected = String(characters[..<end])
             do {
@@ -120,6 +122,7 @@ final class GChatAcceptanceTests: XCTestCase {
                 print("GCHAT_ACCEPTANCE_INPUT_VALUE_MASKED=\(actual.contains("•") || actual.contains("●") ? 1 : 0)")
                 throw error
             }
+            print("GCHAT_ACCEPTANCE_INPUT_CONFIRMED_LENGTH=\(end)")
         }
         try dismissKeyboard()
         try wait(10) { (field.value as? String) == value }
@@ -282,7 +285,7 @@ final class GChatAcceptanceTests: XCTestCase {
             let invitation = try string("invitation")
             try require(invitation.hasPrefix("gcoms:") && invitation.utf8.count <= 180000)
             let field = app.webViews.textViews.matching(NSPredicate(format: "label == %@", "Invitation")).firstMatch
-            try type(field, invitation)
+            try type(field, invitation, batch: 64)
             try require((field.value as? String) == invitation)
             try click("Continue")
             return true

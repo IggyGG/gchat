@@ -14,6 +14,8 @@ The iOS fixture compiler runs alongside owned simulator setup, then XCTest execu
 
 System filename replacement waits for the actual owned picker field and keyboard, verifies that the old name is empty, then requires the exact new name before saving. Export and cache hashes remain mandatory.
 
+Native iOS input confirms every exact prefix. Long invitations use 64-character keyboard batches; passphrases retain eight-character batches. Only numeric total/confirmed lengths enter diagnostics; command and journey deadlines remain unchanged.
+
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the
 iOS draft. App Store publication still requires the qualified build and Apple's

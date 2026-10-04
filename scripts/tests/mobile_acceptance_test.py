@@ -1115,7 +1115,7 @@ class MobileAcceptanceTests(unittest.TestCase):
                 'GCHAT_ACCEPTANCE_UI_PHASE=join-arrival\n'
                 'GCHAT_ACCEPTANCE_UI_PHASE=identity-network\n'
                 'GCHAT_ACCEPTANCE_OBSERVATION_FAILURE=72\n'
-                'GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=12\n'
+                'GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=12\nGCHAT_ACCEPTANCE_INPUT_TOTAL_LENGTH=1234\nGCHAT_ACCEPTANCE_INPUT_CONFIRMED_LENGTH=64\nGCHAT_ACCEPTANCE_INPUT_CONFIRMED_LENGTH=512\nGCHAT_ACCEPTANCE_INPUT_CONFIRMED_LENGTH=private-value\n'
                 'GCHAT_ACCEPTANCE_INPUT_PRIVATE=123\n'
                 'GCHAT_ACCEPTANCE_IDENTITY_HEX_FIELDS=1\n'
                 'GCHAT_ACCEPTANCE_IDENTITY_SAFETY_FIELDS=0\n'
@@ -1126,7 +1126,7 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(result,{'exit_code':65,'bridge_polls':0,'compile_error_locations':['44:9'],
                 'runtime_error_locations':['282'],
                 'observation_failure_lines':[72],
-                'input_value_diagnostics':{'value_length':12},
+                'input_value_diagnostics':{'value_length':12,'total_length':1234,'confirmed_length':512},
                 'identity_diagnostics':{'hex_fields':1,'safety_fields':0},
                 'ui_error_categories':{'tap_failed':True,'snapshot_failed':False,'not_hittable':False,'no_matches':False},
                 'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],

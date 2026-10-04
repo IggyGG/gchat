@@ -305,27 +305,14 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37169210232,
-    "android_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
+    "android": 37170025582,
+    "android_helper": "cecddf75c274121717eaec7c3220fd1cad25035a",
     "ios": 37169238415,
     "ios_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
-    "state": "android_failed_ios_running",
+    "state": "android_running_ios_failed",
     "requests": {
-      "android": "5e479b3224a5ef713f160d475879773d4835559e6b4fca34e879bf41964ff95a",
+      "android": "68852144023b99c8bec9e26f02083e40b95c2bb0d460364ba6d7e1c4dfb4c5dd",
       "ios": "7a031a2539ffe90ca2b8b0737ddec869ab089b57c2b936096b8356ac4a986242"
-    },
-    "android_report": {
-      "artifact": 11291130142,
-      "sha256": "2d6446868bb0c66f862b5e0d4b72216668c96a4f3aae9ae0f12a0738e2a0343f",
-      "passed": false,
-      "stage": "baseline-cache",
-      "failure": "system_filename_retained_one_character",
-      "exact_rendering_and_authenticated_bidirectional_ack": true,
-      "pixel_overlay_controls": 4,
-      "input_expected_length": 28,
-      "input_actual_length": 29,
-      "cleanup_passed": true,
-      "receipt": "operations/android-helper-c777296-result-845.zip"
     }
   },
   "retained_workstation_failures": {
@@ -352,8 +339,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
-  "native_helper_qualification": "operations/native-helper-c777296-qualified-842.json",
+  "native_helper_source": "cecddf75c274121717eaec7c3220fd1cad25035a",
+  "native_helper_qualification": "operations/native-helper-cecddf7-qualified-851.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -930,6 +917,45 @@
         "cleanup_passed": false,
         "receipt": "operations/ios-helper-a2b7e97-result-836.zip"
       }
+    },
+    {
+      "android": 37169210232,
+      "android_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
+      "ios": 37169238415,
+      "ios_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
+      "state": "both_failed",
+      "requests": {
+        "android": "5e479b3224a5ef713f160d475879773d4835559e6b4fca34e879bf41964ff95a",
+        "ios": "7a031a2539ffe90ca2b8b0737ddec869ab089b57c2b936096b8356ac4a986242"
+      },
+      "android_report": {
+        "artifact": 11291130142,
+        "sha256": "2d6446868bb0c66f862b5e0d4b72216668c96a4f3aae9ae0f12a0738e2a0343f",
+        "passed": false,
+        "stage": "baseline-cache",
+        "failure": "system_filename_retained_one_character",
+        "exact_rendering_and_authenticated_bidirectional_ack": true,
+        "pixel_overlay_controls": 4,
+        "input_expected_length": 28,
+        "input_actual_length": 29,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-c777296-result-845.zip"
+      },
+      "ios_report": {
+        "artifact": 11290729719,
+        "sha256": "9ddcdbbff91d47050029556c1db89df6602b98c6c35bdcfc129c07ec866bb1d0",
+        "passed": false,
+        "stage": "baseline-start",
+        "phase": "join-review",
+        "failure": "invitation_input_command_timeout",
+        "initial_install_hash_verified": true,
+        "owned_device_binding_passed": true,
+        "both_passphrases_passed": true,
+        "runner_ready": true,
+        "runner_exit_code": 0,
+        "cleanup_passed": true,
+        "receipt": "operations/ios-helper-c777296-result-846.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -1111,6 +1137,16 @@
     "clear_after_keyboard_and_focus": true,
     "empty_value_observed_before_type": true,
     "exact_filename_and_hash_required": true,
+    "native_pass": false
+  },
+  "ios_invitation_input_batches": {
+    "invitation_batch_characters": 64,
+    "passphrase_batch_characters": 8,
+    "exact_prefix_confirmation_required": true,
+    "original_command_maximum_seconds": 120,
+    "only_numeric_progress_retained": true,
+    "focused_tests": 68,
+    "focused_passed": true,
     "native_pass": false
   }
 }
