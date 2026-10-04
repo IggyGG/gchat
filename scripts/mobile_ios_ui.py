@@ -198,7 +198,7 @@ class IOSUI:
             # application, as the retained lifecycle worker does.
             if initial is not None:
                 setup_stage = 'initial_install'
-                self.install(initial)
+                self.setup_install(initial)
             setup_stage = 'xctest_project'
             self.bridge = Bridge()
             runner = output / 'runner'
@@ -239,7 +239,7 @@ class IOSUI:
                 self.installed = False
                 self.active_binary_sha256 = None
                 require(initial is not None, 'unchanged baseline required on the owned XCTest clone')
-                self.install(initial)
+                self.setup_install(initial)
         except Exception as error:
             cleaned = self.cleanup()
             error.owned_device_cleanup = cleaned
@@ -283,16 +283,24 @@ class IOSUI:
                                          stderr=subprocess.PIPE, timeout=left)
         require(actual == value.encode(), 'native clipboard input differs')
 
-    def install(self, item):
+    def setup_install(self, item):
+        # Initial simulator installation is fixture setup, before the product
+        # journey. Reserve runner readiness inside the existing setup deadline.
+        maximum = min(240, self.deadline() - time.monotonic() - 120)
+        require(maximum > 20, 'original mobile setup deadline')
+        self.install(item, maximum=maximum)
+
+    def install(self, item, maximum=120):
         if self.installed and self.active_binary_sha256 == item['binary_sha256']:
             return
         if self.installed:
             self.stop()
         # A timed-out simctl client can leave the owned simulator's installer
         # completing the same request. Reconcile the actual executable before
-        # one idempotent retry, all inside the original 120-second operation.
-        end = min(time.monotonic() + 120, self.deadline())
-        self.install_observation = {'attempts': 0, 'timeouts': 0, 'hash_verified': False}
+        # one idempotent retry inside its operation and overall deadline.
+        end = min(time.monotonic() + maximum, self.deadline())
+        self.install_observation = {'attempts': 0, 'timeouts': 0, 'hash_verified': False,
+                                    'maximum_seconds': maximum}
         for attempt in range(2):
             # Reserve time for the container lookup and executable hashing,
             # rather than spending the entire operation on installer clients.

@@ -795,10 +795,12 @@ immediately, with independent randomized interactive cover. Timing/activity priv
 is unqualified. See [production policy](docs/PRODUCTION_RELEASE.md); this source
 change is not a claim that installed/store artifacts have been updated.
 
-Mobile installed acceptance uses an uppercase fixture nickname with exact native input confirmation. Simulator installs verify the retained executable hash; a timed-out install can reconcile or retry once within its original 120-second limit. No app binary is rebuilt for these worker corrections. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
+Mobile installed acceptance uses an uppercase fixture nickname with exact native input confirmation. Simulator installs verify the retained executable hash; a timed-out install can reconcile or retry once. Initial setup may use up to 240 seconds within its existing 600-second budget, reserving 120 seconds for runner readiness; upgrade/rollback installation keeps its 120-second limit. No app binary is rebuilt for these worker corrections. See [automatic releases](docs/AUTOMATIC_RELEASES.md).
 
 Mobile worker observations use complete readable canaries across adjacent wrapped transcript lines, preserving random body entropy and authenticated recipient binding. iOS fills owned test fields through the normal system Paste action, verifies the exact result, and clears the local-only clipboard immediately.
 
 Owned iOS workers use simctl to copy and verify each input in the fresh simulator before normal Paste, then clear that simulator clipboard on success or failure. Android can continue an already populated invitation form only for the exact reserved invitation.
 
 Simulator installation reserves time for container lookup and hashing within the existing deadline. Android receipt observation uses two normal OCR segmentation modes and adjacent smaller-font receipt lines; complete exact message and delivered status remain required.
+
+Android export workers enter the exact filename through the normal system DocumentsUI picker with explicit package and focus checks. Other applications cannot receive fixture input.

@@ -254,10 +254,36 @@ class MobileAcceptanceTests(unittest.TestCase):
             ui,_,_=self.owned_android_ui(Path(temporary))
             with patch.object(ui,'tap'),patch.object(android_ui.android,'wait_keyboard',side_effect=ValueError), \
                  patch.object(ui,'shell') as shell,self.assertRaises(ValueError):
-                ui.type(ET.Element('node'),'fixture-private-value')
+                ui.type(ET.Element('node',{'package':'boo.gchat.app'}),'fixture-private-value')
             shell.assert_not_called()
             self.assertNotIn('inputs_confirmed',ui.ui_observation)
             self.assertFalse(ui.input_started)
+
+    def test_android_system_export_requires_explicit_picker_and_exact_focused_filename(self):
+        for package in ('com.android.documentsui','com.google.android.documentsui','another.documentsui'):
+            with self.subTest(package=package),tempfile.TemporaryDirectory() as temporary:
+                ui,_,_=self.owned_android_ui(Path(temporary))
+                field=ET.Element('node',{'package':package,'class':'android.widget.EditText',
+                    'resource-id':'filename','focused':'true','text':'gchat-acceptance-initial.bin'})
+                with patch.object(ui,'tap'),patch.object(android_ui.android,'wait_keyboard'), \
+                     patch.object(ui,'tree',return_value=field),patch.object(ui,'shell') as shell:
+                    with self.assertRaisesRegex(ValueError,'system export picker'):
+                        ui.type(field,'gchat-acceptance-initial.bin')
+                    shell.assert_not_called()
+                    if package=='another.documentsui':
+                        with self.assertRaisesRegex(ValueError,'system export picker'):
+                            ui.type(field,'gchat-acceptance-initial.bin',system_export=True)
+                        shell.assert_not_called()
+                    else:
+                        ui.type(field,'gchat-acceptance-initial.bin',system_export=True)
+                        self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
+                        field.set('text','gchat-acceptance-modified.bin')
+                        def check(fn,*args):
+                            if not fn():raise TimeoutError('exact filename observation')
+                            return True
+                        with patch.object(ui,'until',side_effect=check),self.assertRaises(TimeoutError):
+                            ui.type(field,'gchat-acceptance-initial.bin',system_export=True)
+                        self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
 
     def test_android_keyboard_presence_does_not_replace_intended_field_focus(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -650,6 +676,35 @@ class MobileAcceptanceTests(unittest.TestCase):
             stop.assert_called_once()
             self.assertEqual(run.call_count,2)
         self.assertEqual(ui.active_binary_sha256,current['binary_sha256'])
+
+    def test_ios_initial_setup_install_reserves_runner_budget_without_extending_setup(self):
+        ui=IOSUI.__new__(IOSUI);ui.deadline=lambda:600
+        for now,maximum in ((0,240),(300,180),(450,30)):
+            with self.subTest(now=now),patch('mobile_ios_ui.time.monotonic',return_value=now), \
+                 patch.object(ui,'install') as install:
+                ui.setup_install({'app':'retained.app'})
+                self.assertEqual(install.call_args.kwargs,{'maximum':maximum})
+                self.assertLessEqual(now+maximum+120,600)
+        with patch('mobile_ios_ui.time.monotonic',return_value=460), \
+             patch.object(ui,'install') as install,self.assertRaisesRegex(ValueError,'setup deadline'):
+            ui.setup_install({'app':'retained.app'})
+        install.assert_not_called()
+
+    def test_ios_initial_setup_install_still_requires_hash_before_its_own_deadline(self):
+        import subprocess
+        ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
+        ui.active_binary_sha256=None;ui.deadline=lambda:600
+        item={'app':'retained.app','binary_sha256':'a'*64};clock=[0.0]
+        def install(*args,**kwargs):
+            clock[0]+=kwargs['timeout']
+            raise subprocess.TimeoutExpired('simctl',kwargs['timeout'])
+        def observe(*args):clock[0]+=5;return False
+        with patch('mobile_ios_ui.time.monotonic',side_effect=lambda:clock[0]), \
+             patch('mobile_ios_ui.ios.run',side_effect=install) as run, \
+             patch.object(ui,'installed_matches',side_effect=observe),self.assertRaises(TimeoutError):
+            ui.setup_install(item)
+        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[40,175])
+        self.assertLess(clock[0],240);self.assertFalse(ui.installed)
 
     def test_ios_install_timeout_reconciles_exact_executable_without_reinstall(self):
         import subprocess

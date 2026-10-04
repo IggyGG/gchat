@@ -282,13 +282,17 @@ class AndroidUI:
             self.shell('input', 'swipe', (x1+x2)//2, y1+(y2-y1)//4,
                        (x1+x2)//2, y1+3*(y2-y1)//4, '250')
 
-    def type(self, node, value):
+    def type(self, node, value, system_export=False):
+        package = node.get('package')
+        require(package == android.PACKAGE or (system_export and package in
+            ('com.android.documentsui', 'com.google.android.documentsui')),
+            'native input requires the owned application or system export picker')
         self.ui_observation['input_target_bounds'] = android.ui_bounds(node)
         self.tap(node)
         # WebView focus and the IME arrive asynchronously. Pressing Back before
         # the keyboard appears closes the app instead of dismissing the IME.
         android.wait_keyboard(self.shell, True)
-        self.until(lambda: any(child.get('package') == android.PACKAGE
+        self.until(lambda: any(child.get('package') == package
             and child.get('class') == 'android.widget.EditText' and child.get('focused') == 'true'
             and child.get('password', 'false') == node.get('password', 'false')
             and all(child.get(key, '') == node.get(key, '') for key in ('resource-id', 'content-desc'))
@@ -296,7 +300,7 @@ class AndroidUI:
         self.input_started = True
         self.shell('input', 'text', shlex.quote(value.replace(' ', '%s')))
         def confirmed():
-            fields = [child for child in self.tree().iter('node') if child.get('package') == android.PACKAGE
+            fields = [child for child in self.tree().iter('node') if child.get('package') == package
                 and child.get('class') == 'android.widget.EditText'
                 and child.get('password', 'false') == node.get('password', 'false')
                 and all(child.get(key, '') == node.get(key, '') for key in ('resource-id', 'content-desc'))]
@@ -601,7 +605,7 @@ class AndroidUI:
         self.shell('input', 'keyevent', 'KEYCODE_MOVE_END')
         require(0 < len(field.get('text', '')) <= 255, 'unexpected system export filename')
         self.shell('input', 'keyevent', *(['KEYCODE_DEL'] * len(field.get('text', ''))))
-        self.type(field, filename)
+        self.type(field, filename, system_export=True)
         self.node(lambda node: node.get('package', '').endswith('.documentsui')
                   and node.get('class') == 'android.widget.EditText' and node.get('text') == filename, 10)
         # Select the system provider's Downloads root and save its exact bytes.
