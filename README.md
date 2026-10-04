@@ -8,6 +8,8 @@ Routine releases: push `main`; automation builds, verifies, deploys and publishe
 
 Native iOS installation uses one simulator install request followed by exact executable hash reconciliation within its operation deadline. Initial setup permits at most 240 seconds inside its 600-second budget; upgrade and rollback retain 120 seconds. Delayed container registration does not trigger another install.
 
+Android pixel diagnostics retain only numeric word positions and row geometry when exact rendered message matching fails. They cannot qualify delivery or replace the exact body and its own authenticated status.
+
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the
 iOS draft. App Store publication still requires the qualified build and Apple's

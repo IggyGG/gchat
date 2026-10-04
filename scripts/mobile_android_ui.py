@@ -168,6 +168,19 @@ def pixel_delivered(lines, body, known_bodies):
     return False
 
 
+def pixel_body_layout(lines, body):
+    """Numeric word positions only; never retain rendered text or canary words."""
+    words = body.split()
+    result = []
+    for row, line in enumerate(lines[:48]):
+        positions = sorted((match.start(), index) for index, word in enumerate(words)
+            for match in re.finditer(r'(?<!\w)'+re.escape(word)+r'(?!\w)', line['text']))
+        if positions:
+            result.append({'row': row, 'top': line['top'], 'bottom': line['bottom'],
+                'positions': [list(value) for value in positions[:24]]})
+    return result
+
+
 class AndroidUI:
     dump = '/sdcard/gchat-mobile-acceptance-ui.xml'
 
@@ -547,6 +560,7 @@ class AndroidUI:
         spans = list(pixel_message_spans(lines, body))
         self.ui_observation['pixel_delivery'] = {
             'complete_body_spans': len(spans),
+            'body_word_layout': pixel_body_layout(lines, body),
             'exact_body_in_all_rows': bool(message_bodies([' '.join(line['text'] for line in lines)], {body})),
             'body_words_expected': len(body.split()),
             'body_words_observed': sum(any(re.search(r'(?<!\w)'+re.escape(word)+r'(?!\w)', line['text'])

@@ -26,6 +26,8 @@ Retained Android cdc70f5 recognizes all 11 expected body words and the delivered
 
 The latest iOS f696b22 run failed during initial installation before XCTest; its new identity observer was not exercised. The installer now issues one request and polls the actual container/executable hash inside the same deadline, avoiding overlapping installs when registration is delayed. Initial installation remains at most 240 seconds within setup 600; upgrade/rollback remain 120 seconds. Wrong binaries, ordinary command failures and exhausted deadlines still fail. All 65 focused mobile controls pass in 2.159 seconds; API contracts and application bytes are unchanged. Android is running its separately qualified ad8a119 helper (868 CI controls, five existing skips, 30.797 seconds). Installed mobile acceptance remains incomplete.
 
+Native follow-up: a2b7e97 passes 869 CI controls with five existing skips in 34.167 seconds and is active for the running iOS request. Android ad8a119 still fails the outgoing exact visual-body check: all expected word tokens and a delivered line are observed, but the complete ordered body is absent even without row-gap limits. Numeric word positions and row geometry now diagnose ordering without retaining screen text, bodies or screenshots; counts remain insufficient for qualification. All 65 focused controls pass in 2.160 seconds. Original applications and failures remain unchanged; installed mobile acceptance remains incomplete.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

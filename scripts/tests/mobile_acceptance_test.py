@@ -568,6 +568,9 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(detail['body_words_observed'],10)
             self.assertEqual(detail['delivered_lines'],1)
             self.assertEqual(detail['complete_body_spans'],0)
+            self.assertEqual(detail['body_word_layout'][0]['row'],0)
+            self.assertEqual([p[1] for p in detail['body_word_layout'][0]['positions']],
+                [0,1,2,3,4,5,6,7,8,10])
             for word in body.split():self.assertNotIn(word,json.dumps(detail))
 
     def test_wrapped_readable_canary_requires_every_exact_word_and_its_own_status(self):

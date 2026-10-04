@@ -307,12 +307,12 @@
   "current_mobile_providers": {
     "android": 37167451006,
     "android_helper": "ad8a119828b06e5e17925689ec32bdc40cab758c",
-    "ios": 37166756587,
-    "ios_helper": "f696b222847d7501103a9daae8456900797318d1",
-    "state": "android_running_ios_failed",
+    "ios": 37167901682,
+    "ios_helper": "a2b7e97055dd9330759bc9ecf4ee22900125ab00",
+    "state": "android_failed_ios_running",
     "requests": {
       "android": "a9c29224849dec5dfc97faeba357ffed6fedcff261ba616ea31db8d5d069e7c3",
-      "ios": "e9181ee72d4b3cc12be9b865328e08811d9475f7fdddbfa61bd1a90658e2bff3"
+      "ios": "20f188cd8c0af1fcaf417901d5d221e14684ff34eeea8f204561160240aec5d8"
     }
   },
   "retained_workstation_failures": {
@@ -339,8 +339,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "ad8a119828b06e5e17925689ec32bdc40cab758c",
-  "native_helper_qualification": "operations/native-helper-ad8a119-qualified-830.json",
+  "native_helper_source": "a2b7e97055dd9330759bc9ecf4ee22900125ab00",
+  "native_helper_qualification": "operations/native-helper-a2b7e97-qualified-832.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -848,6 +848,29 @@
         "receipt": "operations/ios-helper-f696b22-result-829.zip",
         "identity_correction_exercised": false
       }
+    },
+    {
+      "android": 37167451006,
+      "android_helper": "ad8a119828b06e5e17925689ec32bdc40cab758c",
+      "ios": 37166756587,
+      "ios_helper": "f696b222847d7501103a9daae8456900797318d1",
+      "state": "android_failed_ios_failed",
+      "requests": {
+        "android": "a9c29224849dec5dfc97faeba357ffed6fedcff261ba616ea31db8d5d069e7c3",
+        "ios": "e9181ee72d4b3cc12be9b865328e08811d9475f7fdddbfa61bd1a90658e2bff3"
+      },
+      "android_report": {
+        "artifact": 11289886937,
+        "sha256": "23b842ab44c733b1b200425a2a3c7a82b2784ec8de1bd69e45786cd9e78bdd65",
+        "passed": false,
+        "failure": "outgoing_exact_body_pixel_timeout",
+        "expected_words": 11,
+        "observed_words": 11,
+        "complete_body_spans": 0,
+        "exact_body_in_all_rows": false,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-ad8a119-result-835.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -1003,6 +1026,13 @@
     "initial_install_maximum_seconds": 240,
     "ordinary_install_maximum_seconds": 120,
     "setup_maximum_seconds": 600,
+    "native_pass": false
+  },
+  "android_numeric_layout_diagnostics": {
+    "focused_tests": 65,
+    "focused_passed": true,
+    "text_retained": false,
+    "qualification_criteria_unchanged": true,
     "native_pass": false
   }
 }
