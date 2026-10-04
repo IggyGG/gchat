@@ -14,6 +14,8 @@ Mobile follow-up (2026-10-04): qualified helper d511b97 passes 863 source contro
 
 The exact f30bac0 helper passes 866 source controls with five existing skips in 36.003 seconds; both original mobile stages are resumed with frozen provider requests. Local activation readback proves the running production-profile executable matches installed 0.1.98; the deleted executable belongs to a separate older test profile. See operations/native-helper-f30bac0-qualified-810.json and operations/local-active-readback-814.json. Mobile acceptance remains pending.
 
+The iOS export command can invoke normal reconnect/unlock after the OS picker. It now stages the exact fixture passphrase in the owned simulator clipboard for that command and clears it on either outcome, preserving exact field confirmation. All 63 focused controls pass; this correction still requires native qualification.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

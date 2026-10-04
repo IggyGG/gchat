@@ -253,7 +253,7 @@ class IOSUI:
     def call(self, op, maximum=120, **values):
         require(self.runner is not None and self.runner.poll() is None, 'owned XCTest runner exited')
         end = min(time.monotonic()+maximum, self.deadline())
-        clipboard = (values.get('passphrase') if op == 'unlock' else
+        clipboard = (self.passphrase if op == 'export' else values.get('passphrase') if op == 'unlock' else
                      values.get('invitation') if op == 'join_invitation' else
                      'MOBILE' if op == 'join_accept' else values.get('body') if op == 'send' else None)
         try:

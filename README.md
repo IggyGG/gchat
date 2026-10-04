@@ -806,3 +806,5 @@ Simulator installation reserves time for container lookup and hashing within the
 Android export workers enter the exact filename through the normal system DocumentsUI picker with explicit package and focus checks. Other applications cannot receive fixture input.
 
 Local readback on 2026-10-04 verifies that the running production-profile executable matches the managed GChat 0.1.98 installation. The source-mirror and package-update timers are active.
+
+iOS export fixture recovery stages the same exact passphrase for normal reconnect after the OS picker and clears the owned simulator clipboard even when export fails.

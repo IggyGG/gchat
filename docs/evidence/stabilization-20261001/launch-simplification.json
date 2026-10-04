@@ -827,5 +827,12 @@
     "receipt": "operations/local-active-readback-814.json",
     "old_test_process_is_separate": true,
     "personal_profiles_modified": false
+  },
+  "mobile_export_reunlock_correction": {
+    "owned_simulator_clipboard_staged_before_export": true,
+    "exact_passphrase_required": true,
+    "clipboard_cleared_after_success_or_failure": true,
+    "focused_controls_passed": 63,
+    "native_acceptance_passed": false
   }
 }

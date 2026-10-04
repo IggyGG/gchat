@@ -690,6 +690,19 @@ class MobileAcceptanceTests(unittest.TestCase):
             ui.setup_install({'app':'retained.app'})
         install.assert_not_called()
 
+    def test_ios_export_reunlock_has_exact_owned_clipboard_and_always_clears_it(self):
+        for failed in (False,True):
+            with self.subTest(failed=failed):
+                ui=IOSUI.__new__(IOSUI);ui.passphrase='fixture-private-passphrase'
+                ui.runner=SimpleNamespace(poll=lambda:None);ui.deadline=lambda:time.monotonic()+600
+                ui.bridge=SimpleNamespace(call=lambda *a,**k:None)
+                with patch.object(ui,'copy_input') as copied, \
+                     patch.object(ui.bridge,'call',side_effect=ValueError('UI failure') if failed else None):
+                    if failed:
+                        with self.assertRaisesRegex(ValueError,'UI failure'):ui.call('export',name='baseline-cache.bin')
+                    else:ui.call('export',name='baseline-cache.bin')
+                self.assertEqual([c.args[0] for c in copied.call_args_list],['fixture-private-passphrase',''])
+
     def test_ios_initial_setup_install_still_requires_hash_before_its_own_deadline(self):
         import subprocess
         ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
