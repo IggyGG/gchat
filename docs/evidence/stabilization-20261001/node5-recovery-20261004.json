@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "node": "triform-5",
+  "completed_at": 1791093781,
+  "cause": "Hourly image replacement accumulated untagged Docker build images in a separate containerd namespace. CRI unused-image cleanup could not reclaim that Docker store.",
+  "recovery": {
+    "first_unused_image_cleanup_minimum_age": "24h",
+    "recurring_cleanup": "Local Docker dangling images older than one hour, only below the existing 17% target after CRI cleanup",
+    "tagged_images_preserved_in_dangling_cleanup": true,
+    "current_available_bytes": 234618966016,
+    "total_bytes": 942487273472,
+    "available_percent": 24.89,
+    "longhorn_volumes_and_snapshots_changed": false,
+    "anchor_identity_volume_preserved": true,
+    "kubelet_eviction_threshold_changed": false,
+    "filesystem_reserve_changed": false
+  },
+  "automation": {
+    "minimum_free_percent": 17,
+    "interval_seconds": 300,
+    "docker_minimum_image_age": "1h",
+    "docker_prune_all": false,
+    "cleanup_call_timeout_seconds": 120,
+    "service_timeout_seconds": 270,
+    "all_eight_timers_enabled_active_and_updated": true,
+    "all_eight_scheduled_checks_passed": true,
+    "scheduled_observed_at": 1791093676,
+    "node5_scheduled_status": {
+      "after_available_bytes": 234638610432,
+      "at": 1791093635,
+      "before_available_bytes": 234638610432,
+      "docker_dangling_image_cleanup": false,
+      "headroom_ok": true,
+      "minimum_free_percent": 17,
+      "schema": 1,
+      "total_bytes": 942487273472,
+      "unused_image_cleanup": false
+    },
+    "node5_backup": "/var/lib/gchat-node-image-headroom/backups/20261004-docker-dangling",
+    "code_sha256": {
+      "scripts/node-image-headroom.py": "1a9a3d6290d3ec1a89577bc33aecf78ac2f4c7e54ad0d797d5605be03ea1c057",
+      "release/automation/node-image-headroom.service": "52fead96d79d86d3aee65aeeb7759dc58b760b1c084a0503488e83f6c5aa2b10",
+      "release/automation/node-image-headroom.timer": "c10293059f8c1e07b55c73eafd03a1595351d9554bd595e9b7667e72784e80c1"
+    }
+  },
+  "validation": {
+    "focused_tests": 6,
+    "focused_tests_passed": true,
+    "source_audit_passed": true,
+    "retained_contracts_passed": true,
+    "stable_methods": 18,
+    "optional_methods": 3,
+    "api2_fixtures_unchanged": true,
+    "disk_pressure": false,
+    "anchor_ready": true,
+    "identity_pvc_created_at": "2026-09-19T12:49:58Z",
+    "original_release": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+    "deployment": {
+      "at": 1791093721,
+      "state": "deployed",
+      "reason": null,
+      "journal_at": 1791093649,
+      "public_state": "deployed",
+      "public_at": 1791093649,
+      "healthy": 17,
+      "targets": 17,
+      "resume_result": {
+        "resumed_platforms": [],
+        "state": "accepted"
+      },
+      "progress": {
+        "target": "relay-8",
+        "stage": "observe",
+        "started_at": 1791093721,
+        "deadline_at": 1791094621
+      }
+    },
+    "all_17_targets_fresh_healthy_and_matching": true,
+    "operator_resume_preserved_original_failure": true,
+    "platforms_resumed": []
+  },
+  "receipts": {
+    "operations/node5-docker-cleanup-20261004.json": "191fb7a462beb80a95feaabf7c45b1d5966db36eca31467f3921918255818ee7",
+    "operations/node5-dangling-cleanup-20261004.json": "f786b5ed52e56ed22b7c3266faf2ffd374302f32cb5e06dd6e79e72048ad0345",
+    "operations/node5-maintenance-activated-20261004.json": "8eb9b07f1886c602458f3a71967f7a78978e637a94ac5f3451683164730d78cc",
+    "operations/fleet-headroom-docker-activated-20261004.json": "c20e293e6d691ab0a4f72e8273baf5004abff3e639b53aa7e2d2748c70871a60",
+    "operations/fleet-headroom-docker-scheduled-20261004.json": "a4c9cc9d5b7d507a4f0a3b0532f4b37cf8a084e251bb33bf4cfbbc46e99b6ba7",
+    "operations/node5-health-20261004.json": "7eb750cc8145dd720a73096cb455884770bdaddc8d7258d12f010d44e79a573e",
+    "operations/node5-deployment-recovered-20261004.json": "4344f49e91b9f9eece9e094bb4b527b2e5684a0899e873db4f2378c874ff5781"
+  }
+}

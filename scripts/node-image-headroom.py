@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Maintain node disk headroom using the runtime's unused-image cleanup only."""
+"""Maintain node disk headroom using unused runtime images and Docker build images."""
 import fcntl
 import json
 import os
@@ -9,14 +9,17 @@ import time
 
 MINIMUM_FREE_PERCENT = 17
 ENDPOINT = 'unix:///run/containerd/containerd.sock'
+DOCKER_ENDPOINT = 'unix:///run/docker.sock'
+DOCKER_MINIMUM_IMAGE_AGE = '1h'
 
 
-def maintain(stat=os.statvfs, run=subprocess.run):
+def maintain(stat=os.statvfs, run=subprocess.run, exists=os.path.exists):
     before = stat('/')
     total = before.f_blocks * before.f_frsize
     available = before.f_bavail * before.f_frsize
     result = {'schema': 1, 'at': int(time.time()), 'minimum_free_percent': MINIMUM_FREE_PERCENT,
-        'total_bytes': total, 'before_available_bytes': available, 'unused_image_cleanup': False}
+        'total_bytes': total, 'before_available_bytes': available, 'unused_image_cleanup': False,
+        'docker_dangling_image_cleanup': False}
     if available * 100 < total * MINIMUM_FREE_PERCENT:
         cleaned = run(['/usr/bin/crictl', '--runtime-endpoint', ENDPOINT,
             '--image-endpoint', ENDPOINT, 'rmi', '--prune'], capture_output=True, timeout=120)
@@ -25,6 +28,17 @@ def maintain(stat=os.statvfs, run=subprocess.run):
         result['unused_image_cleanup'] = True
         result['removed_images'] = cleaned.stdout.count(b'Deleted:')
     after = stat('/')
+    if (after.f_bavail * after.f_frsize * 100 < total * MINIMUM_FREE_PERCENT
+            and exists('/usr/bin/docker') and exists('/run/docker.sock')):
+        cleaned = run(['/usr/bin/docker', '--host', DOCKER_ENDPOINT, 'image', 'prune',
+            '--force', '--filter', 'until=' + DOCKER_MINIMUM_IMAGE_AGE],
+            capture_output=True, timeout=120)
+        if cleaned.returncode:
+            raise RuntimeError('Unused dangling Docker-image cleanup failed')
+        result['docker_dangling_image_cleanup'] = True
+        result['docker_minimum_image_age'] = DOCKER_MINIMUM_IMAGE_AGE
+        result['docker_removed_images'] = cleaned.stdout.count(b'deleted:')
+        after = stat('/')
     result['after_available_bytes'] = after.f_bavail * after.f_frsize
     result['headroom_ok'] = result['after_available_bytes'] * 100 >= total * MINIMUM_FREE_PERCENT
     return result

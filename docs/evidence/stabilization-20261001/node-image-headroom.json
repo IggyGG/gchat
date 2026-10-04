@@ -242,5 +242,13 @@
         "unused_image_cleanup": false
       }
     }
+  },
+  "docker_cache_recovery_20261004": {
+    "evidence": "node5-recovery-20261004.json",
+    "all_eight_timers_updated": true,
+    "all_eight_scheduled_checks_passed": true,
+    "node5_disk_pressure": false,
+    "node5_anchor_ready": true,
+    "current_available_percent": 24.89
   }
 }

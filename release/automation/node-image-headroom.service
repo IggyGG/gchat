@@ -5,7 +5,7 @@ ConditionPathExists=/run/containerd/containerd.sock
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/python3 /usr/local/lib/gchat-node-image-headroom.py
-TimeoutStartSec=150
+TimeoutStartSec=270
 StateDirectory=gchat-node-image-headroom
 StateDirectoryMode=0700
 RuntimeDirectory=gchat-node-image-headroom

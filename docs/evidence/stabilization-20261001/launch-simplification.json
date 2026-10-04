@@ -1445,9 +1445,11 @@
       "disk_pressure_recurred": true,
       "currently_cleared": true,
       "anchor_identity_volume_preserved": true,
-      "filesystem_headroom_below_timer_target": true,
+      "filesystem_headroom_below_timer_target": false,
       "eviction_threshold_unchanged": true,
-      "remaining_risk": "Node filesystem headroom is below 17%; another disk-pressure event can hold publication until health recovers."
+      "remaining_risk": null,
+      "recovery_evidence": "node5-recovery-20261004.json",
+      "automatic_cleanup_on_all_eight_nodes": true
     },
     "android_upload_and_commit": {
       "version": "1113",
