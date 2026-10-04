@@ -814,3 +814,5 @@ Current mobile workers select the existing Android Readable font through normal 
 Android native OCR groups words by physical row overlap rather than sparse recognition block IDs. Exact full bodies and their own delivered status remain required; diagnostic word counts do not authorize acceptance.
 
 iOS acceptance reads only the exact identity and safety-number static texts and binds accessibility results by element identity, avoiding unstable index scans. Public diagnostics retain only counts. See [Apple’s query documentation](https://developer.apple.com/documentation/xcuiautomation/xcuielementquery/allelementsboundbyaccessibilityelement).
+
+Android body-row observations account for lowercase x-height within ordinary line spacing. Distant rows, changed words and unrelated delivered statuses remain refused; a flat-row text match is diagnostic only.

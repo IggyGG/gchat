@@ -305,42 +305,14 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37165390111,
-    "ios": 37165391714,
-    "helper": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
-    "state": "both_failed",
+    "android": 37166337291,
+    "android_helper": "cdc70f505a70b3c0a522b684b26bb49554db85bd",
+    "ios": 37166756587,
+    "ios_helper": "f696b222847d7501103a9daae8456900797318d1",
+    "state": "android_failed_ios_running",
     "requests": {
-      "android": "42c171257ee84746908b75491c8d0a7c71d64bd465ee39dfb4e0244711d24076",
-      "ios": "d3e4d701fc85c515c38b2999aa251db64942584c182dcc46af77e0ef16ec7e74"
-    },
-    "android_report": {
-      "artifact": 11288718919,
-      "sha256": "a4b2b80ea5b4284cd5eebaa8b3bcad22dc3c6be6a5e6f6f957a1cdd2b0158535",
-      "passed": false,
-      "incoming_rendered_and_authenticated_ack_passed": true,
-      "exact_outgoing_input_passed": true,
-      "outgoing_received_by_peer": true,
-      "readable_font_selected": true,
-      "complete_body_spans": 0,
-      "delivered_lines": 1,
-      "cleanup_passed": true,
-      "failure": "exact_outgoing_visual_body_not_recognized",
-      "receipt": "operations/android-helper-2b96f76-result-821.zip"
-    },
-    "ios_report": {
-      "artifact": 11289283614,
-      "sha256": "2f2b0c858fab6d52db00f1605703c3f25e6faf85fa61f1addedc5ed59a5a9544",
-      "passed": false,
-      "failure": "unstable_index_bound_accessibility_snapshot_during_identity_read",
-      "both_passphrases_exactly_entered": true,
-      "all_visible_join_stages_passed": true,
-      "installed_binary_hash_verified": true,
-      "runtime_failure_lines": [
-        176
-      ],
-      "last_phase": "identity-value",
-      "cleanup_passed": false,
-      "receipt": "operations/ios-helper-2b96f76-result-822.zip"
+      "android": "8424bffabedfa5cedc815bceed404206a9331911d0faa7004e23767f98c21952",
+      "ios": "e9181ee72d4b3cc12be9b865328e08811d9475f7fdddbfa61bd1a90658e2bff3"
     }
   },
   "retained_workstation_failures": {
@@ -367,8 +339,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "cdc70f505a70b3c0a522b684b26bb49554db85bd",
-  "native_helper_qualification": "operations/native-helper-cdc70f5-qualified-823.json",
+  "native_helper_source": "f696b222847d7501103a9daae8456900797318d1",
+  "native_helper_qualification": "operations/native-helper-f696b22-qualified-825.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -836,6 +808,24 @@
         "cleanup_passed": false,
         "receipt": "operations/ios-helper-2b96f76-result-822.zip"
       }
+    },
+    {
+      "android": 37166337291,
+      "android_helper": "cdc70f505a70b3c0a522b684b26bb49554db85bd",
+      "state": "android_failed",
+      "android_report": {
+        "artifact": 11290265129,
+        "sha256": "cc0b839cd43a36b83edb21b7c141a2d25a8b900661c6bfa391340b08b2ad5d8a",
+        "passed": false,
+        "failure": "complete_body_span_not_assembled_despite_all_expected_words",
+        "body_words_expected": 11,
+        "body_words_observed": 11,
+        "complete_body_spans": 0,
+        "delivered_lines": 1,
+        "readable_font_selected": true,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-cdc70f5-result-828.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -969,6 +959,17 @@
     "foreground_and_webview_required": true,
     "exact_identity_format_unchanged": true,
     "public_count_diagnostics_only": true,
+    "focused_controls_passed": 64,
+    "native_acceptance_passed": false,
+    "qualified_source": "f696b222847d7501103a9daae8456900797318d1",
+    "source_controls_passed": 868
+  },
+  "mobile_body_line_pitch_correction": {
+    "recognized_glyph_height_is_not_css_line_pitch": true,
+    "full_exact_body_required": true,
+    "distant_rows_still_refused": true,
+    "unrelated_receipts_still_refused": true,
+    "all_rows_match_is_diagnostic_only": true,
     "focused_controls_passed": 64,
     "native_acceptance_passed": false
   }

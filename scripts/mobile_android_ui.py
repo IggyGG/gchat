@@ -138,7 +138,10 @@ def pixel_message_spans(lines, body):
             if end > start:
                 previous = lines[end-1]
                 if not (previous['top'] <= line['top'] <= previous['bottom'] +
-                        1.5*(previous['bottom']-previous['top'])): break
+                        # Short lowercase words expose only x-height glyphs,
+                        # not the CSS line box. Keep ordinary leading while
+                        # still refusing distant rows or unrelated text.
+                        2.5*(previous['bottom']-previous['top'])): break
             text += ' ' + line['text']
             if message_bodies([text], {body}):
                 suffix = ' '.join(text.split()).split(body, 1)[1]
@@ -544,6 +547,7 @@ class AndroidUI:
         spans = list(pixel_message_spans(lines, body))
         self.ui_observation['pixel_delivery'] = {
             'complete_body_spans': len(spans),
+            'exact_body_in_all_rows': bool(message_bodies([' '.join(line['text'] for line in lines)], {body})),
             'body_words_expected': len(body.split()),
             'body_words_observed': sum(any(re.search(r'(?<!\w)'+re.escape(word)+r'(?!\w)', line['text'])
                 for line in lines) for word in body.split()),

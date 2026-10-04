@@ -22,6 +22,8 @@ Android helper 2b96f76 selects the normal Readable font and passes incoming exac
 
 Retained iOS helper 2b96f76 passes exact passphrase creation and confirmation and all visible join stages. It fails reading identity when a changing accessibility snapshot invalidates an index-bound element. The correction queries the exact identity and safety-number static texts, binds results by accessibility identity, and requires the foreground WebView. Diagnostic field counts contain no identity values. All 64 focused controls pass; actual installed acceptance remains required. Android is resumed separately with the CI-qualified visual-row helper cdc70f5 (868 source controls); its original request remains frozen.
 
+Retained Android cdc70f5 recognizes all 11 expected body words and the delivered status, but cannot assemble a complete adjacent body span. Short lowercase glyphs measure x-height rather than the full CSS line box. The corrected body-row leading allowance matches the existing smaller-font receipt allowance, retaining exact whole-body and receipt binding. Focused checks cover short adjacent lines, distant rows, modified words and unrelated receipts; all 64 controls pass. The flat-row match remains a diagnostic only. iOS is resumed separately on CI-qualified f696b22 (868 source controls); its original request remains frozen. Native acceptance is incomplete.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

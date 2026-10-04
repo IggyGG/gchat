@@ -576,6 +576,12 @@ class MobileAcceptanceTests(unittest.TestCase):
         second={'text':'cloud dawn eagle forest grape river','top':116,'bottom':128}
         receipt={'text':'· delivered','top':132,'bottom':144}
         self.assertTrue(android_ui.pixel_delivered([first,second,receipt],body,{body}))
+        short_first={**first,'top':100,'bottom':109}
+        short_second={**second,'top':124,'bottom':133}
+        short_receipt={**receipt,'top':146,'bottom':153}
+        self.assertTrue(android_ui.pixel_delivered([short_first,short_second,short_receipt],body,{body}))
+        self.assertFalse(android_ui.pixel_delivered([short_first,
+            {**short_second,'top':170,'bottom':179},short_receipt],body,{body}))
         for changed in ({**second,'text':second['text'].replace('grape','grave')},
                         {**second,'top':170,'bottom':182},
                         {**second,'text':second['text']+' suffix'}):

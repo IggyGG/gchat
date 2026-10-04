@@ -6,7 +6,7 @@ python3 scripts/release.py status
 
 Current release, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed and the running production-profile executable matches it. Android and iOS installed acceptance remain incomplete after retained failures. Apple encryption approval remains IN_REVIEW, including France. SDK 1.0 and the subsequent unattended release remain open.
 
-Controller 7f423f8 is active, with temporary GitHub outage recovery and the original request IDs retained. Native helper 2b96f76 is qualified independently: 866 source controls, five existing skips, 62 focused mobile controls, and unchanged API 2/3 contracts. Native acceptance still has to pass against the original signed applications. Failed runs remain retained in the [launch evidence](evidence/stabilization-20261001/launch-simplification.json).
+Controller 7f423f8 is active, with temporary GitHub outage recovery and the original request IDs retained. Native helper f696b22 is qualified independently: 868 source controls, five existing skips, 64 focused mobile controls, and unchanged API 2/3 contracts. Native acceptance still has to pass against the original signed applications. Failed runs remain retained in the [launch evidence](evidence/stabilization-20261001/launch-simplification.json).
 
 All eight node headroom timers are enabled. Every five minutes they check free space and prune only unused containerd images below 17%. All eight scheduled checks pass; original insufficient-prune results and reversible reserve adjustments remain in the [maintenance evidence](evidence/stabilization-20261001/node-image-headroom.json).
 
