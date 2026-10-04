@@ -4,7 +4,7 @@ Release status, 2026-10-04: the local Linux app and all 17 infrastructure target
 
 Routine releases: push `main`; the source mirror and Kubernetes coordinator build, verify, deploy and publish. The local package timer installs signed desktop updates. Inspect with `python3 scripts/release.py status`; use `resume --platform <platform>` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
 
-The active mobile helper da7073b passed 874 independent CI controls with five existing skips, plus 70 focused controls. It uses the corrected Android app-data cache path, normal system export and exact rendered acknowledgments; iOS narrows exact row queries and reconciles zero-character local input once within the original deadlines. Both actual native runs retain the original signed apps. Controller 7f423f8, all eight node headroom timers and both local release timers remain active. The running Linux executable still matches installed 0.1.98 byte for byte.
+Native fixture simplification, 2026-10-04: retained Android da7073b passes initial enrollment/export and both upgrade and baseline rollback phases with unchanged identity/history/encrypted cache and authenticated acknowledgments, then exhausts the original compatibility deadline during final-restoration history observation. Fresh hierarchy removal, capture and read now share one ADB round trip. Each replacement checks authenticated messages before its OS export; an immediate next replacement performs only its required unlock, while subsequent messaging still reconnects normally. Android partial-transfer observation now requires an exact rendered filename, its adjacent transfer status, exact total and bounded verified counter. iOS empty-prefix handling accepts its actual accessibility placeholder without admitting existing input. All 71 focused controls pass in 2.956 seconds; native qualification is still required and all original deadlines and failed reports remain retained.
 
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the
@@ -255,6 +255,10 @@ may lower it with `/mode +l` (2–64); clients and the service enforce the ceili
 
 
 # Retained earlier stabilization checkpoints
+
+The active mobile helper da7073b passed 874 independent CI controls with five existing skips, plus 70 focused controls. It uses the corrected Android app-data cache path, normal system export and exact rendered acknowledgments; iOS narrows exact row queries and reconciles zero-character local input once within the original deadlines. Both actual native runs retain the original signed apps. Controller 7f423f8, all eight node headroom timers and both local release timers remain active. The running Linux executable still matches installed 0.1.98 byte for byte.
+
+
 
 Release status, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed and its running production-profile executable matches it. Android and iOS installed acceptance, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval remains IN_REVIEW, including France.
 

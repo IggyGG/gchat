@@ -305,14 +305,8 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37172209704,
-    "ios": 37172249109,
-    "helper": "da7073b9798f37a85c5a6425d3ece7c24e41f5fa",
-    "state": "both_running",
-    "requests": {
-      "android": "678f63144778547474ee94be519b54c5ce514db3d7e61956d817d6338876c706",
-      "ios": "0f5695e59c2248263267cfcdc096b90563a4d5db1be7d31f38f9897e6f6c8d3a"
-    }
+    "state": "successor_requires_independent_ci_then_native_acceptance",
+    "original_failed_requests_retained": true
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -1039,6 +1033,42 @@
         "owned_device_binding_passed": true,
         "cleanup_passed": false,
         "receipt": "operations/ios-helper-96d51b6-result-868.zip"
+      }
+    },
+    {
+      "android": 37172209704,
+      "ios": 37172249109,
+      "helper": "da7073b9798f37a85c5a6425d3ece7c24e41f5fa",
+      "state": "both_failed",
+      "requests": {
+        "android": "678f63144778547474ee94be519b54c5ce514db3d7e61956d817d6338876c706",
+        "ios": "0f5695e59c2248263267cfcdc096b90563a4d5db1be7d31f38f9897e6f6c8d3a"
+      },
+      "android_report": {
+        "artifact": 11292186426,
+        "sha256": "97f2e85a76b64d4b108eb412e3a9f4365361bd3e627ba307378e9532dd358b9c",
+        "passed": false,
+        "stage": "replacement-restored",
+        "failure": "original_compatibility_deadline_during_final_history_observation",
+        "upgrade_and_baseline_rollback_passed": true,
+        "unchanged_identity_history_encrypted_cache_and_export_hash": true,
+        "authenticated_acks": 6,
+        "hierarchy_observations": 204,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-da7073b-result-878.zip"
+      },
+      "ios_report": {
+        "artifact": 11292002428,
+        "sha256": "8920dc9beefda2b589dd234b6fe1012400600a76dd5a54d904bc258cc97e14cf",
+        "passed": false,
+        "stage": "baseline-start",
+        "phase": "join-review",
+        "failure": "empty_prefix_guard_refused_initial_textarea_value",
+        "both_passphrases_passed": true,
+        "initial_install_hash_verified": true,
+        "owned_device_binding_passed": true,
+        "cleanup_passed": false,
+        "receipt": "operations/ios-helper-da7073b-result-879.zip"
       }
     }
   ],

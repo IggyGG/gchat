@@ -108,6 +108,12 @@ class MobileJourney:
         self.peer.files(0, 'commit', id=ident)
         return ident, expected.hexdigest()
 
+    @staticmethod
+    def resume_after_export(ui):
+        resume = getattr(ui, 'resume_after_export', None)
+        if resume is not None:
+            resume()
+
     def run(self, ui):
         self.peer.start_client(0, True)
         self.peer.channel = self.peer.submit(0, '/create #mobile-release sender')['conversation']
@@ -136,8 +142,8 @@ class MobileJourney:
             require(ui.identity() == identity, 'mobile cryptographic identity changed on replacement')
             ui.history(retained_bodies)
             require(ui.cache_hash(cache_id) == encrypted, 'retained encrypted mobile cache changed')
-            require(ui.export(cache_name, phase) == expected, 'cached export after replacement differs')
             self.ack(ui, phase, self.rollback)
+            require(ui.export(cache_name, phase) == expected, 'cached export after replacement differs')
             self.rollback['phases'].append({'phase': phase, 'binary_sha256': item['binary_sha256'],
                 'same_identity': True, 'history_retained': True, 'cache_sha256': expected,
                 'encrypted_cache_sha256': encrypted, 'authenticated_bidirectional_ack': True})
@@ -152,6 +158,7 @@ class MobileJourney:
         self.deadline = started + 600
         self.peer.deadline = self.deadline
         self.stage = 'network-before'
+        self.resume_after_export(ui)
         self.ack(ui, 'before', self.report)
         name = 'bounded-mobile.bin'
         ident, expected = self.offer(name, 16777216)
@@ -175,6 +182,7 @@ class MobileJourney:
         require(completion <= 360, 'late installed mobile file completion')
         require(ui.export(name, 'network') == expected, 'installed mobile export hash differs')
         self.stage = 'network-after'
+        self.resume_after_export(ui)
         self.ack(ui, 'after', self.report)
         ui.stop()
         ui.unlock()
@@ -182,6 +190,7 @@ class MobileJourney:
         require(ui.identity() == identity, 'mobile identity changed after final reopen')
         require(ui.progress(name, 16777216) == 16777216, 'verified completed file lost on reopen')
         require(ui.export(name, 'reopened') == expected, 'reopened mobile export hash differs')
+        self.resume_after_export(ui)
         self.ack(ui, 'reopened', self.report)
         self.report.update(file_check={'bytes': 16777216, 'sha256': expected,
             'completion_elapsed_seconds': completion, 'abrupt_stop': True,

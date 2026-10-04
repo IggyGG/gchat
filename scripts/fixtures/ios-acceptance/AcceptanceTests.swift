@@ -113,8 +113,12 @@ final class GChatAcceptanceTests: XCTestCase {
             let end = min(offset + batch, characters.count)
             let before = String(characters[..<offset])
             let expected = String(characters[..<end])
+            func unchangedPrefix() -> Bool {
+                let actual = field.value as? String
+                return actual == before || (before.isEmpty && actual != nil && actual == field.placeholderValue)
+            }
             for attempt in 0..<2 {
-                try require((field.value as? String) == before)
+                try require(unchangedPrefix())
                 if attempt > 0 {
                     // Only an unchanged prefix permits another local input.
                     // Partial, changed or masked values remain failures.
@@ -127,7 +131,7 @@ final class GChatAcceptanceTests: XCTestCase {
                     break
                 } catch {
                     let actual = field.exists ? (field.value as? String) ?? "" : ""
-                    if attempt == 0 && field.exists && (field.value as? String) == before { continue }
+                    if attempt == 0 && field.exists && unchangedPrefix() { continue }
                     print("GCHAT_ACCEPTANCE_INPUT_FIELD_PRESENT=\(field.exists ? 1 : 0)")
                     print("GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=\(actual.count)")
                     print("GCHAT_ACCEPTANCE_INPUT_EXPECTED_LENGTH=\(expected.count)")

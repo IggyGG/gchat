@@ -186,6 +186,33 @@ def pixel_body_layout(lines, body):
     return result
 
 
+def pixel_transfer_progress(lines, name, size, known_names):
+    """Exact filename, its transfer status and byte counter in adjacent rows."""
+    statuses = {'downloading', 'waiting for peers', 'paused', 'Downloaded · shared while unlocked'}
+    for index, title in enumerate(lines):
+        if title['text'] != name or index + 2 >= len(lines):
+            continue
+        status = lines[index + 1]
+        if status['text'] not in statuses or status['top'] > title['bottom'] + 3 * (title['bottom']-title['top']):
+            continue
+        text = ''
+        previous = status
+        for counter in lines[index+2:index+5]:
+            if counter['top'] > previous['bottom'] + 5 * (previous['bottom']-previous['top']):
+                break
+            if any(other in counter['text'] for other in known_names):
+                break
+            text = (text + ' ' + counter['text']).strip()
+            match = re.fullmatch(r'([0-9]+(?:,[0-9]{3})*) / ([0-9]+(?:,[0-9]{3})*) bytes verified', text)
+            if match:
+                value, total = (int(part.replace(',', '')) for part in match.groups())
+                if total == size and 0 <= value <= size:
+                    return value
+                break
+            previous = counter
+    return None
+
+
 def system_picker_control(node, values):
     return node.get('package') in ('com.android.documentsui', 'com.google.android.documentsui') and any(
         node.get(key) in values for key in ('text', 'content-desc'))
@@ -242,10 +269,12 @@ class AndroidUI:
 
     def tree(self):
         self.ui_observation['attempts'] += 1
-        self.shell('rm', '-f', self.dump)
+        # One ADB round trip; removal and successful dump remain prerequisites
+        # for reading XML, so an old hierarchy can never satisfy a new check.
+        path = shlex.quote(self.dump)
+        script = f'rm -f {path} && uiautomator dump {path} >/dev/null && cat {path}'
         try:
-            self.shell('uiautomator', 'dump', self.dump)
-            tree = ET.fromstring(self.shell('cat', self.dump))
+            tree = ET.fromstring(self.shell('sh', '-c', shlex.quote(script)))
         except (ValueError, ET.ParseError) as error:
             self.ui_observation.update(errors=self.ui_observation['errors']+1, last_error=type(error).__name__)
             return ET.Element('hierarchy')
@@ -658,13 +687,17 @@ class AndroidUI:
 
     def progress(self, name, size):
         self.names.add(name)
-        for node in self.tree().iter('node'):
+        tree = self.tree()
+        for node in tree.iter('node'):
             values = labels(node)
             if name in values and set(values) & self.names == {name}:
                 for value in values:
                     match = re.fullmatch(r'([\d,]+) / ([\d,]+) bytes verified', value)
                     if match and int(match[2].replace(',', '')) == size:
                         return int(match[1].replace(',', ''))
+        observed = pixel_transfer_progress(self.rendered_lines(tree), name, size, self.names)
+        if observed is not None:
+            return observed
         # Completed transfer rows are transient. On reopen, the retained Files
         # pane still reports the exact file's verified completion state.
         self.tap(self.node(lambda node: named_control(node, 'Files:')))
@@ -690,8 +723,6 @@ class AndroidUI:
         field = self.node(lambda node: node.get('package', '').endswith('.documentsui')
                           and node.get('class') == 'android.widget.EditText', 30)
         self.type(field, filename, system_export=True, replace=True)
-        self.node(lambda node: node.get('package', '').endswith('.documentsui')
-                  and node.get('class') == 'android.widget.EditText' and node.get('text') == filename, 10)
         # Select the system provider's Downloads root and save its exact bytes.
         root = self.node(lambda node: system_picker_control(node, ('Downloads', 'Show roots')), 30)
         if system_picker_control(root, ('Show roots',)):
@@ -703,9 +734,12 @@ class AndroidUI:
         self.exports.append(path)
         self.until(lambda: filename in self.shell('ls', '-1', '/sdcard/Download').splitlines(), 30)
         data = self.command('exec-out', 'cat', path, binary=True)
-        # Returning from the real system picker preserves the manual unlock flow.
-        self.unlock()
         return hashlib.sha256(data).hexdigest()
+
+    def resume_after_export(self):
+        # Reconnect through normal UI when the next operation requires it.
+        # A replacement immediately after export needs only its own unlock.
+        self.unlock()
 
     def cleanup(self):
         errors = []

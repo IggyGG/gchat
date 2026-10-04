@@ -196,14 +196,14 @@ class MobileAcceptanceTests(unittest.TestCase):
                 '<node package="boo.gchat.app" text="Create identity"/>' \
                 '<node package="boo.gchat.app" password="true" text="private-passphrase"/>' \
                 '</node></hierarchy>'
-            with patch.object(ui,'shell',side_effect=['','',xml]):
+            with patch.object(ui,'shell',return_value=xml):
                 self.assertEqual(len(list(ui.tree().iter('node'))),3)
             self.assertEqual(ui.ui_observation,{'attempts':1,'errors':0,'application_nodes':3,
                 'display_size':[720,1440],'display_density':360,
                 'password_fields':1,'create_identity':1,'reconnect':0,
                 'public_controls':{'network':0,'files':0,'send':0,'connect_to_gchat':0,'close_dialog':0,'close_details':0,'nickname':0,'invitation_preview':0,'join':0,
                     'continue':0,'validating':0,'notifications':0}})
-            with patch.object(ui,'shell',side_effect=['','', 'invalid private hierarchy']):
+            with patch.object(ui,'shell',return_value='invalid private hierarchy'):
                 self.assertEqual(ui.tree().tag,'hierarchy')
             self.assertEqual(ui.ui_observation['last_error'],'ParseError')
             self.assertEqual(ui.ui_observation['errors'],1)
@@ -308,6 +308,24 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(ui.ui_observation['input_value']['exact_value_fields'],1)
             self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
 
+    def test_pixel_transfer_counter_requires_its_exact_filename_status_total_and_adjacent_rows(self):
+        name='bounded-mobile.bin';size=16777216
+        def line(text,top):return {'text':text,'top':top,'bottom':top+24}
+        rows=[line(name,100),line('downloading',134),line('262,144 / 16,777,216 bytes verified',186)]
+        self.assertEqual(android_ui.pixel_transfer_progress(rows,name,size,{name}),262144)
+        wrapped=rows[:2]+[line('262,144 / 16,777,216 bytes',186),line('verified',220)]
+        self.assertEqual(android_ui.pixel_transfer_progress(wrapped,name,size,{name}),262144)
+        for changed in ([*rows[:1],line('delivered',134),rows[2]],
+                        [line('another.bin',100),*rows[1:]],
+                        [*rows[:2],line('262,144 / 17 bytes verified',186)],
+                        [*rows[:2],line('16,777,217 / 16,777,216 bytes verified',186)],
+                        [*rows[:2],line('-1 / 16,777,216 bytes verified',186)],
+                        [*rows[:2],line(rows[2]['text'],600)],
+                        [*rows[:2],line('another.bin',168),rows[2]],
+                        [*rows[:2],line('Canary '+rows[2]['text'],186)]):
+            with self.subTest(rows=changed):
+                self.assertIsNone(android_ui.pixel_transfer_progress(changed,name,size,{name,'another.bin'}))
+
     def test_android_cache_requires_one_exact_encrypted_piece_in_owned_app_data(self):
         ident='a'*32;root='/data/user/0/boo.gchat.app/instance'
         path=root+'/file-cache/'+ident+'/0.piece'
@@ -334,16 +352,17 @@ class MobileAcceptanceTests(unittest.TestCase):
                         'bounds':'[10,10][90,40]',**extra})
                 field=control(filename,**{'class':'android.widget.EditText'})
                 download=control('Downloads');roots=control('Show roots');save_button=control(save)
-                screens=[field,field,roots,download,save_button] if drawer else [field,field,download,save_button]
+                screens=[field,roots,download,save_button] if drawer else [field,download,save_button]
                 def node(predicate,*args):
                     value=screens.pop(0);self.assertTrue(predicate(value));return value
                 with patch.object(ui,'file_action'),patch.object(ui,'node',side_effect=node), \
                      patch.object(ui,'type') as enter,patch.object(ui,'tap',side_effect=lambda n:taps.append(n.get('text'))), \
                      patch.object(ui,'shell',return_value=filename),patch.object(ui,'command',return_value=b'actual native export'), \
-                     patch.object(ui,'unlock'):
+                     patch.object(ui,'unlock') as unlock:
                     self.assertEqual(ui.export('baseline-cache.bin','initial'),hashlib.sha256(b'actual native export').hexdigest())
                 self.assertEqual(taps,['Show roots','Downloads',save] if drawer else ['Downloads',save])
                 self.assertEqual(enter.call_args.kwargs,{'system_export':True,'replace':True})
+                unlock.assert_not_called()
                 self.assertEqual(ui.exports,['/sdcard/Download/'+filename])
                 for package in ('another.documentsui','boo.gchat.app'):
                     wrong=ET.Element('node',{'package':package,'text':'SAVE'})
@@ -530,11 +549,11 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertIsNone(android_ui.launcher_anr_close(ET.fromstring(changed)))
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary))
-            with patch.object(ui,'shell',side_effect=['','',xml]),patch.object(ui,'tap') as tap:
+            with patch.object(ui,'shell',return_value=xml),patch.object(ui,'tap') as tap:
                 self.assertEqual(ui.tree().tag,'hierarchy');tap.assert_called_once()
             self.assertEqual(ui.ui_observation['launcher_anr_dismissed'],1)
             ui.ui_observation['launcher_anr_dismissed']=2
-            with patch.object(ui,'shell',side_effect=['','',xml]),patch.object(ui,'tap') as tap, \
+            with patch.object(ui,'shell',return_value=xml),patch.object(ui,'tap') as tap, \
                  self.assertRaisesRegex(ValueError,'launcher repeatedly'):
                 ui.tree()
             tap.assert_not_called()
