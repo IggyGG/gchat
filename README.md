@@ -1,26 +1,10 @@
 # GChat
 
-Release status, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed and its running production-profile executable matches it. Android and iOS installed acceptance, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval remains IN_REVIEW, including France.
+Release status, 2026-10-04: the local Linux app and all 17 infrastructure targets are active on release 0.1.98. Linux, Windows, both Mac architectures and SDK archives are published. Android and iOS installed acceptance are running; mobile publication, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval is IN_REVIEW, including France.
 
-Routine releases use the existing source mirror and Kubernetes coordinator: push main, then inspect with `python3 scripts/release.py status`. Controller 7f423f8 handles bounded temporary GitHub outage recovery. All eight node headroom timers are enabled and their scheduled checks pass. Failed reports, original provider requests and signed application bytes remain retained.
+Routine releases: push `main`; the source mirror and Kubernetes coordinator build, verify, deploy and publish. The local package timer installs signed desktop updates. Inspect with `python3 scripts/release.py status`; use `resume --platform <platform>` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
 
-Routine releases: push `main`; automation builds, verifies, deploys and publishes. Inspect with `python3 scripts/release.py status`; use `resume` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
-
-Native iOS installation uses one simulator install request followed by exact executable hash reconciliation within its operation deadline. Initial setup permits at most 240 seconds inside its 600-second budget; upgrade and rollback retain 120 seconds. Delayed container registration does not trigger another install.
-
-Android pixel diagnostics retain only numeric word positions and row geometry when exact rendered message matching fails. They cannot qualify delivery or replace the exact body and its own authenticated status.
-
-The iOS fixture compiler runs alongside owned simulator setup, then XCTest executes the compiled fixture only after both compilation and retained-app installation pass. Both phases share the original setup deadline. Android recognition excludes actual owned button rectangles overlapping the transcript, preserving exact text and message-bound delivery checks.
-
-System filename replacement waits for the actual owned picker field and keyboard, verifies that the old name is empty, then requires the exact new name before saving. Export and cache hashes remain mandatory.
-
-Native iOS input confirms every exact prefix. Long invitations use 64-character keyboard batches; passphrases retain eight-character batches. Only numeric total/confirmed lengths enter diagnostics; command and journey deadlines remain unchanged.
-
-The retained Android cecddf7 run passes exact rendered messages, authenticated acknowledgments in both directions and exact export filename confirmation. It then fails because the system picker has no Show roots control. The helper now accepts the normal Downloads screen directly or opens it through Show roots, using only the two owned DocumentsUI packages and exact Save labels; export hashes remain mandatory. iOS d3a64e5 is independently qualified and running against the original signed apps. Remaining dynamic WebView row queries now bind accessibility elements rather than unstable indices. All 69 focused controls pass in 2.936 seconds; L0 checks 825 paths and API 2/3 contracts remain unchanged. Native results are still required.
-
-Retained iOS d3a64e5 passes visible enrollment, exact identity, initial covered messages, system export, upgrade and baseline rollback with unchanged identity/history/encrypted cache and authenticated acknowledgments. Its final restoration cannot start within the original 600-second compatibility budget. Exact label ancestor queries now narrow file and message row candidates before the existing uniqueness/status checks, removing repeated whole-tree scans without extending any deadline. The failed report remains retained; complete installed qualification is still required.
-
-Native follow-up, 2026-10-04: Android 80d68e5 passes exact rendering, authenticated messages and the normal OS export with the original hash. Its encrypted-cache check searched filesDir, but the pinned Tauri Android resolver uses activity.dataDir; the fixture now checks the owned app instance beneath dataDir and still requires one exact encrypted piece. iOS 96d51b6 passes setup but the first keyboard batch enters zero characters. Input now waits for the actual keyboard and permits one local retry only when the complete previous prefix remains unchanged; partial or different values fail. Original command and journey deadlines, failed reports and signed applications remain retained. All 70 focused controls pass in 3.052 seconds; complete native results remain required.
+The active mobile helper da7073b passed 874 independent CI controls with five existing skips, plus 70 focused controls. It uses the corrected Android app-data cache path, normal system export and exact rendered acknowledgments; iOS narrows exact row queries and reconciles zero-character local input once within the original deadlines. Both actual native runs retain the original signed apps. Controller 7f423f8, all eight node headroom timers and both local release timers remain active. The running Linux executable still matches installed 0.1.98 byte for byte.
 
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the
@@ -271,6 +255,30 @@ may lower it with `/mode +l` (2–64); clients and the service enforce the ceili
 
 
 # Retained earlier stabilization checkpoints
+
+Release status, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed and its running production-profile executable matches it. Android and iOS installed acceptance, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval remains IN_REVIEW, including France.
+
+Routine releases use the existing source mirror and Kubernetes coordinator: push main, then inspect with `python3 scripts/release.py status`. Controller 7f423f8 handles bounded temporary GitHub outage recovery. All eight node headroom timers are enabled and their scheduled checks pass. Failed reports, original provider requests and signed application bytes remain retained.
+
+Routine releases: push `main`; automation builds, verifies, deploys and publishes. Inspect with `python3 scripts/release.py status`; use `resume` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
+
+Native iOS installation uses one simulator install request followed by exact executable hash reconciliation within its operation deadline. Initial setup permits at most 240 seconds inside its 600-second budget; upgrade and rollback retain 120 seconds. Delayed container registration does not trigger another install.
+
+Android pixel diagnostics retain only numeric word positions and row geometry when exact rendered message matching fails. They cannot qualify delivery or replace the exact body and its own authenticated status.
+
+The iOS fixture compiler runs alongside owned simulator setup, then XCTest executes the compiled fixture only after both compilation and retained-app installation pass. Both phases share the original setup deadline. Android recognition excludes actual owned button rectangles overlapping the transcript, preserving exact text and message-bound delivery checks.
+
+System filename replacement waits for the actual owned picker field and keyboard, verifies that the old name is empty, then requires the exact new name before saving. Export and cache hashes remain mandatory.
+
+Native iOS input confirms every exact prefix. Long invitations use 64-character keyboard batches; passphrases retain eight-character batches. Only numeric total/confirmed lengths enter diagnostics; command and journey deadlines remain unchanged.
+
+The retained Android cecddf7 run passes exact rendered messages, authenticated acknowledgments in both directions and exact export filename confirmation. It then fails because the system picker has no Show roots control. The helper now accepts the normal Downloads screen directly or opens it through Show roots, using only the two owned DocumentsUI packages and exact Save labels; export hashes remain mandatory. iOS d3a64e5 is independently qualified and running against the original signed apps. Remaining dynamic WebView row queries now bind accessibility elements rather than unstable indices. All 69 focused controls pass in 2.936 seconds; L0 checks 825 paths and API 2/3 contracts remain unchanged. Native results are still required.
+
+Retained iOS d3a64e5 passes visible enrollment, exact identity, initial covered messages, system export, upgrade and baseline rollback with unchanged identity/history/encrypted cache and authenticated acknowledgments. Its final restoration cannot start within the original 600-second compatibility budget. Exact label ancestor queries now narrow file and message row candidates before the existing uniqueness/status checks, removing repeated whole-tree scans without extending any deadline. The failed report remains retained; complete installed qualification is still required.
+
+Native follow-up, 2026-10-04: Android 80d68e5 passes exact rendering, authenticated messages and the normal OS export with the original hash. Its encrypted-cache check searched filesDir, but the pinned Tauri Android resolver uses activity.dataDir; the fixture now checks the owned app instance beneath dataDir and still requires one exact encrypted piece. iOS 96d51b6 passes setup but the first keyboard batch enters zero characters. Input now waits for the actual keyboard and permits one local retry only when the complete previous prefix remains unchanged; partial or different values fail. Original command and journey deadlines, failed reports and signed applications remain retained. All 70 focused controls pass in 3.052 seconds; complete native results remain required.
+
+
 
 These notes preserve earlier outcomes and implementation details. Current deployment and worker status are stated at the top of this README; old pending states below are not current launch claims.
 

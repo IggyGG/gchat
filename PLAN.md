@@ -1,10 +1,18 @@
+Release status, 2026-10-04: the local Linux app and all 17 infrastructure targets are active on release 0.1.98. Linux, Windows, both Mac architectures and SDK archives are published. Android and iOS installed acceptance are running; mobile publication, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval is IN_REVIEW, including France.
+
+Routine releases: push `main`; the source mirror and Kubernetes coordinator build, verify, deploy and publish. The local package timer installs signed desktop updates. Inspect with `python3 scripts/release.py status`; use `resume --platform <platform>` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](AUTOMATIC_RELEASES.md) and [current evidence](evidence/stabilization-20261001/launch-simplification.json).
+
+The active mobile helper da7073b passed 874 independent CI controls with five existing skips, plus 70 focused controls. It uses the corrected Android app-data cache path, normal system export and exact rendered acknowledgments; iOS narrows exact row queries and reconciles zero-character local input once within the original deadlines. Both actual native runs retain the original signed apps. Controller 7f423f8, all eight node headroom timers and both local release timers remain active. The running Linux executable still matches installed 0.1.98 byte for byte.
+
+## Retained earlier checkpoints
+
 Release status, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed and its running production-profile executable matches it. Android and iOS installed acceptance, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval remains IN_REVIEW, including France.
 
 Routine releases use the existing source mirror and Kubernetes coordinator: push main, then inspect with `python3 scripts/release.py status`. Controller 7f423f8 handles bounded temporary GitHub outage recovery. All eight node headroom timers are enabled and their scheduled checks pass. Failed reports, original provider requests and signed application bytes remain retained.
 
 Native follow-up, 2026-10-04: Android 80d68e5 passes exact rendering, authenticated messages and the normal OS export with the original hash. Its encrypted-cache check searched filesDir, but the pinned Tauri Android resolver uses activity.dataDir; the fixture now checks the owned app instance beneath dataDir and still requires one exact encrypted piece. iOS 96d51b6 passes setup but the first keyboard batch enters zero characters. Input now waits for the actual keyboard and permits one local retry only when the complete previous prefix remains unchanged; partial or different values fail. Original command and journey deadlines, failed reports and signed applications remain retained. All 70 focused controls pass in 3.052 seconds; complete native results remain required.
 
-## Retained earlier checkpoints
+
 
 The retained Android cecddf7 run passes exact rendered messages, authenticated acknowledgments in both directions and exact export filename confirmation. It then fails because the system picker has no Show roots control. The helper now accepts the normal Downloads screen directly or opens it through Show roots, using only the two owned DocumentsUI packages and exact Save labels; export hashes remain mandatory. iOS d3a64e5 is independently qualified and running against the original signed apps. Remaining dynamic WebView row queries now bind accessibility elements rather than unstable indices. All 69 focused controls pass in 2.936 seconds; L0 checks 825 paths and API 2/3 contracts remain unchanged. Native results are still required.
 

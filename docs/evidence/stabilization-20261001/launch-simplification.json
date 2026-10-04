@@ -305,8 +305,14 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "state": "successor_requires_independent_ci_then_native_acceptance",
-    "original_failed_requests_retained": true
+    "android": 37172209704,
+    "ios": 37172249109,
+    "helper": "da7073b9798f37a85c5a6425d3ece7c24e41f5fa",
+    "state": "both_running",
+    "requests": {
+      "android": "678f63144778547474ee94be519b54c5ce514db3d7e61956d817d6338876c706",
+      "ios": "0f5695e59c2248263267cfcdc096b90563a4d5db1be7d31f38f9897e6f6c8d3a"
+    }
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -332,8 +338,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "96d51b65518d299026ab41d4317abca5a838d413",
-  "native_helper_qualification": "operations/native-helper-96d51b6-qualified-862.json",
+  "native_helper_source": "da7073b9798f37a85c5a6425d3ece7c24e41f5fa",
+  "native_helper_qualification": "operations/native-helper-da7073b-qualified-874.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
