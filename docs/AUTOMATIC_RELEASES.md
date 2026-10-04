@@ -4,9 +4,9 @@ Push source to Forgejo to start a release. The existing source mirror and Kubern
 python3 scripts/release.py status
 ```
 
-Release status, 2026-10-04: the local Linux app and all 17 infrastructure targets are active on release 0.1.98. Linux, Windows, both Mac architectures and SDK archives are published. Android and iOS installed acceptance, mobile publication, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval is IN_REVIEW, including France.
+Release status, 2026-10-04: Linux 0.1.98 and all 17 infrastructure targets are active and healthy. Linux, Windows, both Mac architectures and SDK archives are published. The restored production-minutes-v1 publication path is implemented and awaiting controller activation. Mobile publication and Apple encryption approval remain separate from full GUI qualification and SDK 1.0; original failed reports are retained.
 
-Current mobile qualification: helper a33868b passed 876 independent CI controls with five existing skips. Android run 37174628059 is still running. iOS run 37174633260 failed disposable simulator boot before exercising the app and cleaned its owned installation. Cold boot now uses the remaining setup budget with 240 seconds reserved for installing the unchanged app and starting XCTest; the original 600-second setup and product deadlines remain unchanged. All 73 focused controls pass; complete native qualification and mobile publication remain required.
+Routine publication now verifies the native build, signatures, permissions, startup lifecycle and eight fresh matching relays. Full mobile GUI upgrade/rollback/history/file journeys run separately with `python3 scripts/release.py qualify --platform android` or `ios`; they do not gate routine upload and never become passes from a build or upload. Routine work has a persistent 60-minute active budget, one transient retry and one-minute source settlement; external review pauses its budget. Native dependencies and compiler outputs are cached, while signed artifacts and every source binding are verified.
 
 ## Routine release operation
 
@@ -26,7 +26,7 @@ These commands use the running coordinator and never create a second ledger writ
 Store publications cannot be rolled back by that command. Use `--json` for status
 integration and `--state PATH` only when operating on a local controller state.
 
-New source changes settle for ten minutes. Three artifact workers and up to six
+New source changes settle for one minute. Three artifact workers and up to six
 installed-client acceptance workers can progress concurrently. While the active release is incomplete, older dispatched reconciliations use at
 most one artifact worker and one acceptance worker, leaving capacity for active
 work. They may finish their original requests; fresh acceptance authority and
@@ -35,8 +35,7 @@ activation stays serial in one owned worker, so a long canary does not delay the
 coordinator's polling or status updates. Each step has a deadline and source-bound
 receipt. Status exposes active stages, deadlines and controller observation age.
 Rollback requests remain queued while a deployment owns its lock. Production defaults admit
-one active release and expose one newest pending release. A blocked active release
-holds new build, acceptance and publication admission. The active release is polled first; already dispatched provider requests retain their original
+one active release and expose one newest pending release. On production-minutes-v1, a terminal failed platform and SDK qualification do not hold admission of the next routine release; their failures and dispatched requests remain retained. Legacy policy retains its original flight admission. The active release is polled first; already dispatched provider requests retain their original
 identity and keep being reconciled. Once all internal stages finish, mobile
 processing/review may continue while the next release starts. A pending iOS encryption declaration may also release the global flight after the unchanged IPA and installed compatibility gates pass. It requires fresh IN_REVIEW evidence including France and matching native receipt hashes. The original iOS submit request continues reconciliation in its own lane; the wait never marks an upload, submission or availability as passed. This prerequisite handling is active in the qualified 2b2478e controller. The scheduler never
 selects an older pending candidate after a newer one completes. Completed stages and

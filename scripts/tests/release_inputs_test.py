@@ -94,6 +94,7 @@ class InputTests(unittest.TestCase):
                          '.github/workflows/release-tools-check.yml',
                          'scripts/acceptance_delivery.py', 'scripts/release_acceptance_delivery.py',
                          'release/automation/requirements.txt',
+                         'docs/evidence/stabilization-20261001/node-image-headroom.json',
                          'marketing/play-store/retro-v1/listing.md',
                          'marketing/play-store/retro-v1/exports/feature.png',
                          'marketing/app-store/retro-v1/listing.json',

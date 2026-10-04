@@ -41,7 +41,7 @@ jobs:
   ios:
     runs-on: macos-15
     environment: release-signing
-    timeout-minutes: 150
+    timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       CARGO_INCREMENTAL: '0'
@@ -49,6 +49,7 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_PROFILE_RELEASE_DEBUG: '0'
       CARGO_BUILD_JOBS: '3'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.cache/gchat-native-target
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -84,6 +85,15 @@ jobs:
         env:
           GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
         run: python3 gchat/scripts/release_input.py
+      - name: Restore native dependency and compiler caches
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.npm
+            .cache/gchat-native-target
+          key: ios-native-v1-${{ hashFiles('gchat/Cargo.lock', 'gcoms/Cargo.lock', 'gchat/rust-toolchain.toml', 'gchat/scripts/ios-build.py', 'gchat/ui/package-lock.json') }}
       - name: Prepare pinned native tools
         timeout-minutes: 15
         run: |

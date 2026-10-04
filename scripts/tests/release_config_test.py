@@ -4,8 +4,9 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from release_config import configuration
 from release_ledger import PLATFORMS
 class ConfigurationTests(unittest.TestCase):
-    def test_source_changes_have_ten_quiet_minutes_before_release(self):
-        self.assertEqual(configuration()['discovery']['settle_seconds'], 600)
+    def test_source_changes_settle_for_one_minute_on_minutes_policy(self):
+        self.assertEqual(configuration()['discovery']['settle_seconds'], 60)
+        self.assertEqual(configuration()['publication_policy'], 'production-minutes-v1')
     def test_installed_acceptance_is_isolated_by_platform(self):
         state=Path('/fixture/state')
         workers=configuration(state=state)['workers']
@@ -13,6 +14,9 @@ class ConfigurationTests(unittest.TestCase):
         for platform,stages in workers.items():
             if platform=='sdk':
                 self.assertEqual(Path(stages['compatibility']['run'][1]).name,'release_sdk.py')
+                continue
+            if platform in ('android','ios'):
+                self.assertEqual(Path(stages['compatibility']['run'][1]).name,'release_minutes.py')
                 continue
             for mode in ('run','reconcile'):
                 argv=stages['compatibility'][mode]

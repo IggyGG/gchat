@@ -12,6 +12,7 @@ from release_pair import canonical
 
 
 SUITES = (
+    'release_minutes_test',
     'release_config_test', 'release_acceptance_test', 'mobile_acceptance_test',
     'release_coordinator_test', 'release_deployment_test',
     'release_rollback_image_test', 'release_infrastructure_bundle_test',

@@ -10,7 +10,7 @@ import sys
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', type=Path, help='local controller state; default uses the existing Kubernetes controller')
-    parser.add_argument('action', choices=('status', 'resume', 'rollback'), nargs='?', default='status')
+    parser.add_argument('action', choices=('status', 'resume', 'rollback', 'qualify'), nargs='?', default='status')
     parser.add_argument('--release', help='full immutable release ID; default is the selected deployment')
     parser.add_argument('--platform', help='resume only this platform')
     parser.add_argument('--json', action='store_true', help='machine-readable status')

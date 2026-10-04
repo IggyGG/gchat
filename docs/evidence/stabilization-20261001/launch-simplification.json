@@ -308,7 +308,7 @@
     "android": 37174628059,
     "ios": 37174633260,
     "helper": "a33868b0101bdd9ccfa65939e240d2cdac4039b9",
-    "state": "android_running_ios_failed",
+    "state": "both_failed",
     "requests": {
       "android": "791cc37e5af548cb5a9de27a7e1433346ce02fa2c978994de1a680a6600e3f68",
       "ios": "2f0790d0d808e16ce0108a3602e418f1cb9f36f2301e859f2ab833018a02d5fa"
@@ -322,6 +322,17 @@
       "ui_exercised": false,
       "cleanup_passed": true,
       "receipt": "operations/ios-helper-a33868b-result-896.zip"
+    },
+    "android_report": {
+      "artifact": 11292679370,
+      "sha256": "1f056326aa0ec70c40033818bfa7cbd6aea754ce8e26229746b406d63d160b1b",
+      "passed": false,
+      "stage": "replacement-baseline",
+      "failure": "rendered_history_observation",
+      "upgrade_passed": true,
+      "os_export_original_hash_verified": true,
+      "cleanup_passed": true,
+      "receipt": "operations/android-helper-a33868b-result-895.zip"
     }
   },
   "retained_workstation_failures": {
@@ -1118,6 +1129,14 @@
         "cleanup_passed": true,
         "receipt": "operations/ios-helper-60e013f-result-887.zip"
       }
+    },
+    {
+      "ios": 37175216182,
+      "ios_helper": "8717111ae83e1fb074b3b53b1b1e2465a28b4680",
+      "state": "failed",
+      "receipt": "operations/ios-helper-8717111-result-903.zip",
+      "failure": "native_keyboard_dismissal",
+      "passed": false
     }
   ],
   "provider_outage_recovery": {
@@ -1333,5 +1352,39 @@
     "reserved_install_and_runner_seconds": 240,
     "focused_controls": 73,
     "native_result_required": true
+  },
+  "routine_release": {
+    "policy": "production-minutes-v1",
+    "implemented": true,
+    "activated": false,
+    "publication_gates": [
+      "protected_sources",
+      "native_build",
+      "signatures_permissions",
+      "startup_lifecycle",
+      "fresh_matching_relays"
+    ],
+    "full_gui_qualification": "separate_explicit_job",
+    "qualification_command": "python3 scripts/release.py qualify --platform android",
+    "active_budget_seconds": 3600,
+    "external_review_pauses_budget": true,
+    "transient_retries": 1,
+    "settle_seconds": 60,
+    "native_dependency_and_compiler_cache": true,
+    "ios_upload_job_minutes": 10,
+    "android_and_ios_build_job_minutes": 60,
+    "api_changes": false,
+    "retained_original_failures": true,
+    "native_capacity_rerun": false,
+    "validation": {
+      "focused_release_tests": 323,
+      "focused_existing_skips": 4,
+      "focused_seconds": 38.516,
+      "full_workstation_tests": 886,
+      "full_workstation_failures": 6,
+      "failure_scope": "existing native lifecycle fixture IPC connection on workstation; independent CI still required",
+      "original_full_log": "operations/release-minutes-full-905.log",
+      "original_full_log_sha256": "9d7c8668ec48a79e6b168e50bc5981c2677561318fe0023853532df77e605e09"
+    }
   }
 }

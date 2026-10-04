@@ -73,6 +73,8 @@ def read_receipt(path, manifest, platform, stage):
 
 class Coordinator:
     def __init__(self, state, config):
+        from release_minutes import enabled
+        self.minutes = enabled(config)
         self.poll_interval = config.get('poll_interval_seconds', 30)
         if type(self.poll_interval) is not int or not 10 <= self.poll_interval <= 300:
             raise ValueError('poll_interval_seconds must be an integer between 10 and 300')
@@ -174,8 +176,9 @@ class Coordinator:
                 self.ledger.transition(release, platform, 'building', evidence=target['evidence'])
                 return True
         changed = recovery['revision'] != self.worker_revision(platform, recovery['stage'])
+        from release_minutes import enabled
         retry = (self.config.get('automatic_recovery', False) and recovery.get('transient')
-                 and recovery['attempts'] <= 5 and time.time() >= recovery['retry_at'])
+                 and recovery['attempts'] <= (1 if enabled(self.config) else 5) and time.time() >= recovery['retry_at'])
         if not changed and not retry: return False
         self.ledger.transition(release, platform, target['resume_state'], evidence=target['evidence'])
         # execute() still reconciles the original durable effect ID and marker.
@@ -208,7 +211,7 @@ class Coordinator:
                                               (active['release_id'],)).fetchone()
         else:
             from release_flight import select
-            flight = select(self.state, self.ledger)['active'] if self.config.get('single_flight', False) else None
+            flight = select(self.state, self.ledger, minutes=self.minutes)['active'] if self.config.get('single_flight', False) else None
             selected = self.ledger.db.execute('''SELECT c.id,c.seq FROM candidates c
                 WHERE EXISTS (SELECT 1 FROM platforms p WHERE p.candidate=c.id
                     AND ((? AND p.platform='linux-x86_64') OR (NOT ? AND p.platform!='sdk')) AND p.state IN
@@ -336,7 +339,7 @@ class Coordinator:
                 return None
             if self.config.get('single_flight', False):
                 from release_flight import select, internal_complete
-                active = select(self.state, self.ledger)['active']
+                active = select(self.state, self.ledger, minutes=self.minutes)['active']
                 if manifest['release_id'] != active and active is not None and not internal_complete(self.ledger, active):
                     background = sum(item['release_id'] != active and
                                      (item['stage'] == 'acceptance') == acceptance
@@ -394,6 +397,12 @@ class Coordinator:
             return
         stage = None
         try:
+            from release_minutes import enabled, budget
+            minutes = enabled(self.config)
+            if minutes and platform != 'sdk' and state not in ('processing', 'in_review'):
+                from release_flight import external_ios_wait
+                external = platform == 'ios' and state == 'submitting' and external_ios_wait(self.state, self.ledger, release)
+                budget(self.state, manifest, platform, state, paused=external)
             if state in {'verified', 'publishing', 'submitting'} and platform != 'sdk' and not self.deployment_ready(manifest):
                 return
             if state == 'queued':
@@ -407,7 +416,8 @@ class Coordinator:
             stage = {'building': 'build', 'verifying': 'verify', 'verified': 'compatibility',
                      'publishing': 'publish', 'submitting': 'submit',
                      'processing': 'observe', 'in_review': 'observe'}[state]
-            if state == 'verified' and 'acceptance' in self.config['workers'][platform]:
+            if (state == 'verified' and 'acceptance' in self.config['workers'][platform]
+                    and not (minutes and platform in ('android', 'ios'))):
                 stage = 'acceptance'
                 if self.execute(manifest, platform, stage) is None:
                     return
@@ -485,7 +495,7 @@ class Coordinator:
                 atomic_json(self.state / 'coalescing-blocked.json',
                             {'reason': type(error).__name__, 'at': int(time.time())})
         from release_flight import select
-        active = select(self.state, self.ledger)['active'] if self.config.get('single_flight', False) else None
+        active = select(self.state, self.ledger, minutes=self.minutes)['active'] if self.config.get('single_flight', False) else None
         rows = self.ledger.db.execute('''SELECT p.candidate,p.platform FROM platforms p
             JOIN candidates c ON c.id=p.candidate
             ORDER BY (p.candidate=?) DESC,
@@ -493,12 +503,16 @@ class Coordinator:
                 c.seq DESC,p.rowid''', (active,)).fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
+        if self.minutes:
+            from release_control import qualifications
+            qualifications(self)
         self.reconcile_deployment()
         public = self.ledger.status()
         public['observed_at'] = int(time.time())
         if self.config.get('single_flight', False):
             from release_flight import select
-            public['flight'] = select(self.state, self.ledger)
+            public['flight'] = select(self.state, self.ledger, minutes=self.minutes)
+        public['publication_policy'] = self.config.get('publication_policy')
         public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')}
                                     for item in self.running_workers.values()]
         public['deployment_worker'] = self.deployment_runner.progress()

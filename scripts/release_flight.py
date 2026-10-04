@@ -48,7 +48,7 @@ def internal_complete(ledger, release, state=None):
          and external_ios_wait(state, ledger, release)) for row in rows)
 
 
-def select(state, ledger):
+def select(state, ledger, minutes=False):
     state = Path(state)
     path = state / 'release-flight.json'
     previous = json.loads(path.read_text()) if path.is_file() else {}
@@ -64,7 +64,14 @@ def select(state, ledger):
         ORDER BY c.seq DESC''').fetchall()
     active_sequence = active_row['seq'] if active_row is not None else 0
     waiting = [row['id'] for row in pending if row['seq'] > active_sequence]
-    if active is None or internal_complete(ledger, active, state):
+    terminal = False
+    if minutes and active is not None:
+        rows = ledger.db.execute('SELECT platform,state FROM platforms WHERE candidate=?', (active,)).fetchall()
+        terminal = bool(rows) and all(row['platform'] == 'sdk' or row['state'] in
+            (DONE | {'blocked', 'failed', 'processing', 'in_review'}) or
+            (row['platform'] == 'ios' and row['state'] in ('verified', 'submitting')
+             and external_ios_wait(state, ledger, active)) for row in rows)
+    if active is None or terminal or internal_complete(ledger, active, state):
         active = waiting[0] if waiting else active
         waiting = [release for release in waiting if release != active]
     result = {'schema': 1, 'active': active, 'pending': waiting[0] if waiting else None}
@@ -91,6 +98,10 @@ def can_execute(coordinator, release, platform, stage, kind):
         return True
     if stage in ('verify', 'observe', 'prerequisite'):
         return True  # Retain completed artifacts and observe external store reviews.
-    flight = select(coordinator.state, coordinator.ledger)
+    from release_minutes import enabled
+    minutes = enabled(coordinator.config)
+    if minutes and platform == 'sdk':
+        return True  # SDK qualification keeps its own worker and publication gates.
+    flight = select(coordinator.state, coordinator.ledger, minutes=minutes)
     return release == flight['active'] or already_dispatched(coordinator.state, coordinator.ledger,
                                                             release, platform, kind)
