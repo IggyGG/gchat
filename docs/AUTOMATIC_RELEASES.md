@@ -6,7 +6,7 @@ python3 scripts/release.py status
 
 Release status, 2026-10-04: the local Linux app and all 17 infrastructure targets are active on release 0.1.98. Linux, Windows, both Mac architectures and SDK archives are published. Android and iOS installed acceptance, mobile publication, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval is IN_REVIEW, including France.
 
-Current mobile qualification: retained helper 60e013f passed 875 independent CI controls with five existing skips. Android run 37173512941 fails initial OS export hash verification; iOS run 37173562764 passes upgrade and baseline rollback before reaching the original final-restoration deadline. The correction waits for the exact Android export bytes within 30 seconds and removes redundant iOS observation waits, input snapshots and scrolling. Exact hashes, every input prefix, original deadlines and failed provider reports remain mandatory. All 72 focused controls pass; new native results are required.
+Current mobile qualification: helper a33868b passed 876 independent CI controls with five existing skips and 72 focused controls. Android run 37174628059 and iOS run 37174633260 are executing against the original signed applications, with exact export bytes, original deadlines and all earlier failed reports retained. Installed qualification and mobile publication remain incomplete.
 
 ## Routine release operation
 
