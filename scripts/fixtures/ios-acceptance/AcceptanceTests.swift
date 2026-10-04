@@ -195,10 +195,17 @@ final class GChatAcceptanceTests: XCTestCase {
             "foreground": app.state == .runningForeground]
     }
 
+    func rows(containing label: String) -> [XCUIElement] {
+        // Restrict the snapshot to ancestors of this exact rendered label.
+        // Candidate rows still have to bind a unique body/file and its status.
+        return Array(app.webViews.otherElements.containing(NSPredicate(format: "label == %@", label))
+            .allElementsBoundByAccessibilityElement.filter { $0.exists }.reversed())
+    }
+
     func row(_ name: String, action: String? = nil) throws -> XCUIElement {
         var selected: XCUIElement?
         try wait(120) {
-            for candidate in self.app.webViews.otherElements.allElementsBoundByAccessibilityElement.filter { $0.exists }.reversed() {
+            for candidate in self.rows(containing: name) {
                 let values = Set(self.allLabels(candidate))
                 if values.contains(name) && values.intersection(self.files) == Set([name]) {
                     if let action = action {
@@ -368,7 +375,7 @@ final class GChatAcceptanceTests: XCTestCase {
         case "delivered":
             let body = try string("body")
             bodies.formUnion(command["known_bodies"] as? [String] ?? [])
-            for candidate in app.webViews.otherElements.allElementsBoundByAccessibilityElement.filter { $0.exists }.reversed() {
+            for candidate in rows(containing: body) {
                 let values = Set(allLabels(candidate))
                 if values.contains(body) && values.intersection(bodies) == Set([body]) &&
                     values.contains(where: { $0.trimmingCharacters(in: .whitespaces) == "· delivered" }) {
@@ -399,7 +406,7 @@ final class GChatAcceptanceTests: XCTestCase {
             let name = try string("name")
             guard let size = command["size"] as? Int else { throw Failure.protocolBinding }
             files.insert(name)
-            for candidate in app.webViews.otherElements.allElementsBoundByAccessibilityElement.filter { $0.exists }.reversed() {
+            for candidate in rows(containing: name) {
                 let values = Set(allLabels(candidate))
                 if !values.contains(name) || values.intersection(files) != Set([name]) { continue }
                 for value in values {

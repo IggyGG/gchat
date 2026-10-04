@@ -20,6 +20,8 @@ The latest iOS f696b22 run failed during initial installation before XCTest; its
 
 The retained Android cecddf7 run passes exact rendered messages, authenticated acknowledgments in both directions and exact export filename confirmation. It then fails because the system picker has no Show roots control. The helper now accepts the normal Downloads screen directly or opens it through Show roots, using only the two owned DocumentsUI packages and exact Save labels; export hashes remain mandatory. iOS d3a64e5 is independently qualified and running against the original signed apps. Remaining dynamic WebView row queries now bind accessibility elements rather than unstable indices. All 69 focused controls pass in 2.936 seconds; L0 checks 825 paths and API 2/3 contracts remain unchanged. Native results are still required.
 
+Retained iOS d3a64e5 passes visible enrollment, exact identity, initial covered messages, system export, upgrade and baseline rollback with unchanged identity/history/encrypted cache and authenticated acknowledgments. Its final restoration cannot start within the original 600-second compatibility budget. Exact label ancestor queries now narrow file and message row candidates before the existing uniqueness/status checks, removing repeated whole-tree scans without extending any deadline. The failed report remains retained; complete installed qualification is still required.
+
 ## Routine release operation
 
 The GitHub `release-signing` environment must permit `release/gchat-*` and

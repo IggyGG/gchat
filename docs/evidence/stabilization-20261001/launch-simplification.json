@@ -305,15 +305,14 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37170025582,
-    "android_helper": "cecddf75c274121717eaec7c3220fd1cad25035a",
+    "android_helper": "80d68e5aeb726fdf4aa0f25c2668b55decce1c09",
     "ios": 37170323852,
     "ios_helper": "d3a64e5690dc83f61298fb84f9d014139644f8f8",
-    "state": "android_failed_ios_running",
+    "state": "android_resume_queued_ios_failed",
     "requests": {
-      "android": "68852144023b99c8bec9e26f02083e40b95c2bb0d460364ba6d7e1c4dfb4c5dd",
       "ios": "0d753403d53a60caf003103e3cd696af4c9760d3c57afc4720f7c01b4091aaa2"
-    }
+    },
+    "android_resume_receipt": "operations/mobile-android-resume-860.json"
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -339,8 +338,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "d3a64e5690dc83f61298fb84f9d014139644f8f8",
-  "native_helper_qualification": "operations/native-helper-d3a64e5-qualified-854.json",
+  "native_helper_source": "80d68e5aeb726fdf4aa0f25c2668b55decce1c09",
+  "native_helper_qualification": "operations/native-helper-80d68e5-qualified-859.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -979,6 +978,31 @@
         "input_actual_length": 28,
         "cleanup_passed": true,
         "receipt": "operations/android-helper-cecddf7-result-857.zip"
+      }
+    },
+    {
+      "android": 37170025582,
+      "android_helper": "cecddf75c274121717eaec7c3220fd1cad25035a",
+      "ios": 37170323852,
+      "ios_helper": "d3a64e5690dc83f61298fb84f9d014139644f8f8",
+      "state": "both_failed",
+      "requests": {
+        "android": "68852144023b99c8bec9e26f02083e40b95c2bb0d460364ba6d7e1c4dfb4c5dd",
+        "ios": "0d753403d53a60caf003103e3cd696af4c9760d3c57afc4720f7c01b4091aaa2"
+      },
+      "ios_report": {
+        "artifact": 11291576899,
+        "sha256": "506405a5c13df574b07ab83d0c1b4b360a0a6d03dc615af75b2a0670043478b4",
+        "passed": false,
+        "stage": "replacement-restored",
+        "failure": "original_compatibility_deadline_exhausted_before_final_install",
+        "visible_join_and_identity_passed": true,
+        "initial_and_upgrade_and_baseline_bidirectional_ack": true,
+        "unchanged_identity_history_encrypted_cache_after_upgrade_and_baseline": true,
+        "original_file_export_hash_verified": true,
+        "runner_exit_code": 0,
+        "cleanup_passed": true,
+        "receipt": "operations/ios-helper-d3a64e5-result-858.zip"
       }
     }
   ],

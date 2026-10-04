@@ -18,6 +18,8 @@ Native iOS input confirms every exact prefix. Long invitations use 64-character 
 
 The retained Android cecddf7 run passes exact rendered messages, authenticated acknowledgments in both directions and exact export filename confirmation. It then fails because the system picker has no Show roots control. The helper now accepts the normal Downloads screen directly or opens it through Show roots, using only the two owned DocumentsUI packages and exact Save labels; export hashes remain mandatory. iOS d3a64e5 is independently qualified and running against the original signed apps. Remaining dynamic WebView row queries now bind accessibility elements rather than unstable indices. All 69 focused controls pass in 2.936 seconds; L0 checks 825 paths and API 2/3 contracts remain unchanged. Native results are still required.
 
+Retained iOS d3a64e5 passes visible enrollment, exact identity, initial covered messages, system export, upgrade and baseline rollback with unchanged identity/history/encrypted cache and authenticated acknowledgments. Its final restoration cannot start within the original 600-second compatibility budget. Exact label ancestor queries now narrow file and message row candidates before the existing uniqueness/status checks, removing repeated whole-tree scans without extending any deadline. The failed report remains retained; complete installed qualification is still required.
+
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the
 iOS draft. App Store publication still requires the qualified build and Apple's
