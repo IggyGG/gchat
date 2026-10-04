@@ -12,7 +12,7 @@ from release_automation_test import candidate
 from release_coordinator import Coordinator, atomic_json
 from release_minutes import POLICY, budget, enabled, verify
 from release_publish import job
-from release_flight import select
+from release_flight import select, can_execute
 
 
 class MinutesTests(unittest.TestCase):
@@ -124,3 +124,47 @@ class MinutesTests(unittest.TestCase):
         result = json.loads((self.root / 'control/qualification-results' / (queued['request_id'] + '.json')).read_text())
         self.assertEqual(result['state'], 'failed')
         self.assertEqual(self.controller.ledger.target(self.manifest['release_id'], 'android'), before)
+
+    def test_original_completed_build_can_finish_mobile_publication_behind_new_source(self):
+        release = self.manifest['release_id']
+        newer = self.controller.ledger.add(candidate(2))
+        self.controller.config['single_flight'] = True
+        atomic_json(self.root / 'release-flight.json', {'active': newer, 'pending': None})
+        built = self.controller.ledger.effect(release, 'android', 'build')
+        self.assertFalse(can_execute(self.controller, release, 'android', 'compatibility', 'compatibility'))
+        self.controller.ledger.complete_effect(built['id'], 'original-native-run', 'f' * 64)
+        for stage in ('compatibility', 'submit'):
+            self.assertTrue(can_execute(self.controller, release, 'android', stage, stage))
+        self.assertFalse(can_execute(self.controller, release, 'ios', 'submit', 'submit'))
+        self.assertFalse(can_execute(self.controller, release, 'android', 'acceptance', 'acceptance'))
+
+    def test_explicit_deep_qualification_can_run_behind_new_source(self):
+        from release_control import request, consume
+        release = self.manifest['release_id']
+        newer = self.controller.ledger.add(candidate(2))
+        self.controller.config['single_flight'] = True
+        atomic_json(self.root / 'release-flight.json', {'active': newer, 'pending': None})
+        request(self.root, 'qualify', release, 'android'); consume(self.controller)
+        self.assertTrue(can_execute(self.controller, release, 'android', 'acceptance', 'acceptance'))
+        self.assertFalse(can_execute(self.controller, release, 'ios', 'acceptance', 'acceptance'))
+
+    def test_running_deployment_is_observed_while_newer_artifacts_are_pending(self):
+        release = self.manifest['release_id']
+        newer = self.controller.ledger.add(candidate(2))
+        self.controller.config.update(single_flight=True, nonblocking_deployment=True,
+                                      deployment_file=str(self.root / 'inventory.json'),
+                                      workers={'linux-x86_64': {'infrastructure': {}}})
+        atomic_json(self.root / 'inventory.json', {'targets': []})
+        atomic_json(self.root / 'deployment/desired.json', {'release_id': release, 'sequence': 1})
+        atomic_json(self.root / 'release-flight.json', {'active': newer, 'pending': None})
+        for item in (release, newer):
+            manifest = self.controller.ledger.manifest(item)
+            manifest['policy']['deployment_required'] = True
+            self.controller.ledger.db.execute('UPDATE candidates SET manifest=? WHERE id=?',
+                                              (json.dumps(manifest), item))
+            self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=? AND platform='linux-x86_64'", (item,))
+        with patch.object(self.controller, 'execute', side_effect=[None, ({}, 'f' * 64)]), \
+             patch.object(self.controller.deployment_runner, 'step') as step:
+            self.controller.reconcile_deployment()
+        self.assertEqual(step.call_args.args[0]['release_id'], release)
+        self.assertEqual(json.loads((self.root / 'deployment/desired.json').read_text())['release_id'], release)

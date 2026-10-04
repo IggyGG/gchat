@@ -218,6 +218,9 @@ class Coordinator:
                     ('verified','publishing','submitting','processing','in_review','available'))
                 AND (? IS NULL OR c.id=?) ORDER BY c.seq DESC LIMIT 1''',
                 (infrastructure_required, infrastructure_required, flight, flight)).fetchone()
+        if selected is None and self.minutes and previous:
+            selected = self.ledger.db.execute('SELECT id,seq FROM candidates WHERE id=?',
+                                              (previous['release_id'],)).fetchone()
         if selected is None or (previous and selected['seq'] < previous['sequence']):
             return
         manifest = self.ledger.manifest(selected['id'])
@@ -229,7 +232,13 @@ class Coordinator:
                     atomic_json(self.state / 'public/deployment.json', {
                         'schema': 1, 'release_id': selected['id'], 'state': 'waiting_artifacts',
                         'reason': 'Waiting for the qualified infrastructure bundle'})
-                    return
+                    if not self.minutes or not previous or selected['id'] == previous['release_id']:
+                        return
+                    selected = self.ledger.db.execute('SELECT id,seq FROM candidates WHERE id=?',
+                                                      (previous['release_id'],)).fetchone()
+                    manifest = self.ledger.manifest(selected['id'])
+                    if self.execute(manifest, 'linux-x86_64', 'infrastructure') is None:
+                        return
             # Selecting a mobile artifact is not a deployment intent. Advance
             # the monotonic pointer only after its exact infrastructure receipt
             # is available, so queued/superseded Linux work cannot stall rollout.

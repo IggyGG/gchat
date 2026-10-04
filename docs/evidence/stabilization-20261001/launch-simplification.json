@@ -1385,6 +1385,7 @@
       "failure_scope": "existing native lifecycle fixture IPC connection on workstation; independent CI still required",
       "original_full_log": "operations/release-minutes-full-905.log",
       "original_full_log_sha256": "9d7c8668ec48a79e6b168e50bc5981c2677561318fe0023853532df77e605e09"
-    }
+    },
+    "handoff_reconciliation": "Confirmed mobile builds can complete compatibility and upload while newer source builds; running deployment stays observed until its qualified replacement is ready. Explicit deep qualification has an independent queue."
   }
 }

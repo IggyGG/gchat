@@ -102,6 +102,17 @@ def can_execute(coordinator, release, platform, stage, kind):
     minutes = enabled(coordinator.config)
     if minutes and platform == 'sdk':
         return True  # SDK qualification keeps its own worker and publication gates.
+    if minutes and platform in ('android', 'ios'):
+        if stage in ('compatibility', 'submit'):
+            built = coordinator.ledger.db.execute('''SELECT state FROM effects
+                WHERE candidate=? AND platform=? AND kind='build' ''', (release, platform)).fetchone()
+            if built is not None and built['state'] == 'confirmed':
+                return True  # Finish verified immutable artifacts; store ownership still gates submission.
+        if stage == 'acceptance':
+            for path in (Path(coordinator.state) / 'control/qualifications').glob('*.json'):
+                request = json.loads(path.read_text())
+                if request['release_id'] == release and request['platform'] == platform:
+                    return True  # Explicit deep qualification has its own result, outside the routine flight.
     flight = select(coordinator.state, coordinator.ledger, minutes=minutes)
     return release == flight['active'] or already_dispatched(coordinator.state, coordinator.ledger,
                                                             release, platform, kind)
