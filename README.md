@@ -812,3 +812,5 @@ iOS export fixture recovery stages the same exact passphrase for normal reconnec
 Current mobile workers select the existing Android Readable font through normal UI. iOS uses the normal keyboard in eight-character chunks, verifies each exact prefix, and uses normal password visibility controls for exact confirmation. The current input path has no clipboard or Paste-menu dependency. Original failed worker reports remain retained.
 
 Android native OCR groups words by physical row overlap rather than sparse recognition block IDs. Exact full bodies and their own delivered status remain required; diagnostic word counts do not authorize acceptance.
+
+iOS acceptance reads only the exact identity and safety-number static texts and binds accessibility results by element identity, avoiding unstable index scans. Public diagnostics retain only counts. See [Apple’s query documentation](https://developer.apple.com/documentation/xcuiautomation/xcuielementquery/allelementsboundbyaccessibilityelement).

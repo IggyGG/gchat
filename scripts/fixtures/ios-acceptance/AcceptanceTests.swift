@@ -173,7 +173,8 @@ final class GChatAcceptanceTests: XCTestCase {
     }
 
     func allLabels(_ root: XCUIElement) -> [String] {
-        root.descendants(matching: .any).allElementsBoundByIndex.map { $0.label }
+        root.descendants(matching: .any).allElementsBoundByAccessibilityElement
+            .filter { $0.exists }.map { $0.label }
     }
 
     func publicObservation() -> [String: Bool] {
@@ -327,15 +328,25 @@ final class GChatAcceptanceTests: XCTestCase {
             phase = "identity-details"
             try tapVisible(element("Your identity"))
             phase = "identity-value"
+            let identityPattern = "^[0-9a-f]{64}$"
+            let safetyPattern = "^[A-Z2-7]{8}( [A-Z2-7]{8}){4}$"
             var ids = Set<String>()
             var safety = Set<String>()
-            try wait {
-                let values = Set(self.allLabels(self.app.webViews.firstMatch))
-                ids = values.filter { $0.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil }
-                safety = values.filter {
-                    $0.range(of: "^[A-Z2-7]{8}( [A-Z2-7]{8}){4}$", options: .regularExpression) != nil
+            do {
+                try wait {
+                    guard self.app.state == .runningForeground && self.app.webViews.firstMatch.exists else { return false }
+                    let idFields = self.app.webViews.staticTexts.matching(NSPredicate(format: "label MATCHES %@", identityPattern))
+                    let safetyFields = self.app.webViews.staticTexts.matching(NSPredicate(format: "label MATCHES %@", safetyPattern))
+                    ids = Set(idFields.allElementsBoundByAccessibilityElement.filter { $0.exists }.map { $0.label })
+                    safety = Set(safetyFields.allElementsBoundByAccessibilityElement.filter { $0.exists }.map { $0.label })
+                    return ids.count == 1 && safety.count == 1
                 }
-                return ids.count == 1 && safety.count == 1
+            } catch {
+                print("GCHAT_ACCEPTANCE_IDENTITY_HEX_FIELDS=\(ids.count)")
+                print("GCHAT_ACCEPTANCE_IDENTITY_SAFETY_FIELDS=\(safety.count)")
+                print("GCHAT_ACCEPTANCE_IDENTITY_WEBVIEW_PRESENT=\(app.webViews.firstMatch.exists ? 1 : 0)")
+                print("GCHAT_ACCEPTANCE_IDENTITY_FOREGROUND=\(app.state == .runningForeground ? 1 : 0)")
+                throw error
             }
             let identity = ids.first! + "\n" + safety.first!
             phase = "identity-close"

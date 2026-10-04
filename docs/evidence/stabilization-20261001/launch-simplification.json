@@ -308,7 +308,7 @@
     "android": 37165390111,
     "ios": 37165391714,
     "helper": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
-    "state": "android_failed_ios_running",
+    "state": "both_failed",
     "requests": {
       "android": "42c171257ee84746908b75491c8d0a7c71d64bd465ee39dfb4e0244711d24076",
       "ios": "d3e4d701fc85c515c38b2999aa251db64942584c182dcc46af77e0ef16ec7e74"
@@ -326,6 +326,21 @@
       "cleanup_passed": true,
       "failure": "exact_outgoing_visual_body_not_recognized",
       "receipt": "operations/android-helper-2b96f76-result-821.zip"
+    },
+    "ios_report": {
+      "artifact": 11289283614,
+      "sha256": "2f2b0c858fab6d52db00f1605703c3f25e6faf85fa61f1addedc5ed59a5a9544",
+      "passed": false,
+      "failure": "unstable_index_bound_accessibility_snapshot_during_identity_read",
+      "both_passphrases_exactly_entered": true,
+      "all_visible_join_stages_passed": true,
+      "installed_binary_hash_verified": true,
+      "runtime_failure_lines": [
+        176
+      ],
+      "last_phase": "identity-value",
+      "cleanup_passed": false,
+      "receipt": "operations/ios-helper-2b96f76-result-822.zip"
     }
   },
   "retained_workstation_failures": {
@@ -352,8 +367,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
-  "native_helper_qualification": "operations/native-helper-2b96f76-qualified-817.json",
+  "native_helper_source": "cdc70f505a70b3c0a522b684b26bb49554db85bd",
+  "native_helper_qualification": "operations/native-helper-cdc70f5-qualified-823.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -787,7 +802,7 @@
       "android": 37165390111,
       "ios": 37165391714,
       "helper": "2b96f76d583a7a74c4fcf30389394b940bce0bb8",
-      "state": "android_failed_ios_running",
+      "state": "both_failed",
       "requests": {
         "android": "42c171257ee84746908b75491c8d0a7c71d64bd465ee39dfb4e0244711d24076",
         "ios": "d3e4d701fc85c515c38b2999aa251db64942584c182dcc46af77e0ef16ec7e74"
@@ -805,6 +820,21 @@
         "cleanup_passed": true,
         "failure": "exact_outgoing_visual_body_not_recognized",
         "receipt": "operations/android-helper-2b96f76-result-821.zip"
+      },
+      "ios_report": {
+        "artifact": 11289283614,
+        "sha256": "2f2b0c858fab6d52db00f1605703c3f25e6faf85fa61f1addedc5ed59a5a9544",
+        "passed": false,
+        "failure": "unstable_index_bound_accessibility_snapshot_during_identity_read",
+        "both_passphrases_exactly_entered": true,
+        "all_visible_join_stages_passed": true,
+        "installed_binary_hash_verified": true,
+        "runtime_failure_lines": [
+          176
+        ],
+        "last_phase": "identity-value",
+        "cleanup_passed": false,
+        "receipt": "operations/ios-helper-2b96f76-result-822.zip"
       }
     }
   ],
@@ -927,6 +957,18 @@
     "only_geometrically_overlapping_words_grouped": true,
     "full_exact_message_and_bound_receipt_required": true,
     "only_word_counts_retained": true,
+    "focused_controls_passed": 64,
+    "native_acceptance_passed": false,
+    "qualified_source": "cdc70f505a70b3c0a522b684b26bb49554db85bd",
+    "source_controls_passed": 868
+  },
+  "mobile_ios_identity_observation_correction": {
+    "identity_and_safety_static_text_queries": true,
+    "elements_bound_by_accessibility_identity": true,
+    "index_bound_label_scan_removed": true,
+    "foreground_and_webview_required": true,
+    "exact_identity_format_unchanged": true,
+    "public_count_diagnostics_only": true,
     "focused_controls_passed": 64,
     "native_acceptance_passed": false
   }

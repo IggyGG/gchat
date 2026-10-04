@@ -20,6 +20,8 @@ Retained helper f30bac0 verifies iOS baseline installation under the existing se
 
 Android helper 2b96f76 selects the normal Readable font and passes incoming exact rendering/authenticated ACK plus exact outgoing input/peer reception, but full outgoing visual matching still fails. OCR currently uses block identifiers as rows, which can split one visual line into many blocks. The correction groups only vertically overlapping words into physical rows while retaining exact full-body and bound-delivered checks. Diagnostic word counts cannot qualify delivery and contain no message text. All 64 focused controls pass. iOS 2b96f76 remains running under its frozen request; no duplicate request is sent.
 
+Retained iOS helper 2b96f76 passes exact passphrase creation and confirmation and all visible join stages. It fails reading identity when a changing accessibility snapshot invalidates an index-bound element. The correction queries the exact identity and safety-number static texts, binds results by accessibility identity, and requires the foreground WebView. Diagnostic field counts contain no identity values. All 64 focused controls pass; actual installed acceptance remains required. Android is resumed separately with the CI-qualified visual-row helper cdc70f5 (868 source controls); its original request remains frozen.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

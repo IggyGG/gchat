@@ -1006,6 +1006,9 @@ class MobileAcceptanceTests(unittest.TestCase):
                 'GCHAT_ACCEPTANCE_OBSERVATION_FAILURE=72\n'
                 'GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=12\n'
                 'GCHAT_ACCEPTANCE_INPUT_PRIVATE=123\n'
+                'GCHAT_ACCEPTANCE_IDENTITY_HEX_FIELDS=1\n'
+                'GCHAT_ACCEPTANCE_IDENTITY_SAFETY_FIELDS=0\n'
+                'GCHAT_ACCEPTANCE_IDENTITY_PRIVATE=123\n'
                 'GCHAT_ACCEPTANCE_UI_PHASE=private-invitation\n'
                 'GCHAT_ACCEPTANCE_BRIDGE_HTTP=403\n** TEST BUILD FAILED **\n')
             result=runner_diagnostics(log,65,0)
@@ -1013,6 +1016,7 @@ class MobileAcceptanceTests(unittest.TestCase):
                 'runtime_error_locations':['282'],
                 'observation_failure_lines':[72],
                 'input_value_diagnostics':{'value_length':12},
+                'identity_diagnostics':{'hex_fields':1,'safety_fields':0},
                 'ui_error_categories':{'tap_failed':True,'snapshot_failed':False,'not_hittable':False,'no_matches':False},
                 'configuration_ready':True,'transport_codes':[-1022],'http_status_codes':[403],
                 'ui_phases':['join-arrival','identity-network'],'build_failed':True,
