@@ -54,8 +54,8 @@
   "local_new_release_active": true,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "40e7aed8fac50e417c9db0d2ff6837bf5dc03809",
-  "active_controller_kubernetes_checks": 402,
+  "active_controller_source": "c66c2300391a3c6139a2e25a987366f565c12ed3",
+  "active_controller_kubernetes_checks": 403,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -211,24 +211,17 @@
     "further_tests": 3
   },
   "launch_status": {
-    "observed_at": 1791066404,
+    "observed_at": 1791091883,
     "complete": false,
     "infrastructure": "deployed",
     "linux-x86_64": "available",
     "sdk": "available",
     "local_linux_package": "0.1.98",
-    "android": "installed_acceptance_running",
-    "windows-x86_64": "available",
-    "macos-x86_64": "available",
-    "macos-aarch64": "available",
-    "ios": "installed_acceptance_running",
-    "source_fixes_active": true,
-    "desktop_platforms_available": [
-      "linux-x86_64",
-      "windows-x86_64",
-      "macos-aarch64",
-      "macos-x86_64"
-    ]
+    "android": "processing",
+    "ios": "awaiting_encryption_approval",
+    "mobile_routine_gates": "passed",
+    "full_installed_gui_qualification": "separate_incomplete",
+    "sdk_1_0": "not_qualified"
   },
   "retained_handoff_correction": {
     "source_validated": true,
@@ -1382,38 +1375,49 @@
       "focused_seconds": 38.516,
       "full_workstation_tests": 886,
       "full_workstation_failures": 6,
-      "failure_scope": "Original workstation lifecycle fixture IPC failures retained; exact-source independent CI passed all 891 tests with five existing skips",
+      "failure_scope": "Original workstation lifecycle fixture IPC failures retained; exact-source independent CI passed all 892 tests with five existing skips",
       "original_full_log": "operations/release-minutes-full-905.log",
       "original_full_log_sha256": "9d7c8668ec48a79e6b168e50bc5981c2677561318fe0023853532df77e605e09",
-      "independent_ci_tests": 891,
+      "independent_ci_tests": 892,
       "independent_ci_skips": 5,
-      "independent_ci_seconds": 34.04,
-      "independent_ci_run": 37178472202,
-      "independent_ci_archive_sha256": "4b1a7af698efaeb3d68996bf6963a1646a449ae8caf02e7a956d1e0cdec79cbe",
-      "actual_image_tests": 251,
-      "kubernetes_controls": 402,
+      "independent_ci_seconds": 30.874,
+      "independent_ci_run": 37178937713,
+      "independent_ci_archive_sha256": "08eca0cec03835a2387c41e02b8dabd4bb6dcd412d2c6f949989513eed235cdf",
+      "actual_image_tests": 252,
+      "kubernetes_controls": 403,
       "source_files_verified": 239
     },
     "handoff_reconciliation": "Confirmed mobile builds can complete compatibility and upload while newer source builds; running deployment stays observed until its qualified replacement is ready. Explicit deep qualification has an independent queue.",
-    "controller_source": "40e7aed8fac50e417c9db0d2ff6837bf5dc03809",
-    "controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:429a2cab5f8db69e7511ea52b691a2ec9fc4c565791ad2c88f24273370f2531e",
-    "observed_at": 1791090040,
-    "qualification_sha256": "99f8dc35d78bda45a9f45cdc21229abd9aa31f3e531bb7ec457b750b46010909",
+    "controller_source": "c66c2300391a3c6139a2e25a987366f565c12ed3",
+    "controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:2abcfba83521ab4c4a57ebf083d29fab5655bea2841c1435e54ba2659c9233a3",
+    "observed_at": 1791091883,
+    "qualification_sha256": "605a0c023ae6cf3e1b3cd2c3a6ee6bfd39e9c5c86c2fbabedc28d22c8475094e",
     "actual_registry_readback": true,
     "previous_controller_retained": true,
     "verified_mobile_publication_priority": true,
     "current_mobile": {
       "android": {
-        "state": "submitting",
+        "state": "processing",
         "routine_compatibility_passed": true,
         "full_gui_qualified": false,
-        "external_encryption_state": null
+        "external_encryption_state": null,
+        "observed_at": 1791091883,
+        "build": "1113",
+        "original_aab_uploaded": true,
+        "provider_commit_accepted": true,
+        "submission_receipt_confirmed": true,
+        "available": false
       },
       "ios": {
         "state": "verified",
         "routine_compatibility_passed": true,
         "full_gui_qualified": false,
-        "external_encryption_state": "IN_REVIEW"
+        "external_encryption_state": "IN_REVIEW",
+        "observed_at": 1791091875,
+        "build": "1.1.13",
+        "uploaded": false,
+        "submitted": false,
+        "includes_france": true
       }
     },
     "automatic_source_discovery": {
@@ -1421,6 +1425,38 @@
       "observed_companion_source": "a2d4fc1b25bbdd9c67fc0a10c9e2858d0303d0d8",
       "push_to_forgejo_mirrored_without_manual_dispatch": true,
       "next_full_release_complete": false
+    },
+    "worker_capacity_counts_running_processes_only": true,
+    "live_deployment": {
+      "targets": 17,
+      "all_healthy_and_matching": true,
+      "observed_at": 1791091883,
+      "original_application_sources_preserved": true
+    },
+    "local_activation": {
+      "observed_at": 1791090543,
+      "installed_sha256": "b25b459755d2489c0f39c6f10bc0d37deddade177233ac82461157f9d4260c19",
+      "running_sha256": "b25b459755d2489c0f39c6f10bc0d37deddade177233ac82461157f9d4260c19",
+      "running_matches_installed": true,
+      "package_timer": "active",
+      "source_mirror_timer": "active"
+    },
+    "node5_interruption": {
+      "disk_pressure_recurred": true,
+      "currently_cleared": true,
+      "anchor_identity_volume_preserved": true,
+      "filesystem_headroom_below_timer_target": true,
+      "eviction_threshold_unchanged": true,
+      "remaining_risk": "Node filesystem headroom is below 17%; another disk-pressure event can hold publication until health recovers."
+    },
+    "android_upload_and_commit": {
+      "version": "1113",
+      "original_aab_sha256": "0ee4514e272d4ab9ff1bb8d62138a4ed433a794624d80af9ec477d52d1b6e2f9",
+      "commit_accepted": true,
+      "upload_started_at": 1791091665,
+      "commit_journal_time": 1791091713,
+      "elapsed_seconds": 48.726,
+      "original_request_retained": true
     }
   }
 }
