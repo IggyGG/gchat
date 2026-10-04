@@ -1,10 +1,12 @@
 # GChat
 
-Release status, 2026-10-03: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Android and iOS installed acceptance remain incomplete; Apple encryption approval is IN_REVIEW, including France. Linux 0.1.98 is installed locally; a normal full Quit and reopen uses it.
+Release status, 2026-10-03: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Android and iOS installed acceptance remain incomplete; Apple encryption approval is IN_REVIEW, including France. Linux 0.1.98 is installed and its running production-profile executable matches it.
 
 All eight node headroom timers are enabled and scheduled checks pass. Controller 7f423f8 is active after 854 source controls, 214 actual-image controls, 365 Kubernetes controls and verification of 237 source files. Temporary GitHub 502/503/504 errors now use bounded automatic reconciliation of the original request. Both mobile acceptance requests use the qualified same-source helper, with Android focus confirmation and separate iOS visible join stages under unchanged limits. All 17 deployment targets pass a fresh health/version check. Original failures, signed app bytes, API contracts and security checks remain unchanged; mobile launch and OS invitation arrival remain incomplete.
 
 Routine releases: push `main`; automation builds, verifies, deploys and publishes. Inspect with `python3 scripts/release.py status`; use `resume` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
+
+Native iOS installation uses one simulator install request followed by exact executable hash reconciliation within its operation deadline. Initial setup permits at most 240 seconds inside its 600-second budget; upgrade and rollback retain 120 seconds. Delayed container registration does not trigger another install.
 
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the

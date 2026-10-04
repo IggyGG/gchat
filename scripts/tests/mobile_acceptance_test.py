@@ -742,9 +742,10 @@ class MobileAcceptanceTests(unittest.TestCase):
         def observe(*args):clock[0]+=5;return False
         with patch('mobile_ios_ui.time.monotonic',side_effect=lambda:clock[0]), \
              patch('mobile_ios_ui.ios.run',side_effect=install) as run, \
+             patch('mobile_ios_ui.time.sleep',side_effect=lambda duration:clock.__setitem__(0,clock[0]+duration)), \
              patch.object(ui,'installed_matches',side_effect=observe),self.assertRaises(TimeoutError):
             ui.setup_install(item)
-        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[40,175])
+        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[220])
         self.assertLess(clock[0],240);self.assertFalse(ui.installed)
 
     def test_ios_install_timeout_reconciles_exact_executable_without_reinstall(self):
@@ -763,7 +764,19 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(output.call_args.kwargs['timeout'],10)
             self.assertEqual(ui.active_binary_sha256,item['binary_sha256'])
 
-    def test_ios_install_retry_cannot_extend_original_deadline_or_accept_wrong_binary(self):
+    def test_ios_successful_install_reconciles_delayed_container_without_reinstall(self):
+        ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
+        ui.active_binary_sha256=None;ui.deadline=lambda:time.monotonic()+600
+        item={'app':'retained.app','binary_sha256':'a'*64}
+        with patch('mobile_ios_ui.ios.run') as run,patch('mobile_ios_ui.time.sleep'), \
+             patch.object(ui,'installed_matches',side_effect=[False,False,True]) as observe:
+            ui.install(item)
+        self.assertEqual(run.call_count,1);self.assertEqual(observe.call_count,3)
+        self.assertEqual(ui.install_observation['observations'],3)
+        self.assertEqual(ui.install_observation['timeouts'],0)
+        self.assertTrue(ui.install_observation['hash_verified'])
+
+    def test_ios_install_reconciliation_cannot_extend_original_deadline_or_accept_wrong_binary(self):
         import subprocess
         ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
         ui.active_binary_sha256=None;ui.deadline=lambda:120
@@ -775,9 +788,10 @@ class MobileAcceptanceTests(unittest.TestCase):
         def observe(*args):clock[0]+=5;return False
         with patch('mobile_ios_ui.time.monotonic',side_effect=lambda:clock[0]), \
              patch('mobile_ios_ui.ios.run',side_effect=install) as run, \
+             patch('mobile_ios_ui.time.sleep',side_effect=lambda duration:clock.__setitem__(0,clock[0]+duration)), \
              patch.object(ui,'installed_matches',side_effect=observe),self.assertRaises(TimeoutError):
             ui.install(item)
-        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[40,55])
+        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list],[100])
         self.assertLessEqual(clock[0],120)
         self.assertFalse(ui.installed)
         with tempfile.TemporaryDirectory() as temporary:

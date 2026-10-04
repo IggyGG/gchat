@@ -24,6 +24,8 @@ Retained iOS helper 2b96f76 passes exact passphrase creation and confirmation an
 
 Retained Android cdc70f5 recognizes all 11 expected body words and the delivered status, but cannot assemble a complete adjacent body span. Short lowercase glyphs measure x-height rather than the full CSS line box. The corrected body-row leading allowance matches the existing smaller-font receipt allowance, retaining exact whole-body and receipt binding. Focused checks cover short adjacent lines, distant rows, modified words and unrelated receipts; all 64 controls pass. The flat-row match remains a diagnostic only. iOS is resumed separately on CI-qualified f696b22 (868 source controls); its original request remains frozen. Native acceptance is incomplete.
 
+The latest iOS f696b22 run failed during initial installation before XCTest; its new identity observer was not exercised. The installer now issues one request and polls the actual container/executable hash inside the same deadline, avoiding overlapping installs when registration is delayed. Initial installation remains at most 240 seconds within setup 600; upgrade/rollback remain 120 seconds. Wrong binaries, ordinary command failures and exhausted deadlines still fail. All 65 focused mobile controls pass in 2.159 seconds; API contracts and application bytes are unchanged. Android is running its separately qualified ad8a119 helper (868 CI controls, five existing skips, 30.797 seconds). Installed mobile acceptance remains incomplete.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

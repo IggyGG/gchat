@@ -271,26 +271,26 @@ class IOSUI:
             return
         if self.installed:
             self.stop()
-        # A timed-out simctl client can leave the owned simulator's installer
-        # completing the same request. Reconcile the actual executable before
-        # one idempotent retry inside its operation and overall deadline.
+        # simctl success can precede registry/container visibility. A timed-out
+        # client can also leave the same install completing. Do not enqueue a
+        # second install; reconcile the actual executable under this deadline.
         end = min(time.monotonic() + maximum, self.deadline())
         self.install_observation = {'attempts': 0, 'timeouts': 0, 'hash_verified': False,
+                                    'observations': 0,
                                     'maximum_seconds': maximum}
-        for attempt in range(2):
-            # Reserve time for the container lookup and executable hashing,
-            # rather than spending the entire operation on installer clients.
-            left = end - time.monotonic() - 20
-            require(left > 0, 'original simulator install deadline')
-            self.install_observation['attempts'] += 1
-            try:
-                ios.run(['xcrun', 'simctl', 'install', self.device, item['app']],
-                        timeout=min(40, left) if attempt == 0 else left)
-            except subprocess.TimeoutExpired:
-                self.install_observation['timeouts'] += 1
+        left = end - time.monotonic() - 20
+        require(left > 0, 'original simulator install deadline')
+        self.install_observation['attempts'] = 1
+        try:
+            ios.run(['xcrun', 'simctl', 'install', self.device, item['app']], timeout=left)
+        except subprocess.TimeoutExpired:
+            self.install_observation['timeouts'] += 1
+        while end-time.monotonic() > 5:
+            self.install_observation['observations'] += 1
             if self.installed_matches(item, end):
                 self.install_observation['hash_verified'] = True
                 break
+            time.sleep(min(0.5, max(0, end-time.monotonic()-5)))
         else:
             raise TimeoutError('original simulator install did not produce the retained executable')
         self.installed = True
