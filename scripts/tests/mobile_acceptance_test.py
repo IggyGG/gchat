@@ -327,7 +327,9 @@ class MobileAcceptanceTests(unittest.TestCase):
             own=ET.Element('node',{'package':'boo.gchat.app','text':'Readable The quick brown fox'})
             foreign=ET.Element('node',{'package':'another.app','text':'Readable The quick brown fox'})
             def select(predicate,*args):
-                self.assertFalse(predicate(foreign));self.assertTrue(predicate(own));return own
+                self.assertFalse(predicate(foreign));self.assertTrue(predicate(own))
+                self.assertTrue(predicate(ET.Element('node',{'package':'boo.gchat.app','text':'Readable'})))
+                return own
             with patch.object(ui,'tree',return_value=composer),patch.object(ui,'node',side_effect=select), \
                  patch.object(ui,'type',side_effect=lambda n,v:events.append(v)), \
                  patch.object(ui,'click',side_effect=events.append), \

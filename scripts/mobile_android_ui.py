@@ -466,7 +466,7 @@ class AndroidUI:
         self.type(field, '/font')
         self.click('Send')
         self.tap(self.node(lambda node: node.get('package') == android.PACKAGE
-            and named_control(node, 'Readable ')))
+            and (self.text('Readable')(node) or named_control(node, 'Readable '))))
         self.click('Close dialog')
         self.until(lambda: editable_composer(self.tree()) is not None)
         self.ui_observation['transcript_font'] = 'readable'

@@ -99,7 +99,7 @@ def main():
         owned = root / 'owned-device'
         owned.mkdir(mode=0o700)
         # Same random entropy, without shift/symbol transitions in native input.
-        passphrase = secrets.token_hex(32)
+        passphrase = secrets.token_hex(32).upper()
         setup_deadline = time.monotonic() + 600
         deadline = lambda: journey.deadline if journey is not None else setup_deadline
 
