@@ -459,6 +459,18 @@ class AndroidUI:
         self.click('Close dialog')
         return hashlib.sha256(value.encode()).hexdigest()
 
+    def prepare_transcript(self):
+        # The existing Readable font setting avoids Fixedsys glyph ambiguity
+        # in ordinary screenshots. Select it through the normal command/UI.
+        field = self.until(lambda: (node,) if (node := editable_composer(self.tree())) is not None else None)[0]
+        self.type(field, '/font')
+        self.click('Send')
+        self.tap(self.node(lambda node: node.get('package') == android.PACKAGE
+            and named_control(node, 'Readable ')))
+        self.click('Close dialog')
+        self.until(lambda: editable_composer(self.tree()) is not None)
+        self.ui_observation['transcript_font'] = 'readable'
+
     def send(self, body):
         self.bodies.add(body)
         field = self.until(lambda: (node,) if (node := editable_composer(self.tree())) is not None else None)[0]

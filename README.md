@@ -808,3 +808,5 @@ Android export workers enter the exact filename through the normal system Docume
 Local readback on 2026-10-04 verifies that the running production-profile executable matches the managed GChat 0.1.98 installation. The source-mirror and package-update timers are active.
 
 iOS export fixture recovery stages the same exact passphrase for normal reconnect after the OS picker and clears the owned simulator clipboard even when export fails.
+
+Current mobile workers select the existing Android Readable font through normal UI. iOS uses the normal keyboard in eight-character chunks, verifies each exact prefix, and uses normal password visibility controls for exact confirmation. The current input path has no clipboard or Paste-menu dependency. Original failed worker reports remain retained.

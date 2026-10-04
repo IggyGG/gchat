@@ -253,35 +253,9 @@ class IOSUI:
     def call(self, op, maximum=120, **values):
         require(self.runner is not None and self.runner.poll() is None, 'owned XCTest runner exited')
         end = min(time.monotonic()+maximum, self.deadline())
-        clipboard = (self.passphrase if op == 'export' else values.get('passphrase') if op == 'unlock' else
-                     values.get('invitation') if op == 'join_invitation' else
-                     'MOBILE' if op == 'join_accept' else values.get('body') if op == 'send' else None)
-        try:
-            if clipboard is not None:
-                require(isinstance(clipboard, str) and 0 < len(clipboard.encode()) <= 180000,
-                        'bounded native clipboard input required')
-                self.copy_input(clipboard, end)
-            left = end-time.monotonic()
-            require(left > 0, 'original mobile journey deadline')
-            return self.bridge.call(op, timeout=left, alive=lambda: self.runner.poll() is None, **values)
-        finally:
-            if clipboard is not None:
-                # Cleanup belongs to the owned simulator, never the host's
-                # clipboard. Even a failed UI command must clear its input.
-                self.copy_input('', time.monotonic()+10)
-
-    def copy_input(self, value, end):
-        require(self.device in self.owned_devices and self.device not in self.before_devices,
-                'native clipboard requires the fresh owned simulator')
-        left = min(10, end-time.monotonic())
-        require(left > 0, 'original native input deadline')
-        subprocess.run(['xcrun', 'simctl', 'pbcopy', self.device], input=value.encode(),
-                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, timeout=left)
-        left = min(10, end-time.monotonic())
-        require(left > 0, 'original native input deadline')
-        actual = subprocess.check_output(['xcrun', 'simctl', 'pbpaste', self.device],
-                                         stderr=subprocess.PIPE, timeout=left)
-        require(actual == value.encode(), 'native clipboard input differs')
+        left = end-time.monotonic()
+        require(left > 0, 'original mobile journey deadline')
+        return self.bridge.call(op, timeout=left, alive=lambda: self.runner.poll() is None, **values)
 
     def setup_install(self, item):
         # Initial simulator installation is fixture setup, before the product

@@ -116,6 +116,9 @@ class MobileJourney:
         ui.unlock(create=True)
         ui.join(code)
         identity = ui.identity()
+        prepare_transcript = getattr(ui, 'prepare_transcript', None)
+        if prepare_transcript is not None:
+            prepare_transcript()
         self.ack(ui, 'baseline-initial', self.rollback)
         self.stage = 'baseline-cache'
         cache_name = 'baseline-cache.bin'

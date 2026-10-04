@@ -16,6 +16,8 @@ The exact f30bac0 helper passes 866 source controls with five existing skips in 
 
 The iOS export command can invoke normal reconnect/unlock after the OS picker. It now stages the exact fixture passphrase in the owned simulator clipboard for that command and clears it on either outcome, preserving exact field confirmation. All 63 focused controls pass; this correction still requires native qualification.
 
+Retained helper f30bac0 verifies iOS baseline installation under the existing setup budget, then fails because the system Paste menu is absent. Android passes the incoming rendered message and authenticated ACK and receives its exact outgoing message at the peer; its OCR recognizes a delivered line but cannot match the complete outgoing body. The worker now selects the existing Readable font through normal Android UI and uses normal iOS keyboard input in eight-character chunks, requiring every exact prefix before continuing. Normal password visibility controls permit exact confirmation; clipboard staging and the missing Paste menu are removed. All 62 focused controls pass. Native acceptance remains required, and the failed reports remain retained.
+
 ## Retained earlier checkpoints
 
 The current launch status above supersedes older pending/deployed statements. Original negative outcomes and evidence pointers remain below.

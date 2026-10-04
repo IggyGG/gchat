@@ -308,7 +308,7 @@
     "android": 37164250244,
     "ios": 37164250144,
     "helper": "f30bac0ec2f67936b856755ea4799e52e0407fd2",
-    "state": "both_running",
+    "state": "both_failed",
     "requests": {
       "android": "6afa603c628e78dc9f5a12d1a7300c928a6bdebdd5e0ecd617873b51136b639c",
       "ios": "6328018b05ca991d82de46338affe1dca9da2dddc336d6a703bedafbc283dd2b"
@@ -732,6 +732,42 @@
         "bridge_polls": 0,
         "cleanup_passed": true
       }
+    },
+    {
+      "android": 37164250244,
+      "ios": 37164250144,
+      "helper": "f30bac0ec2f67936b856755ea4799e52e0407fd2",
+      "state": "both_failed",
+      "requests": {
+        "android": "6afa603c628e78dc9f5a12d1a7300c928a6bdebdd5e0ecd617873b51136b639c",
+        "ios": "6328018b05ca991d82de46338affe1dca9da2dddc336d6a703bedafbc283dd2b"
+      },
+      "android_report": {
+        "artifact": 11289440901,
+        "sha256": "3b43494cf4a822cff5d24c9da0e06ecf36c4cbeec650cb08fd4b87a14b05189b",
+        "passed": false,
+        "receipt": "operations/android-helper-f30bac0-result-816.zip",
+        "failure": "exact_rendered_outgoing_body_not_recognized",
+        "incoming_rendered_and_authenticated_ack_passed": true,
+        "exact_outgoing_input_passed": true,
+        "outgoing_received_by_peer": true,
+        "delivered_line_recognized": true,
+        "complete_body_spans": 0,
+        "cleanup_passed": true
+      },
+      "ios_report": {
+        "artifact": 11289011977,
+        "sha256": "9c829dae80ee7ecd610897c8b03ce8577cb17ccd624af8860ce7363389122e08",
+        "passed": false,
+        "receipt": "operations/ios-helper-f30bac0-result-815.zip",
+        "failure": "system_paste_menu_missing",
+        "installed_binary_hash_verified": true,
+        "setup_install_maximum_seconds": 240,
+        "observation_failure_lines": [
+          95
+        ],
+        "cleanup_passed": false
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -833,6 +869,17 @@
     "exact_passphrase_required": true,
     "clipboard_cleared_after_success_or_failure": true,
     "focused_controls_passed": 63,
+    "native_acceptance_passed": false
+  },
+  "mobile_paced_input_and_readable_font_correction": {
+    "android_normal_readable_font_ui": true,
+    "ios_normal_native_keyboard": true,
+    "ios_chunk_characters": 8,
+    "ios_exact_prefix_before_next_chunk": true,
+    "ios_normal_password_visibility_controls": true,
+    "ios_clipboard_required": false,
+    "signed_applications_unchanged": true,
+    "focused_controls_passed": 62,
     "native_acceptance_passed": false
   }
 }

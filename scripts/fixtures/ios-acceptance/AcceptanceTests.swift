@@ -59,6 +59,23 @@ final class GChatAcceptanceTests: XCTestCase {
     }
 
     func type(_ field: XCUIElement, _ value: String) throws {
+        if field.elementType == .secureTextField {
+            // Use the app's normal visibility control before native input.
+            // Secure edit menus are unavailable on this retained simulator.
+            let label = field.label
+            try require(!label.isEmpty)
+            try passphraseVisibility("Show passphrase")
+            let revealed = app.webViews.textFields.matching(NSPredicate(format: "label == %@", label)).firstMatch
+            do {
+                try type(revealed, value)
+            } catch {
+                try? passphraseVisibility("Hide passphrase")
+                throw error
+            }
+            try passphraseVisibility("Hide passphrase")
+            try wait(10) { field.exists }
+            return
+        }
         try wait(20) { field.exists }
         let main = app.webViews.otherElements.matching(NSPredicate(format: "label == %@", "main")).firstMatch
         try wait(20) { main.exists }
@@ -85,38 +102,27 @@ final class GChatAcceptanceTests: XCTestCase {
             }
         }
         try require(focused)
-        // The host copies and verifies this command's input through simctl on
-        // the bound, fresh simulator. The test runner's background pasteboard
-        // is not an authority for the foreground application's clipboard.
-        // Only the normal system Paste action enters the unchanged app.
-        field.press(forDuration: 1)
-        let menuPaste = app.menuItems["Paste"].firstMatch
-        let buttonPaste = app.buttons["Paste"].firstMatch
-        try wait(10) { (menuPaste.exists && menuPaste.isHittable) ||
-            (buttonPaste.exists && buttonPaste.isHittable) }
-        let paste = menuPaste.exists && menuPaste.isHittable ? menuPaste : buttonPaste
-        paste.tap()
-        try dismissKeyboard()
-        if field.elementType == .secureTextField {
-            let label = field.label
-            try require(!label.isEmpty)
-            try passphraseVisibility("Show passphrase")
-            let revealed = app.webViews.textFields.matching(NSPredicate(format: "label == %@", label)).firstMatch
+        // Avoid one long burst of simulated keys. Observe every exact prefix
+        // before admitting the next eight characters; changed/dropped input
+        // remains a failure rather than being repaired or accepted.
+        let characters = Array(value)
+        for offset in stride(from: 0, to: characters.count, by: 8) {
+            let end = min(offset + 8, characters.count)
+            field.typeText(String(characters[offset..<end]))
+            let expected = String(characters[..<end])
             do {
-                try wait(10) { revealed.exists && (revealed.value as? String) == value }
+                try wait(5) { (field.value as? String) == expected }
             } catch {
-                let actual = revealed.exists ? (revealed.value as? String) ?? "" : ""
-                print("GCHAT_ACCEPTANCE_INPUT_FIELD_PRESENT=\(revealed.exists ? 1 : 0)")
+                let actual = field.exists ? (field.value as? String) ?? "" : ""
+                print("GCHAT_ACCEPTANCE_INPUT_FIELD_PRESENT=\(field.exists ? 1 : 0)")
                 print("GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=\(actual.count)")
-                print("GCHAT_ACCEPTANCE_INPUT_EXPECTED_LENGTH=\(value.count)")
+                print("GCHAT_ACCEPTANCE_INPUT_EXPECTED_LENGTH=\(expected.count)")
                 print("GCHAT_ACCEPTANCE_INPUT_VALUE_MASKED=\(actual.contains("•") || actual.contains("●") ? 1 : 0)")
                 throw error
             }
-            try passphraseVisibility("Hide passphrase")
-            try wait(10) { field.exists }
-        } else {
-            try wait(10) { (field.value as? String) == value }
         }
+        try dismissKeyboard()
+        try wait(10) { (field.value as? String) == value }
     }
 
     func passphraseVisibility(_ title: String) throws {

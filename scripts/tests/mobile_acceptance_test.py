@@ -320,6 +320,23 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertNotIn('inputs_confirmed',ui.ui_observation)
             self.assertFalse(any(call.args[:2]==('input','keyevent') for call in shell.call_args_list))
 
+    def test_android_readable_observation_uses_the_normal_font_ui_and_owned_control(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));events=[]
+            composer=ET.fromstring('<hierarchy><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,400][290,450]"/></hierarchy>')
+            own=ET.Element('node',{'package':'boo.gchat.app','text':'Readable The quick brown fox'})
+            foreign=ET.Element('node',{'package':'another.app','text':'Readable The quick brown fox'})
+            def select(predicate,*args):
+                self.assertFalse(predicate(foreign));self.assertTrue(predicate(own));return own
+            with patch.object(ui,'tree',return_value=composer),patch.object(ui,'node',side_effect=select), \
+                 patch.object(ui,'type',side_effect=lambda n,v:events.append(v)), \
+                 patch.object(ui,'click',side_effect=events.append), \
+                 patch.object(ui,'tap',side_effect=lambda n:events.append('owned-readable')):
+                ui.prepare_transcript()
+            self.assertEqual(events,['/font','Send','owned-readable','Close dialog'])
+            self.assertEqual(ui.ui_observation['transcript_font'],'readable')
+            self.assertFalse(ui.bodies)
+
     def test_android_join_selects_the_channel_after_async_enrollment_modal(self):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary));clicks=[]
@@ -388,38 +405,21 @@ class MobileAcceptanceTests(unittest.TestCase):
         self.assertIsNone(android_ui.invitation_form(tree,invitation+'-different'))
         self.assertIsNone(android_ui.invitation_form(tree))
 
-    def test_ios_command_clipboard_is_cleared_after_success_or_ui_failure(self):
-        for failed in (False,True):
-            ui=IOSUI.__new__(IOSUI);ui.runner=SimpleNamespace(poll=lambda:None)
-            ui.deadline=lambda:time.monotonic()+120
-            from unittest.mock import Mock
-            ui.bridge=SimpleNamespace(call=Mock(side_effect=ValueError if failed else None,return_value=True))
-            with patch.object(ui,'copy_input') as copy:
-                if failed:
-                    with self.assertRaises(ValueError):ui.call('unlock',passphrase='private input')
-                else:self.assertTrue(ui.call('unlock',passphrase='private input'))
-            self.assertEqual([c.args[0] for c in copy.call_args_list],['private input',''])
-            self.assertLessEqual(ui.bridge.call.call_args.kwargs['timeout'],120)
-
-    def test_ios_clipboard_refuses_foreign_devices_changed_bytes_and_expired_deadlines(self):
-        ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.owned_devices={'owned'};ui.before_devices=set()
-        with patch('mobile_ios_ui.subprocess.run') as run, \
-             patch('mobile_ios_ui.subprocess.check_output',return_value=b'private input'):
-            ui.copy_input('private input',time.monotonic()+10)
-        self.assertEqual(run.call_args.args[0],['xcrun','simctl','pbcopy','owned'])
-        self.assertNotIn('private input',' '.join(run.call_args.args[0]))
-        self.assertEqual(run.call_args.kwargs['input'],b'private input')
-        with patch('mobile_ios_ui.subprocess.run'), \
-             patch('mobile_ios_ui.subprocess.check_output',return_value=b'changed'), \
-             self.assertRaisesRegex(ValueError,'differs'):
-            ui.copy_input('private input',time.monotonic()+10)
-        for device,before,end in [('other',set(),time.monotonic()+10),
-                                 ('owned',{'owned'},time.monotonic()+10),
-                                 ('owned',set(),time.monotonic()-1)]:
-            ui.device=device;ui.before_devices=before
-            with patch('mobile_ios_ui.subprocess.run') as run,self.assertRaises(ValueError):
-                ui.copy_input('private input',end)
-            run.assert_not_called()
+    def test_ios_native_input_commands_keep_deadline_without_any_clipboard_side_effect(self):
+        from unittest.mock import Mock
+        for operation in ('unlock','join_invitation','join_accept','send','export'):
+            with self.subTest(operation=operation):
+                ui=IOSUI.__new__(IOSUI);ui.runner=SimpleNamespace(poll=lambda:None)
+                ui.deadline=lambda:time.monotonic()+90
+                ui.bridge=SimpleNamespace(call=Mock(return_value=True))
+                with patch('mobile_ios_ui.subprocess.run') as run,patch('mobile_ios_ui.subprocess.check_output') as output:
+                    self.assertTrue(ui.call(operation,fixture='private input'))
+                run.assert_not_called();output.assert_not_called()
+                self.assertLessEqual(ui.bridge.call.call_args.kwargs['timeout'],90)
+                self.assertEqual(ui.bridge.call.call_args.kwargs['fixture'],'private input')
+                ui.runner.poll=lambda:1
+                with self.assertRaisesRegex(ValueError,'runner exited'):ui.call(operation)
+                self.assertEqual(ui.bridge.call.call_count,1)
 
     def test_android_form_fallback_refuses_long_or_legacy_invitation(self):
         form=ET.fromstring('<hierarchy><node package="boo.gchat.app" text="Invitation"/><node package="boo.gchat.app" text="Continue"/><node package="boo.gchat.app" class="android.widget.EditText" bounds="[10,100][290,150]"/></hierarchy>')
@@ -689,19 +689,6 @@ class MobileAcceptanceTests(unittest.TestCase):
              patch.object(ui,'install') as install,self.assertRaisesRegex(ValueError,'setup deadline'):
             ui.setup_install({'app':'retained.app'})
         install.assert_not_called()
-
-    def test_ios_export_reunlock_has_exact_owned_clipboard_and_always_clears_it(self):
-        for failed in (False,True):
-            with self.subTest(failed=failed):
-                ui=IOSUI.__new__(IOSUI);ui.passphrase='fixture-private-passphrase'
-                ui.runner=SimpleNamespace(poll=lambda:None);ui.deadline=lambda:time.monotonic()+600
-                ui.bridge=SimpleNamespace(call=lambda *a,**k:None)
-                with patch.object(ui,'copy_input') as copied, \
-                     patch.object(ui.bridge,'call',side_effect=ValueError('UI failure') if failed else None):
-                    if failed:
-                        with self.assertRaisesRegex(ValueError,'UI failure'):ui.call('export',name='baseline-cache.bin')
-                    else:ui.call('export',name='baseline-cache.bin')
-                self.assertEqual([c.args[0] for c in copied.call_args_list],['fixture-private-passphrase',''])
 
     def test_ios_initial_setup_install_still_requires_hash_before_its_own_deadline(self):
         import subprocess
