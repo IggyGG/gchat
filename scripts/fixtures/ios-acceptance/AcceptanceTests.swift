@@ -103,6 +103,7 @@ final class GChatAcceptanceTests: XCTestCase {
             }
         }
         try require(focused)
+        try wait(10) { self.app.keyboards.firstMatch.exists && field.exists && field.isHittable }
         // Avoid one long burst of simulated keys. Observe every exact prefix
         // before admitting the next batch; changed/dropped input
         // remains a failure rather than being repaired or accepted.
@@ -110,17 +111,29 @@ final class GChatAcceptanceTests: XCTestCase {
         print("GCHAT_ACCEPTANCE_INPUT_TOTAL_LENGTH=\(characters.count)")
         for offset in stride(from: 0, to: characters.count, by: batch) {
             let end = min(offset + batch, characters.count)
-            field.typeText(String(characters[offset..<end]))
+            let before = String(characters[..<offset])
             let expected = String(characters[..<end])
-            do {
-                try wait(5) { (field.value as? String) == expected }
-            } catch {
-                let actual = field.exists ? (field.value as? String) ?? "" : ""
-                print("GCHAT_ACCEPTANCE_INPUT_FIELD_PRESENT=\(field.exists ? 1 : 0)")
-                print("GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=\(actual.count)")
-                print("GCHAT_ACCEPTANCE_INPUT_EXPECTED_LENGTH=\(expected.count)")
-                print("GCHAT_ACCEPTANCE_INPUT_VALUE_MASKED=\(actual.contains("•") || actual.contains("●") ? 1 : 0)")
-                throw error
+            for attempt in 0..<2 {
+                try require((field.value as? String) == before)
+                if attempt > 0 {
+                    // Only an unchanged prefix permits another local input.
+                    // Partial, changed or masked values remain failures.
+                    try tapVisible(field)
+                    try wait(10) { self.app.keyboards.firstMatch.exists && field.exists && field.isHittable }
+                }
+                field.typeText(String(characters[offset..<end]))
+                do {
+                    try wait(5) { (field.value as? String) == expected }
+                    break
+                } catch {
+                    let actual = field.exists ? (field.value as? String) ?? "" : ""
+                    if attempt == 0 && field.exists && (field.value as? String) == before { continue }
+                    print("GCHAT_ACCEPTANCE_INPUT_FIELD_PRESENT=\(field.exists ? 1 : 0)")
+                    print("GCHAT_ACCEPTANCE_INPUT_VALUE_LENGTH=\(actual.count)")
+                    print("GCHAT_ACCEPTANCE_INPUT_EXPECTED_LENGTH=\(expected.count)")
+                    print("GCHAT_ACCEPTANCE_INPUT_VALUE_MASKED=\(actual.contains("•") || actual.contains("●") ? 1 : 0)")
+                    throw error
+                }
             }
             print("GCHAT_ACCEPTANCE_INPUT_CONFIRMED_LENGTH=\(end)")
         }

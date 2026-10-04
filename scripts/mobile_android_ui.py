@@ -674,7 +674,9 @@ class AndroidUI:
 
     def cache_hash(self, ident):
         require(re.fullmatch('[0-9a-f]{32}', ident), 'invalid retained file ID')
-        root = '/data/user/0/' + android.PACKAGE + '/files'
+        # Tauri's Android app_data_dir is activity.dataDir, not filesDir.
+        # Both retained apps create their private instance directly below it.
+        root = '/data/user/0/' + android.PACKAGE + '/instance'
         paths = self.shell('find', root, '-type', 'f', '-name', '*.piece').splitlines()
         selected = [path for path in paths if Path(path).parent.name == ident]
         require(len(selected) == 1 and Path(selected[0]).name == '0.piece'

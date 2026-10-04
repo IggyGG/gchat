@@ -305,14 +305,8 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android_helper": "80d68e5aeb726fdf4aa0f25c2668b55decce1c09",
-    "ios": 37170323852,
-    "ios_helper": "d3a64e5690dc83f61298fb84f9d014139644f8f8",
-    "state": "android_resume_queued_ios_failed",
-    "requests": {
-      "ios": "0d753403d53a60caf003103e3cd696af4c9760d3c57afc4720f7c01b4091aaa2"
-    },
-    "android_resume_receipt": "operations/mobile-android-resume-860.json"
+    "state": "successor_requires_independent_ci_then_native_acceptance",
+    "original_failed_requests_retained": true
   },
   "retained_workstation_failures": {
     "run": "operations/release-mobile-final-python-615.log",
@@ -338,8 +332,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "80d68e5aeb726fdf4aa0f25c2668b55decce1c09",
-  "native_helper_qualification": "operations/native-helper-80d68e5-qualified-859.json",
+  "native_helper_source": "96d51b65518d299026ab41d4317abca5a838d413",
+  "native_helper_qualification": "operations/native-helper-96d51b6-qualified-862.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -1003,6 +997,42 @@
         "runner_exit_code": 0,
         "cleanup_passed": true,
         "receipt": "operations/ios-helper-d3a64e5-result-858.zip"
+      }
+    },
+    {
+      "android_helper": "80d68e5aeb726fdf4aa0f25c2668b55decce1c09",
+      "ios": 37171414824,
+      "ios_helper": "96d51b65518d299026ab41d4317abca5a838d413",
+      "state": "both_failed",
+      "requests": {
+        "android": "2bf139e179cf728bd38046c70895a061888820c6413faf1c2a67d1f0565bccf0",
+        "ios": "4850da7aa0ebeaa82c5221fa4cb16aecc647a0a674c7ecc595a56ccfdc9e703e"
+      },
+      "android_resume_receipt": "operations/mobile-android-resume-860.json",
+      "android": 37171285622,
+      "android_report": {
+        "artifact": 11290929728,
+        "sha256": "367d63d63cd1b940824bf214034c43473f0169c0f9c6809e9a31dc18da1a0076",
+        "passed": false,
+        "stage": "baseline-cache",
+        "failure": "cache_observer_searched_filesDir_instead_of_tauri_dataDir",
+        "exact_rendering_and_authenticated_bidirectional_ack": true,
+        "os_export_original_hash_verified": true,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-80d68e5-result-865.zip"
+      },
+      "ios_report": {
+        "artifact": 11291981354,
+        "sha256": "e2a125457f9607a0e1f27fbe9b00914f0720c4e99ec430bdb5393f1e0ea78581",
+        "passed": false,
+        "stage": "baseline-start",
+        "failure": "first_keyboard_batch_entered_zero_characters",
+        "input_expected_length": 8,
+        "input_actual_length": 0,
+        "initial_install_hash_verified": true,
+        "owned_device_binding_passed": true,
+        "cleanup_passed": false,
+        "receipt": "operations/ios-helper-96d51b6-result-868.zip"
       }
     }
   ],

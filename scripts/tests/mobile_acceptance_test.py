@@ -308,6 +308,23 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(ui.ui_observation['input_value']['exact_value_fields'],1)
             self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
 
+    def test_android_cache_requires_one_exact_encrypted_piece_in_owned_app_data(self):
+        ident='a'*32;root='/data/user/0/boo.gchat.app/instance'
+        path=root+'/file-cache/'+ident+'/0.piece'
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary))
+            with patch.object(ui,'shell',return_value=path) as find, \
+                 patch.object(ui,'command',return_value=b'encrypted retained piece') as read:
+                self.assertEqual(ui.cache_hash(ident),hashlib.sha256(b'encrypted retained piece').hexdigest())
+            self.assertEqual(find.call_args.args,('find',root,'-type','f','-name','*.piece'))
+            self.assertEqual(read.call_args.args,('exec-out','cat',path))
+            for paths in ('',path+'\n'+path,path.replace('/0.piece','/1.piece'),
+                          path.replace(root,'/data/user/0/another.app/instance')):
+                with self.subTest(paths=paths),patch.object(ui,'shell',return_value=paths), \
+                     patch.object(ui,'command') as read,self.assertRaisesRegex(ValueError,'one retained encrypted'):
+                    ui.cache_hash(ident)
+                read.assert_not_called()
+
     def test_android_export_accepts_downloads_already_open_and_requires_original_hash(self):
         for drawer,save in ((False,'SAVE'),(True,'Save')):
             with self.subTest(drawer=drawer),tempfile.TemporaryDirectory() as temporary:

@@ -22,6 +22,8 @@ The retained Android cecddf7 run passes exact rendered messages, authenticated a
 
 Retained iOS d3a64e5 passes visible enrollment, exact identity, initial covered messages, system export, upgrade and baseline rollback with unchanged identity/history/encrypted cache and authenticated acknowledgments. Its final restoration cannot start within the original 600-second compatibility budget. Exact label ancestor queries now narrow file and message row candidates before the existing uniqueness/status checks, removing repeated whole-tree scans without extending any deadline. The failed report remains retained; complete installed qualification is still required.
 
+Native follow-up, 2026-10-04: Android 80d68e5 passes exact rendering, authenticated messages and the normal OS export with the original hash. Its encrypted-cache check searched filesDir, but the pinned Tauri Android resolver uses activity.dataDir; the fixture now checks the owned app instance beneath dataDir and still requires one exact encrypted piece. iOS 96d51b6 passes setup but the first keyboard batch enters zero characters. Input now waits for the actual keyboard and permits one local retry only when the complete previous prefix remains unchanged; partial or different values fail. Original command and journey deadlines, failed reports and signed applications remain retained. All 70 focused controls pass in 3.052 seconds; complete native results remain required.
+
 ## Routine release operation
 
 The GitHub `release-signing` environment must permit `release/gchat-*` and
