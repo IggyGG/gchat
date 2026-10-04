@@ -573,6 +573,21 @@ class MobileAcceptanceTests(unittest.TestCase):
                 [0,1,2,3,4,5,6,7,8,10])
             for word in body.split():self.assertNotIn(word,json.dumps(detail))
 
+    def test_pixel_message_excludes_actual_overlay_control_pixels_and_refuses_occluded_words(self):
+        body='Canary apple arrow beach'
+        header='level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n'
+        words=[(110,741,40,37,'Canary'),(110,795,40,28,'apple'),
+            (160,795,40,28,'arrow'),(210,795,40,28,'beach'),
+            (630,778,40,37,'icon'),(110,849,70,20,'delivered')]
+        tsv=header+''.join(f'5\t1\t1\t1\t1\t1\t{x}\t{y}\t{w}\t{h}\t95\t{text}\n'
+            for x,y,w,h,text in words)
+        bounds=(0,279,720,1206)
+        self.assertFalse(android_ui.pixel_delivered(android_ui.pixel_lines(tsv,bounds),body,{body}))
+        clean=android_ui.pixel_lines(tsv,bounds,[(621,760,720,840)])
+        self.assertTrue(android_ui.pixel_delivered(clean,body,{body}))
+        obscured=android_ui.pixel_lines(tsv,bounds,[(621,760,720,840),(100,790,155,825)])
+        self.assertFalse(android_ui.pixel_delivered(obscured,body,{body}))
+
     def test_wrapped_readable_canary_requires_every_exact_word_and_its_own_status(self):
         body='Canary apple arrow beach birch cloud dawn eagle forest grape river'
         first={'text':'[12:34] sender> Canary apple arrow beach birch','top':100,'bottom':112}
@@ -720,6 +735,56 @@ class MobileAcceptanceTests(unittest.TestCase):
             stop.assert_called_once()
             self.assertEqual(run.call_count,2)
         self.assertEqual(ui.active_binary_sha256,current['binary_sha256'])
+
+    def test_ios_fixture_build_overlaps_setup_but_execution_requires_install_and_build(self):
+        device='12345678-1234-1234-1234-123456789ABC'
+        for build_result in (0,65):
+            with self.subTest(build_result=build_result),tempfile.TemporaryDirectory() as temporary:
+                events=[];processes=[]
+                def wait(**kwargs):
+                    events.append('compiled')
+                    self.assertIn('installed',events)
+                    self.assertLessEqual(kwargs['timeout'],600)
+                    return build_result
+                compiler=SimpleNamespace(wait=wait,poll=lambda:build_result)
+                runner=SimpleNamespace(poll=lambda:None)
+                def start(command,**kwargs):
+                    processes.append(command)
+                    self.assertNotIn('GH_TOKEN',kwargs['env'])
+                    self.assertNotIn('GCHAT_NETWORK_INVITATION',kwargs['env'])
+                    if 'build-for-testing' in command:
+                        events.append('compile-start');return compiler
+                    self.assertEqual(events,['compile-start','boot','installed','compiled'])
+                    self.assertIn('test-without-building',command)
+                    return runner
+                def command(args,**kwargs):
+                    if args[:3]==['xcrun','simctl','boot']:
+                        self.assertEqual(events,['compile-start']);events.append('boot')
+                inventory={'devices':{'runtime':[{'udid':device,'name':'GChatAcceptance-deadbeefcafe'}]}}
+                bridge=SimpleNamespace(url='http://127.0.0.1:1',token='fixture',polls=0,wait_running=lambda *_:None)
+                def clean(owner):
+                    if owner.log is not None:owner.log.close()
+                    return {'passed':True}
+                replies=['Xcode 26.2\nBuild version pinned',json.dumps({'devicetypes':[]}),
+                    json.dumps({'devices':{}}),device,json.dumps(inventory)]
+                with patch('mobile_ios_ui.ios.output',side_effect=replies), \
+                     patch('mobile_ios_ui.secrets.token_hex',return_value='deadbeefcafe'), \
+                     patch('mobile_ios_ui.Bridge',return_value=bridge), \
+                     patch('mobile_ios_ui.ios.simulator_runtime',return_value='runtime'), \
+                     patch('mobile_ios_ui.ios.simulator_phone',return_value='phone'), \
+                     patch('mobile_ios_ui.ios.run',side_effect=command), \
+                     patch('mobile_ios_ui.subprocess.Popen',side_effect=start), \
+                     patch.object(IOSUI,'setup_install',side_effect=lambda _:events.append('installed')), \
+                     patch.object(IOSUI,'call',return_value={'device':device}), \
+                     patch.object(IOSUI,'cleanup',autospec=True,side_effect=clean):
+                    if build_result:
+                        with self.assertRaisesRegex(ValueError,'fixture compilation failed'):
+                            IOSUI(Path(temporary),'fixture',lambda:time.monotonic()+600,{'app':'original.app'})
+                        self.assertEqual(len(processes),1)
+                    else:
+                        ui=IOSUI(Path(temporary),'fixture',lambda:time.monotonic()+600,{'app':'original.app'})
+                        self.assertEqual(len(processes),2)
+                        ui.log.close()
 
     def test_ios_initial_setup_install_reserves_runner_budget_without_extending_setup(self):
         ui=IOSUI.__new__(IOSUI);ui.deadline=lambda:600

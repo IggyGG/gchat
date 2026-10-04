@@ -98,7 +98,7 @@ def delivery_row(tree, body, known_bodies):
     return False
 
 
-def pixel_lines(tsv, bounds):
+def pixel_lines(tsv, bounds, excluded=()):
     """Recognized words wholly inside the owned, visible transcript only."""
     x1, y1, x2, y2 = bounds
     words = []
@@ -106,6 +106,11 @@ def pixel_lines(tsv, bounds):
         if row['level'] != '5' or not row['text'].strip(): continue
         x, y, width, height = (int(row[key]) for key in ('left', 'top', 'width', 'height'))
         if width <= 0 or height <= 0 or not (x1 <= x and y1 <= y and x+width <= x2 and y+height <= y2): continue
+        # Floating native controls can cover the transcript's rectangle without
+        # belonging to its text. Their actual accessibility bounds, rather than
+        # recognition guesses, exclude occluded pixels from message matching.
+        if any(x < right and x+width > left and y < bottom and y+height > top
+               for left, top, right, bottom in excluded): continue
         words.append((x, y, width, height, row['text']))
     # Sparse OCR assigns different block/line IDs to words on the same physical
     # row, especially across the nickname/body/status fonts. Those IDs cannot
@@ -526,7 +531,14 @@ class AndroidUI:
             input=pixels, capture_output=True, timeout=left, env={**os.environ, 'OMP_THREAD_LIMIT': '1'})
         require(result.returncode == 0, 'owned Android pixel observation failed')
         self.ui_observation['pixel_observer_used'] = True
-        lines = pixel_lines(result.stdout.decode(), android.ui_bounds(transcript))
+        controls = [android.ui_bounds(node) for node in tree.iter('node')
+            if node.get('package') == android.PACKAGE and node.get('class') == 'android.widget.Button'
+            and android.ui_bounds(node)]
+        bounds = android.ui_bounds(transcript)
+        controls = [box for box in controls if box[0] < bounds[2] and box[2] > bounds[0]
+                    and box[1] < bounds[3] and box[3] > bounds[1]]
+        self.ui_observation['pixel_overlay_controls'] = len(controls)
+        lines = pixel_lines(result.stdout.decode(), bounds, controls)
         self.ui_observation['pixel_lines_count'] = len(lines)
         self.ui_observation['pixel_canary_prefix_lines'] = sum('Canary ' in line['text'] or 'mr-' in line['text'] for line in lines)
         return lines

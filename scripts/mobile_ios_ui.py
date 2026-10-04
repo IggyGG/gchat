@@ -175,6 +175,7 @@ class IOSUI:
                 'retained app requires the pinned Xcode')
         self.output, self.passphrase, self.deadline = output, passphrase, deadline
         self.device, self.bridge, self.runner, self.log = None, None, None, None
+        self.compiler = None
         self.bodies = set()
         self.installed = False
         self.active_binary_sha256 = None
@@ -191,17 +192,8 @@ class IOSUI:
         self.device = self.device.upper()
         self.base_device = self.device
         self.owned_devices = {self.device}
-        setup_stage = 'simulator_boot'
+        setup_stage = 'xctest_project'
         try:
-            ios.run(['xcrun', 'simctl', 'boot', self.device], timeout=120)
-            setup_stage = 'simulator_boot_ready'
-            ios.run(['xcrun', 'simctl', 'bootstatus', self.device, '-b'], timeout=180)
-            # XCTest must attach to a simulator that already has the unchanged
-            # application, as the retained lifecycle worker does.
-            if initial is not None:
-                setup_stage = 'initial_install'
-                self.setup_install(initial)
-            setup_stage = 'xctest_project'
             self.bridge = Bridge()
             runner = output / 'runner'
             runner.mkdir()
@@ -218,14 +210,34 @@ class IOSUI:
             self.log = (output / 'xctest.private.log').open('wb')
             # Only the UI test runner is compiled. No production app, framework,
             # signature, entitlement or library is rebuilt or changed.
-            command = ['xcodebuild', 'test', '-project', runner / 'GChatLifecycle.xcodeproj',
-                '-scheme', 'GChatLifecycle', '-destination', 'platform=iOS Simulator,id=' + self.device,
+            common = ['-project', runner / 'GChatLifecycle.xcodeproj', '-scheme', 'GChatLifecycle',
                 '-derivedDataPath', output / 'runner-derived', '-parallel-testing-enabled', 'NO',
                 '-maximum-concurrent-test-simulator-destinations', '1',
                 '-only-testing:LifecycleTests/GChatAcceptanceTests/testRetainedNetworkJourney',
                 'CODE_SIGNING_ALLOWED=NO']
             environment = {key: value for key, value in __import__('os').environ.items()
                            if key not in ('GH_TOKEN', 'GITHUB_TOKEN', 'GCHAT_NETWORK_INVITATION')}
+            # Compile only the fixture while the independent owned simulator
+            # boots and installs the original app. Test execution still waits
+            # for both; their existing setup deadline is shared and unchanged.
+            build = ['xcodebuild', 'build-for-testing', *common,
+                     '-destination', 'generic/platform=iOS Simulator']
+            self.compiler = subprocess.Popen(list(map(str, build)), stdout=self.log,
+                                             stderr=subprocess.STDOUT, env=environment)
+            setup_stage = 'simulator_boot'
+            ios.run(['xcrun', 'simctl', 'boot', self.device], timeout=120)
+            setup_stage = 'simulator_boot_ready'
+            ios.run(['xcrun', 'simctl', 'bootstatus', self.device, '-b'], timeout=180)
+            if initial is not None:
+                setup_stage = 'initial_install'
+                self.setup_install(initial)
+            setup_stage = 'xctest_build'
+            remaining = self.deadline()-time.monotonic()
+            require(remaining > 0, 'original mobile setup deadline')
+            require(self.compiler.wait(timeout=remaining) == 0, 'owned XCTest fixture compilation failed')
+            require(time.monotonic() < self.deadline(), 'late XCTest fixture compilation')
+            command = ['xcodebuild', 'test-without-building', *common,
+                       '-destination', 'platform=iOS Simulator,id=' + self.device]
             self.runner = subprocess.Popen(list(map(str, command)), stdout=self.log,
                                            stderr=subprocess.STDOUT, env=environment)
             setup_stage = 'xctest_start'
@@ -250,6 +262,7 @@ class IOSUI:
                 self.bridge.polls if self.bridge is not None else 0)
             error.ios_setup_diagnostics['setup_stage'] = setup_stage
             error.ios_setup_diagnostics['install'] = dict(self.install_observation)
+            error.ios_setup_diagnostics['compiler_exit_code'] = self.compiler.poll() if self.compiler is not None else None
             raise
 
     def call(self, op, maximum=120, **values):
@@ -415,6 +428,13 @@ class IOSUI:
 
     def cleanup(self):
         errors = []
+        compiler = getattr(self, 'compiler', None)
+        if compiler is not None and compiler.poll() is None:
+            compiler.kill()
+            try:
+                compiler.wait(timeout=10)
+            except Exception as error:
+                errors.append(type(error).__name__)
         if self.bridge is not None and self.runner is not None and self.runner.poll() is None:
             try:
                 self.bridge.call('finish', timeout=30)

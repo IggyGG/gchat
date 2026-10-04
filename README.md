@@ -10,6 +10,8 @@ Native iOS installation uses one simulator install request followed by exact exe
 
 Android pixel diagnostics retain only numeric word positions and row geometry when exact rendered message matching fails. They cannot qualify delivery or replace the exact body and its own authenticated status.
 
+The iOS fixture compiler runs alongside owned simulator setup, then XCTest executes the compiled fixture only after both compilation and retained-app installation pass. Both phases share the original setup deadline. Android recognition excludes actual owned button rectangles overlapping the transcript, preserving exact text and message-bound delivery checks.
+
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the
 iOS draft. App Store publication still requires the qualified build and Apple's
