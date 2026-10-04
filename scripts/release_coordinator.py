@@ -342,7 +342,8 @@ class Coordinator:
                            GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'])
         if self.config.get('nonblocking_workers', False):
             acceptance = stage == 'acceptance'
-            occupied = sum((item['stage'] == 'acceptance') == acceptance for item in self.running_workers.values())
+            occupied = sum(item['process'].poll() is None and (item['stage'] == 'acceptance') == acceptance
+                           for item in self.running_workers.values())
             limit = self.maximum_acceptance_workers if acceptance else self.maximum_workers
             if occupied >= limit:
                 return None
@@ -350,7 +351,7 @@ class Coordinator:
                 from release_flight import select, internal_complete
                 active = select(self.state, self.ledger, minutes=self.minutes)['active']
                 if manifest['release_id'] != active and active is not None and not internal_complete(self.ledger, active):
-                    background = sum(item['release_id'] != active and
+                    background = sum(item['process'].poll() is None and item['release_id'] != active and
                                      (item['stage'] == 'acceptance') == acceptance
                                      for item in self.running_workers.values())
                     # Retain older dispatched requests, but keep capacity for a

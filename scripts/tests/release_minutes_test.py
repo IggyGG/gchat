@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -188,3 +189,15 @@ class MinutesTests(unittest.TestCase):
              patch.object(self.controller, 'deployment_ready', return_value=False):
             self.controller.step(release, 'ios')
         self.assertIn('paused_at', json.loads((self.root / 'routine-runs' / release / 'ios.json').read_text()))
+
+    def test_completed_uncollected_workers_do_not_hold_publication_capacity(self):
+        self.controller.config.update(nonblocking_workers=True, single_flight=True,
+            workers={'android': {'submit': {'run': [sys.executable, '-c', 'import time;time.sleep(60)'], 'timeout': 120}}})
+        self.addCleanup(self.controller.close_workers)
+        for index in range(3):
+            process = subprocess.Popen([sys.executable, '-c', 'pass']); process.wait(timeout=5)
+            self.controller.running_workers[str(index)] = {'process': process, 'stage': 'build',
+                'release_id': 'a' * 64, 'log': (self.root / ('finished-' + str(index))).open('wb')}
+        self.assertIsNone(self.controller.execute(self.manifest, 'android', 'submit'))
+        self.assertEqual(len(self.controller.running_workers), 4)
+        self.assertEqual(sum(item['process'].poll() is None for item in self.controller.running_workers.values()), 1)

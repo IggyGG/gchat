@@ -54,8 +54,8 @@
   "local_new_release_active": true,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
-  "active_controller_source": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
-  "active_controller_kubernetes_checks": 365,
+  "active_controller_source": "40e7aed8fac50e417c9db0d2ff6837bf5dc03809",
+  "active_controller_kubernetes_checks": 402,
   "live_worker_entry_failure_retained": true,
   "entry_point_fix_requires_new_image": false,
   "single_flight_active": true,
@@ -71,8 +71,8 @@
     "first_and_final_full_canaries_passed": true
   },
   "pending_native_qualification": [
-    "Android and iOS installed acceptance",
-    "Android store publication",
+    "Separate Android/iOS full installed GUI qualification",
+    "Android store processing/review/availability",
     "Apple France-inclusive encryption approval and iOS store publication"
   ],
   "sdk_original_push_matrix_success": true,
@@ -203,7 +203,7 @@
     "original_failed_outcomes_retained": true,
     "new_acceptance_passed": false
   },
-  "source_settle_seconds": 600,
+  "source_settle_seconds": 60,
   "active_priority_controls": {
     "focused_tests": 293,
     "existing_skips": 4,
@@ -1356,7 +1356,7 @@
   "routine_release": {
     "policy": "production-minutes-v1",
     "implemented": true,
-    "activated": false,
+    "activated": true,
     "publication_gates": [
       "protected_sources",
       "native_build",
@@ -1382,10 +1382,45 @@
       "focused_seconds": 38.516,
       "full_workstation_tests": 886,
       "full_workstation_failures": 6,
-      "failure_scope": "existing native lifecycle fixture IPC connection on workstation; independent CI still required",
+      "failure_scope": "Original workstation lifecycle fixture IPC failures retained; exact-source independent CI passed all 891 tests with five existing skips",
       "original_full_log": "operations/release-minutes-full-905.log",
-      "original_full_log_sha256": "9d7c8668ec48a79e6b168e50bc5981c2677561318fe0023853532df77e605e09"
+      "original_full_log_sha256": "9d7c8668ec48a79e6b168e50bc5981c2677561318fe0023853532df77e605e09",
+      "independent_ci_tests": 891,
+      "independent_ci_skips": 5,
+      "independent_ci_seconds": 34.04,
+      "independent_ci_run": 37178472202,
+      "independent_ci_archive_sha256": "4b1a7af698efaeb3d68996bf6963a1646a449ae8caf02e7a956d1e0cdec79cbe",
+      "actual_image_tests": 251,
+      "kubernetes_controls": 402,
+      "source_files_verified": 239
     },
-    "handoff_reconciliation": "Confirmed mobile builds can complete compatibility and upload while newer source builds; running deployment stays observed until its qualified replacement is ready. Explicit deep qualification has an independent queue."
+    "handoff_reconciliation": "Confirmed mobile builds can complete compatibility and upload while newer source builds; running deployment stays observed until its qualified replacement is ready. Explicit deep qualification has an independent queue.",
+    "controller_source": "40e7aed8fac50e417c9db0d2ff6837bf5dc03809",
+    "controller_image": "127.0.0.1:30444/ghost/gchat-release@sha256:429a2cab5f8db69e7511ea52b691a2ec9fc4c565791ad2c88f24273370f2531e",
+    "observed_at": 1791090040,
+    "qualification_sha256": "99f8dc35d78bda45a9f45cdc21229abd9aa31f3e531bb7ec457b750b46010909",
+    "actual_registry_readback": true,
+    "previous_controller_retained": true,
+    "verified_mobile_publication_priority": true,
+    "current_mobile": {
+      "android": {
+        "state": "submitting",
+        "routine_compatibility_passed": true,
+        "full_gui_qualified": false,
+        "external_encryption_state": null
+      },
+      "ios": {
+        "state": "verified",
+        "routine_compatibility_passed": true,
+        "full_gui_qualified": false,
+        "external_encryption_state": "IN_REVIEW"
+      }
+    },
+    "automatic_source_discovery": {
+      "observed_controller_source": "40e7aed8fac50e417c9db0d2ff6837bf5dc03809",
+      "observed_companion_source": "a2d4fc1b25bbdd9c67fc0a10c9e2858d0303d0d8",
+      "push_to_forgejo_mirrored_without_manual_dispatch": true,
+      "next_full_release_complete": false
+    }
   }
 }
