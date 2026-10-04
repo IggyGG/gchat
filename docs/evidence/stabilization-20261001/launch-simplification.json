@@ -308,10 +308,20 @@
     "android": 37174628059,
     "ios": 37174633260,
     "helper": "a33868b0101bdd9ccfa65939e240d2cdac4039b9",
-    "state": "both_running",
+    "state": "android_running_ios_failed",
     "requests": {
       "android": "791cc37e5af548cb5a9de27a7e1433346ce02fa2c978994de1a680a6600e3f68",
       "ios": "2f0790d0d808e16ce0108a3602e418f1cb9f36f2301e859f2ab833018a02d5fa"
+    },
+    "ios_report": {
+      "artifact": 11292664012,
+      "sha256": "a6affd33516cdf74c409e13717da9c1750e5fe34316d801a8913593a1db47539",
+      "passed": false,
+      "stage": "retained-inputs-or-device-setup",
+      "failure": "cold_simulator_bootstatus_timeout",
+      "ui_exercised": false,
+      "cleanup_passed": true,
+      "receipt": "operations/ios-helper-a33868b-result-896.zip"
     }
   },
   "retained_workstation_failures": {
@@ -1315,6 +1325,13 @@
     "exact_input_prefix_after_every_batch": true,
     "scroll_only_when_control_not_visible": true,
     "public_command_timings_only": true,
+    "native_result_required": true
+  },
+  "ios_cold_boot": {
+    "boot_maximum_seconds": 360,
+    "original_setup_seconds": 600,
+    "reserved_install_and_runner_seconds": 240,
+    "focused_controls": 73,
     "native_result_required": true
   }
 }

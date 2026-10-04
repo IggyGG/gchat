@@ -6,7 +6,7 @@ python3 scripts/release.py status
 
 Release status, 2026-10-04: the local Linux app and all 17 infrastructure targets are active on release 0.1.98. Linux, Windows, both Mac architectures and SDK archives are published. Android and iOS installed acceptance, mobile publication, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval is IN_REVIEW, including France.
 
-Current mobile qualification: helper a33868b passed 876 independent CI controls with five existing skips and 72 focused controls. Android run 37174628059 and iOS run 37174633260 are executing against the original signed applications, with exact export bytes, original deadlines and all earlier failed reports retained. Installed qualification and mobile publication remain incomplete.
+Current mobile qualification: helper a33868b passed 876 independent CI controls with five existing skips. Android run 37174628059 is still running. iOS run 37174633260 failed disposable simulator boot before exercising the app and cleaned its owned installation. Cold boot now uses the remaining setup budget with 240 seconds reserved for installing the unchanged app and starting XCTest; the original 600-second setup and product deadlines remain unchanged. All 73 focused controls pass; complete native qualification and mobile publication remain required.
 
 ## Routine release operation
 

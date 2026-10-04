@@ -227,7 +227,7 @@ class IOSUI:
             setup_stage = 'simulator_boot'
             ios.run(['xcrun', 'simctl', 'boot', self.device], timeout=120)
             setup_stage = 'simulator_boot_ready'
-            ios.run(['xcrun', 'simctl', 'bootstatus', self.device, '-b'], timeout=180)
+            self.wait_boot_ready()
             if initial is not None:
                 setup_stage = 'initial_install'
                 self.setup_install(initial)
@@ -287,6 +287,15 @@ class IOSUI:
         maximum = min(240, self.deadline() - time.monotonic() - 120)
         require(maximum > 20, 'original mobile setup deadline')
         self.install(item, maximum=maximum)
+
+    def wait_boot_ready(self):
+        # A cold disposable simulator may spend longer on first boot. Keep the
+        # original setup deadline and reserve two minutes each for installing
+        # the unchanged app and starting the already compiling XCTest runner.
+        maximum = min(360, self.deadline() - time.monotonic() - 240)
+        require(maximum > 0, 'original simulator setup boot deadline')
+        ios.run(['xcrun', 'simctl', 'bootstatus', self.device, '-b'], timeout=maximum)
+        require(time.monotonic() < self.deadline() - 240, 'late simulator boot readiness')
 
     def install(self, item, maximum=120):
         if self.installed and self.active_binary_sha256 == item['binary_sha256']:

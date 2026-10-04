@@ -910,6 +910,23 @@ class MobileAcceptanceTests(unittest.TestCase):
             ui.setup_install({'app':'retained.app'})
         install.assert_not_called()
 
+    def test_ios_cold_boot_reserves_install_and_runner_without_extending_setup(self):
+        ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.deadline=lambda:600
+        for now,maximum in ((0,360),(120,240),(300,60)):
+            with self.subTest(now=now),patch('mobile_ios_ui.time.monotonic',return_value=now), \
+                 patch('mobile_ios_ui.ios.run') as run:
+                ui.wait_boot_ready()
+                self.assertEqual(run.call_args.args[0],['xcrun','simctl','bootstatus','owned','-b'])
+                self.assertEqual(run.call_args.kwargs['timeout'],maximum)
+                self.assertLessEqual(now+maximum+240,600)
+        with patch('mobile_ios_ui.time.monotonic',return_value=360), \
+             patch('mobile_ios_ui.ios.run') as run,self.assertRaisesRegex(ValueError,'setup boot deadline'):
+            ui.wait_boot_ready()
+        run.assert_not_called()
+        with patch('mobile_ios_ui.time.monotonic',side_effect=[120,360]), \
+             patch('mobile_ios_ui.ios.run'),self.assertRaisesRegex(ValueError,'late simulator boot'):
+            ui.wait_boot_ready()
+
     def test_ios_initial_setup_install_still_requires_hash_before_its_own_deadline(self):
         import subprocess
         ui=IOSUI.__new__(IOSUI);ui.device='owned';ui.installed=False
