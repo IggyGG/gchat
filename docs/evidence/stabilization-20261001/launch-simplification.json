@@ -305,13 +305,13 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37163083196,
-    "ios": 37163084806,
-    "helper": "d511b9758df0f394e440ca7a3955b47397224a4f",
-    "state": "both_failed",
+    "android": 37164250244,
+    "ios": 37164250144,
+    "helper": "f30bac0ec2f67936b856755ea4799e52e0407fd2",
+    "state": "both_running",
     "requests": {
-      "android": "073d4d7ff82cefacc6036ffe19444197950f573b373628e798d85f2f3bdd6e1e",
-      "ios": "763dacd6e28e4ad16310ce6d6410d3c17d526101403f7c8a97ff0d63cc7ba862"
+      "android": "6afa603c628e78dc9f5a12d1a7300c928a6bdebdd5e0ecd617873b51136b639c",
+      "ios": "6328018b05ca991d82de46338affe1dca9da2dddc336d6a703bedafbc283dd2b"
     }
   },
   "retained_workstation_failures": {
@@ -338,8 +338,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "d511b9758df0f394e440ca7a3955b47397224a4f",
-  "native_helper_qualification": "operations/native-helper-d511b97-qualified-806.json",
+  "native_helper_source": "f30bac0ec2f67936b856755ea4799e52e0407fd2",
+  "native_helper_qualification": "operations/native-helper-f30bac0-qualified-810.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -815,6 +815,17 @@
     "installed_binary_hash_required": true,
     "focused_controls_passed": 62,
     "focused_seconds": 2.135,
-    "native_acceptance_passed": false
+    "native_acceptance_passed": false,
+    "qualified_source": "f30bac0ec2f67936b856755ea4799e52e0407fd2",
+    "source_controls_passed": 866,
+    "source_controls_seconds": 36.003
+  },
+  "local_running_activation": {
+    "passed": true,
+    "installed_version": "0.1.98",
+    "running_production_binary_matches_managed_install": true,
+    "receipt": "operations/local-active-readback-814.json",
+    "old_test_process_is_separate": true,
+    "personal_profiles_modified": false
   }
 }

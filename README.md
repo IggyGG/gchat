@@ -804,3 +804,5 @@ Owned iOS workers use simctl to copy and verify each input in the fresh simulato
 Simulator installation reserves time for container lookup and hashing within the existing deadline. Android receipt observation uses two normal OCR segmentation modes and adjacent smaller-font receipt lines; complete exact message and delivered status remain required.
 
 Android export workers enter the exact filename through the normal system DocumentsUI picker with explicit package and focus checks. Other applications cannot receive fixture input.
+
+Local readback on 2026-10-04 verifies that the running production-profile executable matches the managed GChat 0.1.98 installation. The source-mirror and package-update timers are active.
