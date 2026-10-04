@@ -131,7 +131,7 @@ class MobileJourney:
         cache_id, expected = self.offer(cache_name, network.PIECE)
         ui.file_action(cache_name, 'Download & share')
         self.until(lambda: ui.progress(cache_name, network.PIECE) == network.PIECE)
-        require(ui.export(cache_name, 'initial') == expected, 'initial installed cached export differs')
+        require(ui.export(cache_name, 'initial', expected_sha256=expected) == expected, 'initial installed cached export differs')
         encrypted = ui.cache_hash(cache_id)
         require(encrypted != expected, 'cache piece is not the plaintext export')
         retained_bodies = [row['body'] for row in self.peer.history(0) if row['body'].startswith('Canary ')]
@@ -143,7 +143,7 @@ class MobileJourney:
             ui.history(retained_bodies)
             require(ui.cache_hash(cache_id) == encrypted, 'retained encrypted mobile cache changed')
             self.ack(ui, phase, self.rollback)
-            require(ui.export(cache_name, phase) == expected, 'cached export after replacement differs')
+            require(ui.export(cache_name, phase, expected_sha256=expected) == expected, 'cached export after replacement differs')
             self.rollback['phases'].append({'phase': phase, 'binary_sha256': item['binary_sha256'],
                 'same_identity': True, 'history_retained': True, 'cache_sha256': expected,
                 'encrypted_cache_sha256': encrypted, 'authenticated_bidirectional_ack': True})
@@ -180,7 +180,7 @@ class MobileJourney:
         self.until(lambda: ui.progress(name, 16777216) == 16777216, remaining)
         completion = time.monotonic() - file_started
         require(completion <= 360, 'late installed mobile file completion')
-        require(ui.export(name, 'network') == expected, 'installed mobile export hash differs')
+        require(ui.export(name, 'network', expected_sha256=expected) == expected, 'installed mobile export hash differs')
         self.stage = 'network-after'
         self.resume_after_export(ui)
         self.ack(ui, 'after', self.report)
@@ -189,7 +189,7 @@ class MobileJourney:
         self.stage = 'final-reopen'
         require(ui.identity() == identity, 'mobile identity changed after final reopen')
         require(ui.progress(name, 16777216) == 16777216, 'verified completed file lost on reopen')
-        require(ui.export(name, 'reopened') == expected, 'reopened mobile export hash differs')
+        require(ui.export(name, 'reopened', expected_sha256=expected) == expected, 'reopened mobile export hash differs')
         self.resume_after_export(ui)
         self.ack(ui, 'reopened', self.report)
         self.report.update(file_check={'bytes': 16777216, 'sha256': expected,

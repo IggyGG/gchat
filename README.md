@@ -1,10 +1,10 @@
 # GChat
 
-Release status, 2026-10-04: the local Linux app and all 17 infrastructure targets are active on release 0.1.98. Linux, Windows, both Mac architectures and SDK archives are published. Android and iOS installed acceptance are running; mobile publication, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval is IN_REVIEW, including France.
+Release status, 2026-10-04: the local Linux app and all 17 infrastructure targets are active on release 0.1.98. Linux, Windows, both Mac architectures and SDK archives are published. Android and iOS installed acceptance, mobile publication, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval is IN_REVIEW, including France.
 
 Routine releases: push `main`; the source mirror and Kubernetes coordinator build, verify, deploy and publish. The local package timer installs signed desktop updates. Inspect with `python3 scripts/release.py status`; use `resume --platform <platform>` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
 
-Current mobile qualification: helper 60e013f passed 875 independent CI controls with five existing skips and 71 focused controls. Android run 37173512941 and iOS run 37173562764 are executing against the original signed applications. Installed qualification and mobile publication remain incomplete.
+Current mobile qualification: retained helper 60e013f passed 875 independent CI controls with five existing skips. Android run 37173512941 fails initial OS export hash verification; iOS run 37173562764 passes upgrade and baseline rollback before reaching the original final-restoration deadline. The correction waits for the exact Android export bytes within 30 seconds and removes redundant iOS observation waits, input snapshots and scrolling. Exact hashes, every input prefix, original deadlines and failed provider reports remain mandatory. All 72 focused controls pass; new native results are required.
 
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the

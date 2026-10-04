@@ -368,6 +368,34 @@ class MobileAcceptanceTests(unittest.TestCase):
                     wrong=ET.Element('node',{'package':package,'text':'SAVE'})
                     self.assertFalse(android_ui.system_picker_control(wrong,('Save','SAVE')))
 
+    def test_android_export_waits_for_expected_bytes_instead_of_initial_empty_os_file(self):
+        for complete in (True,False):
+            with self.subTest(complete=complete),tempfile.TemporaryDirectory() as temporary:
+                ui,_,_=self.owned_android_ui(Path(temporary));filename='gchat-acceptance-initial.bin'
+                def control(text,**extra):return ET.Element('node',{'package':'com.android.documentsui',
+                    'text':text,'bounds':'[10,10][90,40]',**extra})
+                screens=[control(filename,**{'class':'android.widget.EditText'}),control('Downloads'),control('SAVE')]
+                values=[b'',b'complete native export' if complete else b'wrong native export']
+                expected=hashlib.sha256(b'complete native export').hexdigest()
+                def until(predicate,timeout=60):
+                    self.assertEqual(timeout,30)
+                    for _ in range(2):
+                        value=predicate()
+                        if value:return value
+                    raise TimeoutError('original export deadline')
+                def node(predicate,*args):
+                    value=screens.pop(0);self.assertTrue(predicate(value));return value
+                with patch.object(ui,'file_action'),patch.object(ui,'node',side_effect=node),patch.object(ui,'type'), \
+                     patch.object(ui,'tap'),patch.object(ui,'shell',return_value=filename), \
+                     patch.object(ui,'command',side_effect=values),patch.object(ui,'until',side_effect=until), \
+                     patch.object(ui,'unlock') as unlock:
+                    if complete:self.assertEqual(ui.export('baseline-cache.bin','initial',expected),expected)
+                    else:
+                        with self.assertRaisesRegex(TimeoutError,'original export deadline'):
+                            ui.export('baseline-cache.bin','initial',expected)
+                unlock.assert_not_called()
+                self.assertEqual(ui.ui_observation['export_copy']['hash_matched'],complete)
+
     def test_android_keyboard_presence_does_not_replace_intended_field_focus(self):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary))

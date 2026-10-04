@@ -24,9 +24,15 @@ final class GChatAcceptanceTests: XCTestCase {
     }
 
     func wait(_ seconds: TimeInterval = 60, line: UInt = #line, _ check: @escaping () -> Bool) throws {
-        let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in check() }, object: nil)], timeout: seconds)
-        try require(result == .completed, line: line)
+        let end = ProcessInfo.processInfo.systemUptime + seconds
+        while ProcessInfo.processInfo.systemUptime < end {
+            if check() {
+                try require(ProcessInfo.processInfo.systemUptime <= end, line: line)
+                return
+            }
+            Thread.sleep(forTimeInterval: min(0.2, max(0, end - ProcessInfo.processInfo.systemUptime)))
+        }
+        try require(false, line: line)
     }
 
     func element(_ label: String) -> XCUIElement {
@@ -118,7 +124,10 @@ final class GChatAcceptanceTests: XCTestCase {
                 return actual == before || (before.isEmpty && actual != nil && actual == field.placeholderValue)
             }
             for attempt in 0..<2 {
-                try require(unchangedPrefix())
+                // The preceding batch already proved the exact prefix. Check
+                // the initial field and any retry again; every new batch must
+                // still prove its complete expected value before continuing.
+                if offset == 0 || attempt > 0 { try require(unchangedPrefix()) }
                 if attempt > 0 {
                     // Only an unchanged prefix permits another local input.
                     // Partial, changed or masked values remain failures.
@@ -173,9 +182,8 @@ final class GChatAcceptanceTests: XCTestCase {
             app.webViews.firstMatch.swipeUp()
         }
         try wait(30) { self.element(button).exists }
-        // Revealing the submit control can place the passphrase above the fold.
-        app.webViews.firstMatch.swipeDown()
-        app.webViews.firstMatch.swipeDown()
+        // Visibility and input helpers scroll only when their actual field or
+        // control is outside the visible form.
         phase = "unlock-passphrase"
         try type(app.webViews.secureTextFields.firstMatch, passphrase)
         if create {

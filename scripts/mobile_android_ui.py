@@ -716,7 +716,7 @@ class AndroidUI:
                 and selected[0].startswith(root + '/'), 'one retained encrypted cache piece required')
         return hashlib.sha256(self.command('exec-out', 'cat', selected[0], binary=True)).hexdigest()
 
-    def export(self, name, phase):
+    def export(self, name, phase, expected_sha256=None):
         self.file_action(name, 'Save file…')
         filename = 'gchat-acceptance-' + phase + '.bin'
         require(re.fullmatch(r'gchat-acceptance-[a-z0-9-]+\.bin', filename), 'invalid owned export name')
@@ -733,8 +733,14 @@ class AndroidUI:
         path = '/sdcard/Download/' + filename
         self.exports.append(path)
         self.until(lambda: filename in self.shell('ls', '-1', '/sdcard/Download').splitlines(), 30)
-        data = self.command('exec-out', 'cat', path, binary=True)
-        return hashlib.sha256(data).hexdigest()
+        if expected_sha256 is not None:
+            require(re.fullmatch('[0-9a-f]{64}', expected_sha256), 'expected export hash required')
+        def complete():
+            data = self.command('exec-out', 'cat', path, binary=True)
+            actual = hashlib.sha256(data).hexdigest()
+            self.ui_observation['export_copy'] = {'bytes':len(data), 'hash_matched':actual == expected_sha256}
+            return actual if expected_sha256 is None or actual == expected_sha256 else None
+        return self.until(complete, 30)
 
     def resume_after_export(self):
         # Reconnect through normal UI when the next operation requires it.

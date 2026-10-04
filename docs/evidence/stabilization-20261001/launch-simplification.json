@@ -51,7 +51,7 @@
   },
   "controller_image_active": true,
   "fleet_launched": true,
-  "local_new_release_active": false,
+  "local_new_release_active": true,
   "native_acceptance_complete": false,
   "sdk_1_0_qualified": false,
   "active_controller_source": "7f423f8505d9953af1f0c9a2e0a04e5fdff61745",
@@ -308,10 +308,32 @@
     "android": 37173512941,
     "ios": 37173562764,
     "helper": "60e013ffa99dba61c3d475b83af71b82774665f8",
-    "state": "both_running",
+    "state": "both_failed",
     "requests": {
       "android": "ac23a1415353eac39c314037e182fa6a41e36abc25005c96fc60513cd47dffdb",
       "ios": "a49e346ea9297b4091c6520d6b35740c6e219786e386177a81dc137c3f6872dd"
+    },
+    "android_report": {
+      "artifact": 11291724623,
+      "sha256": "d39ea1be19b642bd5f61794ec9965001da1ac276e61ef5d2b02dbd4c247230ab",
+      "passed": false,
+      "stage": "baseline-cache",
+      "failure": "initial_os_export_hash_mismatch",
+      "exact_rendering_and_authenticated_bidirectional_ack": true,
+      "cleanup_passed": true,
+      "receipt": "operations/android-helper-60e013f-result-886.zip"
+    },
+    "ios_report": {
+      "artifact": 11292568102,
+      "sha256": "75f94819033e0b09c107f561cda6ea5c99a6368b0c5d8f9713cb2489c5697de4",
+      "passed": false,
+      "stage": "replacement-restored",
+      "failure": "original_compatibility_deadline_during_final_unlock",
+      "upgrade_and_baseline_rollback_passed": true,
+      "unchanged_identity_history_encrypted_cache_and_export_hash": true,
+      "authenticated_acks": 6,
+      "cleanup_passed": true,
+      "receipt": "operations/ios-helper-60e013f-result-887.zip"
     }
   },
   "retained_workstation_failures": {
@@ -1268,5 +1290,21 @@
     "focused_tests": 68,
     "focused_passed": true,
     "native_pass": false
+  },
+  "mobile_export_completion": {
+    "exact_expected_sha256_required": true,
+    "copy_wait_seconds": 30,
+    "original_deadlines_retained": true,
+    "focused_controls": 72,
+    "passed": true,
+    "native_result_required": true
+  },
+  "ios_ui_observation_cost": {
+    "poll_seconds": 0.2,
+    "original_timeouts_retained": true,
+    "exact_input_prefix_after_every_batch": true,
+    "scroll_only_when_control_not_visible": true,
+    "public_command_timings_only": true,
+    "native_result_required": true
   }
 }

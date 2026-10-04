@@ -270,7 +270,16 @@ class IOSUI:
         end = min(time.monotonic()+maximum, self.deadline())
         left = end-time.monotonic()
         require(left > 0, 'original mobile journey deadline')
-        return self.bridge.call(op, timeout=left, alive=lambda: self.runner.poll() is None, **values)
+        started = time.monotonic()
+        try:
+            return self.bridge.call(op, timeout=left, alive=lambda: self.runner.poll() is None, **values)
+        finally:
+            if op in UI_PHASES:
+                timings = getattr(self, 'command_timings', {})
+                row = timings.setdefault(op, {'calls': 0, 'seconds': 0})
+                row['calls'] += 1
+                row['seconds'] = round(row['seconds'] + time.monotonic() - started, 3)
+                self.command_timings = timings
 
     def setup_install(self, item):
         # Initial simulator installation is fixture setup, before the product
@@ -331,6 +340,7 @@ class IOSUI:
             self.runner.poll() if self.runner is not None else None,
             self.bridge.polls if self.bridge is not None else 0)
         result['install'] = dict(self.install_observation)
+        result['command_timings'] = dict(getattr(self, 'command_timings', {}))
         return result
 
     def stop(self):
@@ -410,7 +420,7 @@ class IOSUI:
         require(len(paths) == 1, 'one retained encrypted mobile cache piece required')
         return hashlib.sha256(paths[0].read_bytes()).hexdigest()
 
-    def export(self, name, phase):
+    def export(self, name, phase, expected_sha256=None):
         uri = self.call('export', name=name)
         require(isinstance(uri, str), 'actual iOS saved document URI unavailable')
         parsed = urlparse(uri)
@@ -421,6 +431,7 @@ class IOSUI:
                 and path.resolve().is_relative_to(root.resolve()),
                 'actual owned iOS document export missing')
         value = hashlib.sha256(path.read_bytes()).hexdigest()
+        require(expected_sha256 is None or value == expected_sha256, 'actual iOS export differs from expected bytes')
         # Remove only this exact, newly exported disposable document. A fresh
         # export at each reopen cannot be satisfied by an earlier saved copy.
         path.unlink()
