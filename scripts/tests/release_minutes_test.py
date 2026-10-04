@@ -168,3 +168,14 @@ class MinutesTests(unittest.TestCase):
             self.controller.reconcile_deployment()
         self.assertEqual(step.call_args.args[0]['release_id'], release)
         self.assertEqual(json.loads((self.root / 'deployment/desired.json').read_text())['release_id'], release)
+
+    def test_verified_current_mobile_upload_is_polled_before_new_builds(self):
+        release = self.manifest['release_id']
+        newer = self.controller.ledger.add(candidate(2))
+        self.controller.config['single_flight'] = True
+        atomic_json(self.root / 'deployment/desired.json', {'release_id': release, 'sequence': 1})
+        atomic_json(self.root / 'release-flight.json', {'active': newer, 'pending': None})
+        self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=? AND platform='android'", (release,))
+        with patch.object(self.controller, 'step') as step, patch.object(self.controller, 'reconcile_deployment'):
+            self.controller.tick()
+        self.assertEqual(step.call_args_list[0].args, (release, 'android'))

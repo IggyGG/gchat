@@ -505,11 +505,14 @@ class Coordinator:
                             {'reason': type(error).__name__, 'at': int(time.time())})
         from release_flight import select
         active = select(self.state, self.ledger, minutes=self.minutes)['active'] if self.config.get('single_flight', False) else None
+        desired = self.state / 'deployment/desired.json'
+        publishing = json.loads(desired.read_text())['release_id'] if self.minutes and desired.is_file() else None
         rows = self.ledger.db.execute('''SELECT p.candidate,p.platform FROM platforms p
             JOIN candidates c ON c.id=p.candidate
-            ORDER BY (p.candidate=?) DESC,
+            ORDER BY (p.candidate=? AND p.platform IN ('ios','android') AND p.state IN ('verified','submitting')) DESC,
+                (p.candidate=?) DESC,
                 (p.platform IN ('ios','android') AND p.state IN ('submitting','processing','in_review')) DESC,
-                c.seq DESC,p.rowid''', (active,)).fetchall()
+                c.seq DESC,p.rowid''', (publishing, active)).fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
         if self.minutes:
