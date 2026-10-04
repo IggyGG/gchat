@@ -305,38 +305,27 @@
     "workflow": "contracts-check.yml"
   },
   "current_mobile_providers": {
-    "android": 37168411094,
-    "android_helper": "593c9ea0171f324a98a0aa7e7fed538cf687b41e",
-    "ios": 37167901682,
-    "ios_helper": "a2b7e97055dd9330759bc9ecf4ee22900125ab00",
-    "state": "both_failed",
+    "android": 37169210232,
+    "android_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
+    "ios": 37169238415,
+    "ios_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
+    "state": "android_failed_ios_running",
     "requests": {
-      "android": "408ead45bf2ab89a48749747be01c6112caf5a02caa223faef9148f301b935cc",
-      "ios": "20f188cd8c0af1fcaf417901d5d221e14684ff34eeea8f204561160240aec5d8"
+      "android": "5e479b3224a5ef713f160d475879773d4835559e6b4fca34e879bf41964ff95a",
+      "ios": "7a031a2539ffe90ca2b8b0737ddec869ab089b57c2b936096b8356ac4a986242"
     },
     "android_report": {
-      "artifact": 11289964440,
-      "sha256": "6a7faf124b29221fb3f80c6f8e42f8f01012bd72b2eafa3c8c8d67f7d405168d",
+      "artifact": 11291130142,
+      "sha256": "2d6446868bb0c66f862b5e0d4b72216668c96a4f3aae9ae0f12a0738e2a0343f",
       "passed": false,
-      "failure": "extraneous_pixel_rows_interrupt_exact_body",
-      "expected_words": 11,
-      "observed_words": 11,
-      "complete_body_spans": 0,
-      "exact_body_in_all_rows": false,
+      "stage": "baseline-cache",
+      "failure": "system_filename_retained_one_character",
+      "exact_rendering_and_authenticated_bidirectional_ack": true,
+      "pixel_overlay_controls": 4,
+      "input_expected_length": 28,
+      "input_actual_length": 29,
       "cleanup_passed": true,
-      "receipt": "operations/android-helper-593c9ea-result-840.zip"
-    },
-    "ios_report": {
-      "artifact": 11290287063,
-      "sha256": "71eb62e252676e741fa917db9c7927fff26f0d0db45fee648ab899ffdcfd196b",
-      "passed": false,
-      "stage": "xctest_start",
-      "hash_verified": true,
-      "install_attempts": 1,
-      "install_observations": 2,
-      "bridge_polls": 0,
-      "cleanup_passed": false,
-      "receipt": "operations/ios-helper-a2b7e97-result-836.zip"
+      "receipt": "operations/android-helper-c777296-result-845.zip"
     }
   },
   "retained_workstation_failures": {
@@ -363,8 +352,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "593c9ea0171f324a98a0aa7e7fed538cf687b41e",
-  "native_helper_qualification": "operations/native-helper-593c9ea-qualified-837.json",
+  "native_helper_source": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
+  "native_helper_qualification": "operations/native-helper-c777296-qualified-842.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -906,6 +895,41 @@
         "android": "a9c29224849dec5dfc97faeba357ffed6fedcff261ba616ea31db8d5d069e7c3",
         "ios": "20f188cd8c0af1fcaf417901d5d221e14684ff34eeea8f204561160240aec5d8"
       }
+    },
+    {
+      "android": 37168411094,
+      "android_helper": "593c9ea0171f324a98a0aa7e7fed538cf687b41e",
+      "ios": 37167901682,
+      "ios_helper": "a2b7e97055dd9330759bc9ecf4ee22900125ab00",
+      "state": "both_failed",
+      "requests": {
+        "android": "408ead45bf2ab89a48749747be01c6112caf5a02caa223faef9148f301b935cc",
+        "ios": "20f188cd8c0af1fcaf417901d5d221e14684ff34eeea8f204561160240aec5d8"
+      },
+      "android_report": {
+        "artifact": 11289964440,
+        "sha256": "6a7faf124b29221fb3f80c6f8e42f8f01012bd72b2eafa3c8c8d67f7d405168d",
+        "passed": false,
+        "failure": "extraneous_pixel_rows_interrupt_exact_body",
+        "expected_words": 11,
+        "observed_words": 11,
+        "complete_body_spans": 0,
+        "exact_body_in_all_rows": false,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-593c9ea-result-840.zip"
+      },
+      "ios_report": {
+        "artifact": 11290287063,
+        "sha256": "71eb62e252676e741fa917db9c7927fff26f0d0db45fee648ab899ffdcfd196b",
+        "passed": false,
+        "stage": "xctest_start",
+        "hash_verified": true,
+        "install_attempts": 1,
+        "install_observations": 2,
+        "bridge_polls": 0,
+        "cleanup_passed": false,
+        "receipt": "operations/ios-helper-a2b7e97-result-836.zip"
+      }
     }
   ],
   "provider_outage_recovery": {
@@ -1078,6 +1102,15 @@
     "only_test_fixture_compiled": true,
     "pixel_exclusion": "actual owned button rectangles overlapping transcript",
     "full_exact_body_and_bound_receipt_required": true,
+    "native_pass": false
+  },
+  "android_system_filename_replacement": {
+    "focused_tests": 68,
+    "focused_passed": true,
+    "owned_picker_only": true,
+    "clear_after_keyboard_and_focus": true,
+    "empty_value_observed_before_type": true,
+    "exact_filename_and_hash_required": true,
     "native_pass": false
   }
 }

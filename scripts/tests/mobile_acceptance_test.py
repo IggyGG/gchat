@@ -285,6 +285,29 @@ class MobileAcceptanceTests(unittest.TestCase):
                             ui.type(field,'gchat-acceptance-initial.bin',system_export=True)
                         self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
 
+    def test_android_system_filename_replacement_reconciles_a_delayed_delete_before_input(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ui,_,_=self.owned_android_ui(Path(temporary));calls=[];keyboard=[]
+            field=ET.Element('node',{'package':'com.android.documentsui','class':'android.widget.EditText',
+                'resource-id':'filename','focused':'true','text':'baseline-cache.bin'})
+            expected='gchat-acceptance-initial.bin'
+            def shell(*args):
+                calls.append(args)
+                if 'KEYCODE_DEL' in args:
+                    self.assertEqual(keyboard,[True])
+                    field.set('text','n' if sum('KEYCODE_DEL' in c for c in calls)==1 else '')
+                if args[:2]==('input','text'):
+                    self.assertEqual(field.get('text'),'')
+                    field.set('text',expected)
+            with patch.object(ui,'tap'),patch.object(ui,'shell',side_effect=shell), \
+                 patch.object(ui,'tree',return_value=field), \
+                 patch.object(android_ui.android,'wait_keyboard',side_effect=lambda _,on:keyboard.append(on)):
+                ui.type(field,expected,system_export=True,replace=True)
+            self.assertEqual(sum('KEYCODE_DEL' in c for c in calls),2)
+            self.assertEqual(keyboard,[True,False])
+            self.assertEqual(ui.ui_observation['input_value']['exact_value_fields'],1)
+            self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
+
     def test_android_keyboard_presence_does_not_replace_intended_field_focus(self):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary))

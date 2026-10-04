@@ -320,11 +320,14 @@ class AndroidUI:
             self.shell('input', 'swipe', (x1+x2)//2, y1+(y2-y1)//4,
                        (x1+x2)//2, y1+3*(y2-y1)//4, '250')
 
-    def type(self, node, value, system_export=False):
+    def type(self, node, value, system_export=False, replace=False):
         package = node.get('package')
         require(package == android.PACKAGE or (system_export and package in
             ('com.android.documentsui', 'com.google.android.documentsui')),
             'native input requires the owned application or system export picker')
+        require(not replace or (system_export and package in
+            ('com.android.documentsui', 'com.google.android.documentsui')),
+            'replacement is restricted to the actual system export filename')
         self.ui_observation['input_target_bounds'] = android.ui_bounds(node)
         self.tap(node)
         # WebView focus and the IME arrive asynchronously. Pressing Back before
@@ -336,6 +339,22 @@ class AndroidUI:
             and all(child.get(key, '') == node.get(key, '') for key in ('resource-id', 'content-desc'))
             for child in self.tree().iter('node')), 10)
         self.input_started = True
+        if replace:
+            def empty():
+                fields = [child for child in self.tree().iter('node') if child.get('package') == package
+                    and child.get('class') == 'android.widget.EditText' and child.get('focused') == 'true'
+                    and all(child.get(key, '') == node.get(key, '') for key in ('resource-id', 'content-desc'))]
+                require(len(fields) == 1, 'one focused system export filename required')
+                text = fields[0].get('text', '')
+                require(len(text) <= 255, 'unexpected system export filename')
+                if not text: return True
+                self.shell('input', 'keyevent', 'KEYCODE_MOVE_END')
+                self.shell('input', 'keyevent', *(['KEYCODE_DEL'] * len(text)))
+                return False
+            # Clear only after focus and keyboard are ready, and observe the
+            # actual empty value before entering the replacement. A delayed
+            # deletion is reconciled within the same input operation.
+            self.until(empty, 10)
         self.shell('input', 'text', shlex.quote(value.replace(' ', '%s')))
         def confirmed():
             fields = [child for child in self.tree().iter('node') if child.get('package') == package
@@ -663,11 +682,7 @@ class AndroidUI:
         require(re.fullmatch(r'gchat-acceptance-[a-z0-9-]+\.bin', filename), 'invalid owned export name')
         field = self.node(lambda node: node.get('package', '').endswith('.documentsui')
                           and node.get('class') == 'android.widget.EditText', 30)
-        self.tap(field)
-        self.shell('input', 'keyevent', 'KEYCODE_MOVE_END')
-        require(0 < len(field.get('text', '')) <= 255, 'unexpected system export filename')
-        self.shell('input', 'keyevent', *(['KEYCODE_DEL'] * len(field.get('text', ''))))
-        self.type(field, filename, system_export=True)
+        self.type(field, filename, system_export=True, replace=True)
         self.node(lambda node: node.get('package', '').endswith('.documentsui')
                   and node.get('class') == 'android.widget.EditText' and node.get('text') == filename, 10)
         # Select the system provider's Downloads root and save its exact bytes.
