@@ -1,8 +1,8 @@
 # GChat
 
-Release status, 2026-10-03: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Android and iOS installed acceptance remain incomplete; Apple encryption approval is IN_REVIEW, including France. Linux 0.1.98 is installed and its running production-profile executable matches it.
+Release status, 2026-10-04: all 17 infrastructure targets are healthy and match the release. Linux, Windows, both Mac architectures and SDK 0.1.98 are published. Linux 0.1.98 is installed and its running production-profile executable matches it. Android and iOS installed acceptance, iOS OS invitation arrival, SDK 1.0 and the subsequent unattended release remain open. Apple encryption approval remains IN_REVIEW, including France.
 
-All eight node headroom timers are enabled and scheduled checks pass. Controller 7f423f8 is active after 854 source controls, 214 actual-image controls, 365 Kubernetes controls and verification of 237 source files. Temporary GitHub 502/503/504 errors now use bounded automatic reconciliation of the original request. Both mobile acceptance requests use the qualified same-source helper, with Android focus confirmation and separate iOS visible join stages under unchanged limits. All 17 deployment targets pass a fresh health/version check. Original failures, signed app bytes, API contracts and security checks remain unchanged; mobile launch and OS invitation arrival remain incomplete.
+Routine releases use the existing source mirror and Kubernetes coordinator: push main, then inspect with `python3 scripts/release.py status`. Controller 7f423f8 handles bounded temporary GitHub outage recovery. All eight node headroom timers are enabled and their scheduled checks pass. Failed reports, original provider requests and signed application bytes remain retained.
 
 Routine releases: push `main`; automation builds, verifies, deploys and publishes. Inspect with `python3 scripts/release.py status`; use `resume` for a retained failed stage and `rollback` for recorded infrastructure. See [automatic releases](docs/AUTOMATIC_RELEASES.md) and [current evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
 
@@ -15,6 +15,8 @@ The iOS fixture compiler runs alongside owned simulator setup, then XCTest execu
 System filename replacement waits for the actual owned picker field and keyboard, verifies that the old name is empty, then requires the exact new name before saving. Export and cache hashes remain mandatory.
 
 Native iOS input confirms every exact prefix. Long invitations use 64-character keyboard batches; passphrases retain eight-character batches. Only numeric total/confirmed lengths enter diagnostics; command and journey deadlines remain unchanged.
+
+The retained Android cecddf7 run passes exact rendered messages, authenticated acknowledgments in both directions and exact export filename confirmation. It then fails because the system picker has no Show roots control. The helper now accepts the normal Downloads screen directly or opens it through Show roots, using only the two owned DocumentsUI packages and exact Save labels; export hashes remain mandatory. iOS d3a64e5 is independently qualified and running against the original signed apps. Remaining dynamic WebView row queries now bind accessibility elements rather than unstable indices. All 69 focused controls pass in 2.936 seconds; L0 checks 825 paths and API 2/3 contracts remain unchanged. Native results are still required.
 
 The [Apple App Store creative pack](marketing/app-store/retro-v1/README.md)
 adds four iPhone and four iPad screenshots plus English listing metadata to the

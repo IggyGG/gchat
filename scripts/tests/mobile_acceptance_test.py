@@ -308,6 +308,30 @@ class MobileAcceptanceTests(unittest.TestCase):
             self.assertEqual(ui.ui_observation['input_value']['exact_value_fields'],1)
             self.assertEqual(ui.ui_observation['inputs_confirmed'],1)
 
+    def test_android_export_accepts_downloads_already_open_and_requires_original_hash(self):
+        for drawer,save in ((False,'SAVE'),(True,'Save')):
+            with self.subTest(drawer=drawer),tempfile.TemporaryDirectory() as temporary:
+                ui,_,_=self.owned_android_ui(Path(temporary));taps=[];filename='gchat-acceptance-initial.bin'
+                def control(text='',**extra):
+                    return ET.Element('node',{'package':'com.android.documentsui','text':text,
+                        'bounds':'[10,10][90,40]',**extra})
+                field=control(filename,**{'class':'android.widget.EditText'})
+                download=control('Downloads');roots=control('Show roots');save_button=control(save)
+                screens=[field,field,roots,download,save_button] if drawer else [field,field,download,save_button]
+                def node(predicate,*args):
+                    value=screens.pop(0);self.assertTrue(predicate(value));return value
+                with patch.object(ui,'file_action'),patch.object(ui,'node',side_effect=node), \
+                     patch.object(ui,'type') as enter,patch.object(ui,'tap',side_effect=lambda n:taps.append(n.get('text'))), \
+                     patch.object(ui,'shell',return_value=filename),patch.object(ui,'command',return_value=b'actual native export'), \
+                     patch.object(ui,'unlock'):
+                    self.assertEqual(ui.export('baseline-cache.bin','initial'),hashlib.sha256(b'actual native export').hexdigest())
+                self.assertEqual(taps,['Show roots','Downloads',save] if drawer else ['Downloads',save])
+                self.assertEqual(enter.call_args.kwargs,{'system_export':True,'replace':True})
+                self.assertEqual(ui.exports,['/sdcard/Download/'+filename])
+                for package in ('another.documentsui','boo.gchat.app'):
+                    wrong=ET.Element('node',{'package':package,'text':'SAVE'})
+                    self.assertFalse(android_ui.system_picker_control(wrong,('Save','SAVE')))
+
     def test_android_keyboard_presence_does_not_replace_intended_field_focus(self):
         with tempfile.TemporaryDirectory() as temporary:
             ui,_,_=self.owned_android_ui(Path(temporary))

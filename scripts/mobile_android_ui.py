@@ -186,6 +186,11 @@ def pixel_body_layout(lines, body):
     return result
 
 
+def system_picker_control(node, values):
+    return node.get('package') in ('com.android.documentsui', 'com.google.android.documentsui') and any(
+        node.get(key) in values for key in ('text', 'content-desc'))
+
+
 class AndroidUI:
     dump = '/sdcard/gchat-mobile-acceptance-ui.xml'
 
@@ -686,10 +691,12 @@ class AndroidUI:
         self.node(lambda node: node.get('package', '').endswith('.documentsui')
                   and node.get('class') == 'android.widget.EditText' and node.get('text') == filename, 10)
         # Select the system provider's Downloads root and save its exact bytes.
-        self.tap(self.node(lambda node: node.get('package', '').endswith('.documentsui')
-                          and node.get('content-desc') == 'Show roots', 30))
-        self.click('Downloads')
-        self.click('Save')
+        root = self.node(lambda node: system_picker_control(node, ('Downloads', 'Show roots')), 30)
+        if system_picker_control(root, ('Show roots',)):
+            self.tap(root)
+            root = self.node(lambda node: system_picker_control(node, ('Downloads',)), 15)
+        self.tap(root)
+        self.tap(self.node(lambda node: system_picker_control(node, ('Save', 'SAVE')), 30))
         path = '/sdcard/Download/' + filename
         self.exports.append(path)
         self.until(lambda: filename in self.shell('ls', '-1', '/sdcard/Download').splitlines(), 30)

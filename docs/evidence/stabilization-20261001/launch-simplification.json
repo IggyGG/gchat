@@ -307,12 +307,12 @@
   "current_mobile_providers": {
     "android": 37170025582,
     "android_helper": "cecddf75c274121717eaec7c3220fd1cad25035a",
-    "ios": 37169238415,
-    "ios_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
-    "state": "android_running_ios_failed",
+    "ios": 37170323852,
+    "ios_helper": "d3a64e5690dc83f61298fb84f9d014139644f8f8",
+    "state": "android_failed_ios_running",
     "requests": {
       "android": "68852144023b99c8bec9e26f02083e40b95c2bb0d460364ba6d7e1c4dfb4c5dd",
-      "ios": "7a031a2539ffe90ca2b8b0737ddec869ab089b57c2b936096b8356ac4a986242"
+      "ios": "0d753403d53a60caf003103e3cd696af4c9760d3c57afc4720f7c01b4091aaa2"
     }
   },
   "retained_workstation_failures": {
@@ -339,8 +339,8 @@
     "android_startup_capture": "fresh owned AVD, before any input; initial password lookup and artifact upload covered",
     "original_current_overall_verdict": false
   },
-  "native_helper_source": "cecddf75c274121717eaec7c3220fd1cad25035a",
-  "native_helper_qualification": "operations/native-helper-cecddf7-qualified-851.json",
+  "native_helper_source": "d3a64e5690dc83f61298fb84f9d014139644f8f8",
+  "native_helper_qualification": "operations/native-helper-d3a64e5-qualified-854.json",
   "mobile_ui_corrections": {
     "source": "7525311fa4b91d52bbb855bc920f349b4db5aa98",
     "android_keyboard_and_value_confirmation": true,
@@ -955,6 +955,30 @@
         "runner_exit_code": 0,
         "cleanup_passed": true,
         "receipt": "operations/ios-helper-c777296-result-846.zip"
+      }
+    },
+    {
+      "android": 37170025582,
+      "android_helper": "cecddf75c274121717eaec7c3220fd1cad25035a",
+      "ios": 37169238415,
+      "ios_helper": "c7772966d7ecd2d0ddb83b7101993289d2051a08",
+      "state": "android_failed_ios_failed",
+      "requests": {
+        "android": "68852144023b99c8bec9e26f02083e40b95c2bb0d460364ba6d7e1c4dfb4c5dd",
+        "ios": "7a031a2539ffe90ca2b8b0737ddec869ab089b57c2b936096b8356ac4a986242"
+      },
+      "android_report": {
+        "artifact": 11291076942,
+        "sha256": "c8640c8e6b99c750bacfa5d07d2bada225d6fc0f02b946d9277344813d0de37c",
+        "passed": false,
+        "stage": "baseline-cache",
+        "failure": "system_picker_roots_control_absent",
+        "exact_rendering_and_authenticated_bidirectional_ack": true,
+        "exact_export_filename": true,
+        "input_expected_length": 28,
+        "input_actual_length": 28,
+        "cleanup_passed": true,
+        "receipt": "operations/android-helper-cecddf7-result-857.zip"
       }
     }
   ],
