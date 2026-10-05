@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "scope": "operations controller activation; relay capacity deployment remains pending",
+  "observed_at": "2026-10-05T06:41:39.138186+00:00",
+  "controller": {
+    "revision": "7c0db5c0f9b6ca797ba9d2b14935a0bdaa5f5ba5",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:dbc31937eac618bfaa0a8d214457858ad32f8da82facebea976c22f25bf578a7",
+    "previous_image_retained": "sha256:2abcfba83521ab4c4a57ebf083d29fab5655bea2841c1435e54ba2659c9233a3",
+    "kubernetes_ready": true,
+    "open_descriptors_observed": 8,
+    "previous_open_descriptors": 1022,
+    "descriptor_soft_limit": 1024,
+    "actual_image_tests": 254,
+    "source_files_verified": 239,
+    "qualification_sha256": "b1f35322a46fc8c345809b3b2c77a03fb52c8c1bc43669c1da676f1b3ec99430"
+  },
+  "selected_release": "f8ae216bf9016d59f17a4dad836806b5a31fbe3c4b57d35dba12d4f3f2f64852",
+  "platforms": [
+    {
+      "platform": "android",
+      "state": "available",
+      "reason": ""
+    },
+    {
+      "platform": "ios",
+      "state": "verified",
+      "reason": ""
+    },
+    {
+      "platform": "linux-x86_64",
+      "state": "available",
+      "reason": ""
+    },
+    {
+      "platform": "macos-aarch64",
+      "state": "available",
+      "reason": ""
+    },
+    {
+      "platform": "macos-x86_64",
+      "state": "available",
+      "reason": ""
+    },
+    {
+      "platform": "sdk",
+      "state": "available",
+      "reason": ""
+    },
+    {
+      "platform": "windows-x86_64",
+      "state": "available",
+      "reason": ""
+    }
+  ],
+  "relay_capacity_live": false,
+  "desktop_sharing_live": false,
+  "original_failures_retained": true
+}

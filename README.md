@@ -1,3 +1,5 @@
+Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 254 actual-image checks and verification of 239 source files in Kubernetes. Store observation now reuses its pending request and closes finished worker logs; open descriptors fell from 1,022 to 8. The retained Android 1113 observation completed as available. Relay capacity and desktop sharing still require their load and live-delivery gates. See [activation evidence](docs/evidence/relay-capacity-20261005/controller-activated.json).
+
 # GChat
 
 Embedded desktops automatically contribute relay capacity when plugged in, on

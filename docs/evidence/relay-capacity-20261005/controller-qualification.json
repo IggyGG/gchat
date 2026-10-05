@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "7c0db5c0f9b6ca797ba9d2b14935a0bdaa5f5ba5",
+    "tree": "cac9f7ffc87f1c9b9bfed68ad24d5ea66d77e84e"
+  },
+  "runtime": {
+    "schema": 1,
+    "passed": true,
+    "source": {
+      "commit": "7c0db5c0f9b6ca797ba9d2b14935a0bdaa5f5ba5",
+      "tree": "cac9f7ffc87f1c9b9bfed68ad24d5ea66d77e84e"
+    },
+    "inventory_sha256": "21da529b45036b302ea70aa6bf235116c25de2affef4867b1c81efffa7d3801e",
+    "source_files_verified": 239,
+    "tests": 254,
+    "suites": [
+      "release_minutes_test",
+      "release_config_test",
+      "release_acceptance_test",
+      "mobile_acceptance_test",
+      "release_coordinator_test",
+      "release_deployment_test",
+      "release_rollback_image_test",
+      "release_infrastructure_bundle_test",
+      "release_kubernetes_worker_test",
+      "release_host_install_test",
+      "release_rollout_watchdog_test",
+      "release_inputs_test",
+      "release_ios_versions_test",
+      "release_prepare_test",
+      "release_compaction_test",
+      "controller_runtime_test",
+      "infrastructure_build_test"
+    ],
+    "source_unchanged": true,
+    "production_controller_revision_tested": true,
+    "configuration_digest": "sha256:dbc31937eac618bfaa0a8d214457858ad32f8da82facebea976c22f25bf578a7",
+    "log_sha256": "b0e8fb0f69877047f4d0e1638ddcf46924bc991d8d6da8f733b144590cf0f4bb"
+  },
+  "configuration": "sha256:dbc31937eac618bfaa0a8d214457858ad32f8da82facebea976c22f25bf578a7",
+  "image": "127.0.0.1:30444/ghost/gchat-release@sha256:dbc31937eac618bfaa0a8d214457858ad32f8da82facebea976c22f25bf578a7",
+  "registry_configuration_verified": true,
+  "registry_configuration_digest": "sha256:e4319c1ab6a778e85e81a8f4716354fe54c10e2d9423a639f8e22eb2057bdd0f",
+  "kubernetes_validation": {
+    "source": "7c0db5c0f9b6ca797ba9d2b14935a0bdaa5f5ba5",
+    "tests": 254,
+    "source_files_verified": 239,
+    "previous_digest_retained_and_repaired": true,
+    "log_sha256": "4b82947aefbc6e56834c32c8238978099206ccb3332dbb43780b1ef125984fb9"
+  }
+}
