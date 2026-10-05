@@ -70,6 +70,58 @@ mod fixture {
         Ok(())
     }
 
+    fn fixture_bootstrap(
+        path: &std::path::Path,
+    ) -> Result<gcoms_routing::gc2::directory::BootstrapBundle, String> {
+        use std::io::Read;
+        isolated()?;
+        gchat_core::private_fs::validate_private_file(path, "fixture routing introductions")?;
+        let mut bytes = zeroize::Zeroizing::new(Vec::new());
+        std::fs::File::open(path)
+            .map_err(|e| e.to_string())?
+            .take(6 + 8 * 155 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|e| e.to_string())?;
+        gcoms_routing::gc2::directory::BootstrapBundle::decode(&bytes).map_err(|e| e.to_string())
+    }
+
+    async fn refresh_fixture_routing(
+        runtime: ProtocolRuntime,
+        path: PathBuf,
+    ) -> Result<(), String> {
+        let mut current = fixture_bootstrap(&path)?;
+        let identities: Vec<_> = current
+            .relays
+            .iter()
+            .map(|r| (r.addr, r.service_id, r.reentry_cap))
+            .collect();
+        loop {
+            let bundle = fixture_bootstrap(&path)?;
+            if bundle
+                .relays
+                .iter()
+                .map(|r| (r.addr, r.service_id, r.reentry_cap))
+                .collect::<Vec<_>>()
+                != identities
+            {
+                return Err("fixture introduction changed its verified relay identity".into());
+            }
+            if bundle.relays != current.relays {
+                runtime
+                    .sdk_client()
+                    .embedded()
+                    .node()
+                    .install_gc2_routing_bootstrap(&bundle)?;
+                eprintln!(
+                    "fixture routing introductions renewed: {} relays",
+                    bundle.relays.len()
+                );
+                current = bundle;
+            }
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    }
+
     async fn invitation_setup(runtime: ProtocolRuntime, home: PathBuf) -> Result<(), String> {
         use std::os::unix::fs::{MetadataExt, PermissionsExt};
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -197,7 +249,7 @@ mod fixture {
         .map_err(|e| e.to_string())?;
         relay.configure_contribution_bandwidth(512 * 1024);
         let bundle = gcoms_routing::gc2::directory::BootstrapBundle::decode(
-            &std::fs::read(bootstrap).map_err(|e| e.to_string())?,
+            &std::fs::read(&bootstrap).map_err(|e| e.to_string())?,
         )
         .map_err(|e| e.to_string())?;
         relay
@@ -235,6 +287,12 @@ mod fixture {
                 result=&mut task => { result.map_err(|e|e.to_string())?.map_err(|e|e.to_string())?; break; },
                 _=term.recv()=>break,
                 _=tokio::time::sleep(Duration::from_secs(1))=> {
+                    relay.gc2_directory().remember(&fixture_bootstrap(&bootstrap)?,gcoms_network_client::now_unix())
+                        .map_err(|e|e.to_string())?;
+                    let own=gcoms_routing::gc2::directory::BootstrapBundle {
+                        relays:vec![relay.gc2_introduction(gcoms_network_client::now_unix())],
+                    }.encode().map_err(|e|e.to_string())?;
+                    private_replace(&introduction,&own)?;
                     if verified.is_file() { ready.store(true,Ordering::Release); }
                     let record=serde_json::json!({"circuits":32,"connections":64,"bandwidth_bytes_per_second":512*1024,
                         "published":ready.load(Ordering::Acquire),"transferred_bytes":relay.contribution_bytes()});
@@ -374,6 +432,8 @@ mod fixture {
         let (stop, receiver) = tokio::sync::watch::channel(false);
         let setup = fixture_invitations
             .then(|| tokio::spawn(invitation_setup(runtime.clone(), home.clone())));
+        let path = std::env::var_os("GC_ROUTING_BOOTSTRAP").ok_or("fixture bootstrap missing")?;
+        let mut routing = tokio::spawn(refresh_fixture_routing(runtime.clone(), path.into()));
         let mut server = tokio::spawn({
             let service = Arc::clone(&service);
             let endpoint = home.join("protocol.chat");
@@ -381,19 +441,21 @@ mod fixture {
         });
         let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
             .map_err(|e| e.to_string())?;
-        let early = tokio::select! {
-            result = &mut server => Some(result.map_err(|e| e.to_string())?),
-            _ = term.recv() => None,
-            _ = tokio::signal::ctrl_c() => None,
+        let (server_finished, early) = tokio::select! {
+            result = &mut server => (true, Some(result.map_err(|e| e.to_string())?)),
+            result = &mut routing => (false, Some(result.map_err(|e|e.to_string())?)),
+            _ = term.recv() => (false, None),
+            _ = tokio::signal::ctrl_c() => (false, None),
         };
         let _ = stop.send(true);
+        routing.abort();
         if let Some(setup) = setup {
             setup.abort();
             let _ = setup.await;
             std::fs::remove_file(home.join("fixture-invitations.sock"))
                 .map_err(|e| e.to_string())?;
         }
-        if early.is_none() {
+        if !server_finished {
             tokio::time::timeout(Duration::from_secs(10), &mut server)
                 .await
                 .map_err(|_| "fixture IPC shutdown timeout")?
