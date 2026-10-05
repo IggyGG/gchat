@@ -148,6 +148,9 @@ def run(request, *, state_root=Path("/var/lib/gchat-release"),
             expected = sha
         elif stage == 'rollback':
             previous = before['observation']['running']
+            actual = observe(unit)
+            if actual['running']['sha256'] not in (None, sha, previous['sha256']):
+                raise ValueError('another operator changed the running artifact')
             if digest(previous['executable']) != previous['sha256']:
                 raise ValueError('retained rollback artifact changed')
             if before['dropin'] is None:

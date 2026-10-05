@@ -118,5 +118,24 @@ class HostInstallTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'another operator'):
             self.run_stage('activate')
 
+    def test_rollback_preserves_another_operators_running_artifact_and_dropin(self):
+        self.run_stage('prepare'); self.run_stage('activate')
+        other = self.root / 'other'; other.write_bytes(b'another qualified release')
+        self.args[0] = str(other)
+        drop = self.paths['unit_root'] / 'ghost-relay.service.d/99z-gchat-release.conf'
+        retained = drop.read_bytes()
+        pid, calls, arguments = self.pid, install.subprocess.run.call_count, list(self.args)
+        with self.assertRaisesRegex(ValueError, 'another operator'):
+            self.run_stage('rollback')
+        self.assertEqual(drop.read_bytes(), retained)
+        self.assertEqual(self.args, arguments)
+        self.assertEqual(self.pid, pid)
+        self.assertEqual(install.subprocess.run.call_count, calls)
+
+    def test_interrupted_rollback_accepts_the_recorded_previous_artifact(self):
+        self.run_stage('prepare'); self.run_stage('activate'); self.run_stage('rollback')
+        self.run_stage('rollback')
+        self.assertEqual(self.args[0], str(self.old))
+
 
 if __name__ == '__main__': unittest.main()
