@@ -164,8 +164,11 @@ def handoff(state, manifest, request, worker=invoke):
             if (observed is None or observed.get('healthy') is not True
                     or observed.get('running', {}).get('sha256') != sha):
                 raise ValueError('handoff target is unhealthy or its running artifact changed')
-            if name in pending and (observed.get('matches') is not False or sha ==
-                    report['targets'][name].get('previous', {}).get('running', {}).get('sha256')):
+            # A reconciliation may have already observed the external hotfix
+            # as its previous version while its older host journal still owns
+            # an unresolved rollback. The exact operator-selected, noncandidate
+            # artifact remains a valid handoff in that case.
+            if name in pending and observed.get('matches') is not False:
                 raise ValueError('pending rollback has no externally installed replacement')
             observations[name] = observed
         write(directory / ('before-handoff-' + request['id'] + '.json'), report)

@@ -239,5 +239,16 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(json.loads(owner.read_text())['release_id'], 'f' * 64)
         self.assertEqual(self.calls, [])
 
+    def test_handoff_allows_hotfix_already_seen_as_previous_by_reconciliation(self):
+        request = self.external_handoff()
+        report = json.loads(self.journal.read_text())
+        report['targets']['canary']['previous'] = dict(self.live['canary'])
+        write(self.journal, report)
+        request['journal_sha256'] = hashlib.sha256(self.journal.read_bytes()).hexdigest()
+        handoff(self.root, self.manifest, request, self.worker)
+        self.assertEqual(json.loads(self.journal.read_text())['state'], 'handed_off')
+        self.assertEqual(self.calls, [('canary', 'observe')])
+        self.assertFalse((self.root / 'deployment/owner.json').exists())
+
 
 if __name__ == '__main__': unittest.main()
