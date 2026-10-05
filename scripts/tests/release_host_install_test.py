@@ -36,20 +36,23 @@ class HostInstallTests(unittest.TestCase):
         patch.object(install.time, 'sleep').start()
 
     def show(self, unit, field):
-        return {'NeedDaemonReload': 'no', 'FragmentPath': str(self.unit), 'DropInPaths': '',
+        dropins = sorted((self.paths['unit_root'] / (unit + '.d')).glob('*.conf'))
+        return {'NeedDaemonReload': 'no', 'FragmentPath': str(self.unit), 'DropInPaths': ' '.join(map(str, dropins)),
                 'MemoryMax': '1073741824', 'TasksMax': '256', 'LimitNOFILE': '8192'}[field]
 
     def observe(self, _):
         return {'healthy': True, 'running': {'sha256': install.digest(self.args[0]),
-                'executable': self.args[0], 'process_id': self.pid}}
+                'executable': str(Path(self.args[0]).resolve()), 'process_id': self.pid}}
 
     def command(self, argv, **kwargs):
         if argv[:2] == ['systemctl', 'restart']:
             self.pid += 1
-            drop = self.paths['unit_root'] / 'ghost-relay.service.d/99z-gchat-release.conf'
-            if drop.exists():
+            drops = sorted((self.paths['unit_root'] / 'ghost-relay.service.d').glob('*.conf'))
+            if drops:
                 import shlex
-                self.args = shlex.split(drop.read_text().split('ExecStart=')[-1].strip())
+                commands = [drop.read_text().split('ExecStart=')[-1].strip()
+                            for drop in drops if 'ExecStart=' in drop.read_text()]
+                if commands: self.args = shlex.split(commands[-1])
             else:
                 self.args[0] = str(self.old)
 
@@ -136,6 +139,98 @@ class HostInstallTests(unittest.TestCase):
         self.run_stage('prepare'); self.run_stage('activate'); self.run_stage('rollback')
         self.run_stage('rollback')
         self.assertEqual(self.args[0], str(self.old))
+
+    def takeover(self):
+        import shlex
+        drop = self.paths['unit_root'] / 'ghost-relay.service.d/zz-capacity-port.conf'
+        drop.parent.mkdir(exist_ok=True)
+        drop.write_text('[Service]\nExecStart=\nExecStart=' + shlex.join(self.args) + '\n')
+        drop.chmod(0o640)
+        self.request['takeover'] = {'release_id': self.request['release_id'],
+            'running_sha256': install.digest(self.args[0]),
+            'dropins': [{'path': str(drop), 'sha256': install.digest(drop)}]}
+        return drop
+
+    def test_bound_takeover_retires_only_authorized_override_and_restores_it(self):
+        drop = self.takeover(); original = drop.read_bytes()
+        self.request['protected_paths'] = [str(drop), str(self.key)]
+        unrelated = drop.parent / '10-resource.conf'; unrelated.write_text('[Service]\nMemoryMax=1G\n')
+        self.run_stage('prepare')
+        self.assertEqual(drop.read_bytes(), original)
+        self.assertEqual(self.pid, 100)
+        self.run_stage('activate')
+        self.assertFalse(drop.exists())
+        self.assertEqual(install.digest(self.args[0]), self.sha)
+        self.assertEqual(unrelated.read_text(), '[Service]\nMemoryMax=1G\n')
+        self.run_stage('rollback')
+        self.assertEqual(drop.read_bytes(), original)
+        self.assertEqual(drop.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(self.args[0], str(self.old))
+
+    def test_takeover_grant_for_another_release_does_not_apply(self):
+        drop = self.takeover()
+        self.request['takeover']['release_id'] = 'b' * 64
+        self.run_stage('prepare')
+        before = self.paths['state_root'] / self.request['unit'] / self.request['release_id'] / 'before.json'
+        self.assertNotIn('takeover', json.loads(before.read_text()))
+        self.assertTrue(drop.exists())
+
+    def test_takeover_rejects_changed_hash_outside_path_or_symlink_before_restart(self):
+        drop = self.takeover()
+        original = json.loads(json.dumps(self.request['takeover']))
+        for kind in ('hash', 'outside', 'symlink', 'running'):
+            with self.subTest(kind=kind):
+                self.request['takeover'] = json.loads(json.dumps(original))
+                if kind == 'hash': self.request['takeover']['dropins'][0]['sha256'] = 'f' * 64
+                if kind == 'outside': self.request['takeover']['dropins'][0]['path'] = str(self.unit)
+                if kind == 'running': self.request['takeover']['running_sha256'] = 'f' * 64
+                if kind == 'symlink':
+                    retained = drop.read_bytes(); drop.unlink(); drop.symlink_to(self.unit)
+                with self.assertRaises(ValueError): self.run_stage('prepare')
+                self.assertEqual(self.pid, 100)
+                if kind == 'symlink': drop.unlink(); drop.write_bytes(retained)
+
+    def test_takeover_missing_without_intent_is_not_treated_as_retired(self):
+        drop = self.takeover(); self.run_stage('prepare'); drop.unlink()
+        with self.assertRaisesRegex(ValueError, 'missing without retained intent'):
+            self.run_stage('activate')
+        self.assertEqual(self.pid, 100)
+
+    def test_takeover_resumes_activation_after_override_removed_before_restart(self):
+        drop = self.takeover(); self.run_stage('prepare')
+        with patch.object(install.subprocess, 'run', side_effect=OSError('restart interrupted')):
+            with self.assertRaises(OSError): self.run_stage('activate')
+        self.assertFalse(drop.exists()); self.assertEqual(self.pid, 100)
+        self.run_stage('activate')
+        self.assertEqual(install.digest(self.args[0]), self.sha)
+        pid = self.pid; self.run_stage('activate'); self.assertEqual(self.pid, pid)
+
+    def test_takeover_rollback_refuses_reappeared_foreign_override(self):
+        drop = self.takeover(); self.run_stage('prepare'); self.run_stage('activate')
+        drop.write_text('[Service]\nExecStart=/foreign\n'); pid = self.pid
+        with self.assertRaisesRegex(ValueError, 'takeover drop-in changed'):
+            self.run_stage('rollback')
+        self.assertEqual(drop.read_text(), '[Service]\nExecStart=/foreign\n')
+        self.assertEqual(self.pid, pid)
+
+    def test_takeover_rollback_resumes_after_original_restoration_before_restart(self):
+        drop = self.takeover(); original = drop.read_bytes()
+        self.run_stage('prepare'); self.run_stage('activate')
+        with patch.object(install.subprocess, 'run', side_effect=OSError('restart interrupted')):
+            with self.assertRaises(OSError): self.run_stage('rollback')
+        self.assertEqual(drop.read_bytes(), original)
+        self.run_stage('rollback')
+        self.assertEqual(self.args[0], str(self.old))
+
+    def test_rollback_refuses_changed_previous_command_symlink(self):
+        alias = self.root / 'current'; alias.symlink_to(self.old); self.args[0] = str(alias)
+        self.run_stage('prepare'); self.run_stage('activate')
+        foreign = self.root / 'foreign'; foreign.write_bytes(b'foreign binary')
+        alias.unlink(); alias.symlink_to(foreign)
+        pid = self.pid
+        with self.assertRaisesRegex(ValueError, 'rollback command changed'):
+            self.run_stage('rollback')
+        self.assertEqual(self.pid, pid)
 
 
 if __name__ == '__main__': unittest.main()

@@ -24,6 +24,19 @@ class RestrictedHostTests(unittest.TestCase):
             with self.subTest(changed=changed), self.assertRaises(ValueError):
                 host.request({**value, **changed}, policy)
 
+    def test_takeover_comes_only_from_root_policy_for_the_bound_release(self):
+        grant = {'release_id': 'b' * 64, 'running_sha256': 'c' * 64,
+                 'dropins': [{'path': '/etc/systemd/system/ghost-relay.service.d/zz-capacity-port.conf',
+                              'sha256': 'd' * 64}]}
+        unit = {'binary_name': 'gcnode'}
+        policy = {'units': {'ghost-relay.service': unit}}
+        value = {'unit': 'ghost-relay.service', 'binary_name': 'gcnode', 'stage': 'prepare',
+                 'sha256': 'a' * 64, 'release_id': 'b' * 64, 'takeover': {'caller': 'untrusted'}}
+        self.assertNotIn('takeover', host.request(value, policy))
+        unit['takeover'] = grant
+        self.assertEqual(host.request(value, policy)['takeover'], grant)
+        self.assertNotIn('takeover', host.request({**value, 'release_id': 'e' * 64}, policy))
+
     def test_partial_changed_or_oversized_upload_never_replaces_retained_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)

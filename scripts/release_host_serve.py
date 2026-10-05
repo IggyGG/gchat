@@ -42,8 +42,12 @@ def request(value, policy):
         raise ValueError('service is outside the installed inventory')
     # Protected paths and installer options come only from the root-owned host
     # policy. The SSH key cannot select another unit, path or executable name.
-    return {**installed, **{key: value[key] for key in
+    result = {**installed, **{key: value[key] for key in
         ('unit', 'stage', 'sha256', 'release_id')}}
+    grant = result.get('takeover')
+    if isinstance(grant, dict) and grant.get('release_id') != value['release_id']:
+        result.pop('takeover')
+    return result
 
 
 def main():
