@@ -328,6 +328,14 @@ impl InstanceHost {
         } else {
             builder
         };
+        let builder = if self.config.gc2_carrier
+            && !self.config.local_fixture
+            && matches!(self.config.protocol_backend, gcoms::Backend::Embedded)
+        {
+            crate::runtime::desktop_sharing(builder)?
+        } else {
+            builder
+        };
         let runtime = ProtocolRuntime(builder.open().await?);
         let service =
             match ChatService::new(self.config.archive.clone(), runtime.clone(), capabilities()) {
@@ -748,6 +756,35 @@ mod retained_scope_tests {
         machine::{ComponentCredentials, ComponentRegistration, MachineRegistry},
         GcClient,
     };
+
+    #[cfg(all(
+        feature = "gc2-carrier",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    #[tokio::test]
+    async fn embedded_desktop_host_keeps_relay_opt_out_after_reopen() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::private_fs::make_private(dir.path(), true).unwrap();
+        let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+        config.gc2_carrier = true;
+        config.network_recovery = false;
+        config.relay_urls.clear();
+        let host = InstanceHost::new(config).unwrap();
+        let passphrase = "desktop-sharing-fixture";
+        let running = host.unlock(passphrase.into(), true).await.unwrap();
+        let status = running.runtime.relay_sharing_status();
+        assert!(status.enabled);
+        assert!(!status.published);
+        assert_eq!(status.circuits, 32);
+        let disabled = running.runtime.configure_relay_sharing(false).unwrap();
+        assert!(!disabled.enabled);
+        host.stop(running).await.unwrap();
+        let reopened = host.unlock(passphrase.into(), false).await.unwrap();
+        let status = reopened.runtime.relay_sharing_status();
+        assert!(!status.enabled);
+        assert!(!status.published);
+        host.stop(reopened).await.unwrap();
+    }
 
     #[tokio::test]
     async fn personal_host_refuses_retained_machine_before_archive_or_ipc() {

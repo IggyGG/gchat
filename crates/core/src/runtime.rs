@@ -60,14 +60,14 @@ pub(crate) fn desktop_relay_config() -> Result<gcoms::runtime::RelaySharingConfi
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-fn desktop_sharing(
+pub(crate) fn desktop_sharing(
     builder: gcoms::ApplicationBuilder,
 ) -> Result<gcoms::ApplicationBuilder, String> {
     Ok(builder.relay_sharing(desktop_relay_config()?))
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
-fn desktop_sharing(
+pub(crate) fn desktop_sharing(
     builder: gcoms::ApplicationBuilder,
 ) -> Result<gcoms::ApplicationBuilder, String> {
     Ok(builder)
