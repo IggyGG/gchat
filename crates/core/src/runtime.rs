@@ -13,7 +13,10 @@ static DESKTOP_RELAY_CONFIG: std::sync::Mutex<Option<gcoms::runtime::RelaySharin
     std::sync::Mutex::new(None);
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub(crate) fn set_desktop_relay_config(config: gcoms::runtime::RelaySharingConfig) {
+pub(crate) fn set_desktop_relay_config(mut config: gcoms::runtime::RelaySharingConfig) {
+    // Desktop contribution is deferred; keep its budgets without activating it.
+    config.enabled = false;
+    config.router_mapping = false;
     *DESKTOP_RELAY_CONFIG
         .lock()
         .expect("desktop relay configuration") = Some(config);
@@ -29,8 +32,8 @@ pub(crate) fn desktop_relay_config() -> Result<gcoms::runtime::RelaySharingConfi
         return Ok(config);
     }
     let mut config = gcoms::runtime::RelaySharingConfig {
-        enabled: std::env::var("GCHAT_RELAY_SHARING").as_deref() != Ok("off"),
-        router_mapping: std::env::var("GCHAT_ROUTER_MAPPING").as_deref() != Ok("off"),
+        enabled: false,
+        router_mapping: false,
         ..Default::default()
     };
     if let Ok(value) = std::env::var("GCHAT_RELAY_CIRCUITS") {
@@ -170,6 +173,9 @@ impl ProtocolRuntime {
         &self,
         enabled: bool,
     ) -> Result<gcoms::runtime::RelaySharingStatus, String> {
+        if enabled {
+            return Err("Desktop relay sharing is unavailable in this release".into());
+        }
         self.0
             .embedded_runtime()
             .ok_or("Relay sharing requires this desktop's local runtime")?

@@ -647,26 +647,29 @@ pub async fn ensure_running(
     let log = options.open(&log_path).map_err(|e| e.to_string())?;
     crate::private_fs::make_private(&log_path, false)?;
     let mut command = std::process::Command::new(executable);
-    let sharing = crate::runtime::desktop_relay_config()?;
-    command
-        .env(
-            "GCHAT_RELAY_SHARING",
-            if sharing.enabled { "auto" } else { "off" },
-        )
-        .env(
-            "GCHAT_ROUTER_MAPPING",
-            if sharing.router_mapping {
-                "auto"
-            } else {
-                "off"
-            },
-        )
-        .env("GCHAT_RELAY_CIRCUITS", sharing.circuits.to_string())
-        .env("GCHAT_RELAY_CONNECTIONS", sharing.connections.to_string())
-        .env(
-            "GCHAT_RELAY_BANDWIDTH",
-            sharing.bandwidth_bytes_per_second.to_string(),
-        );
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        let sharing = crate::runtime::desktop_relay_config()?;
+        command
+            .env(
+                "GCHAT_RELAY_SHARING",
+                if sharing.enabled { "auto" } else { "off" },
+            )
+            .env(
+                "GCHAT_ROUTER_MAPPING",
+                if sharing.router_mapping {
+                    "auto"
+                } else {
+                    "off"
+                },
+            )
+            .env("GCHAT_RELAY_CIRCUITS", sharing.circuits.to_string())
+            .env("GCHAT_RELAY_CONNECTIONS", sharing.connections.to_string())
+            .env(
+                "GCHAT_RELAY_BANDWIDTH",
+                sharing.bandwidth_bytes_per_second.to_string(),
+            );
+    }
     if gchat_binary {
         command.arg("daemon");
     }
@@ -762,7 +765,12 @@ mod retained_scope_tests {
         not(any(target_os = "android", target_os = "ios"))
     ))]
     #[tokio::test]
-    async fn embedded_desktop_host_keeps_relay_opt_out_after_reopen() {
+    async fn embedded_desktop_host_keeps_deferred_relay_sharing_off_after_reopen() {
+        crate::runtime::set_desktop_relay_config(gcoms::runtime::RelaySharingConfig {
+            enabled: true,
+            router_mapping: true,
+            ..Default::default()
+        });
         let dir = tempfile::tempdir().unwrap();
         crate::private_fs::make_private(dir.path(), true).unwrap();
         let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
@@ -773,9 +781,17 @@ mod retained_scope_tests {
         let passphrase = "desktop-sharing-fixture";
         let running = host.unlock(passphrase.into(), true).await.unwrap();
         let status = running.runtime.relay_sharing_status();
-        assert!(status.enabled);
+        assert!(!status.enabled);
         assert!(!status.published);
         assert_eq!(status.circuits, 32);
+        let defaults = crate::runtime::desktop_relay_config().unwrap();
+        assert!(!defaults.enabled);
+        assert!(!defaults.router_mapping);
+        assert!(running
+            .runtime
+            .configure_relay_sharing(true)
+            .unwrap_err()
+            .contains("unavailable in this release"));
         let disabled = running.runtime.configure_relay_sharing(false).unwrap();
         assert!(!disabled.enabled);
         host.stop(running).await.unwrap();

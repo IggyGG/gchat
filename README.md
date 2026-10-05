@@ -1,3 +1,5 @@
+Release scope, 2026-10-05: desktop relay sharing is deferred; the release retains the fleet capacity repairs, with Pi access tunnels replacing desktop contribution. Desktop sharing and router mapping stay disabled, including explicit attempts to enable sharing. Existing messaging remains available.
+
 Release admission repair, 2026-10-05: old builds retained for late result collection no longer prevent the selected release from starting. Original requests remain reconcilable under existing worker limits; deployment and publication still require their normal evidence. Controller activation is a separate remaining step.
 
 Windows release tooling, 2026-10-05: native CI exposed Linux-only imports, worker cleanup and temporary-path assumptions in the release checks. The corrections preserve qualification gates and use portable evidence-path validation. Local regression checks pass; the next Windows native result remains required.
@@ -10,16 +12,12 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 # GChat
 
-Embedded desktops automatically contribute relay capacity when plugged in, on
-an unmetered connection and eligible to host. Publication requires a verified
-public listener and a signed, membership-authorized provider lease. Defaults
-are 32 circuits, 64 connections and 512 KiB/s. Use `/network relay status`,
-`/network relay off` or `/network relay auto`; opt-out survives restart.
-Startup options are `--no-relay-sharing`, `--no-router-mapping`,
-`--relay-circuits`, `--relay-connections` and `--relay-bandwidth` (bytes/second).
-Sharing pauses when device or network conditions change. Mobile remains
-outbound-only. Fleet rollout and installed-client qualification are tracked in
-PLAN.md; this source description does not certify a live deployment.
+Desktop relay contribution is preserved as dormant work for a future release.
+`/network relay status` reports sharing off; `/network relay auto` reports that
+the feature is unavailable in this release. Saved preferences, environment
+variables and startup capacity options cannot enable it or router mapping.
+Mobile remains outbound-only. Fleet rollout and installed-client qualification
+are tracked in PLAN.md; this source description does not certify deployment.
 
 Release status, 2026-10-04: Linux 0.1.98 and all 17 infrastructure targets are active and healthy. Linux, Windows, both Mac architectures and SDK archives are published. Controller c66c230 runs the production-minutes-v1 publication path in Kubernetes. Original Android and iOS artifacts passed its publication gates. Android 1113 is uploaded, committed to Google Play and processing; iOS 1.1.13 awaits Apple encryption approval, including France. Full GUI qualification and SDK 1.0 remain separate and incomplete. Mobile publication and Apple encryption approval remain separate from full GUI qualification and SDK 1.0; original failed reports are retained.
 

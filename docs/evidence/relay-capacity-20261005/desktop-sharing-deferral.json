@@ -1,0 +1,206 @@
+{
+  "schema": 1,
+  "kind": "desktop_sharing_deferral_and_node_regressions",
+  "date": "2026-10-05",
+  "sources": {
+    "gchat_base": "150915e78324b166ef169db87ad0ca9287f9b1c2",
+    "gchat_files": {
+      "crates/core/src/runtime.rs": "a381c008f1476d2dcf6d1581b52afb3241346c1b2424524ffd1105a09689b76e",
+      "crates/core/src/chat_service/host.rs": "f75dbaf475b8e5ac646ec540a14b8e6d72e36f3415ca1b642d3b436df537a99c"
+    },
+    "gcoms_final": "39e2bf83e4cc972e8791fecaf657aac29bb80667",
+    "independent_controls_gcoms_revision": "83622d750c0fe7fcb5288a3c5997394791cc1da3"
+  },
+  "validation": {
+    "focused_rust_tests": 6,
+    "passed": true,
+    "source_paths_checked": 838,
+    "native_android_ios_passed": false
+  },
+  "results": [
+    {
+      "test": "node::persist::invitations_tests::reusable_invitation_management_is_durable_and_storage_failure_rolls_back",
+      "passed": true,
+      "test_seconds": 0.96,
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "gcoms-node",
+        "--all-features",
+        "--lib",
+        "reusable_invitation_management_is_durable_and_storage_failure_rolls_back",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "evidence": {
+        "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/remaining-0.log",
+        "sha256": "8dd95adfb18058220abf39c89664f9f18ecd2c1462ec51652a9cedf43a9a5a90"
+      }
+    },
+    {
+      "test": "node::commands::machine_migration_tests::completion_chain_orders_successors_and_releases_on_cancellation",
+      "passed": true,
+      "test_seconds": 0.03,
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "gcoms-node",
+        "--all-features",
+        "--lib",
+        "completion_chain_orders_successors_and_releases_on_cancellation",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "evidence": {
+        "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/remaining-1.log",
+        "sha256": "540cd8244adaec9aa2b35101f399623210fa110515787a43b73521ce27bbc0a5"
+      }
+    },
+    {
+      "test": "node::persist::tests::gc2_runtime_restore_reserves_before_publishing_and_reclaims_on_drop",
+      "passed": true,
+      "test_seconds": 0.92,
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "gcoms-node",
+        "--all-features",
+        "--lib",
+        "gc2_runtime_restore_reserves_before_publishing_and_reclaims_on_drop",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "evidence": {
+        "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/remaining-2.log",
+        "sha256": "7e7ca225515f86c61dd1a21d57bb5c46eb1daf74a8c599549e87e90dcc5b40c2"
+      }
+    },
+    {
+      "test": "node::persist::tests::gc2_runtime_deferred_materialization_waits_for_budget_without_pausing_node",
+      "passed": true,
+      "test_seconds": 0.75,
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "gcoms-node",
+        "--all-features",
+        "--lib",
+        "gc2_runtime_deferred_materialization_waits_for_budget_without_pausing_node",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "evidence": {
+        "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/remaining-3.log",
+        "sha256": "06f28d197d27e867c1b9f7052730171e6c6a5500b9945b74970dd5a7034f8334"
+      }
+    },
+    {
+      "test": "chat_service::host::retained_scope_tests::embedded_desktop_host_keeps_deferred_relay_sharing_off_after_reopen",
+      "passed": true,
+      "test_seconds": 42.87,
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--config",
+        "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/source.toml",
+        "-p",
+        "gchat-core",
+        "--features",
+        "gc2-carrier",
+        "--lib",
+        "embedded_desktop_host_keeps_deferred_relay_sharing_off_after_reopen",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "evidence": {
+        "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/remaining-4.log",
+        "sha256": "3b7aa9b632c70a24baf40a6a56788f0a80ccf603e51a0bc362458973e6d3ab5d"
+      }
+    },
+    {
+      "test": "node::commands::channel_application_tests::reusable_invitation_does_not_wait_for_prior_channel_delivery",
+      "passed": true,
+      "test_seconds": 0.83,
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "gcoms-node",
+        "--all-features",
+        "--lib",
+        "reusable_invitation_does_not_wait_for_prior_channel_delivery",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "evidence": {
+        "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/invitation-final.log",
+        "sha256": "ac73c5d17b1f83338cb3b32e7f3b7b2dee7ac628a8002ea36986f50add581126"
+      }
+    }
+  ],
+  "retained_evidence": {
+    "report.json": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/report.json",
+      "sha256": "b8ecd30acbc00d05c25f154333a3db0d7b5dec3c0633abac523cf1d292ea7e7d"
+    },
+    "remaining-report.json": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/remaining-report.json",
+      "sha256": "20e37ed9055e6112e32317c95311df21732d7d607133173134771e68b09f9369"
+    },
+    "invitation-rerun-report.json": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/invitation-rerun-report.json",
+      "sha256": "303eb9c7825a3084c8e0ac1a243ad5ebb9c99f20d77e1e1462d446c17bae7d9a"
+    },
+    "invitation-final-report.json": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/invitation-final-report.json",
+      "sha256": "21f00493e37f9313be3b50cdf6b7d89d077da2968660ab502568ecce65cb25ea"
+    },
+    "fixture-transition.json": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/fixture-transition.json",
+      "sha256": "675aed5e0b837a35f2bc7b96bfef64541c575b3a6fde0b64b60e06a9a97378f6"
+    },
+    "fixture-transition-final.json": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/fixture-transition-final.json",
+      "sha256": "afb11d3642983978696dd8d7200d5f3159fd4ec49072d6d1f6ed3d7c9ace492f"
+    },
+    "3.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/3.log",
+      "sha256": "57c95317b83e08a559981aa2e0d4aade7b9467a81a1c4f9f98f34eb3db491217"
+    },
+    "invitation-rerun.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/invitation-rerun.log",
+      "sha256": "62e5631aec97743df8ae0bdbd8f4a7d3021da9190142bfe568e069308e689eba"
+    },
+    "final-source-check.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-scope-final-20261005/attempt02/final-source-check.log",
+      "sha256": "17fb8739c443a787e05473e8b02da99aad71afce9ebbae0868dc5f25d811a577"
+    }
+  },
+  "limitations": [
+    "Linux focused regressions do not replace the normal native Android/iOS release gates.",
+    "The first four node controls and GChat control passed on 83622d7; only the new invitation fixture changed afterward, with each transition and original failure retained. Its final run passed on 39e2bf8.",
+    "No release dispatch, publication, deployment, or live desktop sharing acceptance was performed by this change."
+  ]
+}
