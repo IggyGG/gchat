@@ -108,8 +108,8 @@ mod fixture {
             }
             if bundle.relays != current.relays {
                 runtime
-                    .sdk_client()
                     .embedded()
+                    .ok_or("fixture requires an embedded runtime")?
                     .node()
                     .install_gc2_routing_bootstrap(&bundle)?;
                 eprintln!(
