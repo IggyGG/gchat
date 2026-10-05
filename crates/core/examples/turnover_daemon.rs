@@ -7,7 +7,7 @@ mod fixture {
     use clap::{Parser, Subcommand};
     use gchat_api::{Request, RequestEnvelope, Response, VERSION};
     use gchat_core::{chat_service::ChatService, runtime::ProtocolRuntime};
-    use gcoms::sdk::ipc::Capability;
+    use gcoms::sdk::{ipc::Capability, GcClient};
     use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
     #[derive(Parser)]
@@ -52,6 +52,9 @@ mod fixture {
             listen: SocketAddr,
             #[arg(long)]
             create: bool,
+            /// Owner-only setup endpoint; uses the released single-use SDK API.
+            #[arg(long)]
+            fixture_invitations: bool,
         },
     }
 
@@ -65,6 +68,58 @@ mod fixture {
             return Err("turnover host requires the declared disconnected namespace".into());
         }
         Ok(())
+    }
+
+    async fn invitation_setup(runtime: ProtocolRuntime, home: PathBuf) -> Result<(), String> {
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Invitation {
+            channel: String,
+        }
+        let endpoint = home.join("fixture-invitations.sock");
+        let owner = std::fs::metadata(&home).map_err(|e| e.to_string())?.uid();
+        let listener = tokio::net::UnixListener::bind(&endpoint).map_err(|e| e.to_string())?;
+        std::fs::set_permissions(&endpoint, std::fs::Permissions::from_mode(0o600))
+            .map_err(|e| e.to_string())?;
+        loop {
+            let (mut stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
+            if stream.peer_cred().map_err(|e| e.to_string())?.uid() != owner {
+                continue;
+            }
+            let mut raw = Vec::new();
+            tokio::time::timeout(
+                Duration::from_secs(5),
+                (&mut stream).take(1025).read_to_end(&mut raw),
+            )
+            .await
+            .map_err(|_| "fixture invitation request timed out")?
+            .map_err(|e| e.to_string())?;
+            let result = async {
+                if raw.len() > 1024 {
+                    return Err("fixture invitation request too large".to_string());
+                }
+                let request: Invitation =
+                    serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
+                runtime
+                    .sdk_client()
+                    .create_channel_invitation(&request.channel, 3600)
+                    .await
+                    .map_err(|e| e.to_string())
+            }
+            .await;
+            let response = match result {
+                Ok(invite) => {
+                    serde_json::json!({"link": invite.link, "localOnly": invite.local_only})
+                }
+                Err(error) => serde_json::json!({"error": error}),
+            };
+            stream
+                .write_all(&serde_json::to_vec(&response).map_err(|e| e.to_string())?)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
     }
 
     fn network(bootstrap: PathBuf, output: PathBuf) -> Result<(), String> {
@@ -253,6 +308,7 @@ mod fixture {
             inbox_card,
             listen,
             create,
+            fixture_invitations,
         } = command
         else {
             let Command::Network { bootstrap, output } = command else {
@@ -316,6 +372,8 @@ mod fixture {
             return Err(format!("fixture archive unlock failed: {response:?}"));
         }
         let (stop, receiver) = tokio::sync::watch::channel(false);
+        let setup = fixture_invitations
+            .then(|| tokio::spawn(invitation_setup(runtime.clone(), home.clone())));
         let mut server = tokio::spawn({
             let service = Arc::clone(&service);
             let endpoint = home.join("protocol.chat");
@@ -329,6 +387,12 @@ mod fixture {
             _ = tokio::signal::ctrl_c() => None,
         };
         let _ = stop.send(true);
+        if let Some(setup) = setup {
+            setup.abort();
+            let _ = setup.await;
+            std::fs::remove_file(home.join("fixture-invitations.sock"))
+                .map_err(|e| e.to_string())?;
+        }
         if early.is_none() {
             tokio::time::timeout(Duration::from_secs(10), &mut server)
                 .await
