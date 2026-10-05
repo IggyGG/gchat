@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_network_canary import module
@@ -13,6 +13,13 @@ headroom = module('node-image-headroom')
 class NodeImageHeadroomTests(unittest.TestCase):
     def stat(self, available):
         return SimpleNamespace(f_blocks=1000, f_frsize=4096, f_bavail=available)
+
+    def test_import_and_injected_checks_do_not_require_posix_dependencies(self):
+        with patch.dict(sys.modules, {'fcntl': None,
+                                      'os': SimpleNamespace(path=headroom.os.path)}):
+            portable = module('node-image-headroom')
+            result = portable.maintain(stat=lambda _: self.stat(170))
+        self.assertTrue(result['headroom_ok'])
 
     def test_healthy_nodes_do_not_remove_images(self):
         run = Mock()

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "windows_release_tooling_portability",
+  "date": "2026-10-05",
+  "original_failure": {
+    "provider": "github",
+    "run_id": 37338267657,
+    "artifact_id": 11357677972,
+    "archive_sha256": "59588b1ab9d37595aa14acc71d47134fe11005286e3fa37857a4c8eb41051ef2"
+  },
+  "validation": {
+    "focused_tests": 90,
+    "focused_seconds": 26.277,
+    "headroom_final_recheck_tests": 7,
+    "source_paths_checked": 836,
+    "passed": true,
+    "native_windows_passed": false
+  },
+  "sources": {
+    "scripts/node-image-headroom.py": "3a636bfbce5519eefff3c2214ff710569b3ccfe50138b9b37b9a0cf54ec29b76",
+    "scripts/relay_load_run.py": "8521edac60350250ea3251243e00147959ec82486c65a3954ae2159bbda39b43",
+    "scripts/release_coordinator.py": "43ec07d82cc50d67b3c50d2de9a30fcf306a659025ce853e5df8fb924d4e0dfb",
+    "scripts/tests/node_image_headroom_test.py": "cd9e928f83eccd9ec4fab46b2dcaf137cd5f8c860806480b973887999e74e231",
+    "scripts/tests/relay_load_run_test.py": "2801ae9c9bc3f73943d99c711caffa8fe7e27df3b3fa6259cff67c26aee88655",
+    "scripts/tests/release_control_test.py": "b51276058dabe06f913b1cba91a9d9a5a142d9815d1257b35009b851204cd541",
+    "scripts/tests/release_coordinator_test.py": "2387cc6246b1f2dc6c858e9d81457eb818739781509a360979f24f888515252a",
+    "scripts/tests/release_minutes_test.py": "c9869c459bbc83a0ceef6456b2b62cfa44f6974905612fce584fd878a5eadd01"
+  },
+  "retained_evidence": {
+    "focused.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-windows-portability-20261005/focused.log",
+      "sha256": "a4a0152996851ce7470bd80f5a3470f7ee8e9c47e7845c3cdda7438040707fe1"
+    },
+    "headroom-recheck.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-windows-portability-20261005/headroom-recheck.log",
+      "sha256": "83166b089fbcb82fac63f22522fa6ae99bb5e46368cd35d756277fd463dd6346"
+    },
+    "source-direct.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-windows-portability-20261005/source-direct.log",
+      "sha256": "c2de12b0d57b93b476e2de154c20501adf496d8c7ebe959a787cf0515826fc97"
+    }
+  },
+  "limitations": [
+    "Windows behavior is covered with portable and simulated-platform regression tests; the successor native Windows workflow remains required.",
+    "No provider dispatch, publication or production activation was performed by this change."
+  ]
+}

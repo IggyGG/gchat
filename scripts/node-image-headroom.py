@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Maintain node disk headroom using unused runtime images and Docker build images."""
-import fcntl
 import json
 import os
 from pathlib import Path
@@ -13,7 +12,9 @@ DOCKER_ENDPOINT = 'unix:///run/docker.sock'
 DOCKER_MINIMUM_IMAGE_AGE = '1h'
 
 
-def maintain(stat=os.statvfs, run=subprocess.run, exists=os.path.exists):
+def maintain(stat=None, run=subprocess.run, exists=os.path.exists):
+    if stat is None:
+        stat = os.statvfs
     before = stat('/')
     total = before.f_blocks * before.f_frsize
     available = before.f_bavail * before.f_frsize
@@ -45,6 +46,7 @@ def maintain(stat=os.statvfs, run=subprocess.run, exists=os.path.exists):
 
 
 def main():
+    import fcntl  # The installed Linux service locks its own runtime directory.
     with Path('/run/gchat-node-image-headroom/lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         result = maintain()

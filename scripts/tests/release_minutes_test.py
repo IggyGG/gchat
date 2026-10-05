@@ -3,10 +3,9 @@ import hashlib
 import json
 from pathlib import Path
 import sys
-import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_automation_test import candidate
@@ -279,12 +278,20 @@ class MinutesTests(unittest.TestCase):
 
     def test_completed_uncollected_workers_do_not_hold_publication_capacity(self):
         self.controller.config.update(nonblocking_workers=True, single_flight=True,
-            workers={'android': {'submit': {'run': [sys.executable, '-c', 'import time;time.sleep(60)'], 'timeout': 120}}})
+            workers={'android': {'submit': {'run': ['publication-worker'], 'timeout': 120}}})
         self.addCleanup(self.controller.close_workers)
         for index in range(3):
-            process = subprocess.Popen([sys.executable, '-c', 'pass']); process.wait(timeout=5)
+            process = Mock()
+            process.poll.return_value = 0
             self.controller.running_workers[str(index)] = {'process': process, 'stage': 'build',
                 'release_id': 'a' * 64, 'log': (self.root / ('finished-' + str(index))).open('wb')}
-        self.assertIsNone(self.controller.execute(self.manifest, 'android', 'submit'))
-        self.assertEqual(len(self.controller.running_workers), 4)
-        self.assertEqual(sum(item['process'].poll() is None for item in self.controller.running_workers.values()), 1)
+        process = Mock()
+        process.poll.return_value = None
+        try:
+            with patch('release_coordinator.subprocess.Popen', return_value=process) as launch:
+                self.assertIsNone(self.controller.execute(self.manifest, 'android', 'submit'))
+            launch.assert_called_once()
+            self.assertEqual(len(self.controller.running_workers), 4)
+            self.assertEqual(sum(item['process'].poll() is None for item in self.controller.running_workers.values()), 1)
+        finally:
+            process.poll.return_value = 0

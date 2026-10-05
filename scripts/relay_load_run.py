@@ -4,7 +4,7 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import subprocess
 import time
@@ -28,9 +28,13 @@ def retain_journey(source, destination):
             names.update(json.loads((source / report).read_text()).get('evidence', {}))
     total = 0
     for name in sorted(names):
-        relative = Path(name)
+        # Fixture reports use POSIX paths, regardless of the collector's host.
+        relative = PurePosixPath(name)
+        if (relative.is_absolute() or '..' in relative.parts or '\\' in name
+                or PureWindowsPath(name).drive):
+            raise ValueError('journey evidence escapes its isolated directory')
         path = source / relative
-        if relative.is_absolute() or '..' in relative.parts or path.is_symlink():
+        if path.is_symlink():
             raise ValueError('journey evidence escapes its isolated directory')
         if not path.exists():
             continue  # Failed workers retain the original partial evidence.

@@ -32,7 +32,9 @@ class RelayLoadRetentionTests(unittest.TestCase):
         self.assertEqual((self.output / 'worker.json').read_bytes(), (self.source / 'worker.json').read_bytes())
 
     def test_rejects_reference_outside_the_fixture(self):
-        for reference in ('../outside', '/outside'):
+        for reference in ('../outside', '/outside', 'r0/../../outside',
+                          'C:/outside', 'C:outside', '\\outside',
+                          '\\\\server\\outside', 'r0\\..\\..\\outside'):
             (self.source / 'worker.json').write_text(json.dumps({'evidence': {reference: 'bad'}}))
             with self.subTest(reference=reference), self.assertRaises(ValueError):
                 retain_journey(self.source, self.output)

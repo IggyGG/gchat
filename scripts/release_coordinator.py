@@ -27,6 +27,23 @@ class StorageHeadroomError(ValueError):
     """A build must wait for capacity; its frozen request remains authoritative."""
 
 
+def stop_worker(process):
+    # Production POSIX workers own a process group; Windows test workers are
+    # direct children and do not provide killpg/SIGKILL.
+    if os.name == 'nt':
+        process.terminate()
+    else:
+        os.killpg(process.pid, signal.SIGTERM)
+    try:
+        process.wait(timeout=15)
+    except subprocess.TimeoutExpired:
+        if os.name == 'nt':
+            process.kill()
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+        process.wait(timeout=5)
+
+
 def atomic_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -105,13 +122,11 @@ class Coordinator:
         self.deployment_runner.close()
         for item in list(self.running_workers.values()):
             process = item['process']
-            if process.poll() is None:
-                os.killpg(process.pid, signal.SIGTERM)
-                try: process.wait(timeout=15)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    process.wait(timeout=5)
-            item['log'].close()
+            try:
+                if process.poll() is None:
+                    stop_worker(process)
+            finally:
+                item['log'].close()
         self.running_workers.clear()
 
     def collect_finished_workers(self):
@@ -378,12 +393,10 @@ class Coordinator:
             if process.poll() is None:
                 if time.monotonic() < pending['deadline']:
                     return None
-                os.killpg(process.pid, signal.SIGTERM)
-                try: process.wait(timeout=15)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    process.wait(timeout=5)
-                pending['log'].close()
+                try:
+                    stop_worker(process)
+                finally:
+                    pending['log'].close()
                 del self.running_workers[effect['id']]
                 raise subprocess.TimeoutExpired(pending['argv'], pending['timeout'])
             pending['log'].close()

@@ -19,6 +19,45 @@ class CoordinatorTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.manifest=candidate()
 
+    def test_windows_worker_cleanup_terminates_child_and_closes_log(self):
+        import subprocess
+        from unittest.mock import Mock, call
+        for timed_out in (False, True):
+            with self.subTest(timed_out=timed_out):
+                c = Coordinator(self.root, {})
+                self.addCleanup(c.ledger.close)
+                process = Mock()
+                process.poll.return_value = None
+                if timed_out:
+                    process.wait.side_effect = [subprocess.TimeoutExpired('worker', 15), 0]
+                log = (self.root / 'worker.log').open('wb')
+                self.addCleanup(log.close)
+                c.running_workers['worker'] = {'process': process, 'log': log}
+                with patch('release_coordinator.os.name', 'nt'), \
+                     patch('release_coordinator.os.killpg', create=True) as killpg:
+                    c.close_workers()
+                killpg.assert_not_called()
+                process.terminate.assert_called_once_with()
+                self.assertEqual(process.kill.call_count, int(timed_out))
+                self.assertEqual(process.wait.call_args_list,
+                                 [call(timeout=15), call(timeout=5)] if timed_out else [call(timeout=15)])
+                self.assertTrue(log.closed)
+                self.assertEqual(c.running_workers, {})
+
+    def test_worker_cleanup_closes_log_even_when_termination_fails(self):
+        from unittest.mock import Mock
+        c = Coordinator(self.root, {})
+        self.addCleanup(c.ledger.close)
+        process = Mock()
+        process.poll.return_value = None
+        log = (self.root / 'worker.log').open('wb')
+        self.addCleanup(log.close)
+        c.running_workers['worker'] = {'process': process, 'log': log}
+        with patch('release_coordinator.stop_worker', side_effect=OSError('termination failed')):
+            with self.assertRaisesRegex(OSError, 'termination failed'):
+                c.close_workers()
+        self.assertTrue(log.closed)
+
     def test_observation_reuses_pending_request_and_advances_only_after_verified_completion(self):
         from unittest.mock import Mock
         recipe = {'run': ['read-only-store-status'], 'reconcile': ['reconcile-store-status']}
