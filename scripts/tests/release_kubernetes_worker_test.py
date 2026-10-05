@@ -96,6 +96,14 @@ class KubernetesWorkerTests(unittest.TestCase):
                 target['controller_qualification_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
             seal(proof)
             self.assertEqual(worker.expected_image(target, {}), proof['image'])
+            bound = {**target, 'controller_qualification_release_id': '1' * 64}
+            build = {'release_id': '1' * 64, 'images': {'controller': self.image}}
+            self.assertEqual(worker.expected_image(bound, build), proof['image'])
+            self.assertEqual(worker.expected_image(bound, {**build, 'release_id': '2' * 64}), self.image)
+            for value in ('bad', None):
+                invalid = {} if value is None else {'release_id': value}
+                with self.subTest(release=value), self.assertRaisesRegex(ValueError, 'release binding'):
+                    worker.expected_image(bound, {**invalid, 'images': {'controller': self.image}})
             path.write_text('{}')
             with self.assertRaisesRegex(ValueError, 'changed'):
                 worker.expected_image(target, {})

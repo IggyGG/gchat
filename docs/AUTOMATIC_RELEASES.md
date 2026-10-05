@@ -2,6 +2,8 @@ The Linux workflow runs GChat CI, GComs CI and the isolated 64-client relay camp
 
 The original 60-minute build deadline prevents new dispatches after expiry but permits collection and verification of the same provider request. Publication receives its own persistent 60-minute active budget once infrastructure is ready; infrastructure and external review waits pause that budget. Restarts do not reset either clock or create a second provider request.
 
+An independently qualified controller repair can be bound to the currently selected release with `controller_qualification_release_id`. The next qualified release then installs its own bundled controller automatically; the temporary repair does not pin future controller versions.
+
 Push source to Forgejo to start a release. The existing source mirror and Kubernetes coordinator handle qualification, rollout, publication and reconciliation. The local package timer installs signed desktop updates. Check the actual release with:
 
 ```sh

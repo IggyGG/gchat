@@ -163,6 +163,13 @@ def expected_image(target, build):
     if (target.get('kind') != 'deployment' or target.get('namespace') != 'ghost-com'
             or target.get('name') != 'gchat-release' or target.get('image') != 'controller'):
         raise ValueError('independent controller qualification is outside the installed controller')
+    release = target.get('controller_qualification_release_id')
+    if release is not None:
+        if (not isinstance(release, str) or not re.fullmatch('[0-9a-f]{64}', release)
+                or not re.fullmatch('[0-9a-f]{64}', str(build.get('release_id', '')))):
+            raise ValueError('controller qualification release binding is missing or invalid')
+        if release != build['release_id']:
+            return build['images'][target['image']]
     raw = Path(path).read_bytes()
     if hashlib.sha256(raw).hexdigest() != target.get('controller_qualification_sha256'):
         raise ValueError('operator controller qualification changed')
