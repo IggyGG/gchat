@@ -114,6 +114,24 @@ class Coordinator:
             item['log'].close()
         self.running_workers.clear()
 
+    def collect_finished_workers(self):
+        # Polling a completed child reaps it; close its log even if its platform
+        # is now blocked and will not execute again until reconciliation.
+        for effect_id, item in list(self.running_workers.items()):
+            if item['process'].poll() is None:
+                continue
+            item['log'].close()
+            effect = self.ledger.db.execute('SELECT state,kind FROM effects WHERE id=?', (effect_id,)).fetchone()
+            obsolete_observation = False
+            if item['stage'] == 'observe' and effect is not None:
+                pointer = self.state / 'observe-effects' / item['release_id'] / (item['platform'] + '.json')
+                current = json.loads(pointer.read_text())['kind'] if pointer.is_file() else 'observe'
+                obsolete_observation = effect['kind'] != current
+            if effect is not None and (effect['state'] == 'confirmed' or obsolete_observation):
+                # Retained receipts/logs remain authoritative; an unverified old
+                # observation is never converted into a successful effect.
+                del self.running_workers[effect_id]
+
     def deployment_ready(self, manifest):
         if not manifest['policy'].get('deployment_required', False):
             return True
@@ -265,7 +283,15 @@ class Coordinator:
                 (self.state / 'jobs' / existing['id'] / 'receipt.json').is_file())
             if not admitted and shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
                 raise StorageHeadroomError(STORAGE_HEADROOM_REASON)
-        effect_kind = stage if stage != 'observe' else 'observe-' + str(time.time_ns())
+        effect_kind = stage
+        if stage == 'observe':
+            pointer = self.state / 'observe-effects' / manifest['release_id'] / (platform + '.json')
+            if pointer.is_file():
+                effect_kind = json.loads(pointer.read_text())['kind']
+            previous = self.ledger.effect(manifest['release_id'], platform, effect_kind)
+            if previous['state'] == 'confirmed':
+                effect_kind = 'observe-after-' + previous['id']
+            atomic_json(pointer, {'kind': effect_kind})
         if stage == 'acceptance' and 'max_age_seconds' in recipe:
             age = recipe['max_age_seconds']
             if type(age) is not int or not 60 <= age <= 3000:
@@ -472,6 +498,7 @@ class Coordinator:
             self.ledger.transition(release, platform, 'blocked', reason=message[:240])
 
     def tick(self):
+        self.collect_finished_workers()
         from release_control import consume
         consume(self)
         if self.config.get('discovery'):
@@ -527,7 +554,7 @@ class Coordinator:
             public['flight'] = select(self.state, self.ledger, minutes=self.minutes)
         public['publication_policy'] = self.config.get('publication_policy')
         public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')}
-                                    for item in self.running_workers.values()]
+                                    for item in self.running_workers.values() if item['process'].poll() is None]
         public['deployment_worker'] = self.deployment_runner.progress()
         atomic_json(self.state / 'public/status.json', public)
         os.chmod(self.state / 'public/status.json', 0o644)

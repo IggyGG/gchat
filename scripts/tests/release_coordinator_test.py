@@ -19,6 +19,52 @@ class CoordinatorTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.manifest=candidate()
 
+    def test_observation_reuses_pending_request_and_advances_only_after_verified_completion(self):
+        from unittest.mock import Mock
+        recipe = {'run': ['read-only-store-status'], 'reconcile': ['reconcile-store-status']}
+        c = Coordinator(self.root, {'nonblocking_workers': True,
+                                  'workers': {'android': {'observe': recipe}}})
+        self.addCleanup(c.ledger.close)
+        c.ledger.add(self.manifest)
+        process = Mock(returncode=0)
+        process.poll.return_value = None
+        with patch('release_coordinator.subprocess.Popen', return_value=process) as launch:
+            self.assertIsNone(c.execute(self.manifest, 'android', 'observe'))
+            first = c.ledger.effect(self.manifest['release_id'], 'android', 'observe')
+            log = c.running_workers[first['id']]['log']
+            self.assertIsNone(c.execute(self.manifest, 'android', 'observe'))
+            self.assertEqual(launch.call_count, 1)
+            self.receipt(self.root / 'jobs' / first['id'], stage='observe')
+            process.poll.return_value = 0
+            self.assertIsNotNone(c.execute(self.manifest, 'android', 'observe'))
+            self.assertTrue(log.closed)
+            self.assertEqual(c.ledger.effect(self.manifest['release_id'], 'android', 'observe')['state'], 'confirmed')
+            process.poll.return_value = None
+            self.assertIsNone(c.execute(self.manifest, 'android', 'observe'))
+            self.assertEqual(launch.call_count, 2)
+            pointer = json.loads((self.root / 'observe-effects' / self.manifest['release_id'] / 'android.json').read_text())
+            self.assertEqual(pointer['kind'], 'observe-after-' + first['id'])
+        process.poll.return_value = 0
+        c.close_workers()
+
+    def test_obsolete_observation_logs_are_closed_without_confirming_unknown_outcomes(self):
+        from unittest.mock import Mock
+        c = Coordinator(self.root, {'workers': {}})
+        self.addCleanup(c.ledger.close)
+        c.ledger.add(self.manifest)
+        logs = []
+        for index in range(32):
+            effect = c.ledger.effect(self.manifest['release_id'], 'android', f'observe-{index}')
+            process = Mock(returncode=0)
+            process.poll.return_value = 0
+            log = (self.root / f'old-{index}.log').open('wb'); logs.append(log)
+            c.running_workers[effect['id']] = dict(process=process, log=log, stage='observe',
+                release_id=self.manifest['release_id'], platform='android')
+        c.collect_finished_workers()
+        self.assertEqual(c.running_workers, {})
+        self.assertTrue(all(log.closed for log in logs))
+        self.assertEqual(c.ledger.db.execute("SELECT COUNT(*) FROM effects WHERE state='confirmed'").fetchone()[0], 0)
+
     def test_mobile_native_checks_finish_before_store_serialization_and_prerequisite_is_read_only(self):
         for platform in ('ios','android'):
             for waiting in ('submitting','processing','in_review','blocked'):
