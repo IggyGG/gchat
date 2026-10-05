@@ -35,6 +35,8 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_BUILD_JOBS: '3'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.cache/linux-gchat-target
+      RUSTFLAGS: ''
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -61,6 +63,17 @@ jobs:
         env:
           GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
         run: python3 gchat/scripts/release_input.py
+      - name: Restore pinned native dependencies and compiler cache
+        if: startsWith(github.ref, 'refs/heads/release/gchat-') && inputs.release_manifest != ''
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-deny
+            ~/.npm
+            .cache/linux-gchat-target
+          key: linux-x86_64-gchat-dev-test-v2-${{ hashFiles('gchat/rust-toolchain.toml', 'gcoms/rust-toolchain.toml', 'gchat/**/Cargo.toml', 'gcoms/**/Cargo.toml', 'gchat/**/Cargo.lock', 'gcoms/**/Cargo.lock', 'gchat/package-lock.json', 'gchat/ui/package-lock.json', 'gchat/.github/workflows/linux-release.yml', 'gchat/scripts/ci.py', 'gcoms/scripts/ci.py', 'gchat/scripts/paired_sources.py') }}
       - name: Prepare native tools
         run: |
           sudo apt-get update -qq
@@ -74,21 +87,97 @@ jobs:
           with open(os.environ['GITHUB_ENV'],'a') as stream:stream.write('RUSTUP_TOOLCHAIN='+pins[0]['channel']+'\n')
           PY
           npm install --global npm@11.6.2
-          cargo install cargo-deny --locked --version 0.20.2
-      - name: Qualify the frozen pair and retain both native gates
-        run: python3 gchat/scripts/release_linux_qualification.py qualify
+          if ! cargo deny --version 2>/dev/null | grep -qx "cargo-deny 0.20.2"; then cargo install cargo-deny --locked --version 0.20.2; fi
+      - name: Qualify the frozen gchat native gate
+        run: python3 gchat/scripts/release_linux_qualification.py qualify --scope gchat
       - name: Retain exact qualification and failure evidence
         id: evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: linux-qualification-${{ github.run_attempt }}
+          name: linux-qualification-gchat-${{ github.run_attempt }}
+          include-hidden-files: true
+          retention-days: 30
+          path: native-evidence/**
+          if-no-files-found: error
+  qualify-gcoms:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    outputs:
+      artifact_id: ${{ steps.evidence.outputs.artifact-id }}
+      artifact_sha256: ${{ steps.evidence.outputs.artifact-digest }}
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_BUILD_JOBS: '3'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.cache/linux-gcoms-target
+      RUSTFLAGS: ''
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.gchat_commit }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ inputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Install pinned Python measurement and transport test dependencies
+        run: python3 -m pip install --disable-pip-version-check numpy==2.3.5 cryptography==50.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.23.2'
+      - name: Verify frozen workflow, sources and versions
+        env:
+          GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
+        run: python3 gchat/scripts/release_input.py
+      - name: Restore pinned native dependencies and compiler cache
+        if: startsWith(github.ref, 'refs/heads/release/gchat-') && inputs.release_manifest != ''
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-deny
+            ~/.npm
+            .cache/linux-gcoms-target
+          key: linux-x86_64-gcoms-dev-test-v2-${{ hashFiles('gchat/rust-toolchain.toml', 'gcoms/rust-toolchain.toml', 'gchat/**/Cargo.toml', 'gcoms/**/Cargo.toml', 'gchat/**/Cargo.lock', 'gcoms/**/Cargo.lock', 'gchat/package-lock.json', 'gchat/ui/package-lock.json', 'gchat/.github/workflows/linux-release.yml', 'gchat/scripts/ci.py', 'gcoms/scripts/ci.py', 'gchat/scripts/paired_sources.py') }}
+      - name: Prepare native tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2t64 xvfb xauth gnupg minisign
+          python3 - <<'PY'
+          import os, subprocess, tomllib
+          from pathlib import Path
+          pins=[tomllib.loads(Path(p,'rust-toolchain.toml').read_text())['toolchain'] for p in ('gchat','gcoms')]
+          assert pins[0]==pins[1]
+          subprocess.run(['rustup','toolchain','install',pins[0]['channel'],'--profile','minimal','--component','clippy,rustfmt'],check=True)
+          with open(os.environ['GITHUB_ENV'],'a') as stream:stream.write('RUSTUP_TOOLCHAIN='+pins[0]['channel']+'\n')
+          PY
+          npm install --global npm@11.6.2
+          if ! cargo deny --version 2>/dev/null | grep -qx "cargo-deny 0.20.2"; then cargo install cargo-deny --locked --version 0.20.2; fi
+      - name: Qualify the frozen gcoms native gate
+        run: python3 gchat/scripts/release_linux_qualification.py qualify --scope gcoms
+      - name: Retain exact qualification and failure evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linux-qualification-gcoms-${{ github.run_attempt }}
           include-hidden-files: true
           retention-days: 30
           path: native-evidence/**
           if-no-files-found: error
   linux:
-    needs: qualify
+    needs: [qualify, qualify-gcoms]
     runs-on: ubuntu-24.04
     environment: release-signing
     timeout-minutes: 120
@@ -100,6 +189,8 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_BUILD_JOBS: '3'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.cache/linux-infrastructure-target
+      RUSTFLAGS: ''
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -124,6 +215,16 @@ jobs:
         env:
           GCHAT_RELEASE_MANIFEST_BASE64: ${{ inputs.release_manifest }}
         run: python3 gchat/scripts/release_input.py
+      - name: Restore pinned packaging dependencies and infrastructure compiler cache
+        if: startsWith(github.ref, 'refs/heads/release/gchat-') && inputs.release_manifest != ''
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.npm
+            .cache/linux-infrastructure-target
+          key: linux-x86_64-package-release-v2-${{ hashFiles('gchat/rust-toolchain.toml', 'gcoms/rust-toolchain.toml', 'gchat/**/Cargo.toml', 'gcoms/**/Cargo.toml', 'gchat/**/Cargo.lock', 'gcoms/**/Cargo.lock', 'gchat/package-lock.json', 'gchat/ui/package-lock.json', 'gchat/.github/workflows/linux-release.yml', 'gchat/scripts/build-installer.py', 'gchat/scripts/build-infrastructure.py', 'gchat/scripts/paired_sources.py') }}
       - name: Prepare native tools
         run: |
           sudo apt-get update -qq
@@ -140,12 +241,16 @@ jobs:
       - name: Verify same-run qualification before signing
         env:
           GH_TOKEN: ${{ github.token }}
-          QUALIFICATION_ARTIFACT_ID: ${{ needs.qualify.outputs.artifact_id }}
-          QUALIFICATION_ARTIFACT_SHA256: ${{ needs.qualify.outputs.artifact_sha256 }}
+          GCHAT_QUALIFICATION_ARTIFACT_ID: ${{ needs.qualify.outputs.artifact_id }}
+          GCHAT_QUALIFICATION_ARTIFACT_SHA256: ${{ needs.qualify.outputs.artifact_sha256 }}
+          GCOMS_QUALIFICATION_ARTIFACT_ID: ${{ needs.qualify-gcoms.outputs.artifact_id }}
+          GCOMS_QUALIFICATION_ARTIFACT_SHA256: ${{ needs.qualify-gcoms.outputs.artifact_sha256 }}
         run: >-
-          python3 gchat/scripts/release_linux_qualification.py fetch
-          --artifact-id "$QUALIFICATION_ARTIFACT_ID"
-          --sha256 "$QUALIFICATION_ARTIFACT_SHA256"
+          python3 gchat/scripts/release_linux_qualification.py aggregate
+          --gchat-artifact-id "$GCHAT_QUALIFICATION_ARTIFACT_ID"
+          --gchat-sha256 "$GCHAT_QUALIFICATION_ARTIFACT_SHA256"
+          --gcoms-artifact-id "$GCOMS_QUALIFICATION_ARTIFACT_ID"
+          --gcoms-sha256 "$GCOMS_QUALIFICATION_ARTIFACT_SHA256"
       - name: Build signed Linux bundles
         env:
           GCHAT_RELEASE_KEY: F4F6F8550D2AA952A189640D58430838AA3230BB

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 
@@ -22,6 +23,12 @@ COMMANDS = (
      '--provenance-output', 'native-evidence/paired-gchat'],
     ['python3', 'gcoms/scripts/ci.py'],
 )
+SCOPES = ('gchat', 'gcoms')
+
+
+def commands(scope):
+    require(scope is None or scope in SCOPES, 'unknown Linux qualification scope')
+    return list(enumerate(COMMANDS)) if scope is None else [(SCOPES.index(scope), COMMANDS[SCOPES.index(scope)])]
 
 
 def context(manifest, environment):
@@ -39,14 +46,16 @@ def context(manifest, environment):
             'workflow_commit': environment['GITHUB_WORKFLOW_SHA']}
 
 
-def verify(root, manifest, environment):
+def verify(root, manifest, environment, scope=None):
     """Failed, stale, relocated or modified evidence cannot authorize signing."""
     manifest = validate(manifest)
     expected = context(manifest, environment)
     root = Path(root).resolve()
     report = read_json(root / 'qualification.json')
+    selected = commands(scope)
     require(type(report.get('schema')) is int and report['schema'] == 1 and
-            report.get('kind') == 'linux_native_qualification' and
+            report.get('kind') == ('linux_native_qualification' if scope is None else 'linux_native_scope') and
+            report.get('scope') == scope and
             report.get('platform') == 'linux-x86_64' and report.get('native_target') == TARGET,
             'wrong Linux qualification schema/platform')
     require(report.get('passed') is True and report.get('source_unchanged') is True,
@@ -62,13 +71,15 @@ def verify(root, manifest, environment):
             1 <= provider['run_attempt'] <= expected['run_attempt'],
             'Linux qualification belongs to another workflow run')
     steps = report.get('steps', [])
-    require(isinstance(steps, list) and len(steps) == len(COMMANDS),
+    require(isinstance(steps, list) and len(steps) == len(selected),
             'both native CI gates are required')
-    for step, command in zip(steps, COMMANDS):
+    for step, (_, command) in zip(steps, selected):
         require(step.get('command') == command and type(step.get('exit_code')) is int and
                 step['exit_code'] == 0, 'a native CI gate did not pass')
         require(file_reference(root, step.get('log')).stat().st_size > 0,
                 'native CI log is empty')
+    if scope == 'gcoms':
+        return report
     native = file_reference(root, report.get('native_ci'))
     inputs_path = file_reference(root, report.get('inputs'))
     require(native == root / 'paired-gchat/native-ci.json' and
@@ -79,6 +90,15 @@ def verify(root, manifest, environment):
             'native dependency inputs belong to another source/platform')
     verify_native_ci_inputs(native, inputs)
     verify_retained_inputs(root / 'paired-gchat', inputs)
+    if scope is None and 'scopes' in report:
+        require(set(report['scopes']) == set(SCOPES), 'both original scope receipts are required')
+        for name in SCOPES:
+            original = file_reference(root, report['scopes'][name])
+            require(original == root / 'scopes' / name / 'qualification.json',
+                    'unexpected scope evidence location')
+            proof = verify(original.parent, manifest, environment, name)
+            require(proof['steps'] == [steps[SCOPES.index(name)]],
+                    'aggregate differs from the original native gate')
     return report
 
 
@@ -98,7 +118,7 @@ def execute(command, workspace, log):
             return process.wait()
 
 
-def qualify(workspace, manifest, environment):
+def qualify(workspace, manifest, environment, scope=None):
     manifest = validate(manifest)
     provider = context(manifest, environment)
     checked_sources(workspace, manifest)
@@ -108,14 +128,17 @@ def qualify(workspace, manifest, environment):
     require('host: ' + TARGET in version.splitlines(), 'wrong native Rust toolchain host')
     root = workspace / 'native-evidence'
     root.mkdir(exist_ok=False)
-    report = {'schema': 1, 'kind': 'linux_native_qualification',
+    selected = commands(scope)
+    report = {'schema': 1, 'kind': 'linux_native_qualification' if scope is None else 'linux_native_scope',
               'platform': 'linux-x86_64', 'native_target': TARGET,
               'sources': manifest['sources'], 'release_id': manifest['release_id'],
               'manifest_sha256': hashlib.sha256(canonical(manifest)).hexdigest(),
               'provider': provider, 'passed': False, 'source_unchanged': False, 'steps': []}
+    if scope is not None:
+        report['scope'] = scope
     code = 1
     try:
-        for index, command in enumerate(COMMANDS):
+        for index, command in selected:
             log = root / ('native-' + str(index) + '.log')
             code = execute(command, workspace, log)
             report['steps'].append({'command': command, 'exit_code': code,
@@ -124,22 +147,25 @@ def qualify(workspace, manifest, environment):
                 break
         checked_sources(workspace, manifest)
         report['source_unchanged'] = True
-        if code == 0 and len(report['steps']) == len(COMMANDS):
-            for key, name in [('native_ci', 'native-ci.json'), ('inputs', 'inputs.json')]:
-                path = root / 'paired-gchat' / name
-                report[key] = {'path': path.relative_to(root).as_posix(), 'sha256': digest(path)}
+        if code == 0 and len(report['steps']) == len(selected):
+            if scope != 'gcoms':
+                for key, name in [('native_ci', 'native-ci.json'), ('inputs', 'inputs.json')]:
+                    path = root / 'paired-gchat' / name
+                    report[key] = {'path': path.relative_to(root).as_posix(), 'sha256': digest(path)}
             report['passed'] = True
     finally:
         (root / 'qualification.json').write_bytes(canonical(report))
     if report['passed']:
-        verify(root, manifest, environment)
+        verify(root, manifest, environment, scope)
     return code
 
 
-def validate_artifact(artifact, artifact_id, sha, manifest, environment):
+def validate_artifact(artifact, artifact_id, sha, manifest, environment, scope=None):
     expected = context(manifest, environment)
     name = artifact.get('name', '')
-    match = re.fullmatch(ARTIFACT + r'-([1-9][0-9]*)', name)
+    commands(scope)
+    prefix = ARTIFACT + ('-' + scope if scope else '')
+    match = re.fullmatch(prefix + r'-([1-9][0-9]*)', name)
     require(type(artifact.get('id')) is int and str(artifact['id']) == artifact_id and
             match is not None and int(match[1]) <= expected['run_attempt'] and
             artifact.get('expired') is False,
@@ -156,42 +182,80 @@ def validate_artifact(artifact, artifact_id, sha, manifest, environment):
             'qualification artifact exceeds download budget')
 
 
-def fetch(workspace, manifest, environment, artifact_id, sha):
+def fetch(workspace, manifest, environment, artifact_id, sha, scope=None, destination=None):
     require(re.fullmatch(r'[1-9][0-9]*', artifact_id) is not None, 'invalid qualification artifact ID')
     checked_sources(workspace, manifest)
     artifact = gh('actions/artifacts/' + artifact_id)
-    validate_artifact(artifact, artifact_id, sha, manifest, environment)
-    archive = workspace / 'qualification.zip'
+    validate_artifact(artifact, artifact_id, sha, manifest, environment, scope)
+    archive = workspace / ('qualification' + ('-' + scope if scope else '') + '.zip')
     with archive.open('xb') as stream:
         subprocess.run(['gh', 'api', 'repos/IggyGG/gchat/actions/artifacts/' + artifact_id + '/zip'],
                        stdout=stream, stderr=subprocess.PIPE, check=True, timeout=600)
     require(archive.stat().st_size == artifact['size_in_bytes'] and digest(archive) == sha,
             'qualification archive download hash mismatch')
-    root = workspace / 'native-evidence'
-    root.mkdir(exist_ok=False)
+    root = destination or workspace / 'native-evidence'
+    root.mkdir(parents=True, exist_ok=False)
     extract(archive, root)
-    report = verify(root, manifest, environment)
-    require(artifact['name'] == ARTIFACT + '-' + str(report['provider']['run_attempt']),
+    report = verify(root, manifest, environment, scope)
+    require(artifact['name'] == ARTIFACT + ('-' + scope if scope else '') + '-' + str(report['provider']['run_attempt']),
             'qualification artifact attempt differs from the native receipt')
     checked_sources(workspace, manifest)
     (root / 'handoff.json').write_bytes(canonical({
         'schema': 1, 'artifact_id': int(artifact_id), 'archive_sha256': sha,
         'provider': context(manifest, environment), 'release_id': manifest['release_id'],
     }))
+    return root
+
+
+def aggregate(workspace, manifest, environment, artifacts):
+    """Join independently authenticated same-run gates before opening signing."""
+    require(set(artifacts) == set(SCOPES), 'both qualification artifacts are required')
+    root = workspace / 'native-evidence'
+    root.mkdir(exist_ok=False)
+    proofs = {}
+    for scope in SCOPES:
+        artifact_id, sha = artifacts[scope]
+        directory = fetch(workspace, manifest, environment, artifact_id, sha, scope,
+                          root / 'scopes' / scope)
+        proofs[scope] = verify(directory, manifest, environment, scope)
+        log = file_reference(directory, proofs[scope]['steps'][0]['log'])
+        shutil.copyfile(log, root / ('native-' + str(SCOPES.index(scope)) + '.log'))
+    shutil.copytree(root / 'scopes/gchat/paired-gchat', root / 'paired-gchat')
+    report = {**proofs['gchat'], 'kind': 'linux_native_qualification',
+              'provider': context(manifest, environment),
+              'steps': [proofs[scope]['steps'][0] for scope in SCOPES],
+              'scopes': {scope: {'path': 'scopes/' + scope + '/qualification.json',
+                                'sha256': digest(root / 'scopes' / scope / 'qualification.json')}
+                         for scope in SCOPES}}
+    report.pop('scope')
+    (root / 'qualification.json').write_bytes(canonical(report))
+    checked_sources(workspace, manifest)
+    return verify(root, manifest, environment)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['qualify', 'fetch'])
+    parser.add_argument('action', choices=['qualify', 'fetch', 'aggregate'])
+    parser.add_argument('--scope', choices=SCOPES)
     parser.add_argument('--artifact-id')
     parser.add_argument('--sha256')
+    for scope in SCOPES:
+        parser.add_argument('--' + scope + '-artifact-id')
+        parser.add_argument('--' + scope + '-sha256')
     args = parser.parse_args()
     manifest = validate(read_json(os.environ['GCHAT_RELEASE_MANIFEST']))
     if args.action == 'qualify':
-        raise SystemExit(qualify(Path.cwd(), manifest, os.environ))
+        raise SystemExit(qualify(Path.cwd(), manifest, os.environ, args.scope))
+    if args.action == 'aggregate':
+        artifacts = {scope: (getattr(args, scope + '_artifact_id'), getattr(args, scope + '_sha256'))
+                     for scope in SCOPES}
+        if not all(all(value) for value in artifacts.values()):
+            parser.error('aggregate requires both qualifying artifact IDs and digests')
+        aggregate(Path.cwd(), manifest, os.environ, artifacts)
+        return
     if not args.artifact_id or not args.sha256:
         parser.error('fetch requires the qualifying job artifact ID and digest')
-    fetch(Path.cwd(), manifest, os.environ, args.artifact_id, args.sha256)
+    fetch(Path.cwd(), manifest, os.environ, args.artifact_id, args.sha256, args.scope)
 
 
 if __name__ == '__main__':

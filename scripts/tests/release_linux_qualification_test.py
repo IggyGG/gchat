@@ -1,7 +1,9 @@
 """Only both successful native gates from this run may reach Linux signing."""
 import copy
 import hashlib
+import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -10,7 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_automation_test import candidate
 from release_evidence import EvidenceError, digest
-from release_linux_qualification import COMMANDS, qualify, validate_artifact, verify
+from release_linux_qualification import COMMANDS, SCOPES, aggregate, qualify, validate_artifact, verify
 from release_pair import canonical
 
 
@@ -157,14 +159,90 @@ class LinuxQualificationTests(unittest.TestCase):
     def test_packaging_depends_on_qualification_and_fetch_precedes_signing(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/linux-release.yml').read_text()
         packaging = workflow.split('\n  linux:\n', 1)[1]
-        self.assertIn('needs: qualify\n', packaging)
+        self.assertIn('needs: [qualify, qualify-gcoms]\n', packaging)
         self.assertIn('${{ needs.qualify.outputs.artifact_id }}', packaging)
         self.assertIn('${{ needs.qualify.outputs.artifact_sha256 }}', packaging)
-        self.assertLess(packaging.index('release_linux_qualification.py fetch'),
+        self.assertIn('${{ needs.qualify-gcoms.outputs.artifact_id }}', packaging)
+        self.assertIn('${{ needs.qualify-gcoms.outputs.artifact_sha256 }}', packaging)
+        self.assertLess(packaging.index('release_linux_qualification.py aggregate'),
                         packaging.index('GCHAT_RELEASE_PRIVATE_KEY_BASE64:'))
         self.assertNotIn('GCHAT_RELEASE_PRIVATE_KEY_BASE64:', workflow.split('\n  linux:\n', 1)[0])
-        self.assertIn('linux-qualification-${{ github.run_attempt }}', workflow)
+        for scope in SCOPES:
+            self.assertIn('linux-qualification-' + scope + '-${{ github.run_attempt }}', workflow)
+            self.assertIn('qualify --scope ' + scope, workflow)
+            self.assertIn('CARGO_TARGET_DIR: ${{ github.workspace }}/.cache/linux-' + scope + '-target', workflow)
+        self.assertIn('actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809', workflow)
+        self.assertNotIn('restore-keys:', workflow)
         self.assertIn("format('linux-build-failure-{0}', github.run_attempt)", packaging)
+
+    def scope_directories(self):
+        directories = {}
+        for index, scope in enumerate(SCOPES):
+            directory = self.workspace / ('original-' + scope)
+            shutil.copytree(self.root, directory)
+            proof = {**self.report, 'kind': 'linux_native_scope', 'scope': scope,
+                     'steps': [self.report['steps'][index]]}
+            if scope == 'gcoms':
+                proof.pop('native_ci')
+                proof.pop('inputs')
+                shutil.rmtree(directory / 'paired-gchat')
+            (directory / 'qualification.json').write_bytes(canonical(proof))
+            directories[scope] = directory
+        return directories
+
+    def test_scope_has_one_exact_gate_and_gcoms_does_not_need_gchat_provenance(self):
+        for scope, directory in self.scope_directories().items():
+            proof = verify(directory, self.manifest, self.environment, scope)
+            self.assertEqual(len(proof['steps']), 1)
+            other = 'gcoms' if scope == 'gchat' else 'gchat'
+            with self.assertRaises(EvidenceError):
+                verify(directory, self.manifest, self.environment, other)
+
+    def test_aggregate_retains_both_original_scopes_and_rechecks_tampering(self):
+        directories = self.scope_directories()
+        shutil.rmtree(self.root)
+        def fetched(workspace, manifest, environment, artifact_id, sha, scope, destination):
+            self.assertEqual((artifact_id, sha), ('id-' + scope, scope + '-digest'))
+            shutil.copytree(directories[scope], destination)
+            return destination
+        artifacts = {scope: ('id-' + scope, scope + '-digest') for scope in SCOPES}
+        with patch('release_linux_qualification.fetch', side_effect=fetched), \
+                patch('release_linux_qualification.checked_sources'):
+            result = aggregate(self.workspace, self.manifest, self.environment, artifacts)
+        self.assertEqual(result['kind'], 'linux_native_qualification')
+        self.assertEqual([step['command'] for step in result['steps']], list(COMMANDS))
+        self.assertEqual(set(result['scopes']), set(SCOPES))
+        self.assertEqual(verify(self.root, self.manifest, self.environment), result)
+        (self.root / 'scopes/gcoms/native-1.log').write_bytes(b'changed original log')
+        with self.assertRaises(EvidenceError):
+            verify(self.root, self.manifest, self.environment)
+
+    def test_failed_or_missing_scope_cannot_produce_aggregate(self):
+        directories = self.scope_directories()
+        shutil.rmtree(self.root)
+        with self.assertRaises(EvidenceError):
+            aggregate(self.workspace, self.manifest, self.environment, {'gchat': ('1', 'a' * 64)})
+        proof_path = directories['gcoms'] / 'qualification.json'
+        proof = json.loads(proof_path.read_text())
+        proof['passed'] = False
+        proof_path.write_bytes(canonical(proof))
+        def fetched(workspace, manifest, environment, artifact_id, sha, scope, destination):
+            shutil.copytree(directories[scope], destination)
+            return destination
+        with patch('release_linux_qualification.fetch', side_effect=fetched), \
+                self.assertRaises(EvidenceError):
+            aggregate(self.workspace, self.manifest, self.environment,
+                      {scope: ('1', 'a' * 64) for scope in SCOPES})
+        self.assertFalse((self.root / 'qualification.json').exists())
+
+    def test_artifact_scope_cannot_be_substituted(self):
+        artifact = {'id': 456, 'name': 'linux-qualification-gchat-1', 'expired': False,
+                    'digest': 'sha256:' + 'a' * 64, 'size_in_bytes': 1234,
+                    'workflow_run': {'id': 123, 'head_sha': self.environment['GITHUB_SHA']}}
+        validate_artifact(artifact, '456', 'a' * 64, self.manifest, self.environment, 'gchat')
+        for scope in ('gcoms', None):
+            with self.subTest(scope=scope), self.assertRaises(EvidenceError):
+                validate_artifact(artifact, '456', 'a' * 64, self.manifest, self.environment, scope)
 
 
 if __name__ == '__main__':
