@@ -1524,11 +1524,22 @@ impl ChatService {
         let archive = client.archive_snapshot();
         if let Some(args) = network_arguments(text) {
             if args.starts_with("join GCNI1-")
-                || matches!(args, "dns on" | "dns off" | "dns status")
+                || matches!(
+                    args,
+                    "dns on"
+                        | "dns off"
+                        | "dns status"
+                        | "relay auto"
+                        | "relay off"
+                        | "relay status"
+                )
             {
                 return Ok(());
             }
-            return Err("Usage: /network join invitation-code | dns on|off|status".into());
+            return Err(
+                "Usage: /network join invitation-code | dns on|off|status | relay auto|off|status"
+                    .into(),
+            );
         }
         if let Some(args) = text.strip_prefix("/join ") {
             if self.projected_join(&archive, split_head(args).0)?.is_some() {
@@ -1684,6 +1695,27 @@ impl ChatService {
         text: &str,
         operation_id: &str,
     ) -> Result<Response, String> {
+        if let Some(args @ ("relay auto" | "relay off" | "relay status")) = network_arguments(text)
+        {
+            let status = if args == "relay status" {
+                self.runtime.relay_sharing_status()
+            } else {
+                self.runtime.configure_relay_sharing(args == "relay auto")?
+            };
+            let notice = if status.published {
+                format!(
+                    "{} (up to {} KiB/s).",
+                    status.state,
+                    status.bandwidth_bytes_per_second / 1024
+                )
+            } else {
+                format!("{}.", status.state)
+            };
+            return Ok(Response::Applied {
+                conversation: conversation.map(str::to_owned),
+                notice: Some(notice),
+            });
+        }
         if preferences::handles(text) {
             return self.submit_preference(conversation, text).await;
         }
@@ -2794,7 +2826,7 @@ fn command_catalogue(caps: &[Capability]) -> Vec<Completion> {
         ("/status", "Show this instance"),
         (
             "/network",
-            "Connect: /network join invitation-code; public naming: /network dns on|off|status",
+            "Connect: /network join invitation-code; public naming: /network dns on|off|status; desktop sharing: /network relay auto|off|status",
         ),
         ("/lock", "Lock all attached views; keep receiving messages"),
         (
@@ -2885,7 +2917,7 @@ fn command_usage(name: &str) -> &str {
         "/reconnect" => "/reconnect [code]",
         "/presence" => "/presence on|off",
         "/publish" => "/publish https://directory.example/",
-        "/network" => "/network join invitation-code | dns on|off|status",
+        "/network" => "/network join invitation-code | dns on|off|status | relay auto|off|status",
         "/create" => "/create [--private|--public] #channel nickname",
         "/join" => "/join invitation-or-#channel nickname",
         "/query" => "/query nickname-or-member-id",
@@ -2922,7 +2954,10 @@ fn recall_text(text: &str) -> String {
         return "/reconnect".into();
     }
     if name.eq_ignore_ascii_case("/network") {
-        return if matches!(args, "dns on" | "dns off" | "dns status") {
+        return if matches!(
+            args,
+            "dns on" | "dns off" | "dns status" | "relay auto" | "relay off" | "relay status"
+        ) {
             format!("/network {args}")
         } else {
             "/network join ".into()

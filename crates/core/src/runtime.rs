@@ -8,6 +8,71 @@ use std::{net::SocketAddr, path::Path, sync::Arc};
 #[derive(Clone)]
 pub struct ProtocolRuntime(pub Application);
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+static DESKTOP_RELAY_CONFIG: std::sync::Mutex<Option<gcoms::runtime::RelaySharingConfig>> =
+    std::sync::Mutex::new(None);
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub(crate) fn set_desktop_relay_config(config: gcoms::runtime::RelaySharingConfig) {
+    *DESKTOP_RELAY_CONFIG
+        .lock()
+        .expect("desktop relay configuration") = Some(config);
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub(crate) fn desktop_relay_config() -> Result<gcoms::runtime::RelaySharingConfig, String> {
+    if let Some(config) = DESKTOP_RELAY_CONFIG
+        .lock()
+        .expect("desktop relay configuration")
+        .clone()
+    {
+        return Ok(config);
+    }
+    let mut config = gcoms::runtime::RelaySharingConfig {
+        enabled: std::env::var("GCHAT_RELAY_SHARING").as_deref() != Ok("off"),
+        router_mapping: std::env::var("GCHAT_ROUTER_MAPPING").as_deref() != Ok("off"),
+        ..Default::default()
+    };
+    if let Ok(value) = std::env::var("GCHAT_RELAY_CIRCUITS") {
+        config.circuits = value
+            .parse()
+            .map_err(|_| "Invalid desktop relay circuit budget")?;
+    }
+    config.connections = config.circuits.saturating_mul(2);
+    if let Ok(value) = std::env::var("GCHAT_RELAY_CONNECTIONS") {
+        config.connections = value
+            .parse()
+            .map_err(|_| "Invalid desktop relay connection budget")?;
+    }
+    config.bandwidth_bytes_per_second = config.bandwidth_bytes_per_second.max(
+        config
+            .circuits
+            .saturating_mul(8192)
+            .saturating_add(256 * 1024),
+    );
+    if let Ok(value) = std::env::var("GCHAT_RELAY_BANDWIDTH") {
+        config.bandwidth_bytes_per_second = value
+            .parse()
+            .map_err(|_| "Invalid desktop relay bandwidth budget")?;
+    }
+    config.validate()?;
+    Ok(config)
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn desktop_sharing(
+    builder: gcoms::ApplicationBuilder,
+) -> Result<gcoms::ApplicationBuilder, String> {
+    Ok(builder.relay_sharing(desktop_relay_config()?))
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+fn desktop_sharing(
+    builder: gcoms::ApplicationBuilder,
+) -> Result<gcoms::ApplicationBuilder, String> {
+    Ok(builder)
+}
+
 /// Mobile profiles, including explicitly joined networks, never host a relay.
 pub(crate) fn default_backend() -> gcoms::Backend {
     #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -47,19 +112,16 @@ impl ProtocolRuntime {
             trusted_key_b64: network.trusted_key_b64,
             signed_defaults: network.signed_defaults,
         };
-        Ok(Self(
-            Application::builder("gchat")
-                .backend(default_backend())
-                .network_config(serde_json::to_vec(&installed).map_err(|error| error.to_string())?)
-                .profile(path)
-                .unlock_secret(secret)
-                .carrier_profile(gcoms::sdk::CarrierProfile::Gc2)
-                .create(create)
-                .durable_channel_inbox(true)
-                .receive_messages(false)
-                .open()
-                .await?,
-        ))
+        let builder = Application::builder("gchat")
+            .backend(default_backend())
+            .network_config(serde_json::to_vec(&installed).map_err(|error| error.to_string())?)
+            .profile(path)
+            .unlock_secret(secret)
+            .carrier_profile(gcoms::sdk::CarrierProfile::Gc2)
+            .create(create)
+            .durable_channel_inbox(true)
+            .receive_messages(false);
+        Ok(Self(desktop_sharing(builder)?.open().await?))
     }
 
     #[cfg(not(feature = "gc2-carrier"))]
@@ -102,6 +164,26 @@ impl ProtocolRuntime {
             .configure_network_dns(enabled)
             .await
             .map_err(|e| e.to_string())
+    }
+
+    pub fn configure_relay_sharing(
+        &self,
+        enabled: bool,
+    ) -> Result<gcoms::runtime::RelaySharingStatus, String> {
+        self.0
+            .embedded_runtime()
+            .ok_or("Relay sharing requires this desktop's local runtime")?
+            .configure_relay_sharing(enabled)
+    }
+
+    pub fn relay_sharing_status(&self) -> gcoms::runtime::RelaySharingStatus {
+        self.0.embedded_runtime().map_or_else(
+            || gcoms::runtime::RelaySharingStatus {
+                state: "Relay sharing is unavailable for this backend".into(),
+                ..Default::default()
+            },
+            |runtime| runtime.relay_sharing_status(),
+        )
     }
     pub async fn network_dns_status(&self) -> Result<gcoms::sdk::NetworkNameStatus, String> {
         self.sdk_client()
@@ -167,21 +249,18 @@ impl ProtocolRuntime {
         if !private_cidrs.is_empty() {
             return Err("private forwarding requires a scoped infrastructure runtime".into());
         }
-        Ok(Self(
-            Application::builder("gchat")
-                .network_config(crate::network::installed_json())
-                .profile(path)
-                .unlock_secret(secret)
-                .listen(listen)
-                .advertise(advertise)
-                .relay(relay)
-                .carrier_profile(gcoms::sdk::CarrierProfile::Gc2)
-                .create(create)
-                .durable_channel_inbox(true)
-                .receive_messages(false)
-                .open()
-                .await?,
-        ))
+        let builder = Application::builder("gchat")
+            .network_config(crate::network::installed_json())
+            .profile(path)
+            .unlock_secret(secret)
+            .listen(listen)
+            .advertise(advertise)
+            .relay(relay)
+            .carrier_profile(gcoms::sdk::CarrierProfile::Gc2)
+            .create(create)
+            .durable_channel_inbox(true)
+            .receive_messages(false);
+        Ok(Self(desktop_sharing(builder)?.open().await?))
     }
     pub async fn create(
         path: &Path,

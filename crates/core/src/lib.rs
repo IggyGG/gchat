@@ -11,6 +11,7 @@ pub mod dns;
 pub mod model;
 pub mod paths;
 pub mod private_fs;
+pub mod relay_sharing;
 pub mod runtime;
 pub mod store;
 pub mod transcript;

@@ -17,6 +17,24 @@ mod fixture {
     }
     #[derive(Subcommand)]
     enum Command {
+        /// Core contribution service in the declared disconnected namespace.
+        Contribute {
+            #[arg(long)]
+            listen: SocketAddr,
+            #[arg(long)]
+            bootstrap: PathBuf,
+            #[arg(long)]
+            introduction: PathBuf,
+            #[arg(long)]
+            verified: PathBuf,
+            #[arg(long)]
+            diagnostics: PathBuf,
+        },
+        /// A separate process verifies the listener before publication.
+        Verify {
+            introduction: PathBuf,
+            verified: PathBuf,
+        },
         Network {
             bootstrap: PathBuf,
             output: PathBuf,
@@ -98,9 +116,136 @@ mod fixture {
             .map_err(|e| e.to_string())
     }
 
+    async fn contribute(
+        listen: SocketAddr,
+        bootstrap: PathBuf,
+        introduction: PathBuf,
+        verified: PathBuf,
+        diagnostics: PathBuf,
+    ) -> Result<(), String> {
+        use gcoms_routing::{Directory, RelayService, ServicePolicy};
+        use gcoms_transport::{server::Tp1Server, tls::TlsIdentity, TokenRegistry};
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let ready = Arc::new(AtomicBool::new(false));
+        let identity = TlsIdentity::generate().map_err(|e| e.to_string())?;
+        let relay = RelayService::new(
+            listen,
+            identity.service_id(),
+            rand::random(),
+            Arc::new(Directory::new()),
+            ServicePolicy {
+                max_circuits: 32,
+                transit_ready: Some(ready.clone()),
+                ..Default::default()
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        relay.configure_contribution_bandwidth(512 * 1024);
+        let bundle = gcoms_routing::gc2::directory::BootstrapBundle::decode(
+            &std::fs::read(bootstrap).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        relay
+            .gc2_directory()
+            .remember(&bundle, gcoms_network_client::now_unix())
+            .map_err(|e| e.to_string())?;
+        let own = gcoms_routing::gc2::directory::BootstrapBundle {
+            relays: vec![relay.gc2_introduction(gcoms_network_client::now_unix())],
+        }
+        .encode()
+        .map_err(|e| e.to_string())?;
+        private_write(&introduction, &own)?;
+        let server = Tp1Server::bind_with_identity(
+            listen,
+            TokenRegistry::new(),
+            Arc::new(|_, _| Ok(None)),
+            Arc::new(|_| None),
+            &identity,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+        let mut task = tokio::spawn(
+            server
+                .with_limits(gcoms_transport::ServerLimits {
+                    max_connections: 64,
+                    ..Default::default()
+                })
+                .with_dispatch_factory(relay.gc2_handler_factory())
+                .run(),
+        );
+        let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .map_err(|e| e.to_string())?;
+        loop {
+            tokio::select! {
+                result=&mut task => { result.map_err(|e|e.to_string())?.map_err(|e|e.to_string())?; break; },
+                _=term.recv()=>break,
+                _=tokio::time::sleep(Duration::from_secs(1))=> {
+                    if verified.is_file() { ready.store(true,Ordering::Release); }
+                    let record=serde_json::json!({"circuits":32,"connections":64,"bandwidth_bytes_per_second":512*1024,
+                        "published":ready.load(Ordering::Acquire),"transferred_bytes":relay.contribution_bytes()});
+                    private_replace(&diagnostics,&serde_json::to_vec(&record).map_err(|e|e.to_string())?)?;
+                }
+            }
+        }
+        ready.store(false, Ordering::Release);
+        task.abort();
+        Ok(())
+    }
+
+    fn private_write(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
+        use std::os::unix::fs::OpenOptionsExt;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path)
+            .and_then(|mut file| file.write_all(bytes))
+            .map_err(|e| e.to_string())
+    }
+    fn private_replace(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
+        let mut file =
+            tempfile::NamedTempFile::new_in(path.parent().ok_or("fixture parent missing")?)
+                .map_err(|e| e.to_string())?;
+        gchat_core::private_fs::make_private(file.path(), false)?;
+        file.write_all(bytes).map_err(|e| e.to_string())?;
+        file.persist(path).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     pub async fn run() -> Result<(), String> {
         isolated()?;
         let Args { command } = Args::parse();
+        match command {
+            Command::Contribute {
+                listen,
+                bootstrap,
+                introduction,
+                verified,
+                diagnostics,
+            } => return contribute(listen, bootstrap, introduction, verified, diagnostics).await,
+            Command::Verify {
+                introduction,
+                verified,
+            } => {
+                let bundle = gcoms_routing::gc2::directory::BootstrapBundle::decode(
+                    &std::fs::read(introduction).map_err(|e| e.to_string())?,
+                )
+                .map_err(|e| e.to_string())?;
+                if bundle.relays.len() != 1 {
+                    return Err("one contribution required".into());
+                }
+                let intro = &bundle.relays[0];
+                let client = gcoms_transport::Tp1Client::new().map_err(|e| e.to_string())?;
+                let proof = gcoms_routing::gc2::discovery::refresh(&client, intro, &[])
+                    .await
+                    .map_err(|e| e.to_string())?;
+                if !proof.relays.iter().any(|own| own == intro) {
+                    return Err("contribution listener changed".into());
+                }
+                return private_write(&verified, b"verified\n");
+            }
+            _ => {}
+        }
         let Command::Serve {
             home,
             passphrase_file,

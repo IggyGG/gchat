@@ -10,6 +10,8 @@ use zeroize::Zeroizing;
 
 #[derive(clap::Args, Clone)]
 pub struct DaemonArgs {
+    #[command(flatten)]
+    pub relay_sharing: crate::relay_sharing::RelaySharingArgs,
     /// Bundled GComs service executable; starts or attaches automatically.
     #[arg(long, requires = "gcoms_endpoint")]
     pub gcomsd: Option<PathBuf>,
@@ -223,6 +225,7 @@ pub fn bootstrap_values(
 /// Host a standalone chat instance until the owning service is stopped.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub async fn run(args: DaemonArgs) -> Result<(), String> {
+    args.relay_sharing.apply()?;
     if let Some(path) = std::env::var_os("GCHAT_PROTOCOL_METRICS") {
         gcoms::runtime::metrics::init(Path::new(&path))
             .map_err(|error| format!("open local protocol metrics: {error}"))?;

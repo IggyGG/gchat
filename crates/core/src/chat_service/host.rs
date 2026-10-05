@@ -639,6 +639,26 @@ pub async fn ensure_running(
     let log = options.open(&log_path).map_err(|e| e.to_string())?;
     crate::private_fs::make_private(&log_path, false)?;
     let mut command = std::process::Command::new(executable);
+    let sharing = crate::runtime::desktop_relay_config()?;
+    command
+        .env(
+            "GCHAT_RELAY_SHARING",
+            if sharing.enabled { "auto" } else { "off" },
+        )
+        .env(
+            "GCHAT_ROUTER_MAPPING",
+            if sharing.router_mapping {
+                "auto"
+            } else {
+                "off"
+            },
+        )
+        .env("GCHAT_RELAY_CIRCUITS", sharing.circuits.to_string())
+        .env("GCHAT_RELAY_CONNECTIONS", sharing.connections.to_string())
+        .env(
+            "GCHAT_RELAY_BANDWIDTH",
+            sharing.bandwidth_bytes_per_second.to_string(),
+        );
     if gchat_binary {
         command.arg("daemon");
     }

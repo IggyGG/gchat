@@ -6,6 +6,8 @@ use std::{ffi::OsString, path::PathBuf};
 #[derive(Parser)]
 #[command(name = "gchat-desktop")]
 struct Arguments {
+    #[command(flatten)]
+    relay_sharing: gchat_core::relay_sharing::RelaySharingArgs,
     /// Use a separate saved identity and archive directory.
     #[arg(long)]
     home: Option<PathBuf>,
@@ -62,6 +64,7 @@ where
     if args.gc2_carrier && !cfg!(feature = "gc2-carrier") {
         return Err("this application was built without GC/2 carrier support".into());
     }
+    args.relay_sharing.apply()?;
     let mut config = InstanceConfig::from_home(args.home.as_deref())?;
     config.fleet_config = args.fleet_config;
     // Pass one choice to the host. A retained profile mismatch remains an error;

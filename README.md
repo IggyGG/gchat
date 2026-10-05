@@ -1,5 +1,16 @@
 # GChat
 
+Embedded desktops automatically contribute relay capacity when plugged in, on
+an unmetered connection and eligible to host. Publication requires a verified
+public listener and a signed, membership-authorized provider lease. Defaults
+are 32 circuits, 64 connections and 512 KiB/s. Use `/network relay status`,
+`/network relay off` or `/network relay auto`; opt-out survives restart.
+Startup options are `--no-relay-sharing`, `--no-router-mapping`,
+`--relay-circuits`, `--relay-connections` and `--relay-bandwidth` (bytes/second).
+Sharing pauses when device or network conditions change. Mobile remains
+outbound-only. Fleet rollout and installed-client qualification are tracked in
+PLAN.md; this source description does not certify a live deployment.
+
 Release status, 2026-10-04: Linux 0.1.98 and all 17 infrastructure targets are active and healthy. Linux, Windows, both Mac architectures and SDK archives are published. Controller c66c230 runs the production-minutes-v1 publication path in Kubernetes. Original Android and iOS artifacts passed its publication gates. Android 1113 is uploaded, committed to Google Play and processing; iOS 1.1.13 awaits Apple encryption approval, including France. Full GUI qualification and SDK 1.0 remain separate and incomplete. Mobile publication and Apple encryption approval remain separate from full GUI qualification and SDK 1.0; original failed reports are retained.
 
 Node 5 disk recovery, 2026-10-04: its anchor is ready after unused Docker build images were reclaimed. The five-minute node maintenance timer now covers the separate Docker image store when Kubernetes image pruning is insufficient; it removes only dangling images older than one hour and checks actual free space. See [recovery evidence](docs/evidence/stabilization-20261001/node5-recovery-20261004.json).

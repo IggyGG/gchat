@@ -46,6 +46,12 @@ intermediate targets run covered bidirectional messaging within 300 seconds plus
 their running-version/health checks. The original every-target policy remains the
 default for existing inventories. A short check cannot qualify file recovery.
 
+Store observation keeps one request ID until its source-bound result is
+verified, including across controller restarts. Only then does the next poll
+receive a new ID. Completed worker logs are closed even when a platform is
+blocked; status lists live processes. This prevents descriptor exhaustion from
+long-running store review and preserves unknown outcomes for reconciliation.
+
 The controller target may retain a separately qualified operations image through
 `controller_qualification` and its SHA-256 in the operator inventory. Its sealed
 receipt must bind exact source, actual-image runtime tests, registry configuration

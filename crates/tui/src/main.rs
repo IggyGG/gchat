@@ -72,6 +72,8 @@ enum Command {
 
 #[derive(clap::Args, Clone)]
 struct UiArgs {
+    #[command(flatten)]
+    relay_sharing: gchat_core::relay_sharing::RelaySharingArgs,
     /// Read older combined stores through the compatibility terminal interface.
     #[arg(long)]
     legacy_ui: bool,
@@ -312,6 +314,7 @@ fn relay_source(args: &UiArgs) -> Result<RelaySource, String> {
 }
 
 async fn run_shared(args: UiArgs) -> Result<(), String> {
+    args.relay_sharing.apply()?;
     use gchat_core::chat_service::host::{ensure_running, InstanceConfig};
     let mut config = InstanceConfig::from_home(args.home.as_deref())?;
     if let Some(socket) = args.chat_socket {
