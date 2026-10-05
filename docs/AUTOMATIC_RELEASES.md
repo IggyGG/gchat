@@ -470,3 +470,23 @@ Native follow-up, 2026-10-04: Android 80d68e5 passes exact rendering, authentica
 The active mobile helper da7073b passed 874 independent CI controls with five existing skips, plus 70 focused controls. It uses the corrected Android app-data cache path, normal system export and exact rendered acknowledgments; iOS narrows exact row queries and reconciles zero-character local input once within the original deadlines. Both actual native runs retain the original signed apps. Controller 7f423f8, all eight node headroom timers and both local release timers remain active. The running Linux executable still matches installed 0.1.98 byte for byte.
 
 Native fixture simplification, 2026-10-04: retained Android da7073b passes initial enrollment/export and both upgrade and baseline rollback phases with unchanged identity/history/encrypted cache and authenticated acknowledgments, then exhausts the original compatibility deadline during final-restoration history observation. Fresh hierarchy removal, capture and read now share one ADB round trip. Each replacement checks authenticated messages before its OS export; an immediate next replacement performs only its required unlock, while subsequent messaging still reconnects normally. Android partial-transfer observation now requires an exact rendered filename, its adjacent transfer status, exact total and bounded verified counter. iOS empty-prefix handling accepts its actual accessibility placeholder without admitting existing input. All 71 focused controls pass in 2.956 seconds; native qualification is still required and all original deadlines and failed reports remain retained.
+
+
+## Retaining an externally installed hotfix
+
+If an operator has already repaired a failed managed rollout, keep that working
+binary in place. `release.py handoff --release RELEASE --observed relay-1=SHA256
+--reason "Retain the installed capacity repair"` queues a controller-only handoff;
+repeat `--observed` for every affected target. The sole controller takes its normal
+rollout lock, verifies the queued journal hash, observes the exact healthy running
+artifacts and retains the original failed journal before releasing ownership.
+Every pending rollback must be covered. It neither restarts services nor marks a
+release qualified. The retired release cannot be resumed or rolled back; the next
+qualified candidate must complete the normal deployment gates.
+
+An operator-owned host policy may authorize that next release to retire explicitly
+named, hash-bound temporary drop-ins. Preparation retains their bytes and modes
+and the working previous artifact; activation removes only those overrides after
+the new binary is verified. Rollback restores the retained overrides. Unrelated
+operator changes remain a refusal. This one-time repair does not alter the usual
+`push main` release process.

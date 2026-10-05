@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 from pathlib import Path
 import sys
@@ -6,7 +7,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from release_deployment import reconcile, inventory, request_rollback
+from release_deployment import reconcile, inventory, request_rollback, handoff, write
 
 
 @unittest.skipUnless(os.name == 'posix', 'deployment owner uses POSIX locks')
@@ -171,6 +172,72 @@ class DeploymentTests(unittest.TestCase):
         journal = json.loads((self.root / 'deployment' / self.manifest['release_id'] / 'journal.json').read_text())
         self.assertEqual(journal['state'], 'blocked')
         self.assertEqual(journal['targets']['canary']['state'], 'rolled_back')
+
+    def external_handoff(self):
+        ordinary = self.worker
+        def failed(target, stage, *args):
+            if stage in ('check', 'rollback'): raise ValueError('failed old rollout')
+            return ordinary(target, stage, *args)
+        reconcile(self.root, self.manifest, self.config, failed, now=100)
+        write(self.root / 'deployment/desired.json', {'release_id': self.manifest['release_id']})
+        self.journal = self.root / 'deployment' / self.manifest['release_id'] / 'journal.json'
+        self.original = self.journal.read_bytes()
+        self.live['canary'] = {'healthy': True, 'matches': False, 'running': {'sha256': 'd' * 64}}
+        self.calls.clear()
+        return {'id': 'e' * 32, 'observed': {'canary': 'd' * 64}, 'reason': 'Retain installed capacity fix',
+                'journal_sha256': hashlib.sha256(self.original).hexdigest()}
+
+    def test_handoff_retains_hotfix_and_failure_then_new_release_can_deploy(self):
+        request = self.external_handoff()
+        handoff(self.root, self.manifest, request, self.worker)
+        self.assertEqual(self.calls, [('canary', 'observe')])
+        self.assertEqual(self.live['canary']['running']['sha256'], 'd' * 64)
+        report = json.loads(self.journal.read_text())
+        self.assertEqual(report['state'], 'handed_off')
+        self.assertEqual(report['targets']['canary']['state'], 'rollback_failed')
+        self.assertEqual(json.loads((self.journal.parent / ('before-handoff-' + request['id'] + '.json')).read_text()),
+                         json.loads(self.original))
+        self.assertFalse((self.root / 'deployment/owner.json').exists())
+        self.calls.clear()
+        self.config['revision'] = 2
+        self.assertFalse(self.tick())
+        self.assertEqual(self.calls, [])
+        with self.assertRaises(ValueError): request_rollback(self.root, self.manifest['release_id'])
+        other = {**self.manifest, 'release_id': 'f' * 64}
+        self.assertFalse(reconcile(self.root, other, self.config, self.worker, now=200))
+        self.assertIn(('canary', 'activate'), self.calls)
+
+    def test_handoff_rejects_changed_journal_hash_unhealthy_artifact_and_missing_target(self):
+        request = self.external_handoff()
+        for change in ('journal', 'hash', 'health', 'target', 'same_previous', 'source'):
+            with self.subTest(change=change):
+                proposal = {**request, 'observed': dict(request['observed'])}
+                observed = dict(self.live['canary'])
+                manifest = self.manifest
+                if change == 'journal': proposal['journal_sha256'] = '0' * 64
+                if change == 'hash': proposal['observed']['canary'] = '0' * 64
+                if change == 'health': self.live['canary']['healthy'] = False
+                if change == 'target': proposal['observed'] = {'relay-2': 'd' * 64}
+                if change == 'same_previous': self.live['canary']['matches'] = True
+                if change == 'source': manifest = {**self.manifest, 'sources': {}}
+                with self.assertRaises(ValueError): handoff(self.root, manifest, proposal, self.worker)
+                self.live['canary'] = observed
+                self.assertEqual(self.journal.read_bytes(), self.original)
+                self.assertTrue((self.root / 'deployment/owner.json').exists())
+                self.assertTrue(all(stage == 'observe' for _, stage in self.calls))
+
+    def test_handoff_recovers_after_durable_record_without_clearing_a_new_owner(self):
+        request = self.external_handoff()
+        handoff(self.root, self.manifest, request, self.worker)
+        owner = self.root / 'deployment/owner.json'
+        write(owner, {'release_id': self.manifest['release_id']})
+        self.calls.clear()
+        handoff(self.root, self.manifest, request, self.worker)
+        self.assertFalse(owner.exists())
+        write(owner, {'release_id': 'f' * 64})
+        handoff(self.root, self.manifest, request, self.worker)
+        self.assertEqual(json.loads(owner.read_text())['release_id'], 'f' * 64)
+        self.assertEqual(self.calls, [])
 
 
 if __name__ == '__main__': unittest.main()

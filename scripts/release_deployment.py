@@ -107,6 +107,8 @@ def request_rollback(state, release):
             raise ValueError('another rollout owns deployment')
         path = root / release / 'journal.json'
         report = json.loads(path.read_text())
+        if report.get('state') == 'handed_off':
+            raise ValueError('deployment was handed off; a new qualified release is required')
         eligible = [value for value in report['targets'].values()
                     if value.get('state') in ('deployed', 'activating', 'rollback_pending', 'rollback_failed')]
         if not eligible or any(not item.get('previous') for item in eligible):
@@ -116,6 +118,61 @@ def request_rollback(state, release):
         report.update(state='blocked', operator_rollback=True, reason='Operator requested restoration of recorded previous versions')
         write(path, report)
         write(owner, {'release_id': release})
+
+
+def handoff(state, manifest, request, worker=invoke):
+    """Retire a blocked rollback after observing an explicitly named hotfix.
+
+    This changes only controller ownership, never a running service or a release
+    qualification. Original failure, preparation and rollback evidence remain.
+    """
+    import fcntl
+    root = Path(state) / 'deployment'
+    release = manifest['release_id']
+    if (not isinstance(request.get('observed'), dict) or not 1 <= len(request['observed']) <= 17
+            or not re.fullmatch('[0-9a-f]{32}', request.get('id', ''))
+            or not isinstance(request.get('reason'), str) or not 1 <= len(request['reason']) <= 500):
+        raise ValueError('invalid external handoff request')
+    with (root / 'rollout.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        owner = root / 'owner.json'
+        directory = root / release
+        journal = directory / 'journal.json'
+        raw = journal.read_bytes()
+        report = json.loads(raw)
+        if report.get('handoff', {}).get('id') == request['id']:
+            if owner.is_file() and json.loads(owner.read_text())['release_id'] == release:
+                owner.unlink()
+            return  # Recover a crash after the durable handoff, before unlink.
+        if (json.loads((root / 'desired.json').read_text())['release_id'] != release
+                or not owner.is_file() or json.loads(owner.read_text())['release_id'] != release
+                or report.get('state') != 'blocked' or report.get('sources') != manifest['sources']
+                or hashlib.sha256(raw).hexdigest() != request['journal_sha256']):
+            raise ValueError('handoff no longer matches the selected blocked deployment')
+        pending = {name for name, value in report['targets'].items()
+                   if value.get('state') in ('rollback_pending', 'rollback_failed')}
+        expected = request['observed']
+        targets = {target['id']: target for target in inventory(report['inventory'])}
+        if (not pending or not pending.issubset(expected) or not set(expected).issubset(targets)
+                or any(value.get('state') == 'activating' for value in report['targets'].values())):
+            raise ValueError('handoff must cover every pending rollback and no active mutation')
+        observations = {}
+        for name, sha in expected.items():
+            if not isinstance(sha, str) or not re.fullmatch('[0-9a-f]{64}', sha):
+                raise ValueError('handoff requires exact running executable hashes')
+            observed = worker(targets[name], 'observe', manifest, directory / name)
+            if (observed is None or observed.get('healthy') is not True
+                    or observed.get('running', {}).get('sha256') != sha):
+                raise ValueError('handoff target is unhealthy or its running artifact changed')
+            if name in pending and (observed.get('matches') is not False or sha ==
+                    report['targets'][name].get('previous', {}).get('running', {}).get('sha256')):
+                raise ValueError('pending rollback has no externally installed replacement')
+            observations[name] = observed
+        write(directory / ('before-handoff-' + request['id'] + '.json'), report)
+        report.update(state='handed_off', reason='Operator retained an externally installed hotfix',
+                      handoff={**request, 'observations': observations, 'completed_at': int(time.time())})
+        write(journal, report)  # Durable terminal state before releasing ownership.
+        owner.unlink()
 
 
 def reconcile(state, manifest, config, worker=invoke, now=None):
@@ -133,6 +190,11 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
     with (root / 'rollout.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         owner = root / 'owner.json'
+        journal = root / manifest['release_id'] / 'journal.json'
+        if journal.is_file() and json.loads(journal.read_text()).get('state') == 'handed_off':
+            if owner.is_file() and json.loads(owner.read_text())['release_id'] == manifest['release_id']:
+                owner.unlink()
+            return False  # A revision/resume cannot resurrect the retired rollout.
         if owner.exists():
             active = json.loads(owner.read_text())
             if active['release_id'] != manifest['release_id']:

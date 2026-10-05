@@ -79,6 +79,35 @@ class ControlTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             control.request(self.root, 'rollback', platform='android')
 
+    def test_handoff_request_binds_journal_and_never_qualifies_a_release(self):
+        from unittest.mock import patch
+        import hashlib
+        journal = self.root / 'deployment' / self.release / 'journal.json'
+        atomic_json(journal, {'state': 'blocked', 'targets': {}})
+        before = list(self.controller.ledger.db.iterdump())
+        response = control.request(self.root, 'handoff', observed={'relay-1': 'a' * 64}, reason='Retain capacity fix')
+        incoming = self.root / 'control/incoming' / (response['request_id'] + '.json')
+        value = json.loads(incoming.read_text())
+        self.assertEqual(value['journal_sha256'], hashlib.sha256(journal.read_bytes()).hexdigest())
+        with patch('release_deployment.handoff') as handoff:
+            control.consume(self.controller)
+        handoff.assert_called_once_with(self.root, self.manifest, value)
+        self.assertEqual(list(self.controller.ledger.db.iterdump()), before)
+        self.assertEqual(json.loads((self.root / 'control/results' / incoming.name).read_text())['qualification'], 'unchanged')
+
+    def test_handoff_requires_explicit_hashes_and_reason(self):
+        for options in ({}, {'observed': {'relay-1': 'bad'}, 'reason': 'fix'},
+                        {'observed': {'relay-1': 'a' * 64}, 'reason': ''}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                control.request(self.root, 'handoff', **options)
+
+    def test_resume_cannot_resurrect_handed_off_deployment(self):
+        atomic_json(self.root / 'deployment' / self.release / 'journal.json', {'state': 'handed_off'})
+        response = control.request(self.root, 'resume')
+        control.consume(self.controller)
+        result = json.loads((self.root / 'control/results' / (response['request_id'] + '.json')).read_text())
+        self.assertEqual(result['state'], 'rejected')
+
     def test_rollback_waits_for_busy_rollout_instead_of_losing_the_operator_request(self):
         from unittest.mock import patch
         response = control.request(self.root, 'rollback')

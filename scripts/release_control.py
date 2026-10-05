@@ -1,5 +1,6 @@
 """Small operator requests consumed by the existing, sole release coordinator."""
 import json
+import hashlib
 from pathlib import Path
 import re
 import sqlite3
@@ -91,13 +92,22 @@ def status(state, release=None, now=None):
                                     if key in progress}}
 
 
-def request(state, action, release=None, platform=None):
-    if action not in ('resume', 'rollback', 'qualify'):
+def request(state, action, release=None, platform=None, *, observed=None, reason=None):
+    if action not in ('resume', 'rollback', 'qualify', 'handoff'):
         raise ValueError('unsupported release control')
     if action == 'qualify' and platform not in ('android', 'ios'):
         raise ValueError('deep mobile qualification requires --platform android or ios')
     if action == 'rollback' and platform is not None:
         raise ValueError('rollback restores the deployment; it cannot roll back a store publication')
+    if action == 'handoff':
+        if (platform is not None or not isinstance(observed, dict) or not observed
+                or len(observed) > 17 or not isinstance(reason, str) or not 1 <= len(reason) <= 500
+                or any(not re.fullmatch('[a-z0-9][a-z0-9-]{0,63}', name)
+                       or not isinstance(sha, str) or not re.fullmatch('[0-9a-f]{64}', sha)
+                       for name, sha in observed.items())):
+            raise ValueError('handoff needs a reason and exact target=sha256 observations')
+    elif observed is not None or reason is not None:
+        raise ValueError('observed hashes and reason are only available for handoff')
     release = selected(state, release)
     # Resolve against retained state before queuing anything.
     current = status(state, release)
@@ -106,6 +116,10 @@ def request(state, action, release=None, platform=None):
     ident = uuid.uuid4().hex
     value = {'schema': 1, 'id': ident, 'release_id': release, 'action': action,
              'platform': platform, 'requested_at': int(time.time())}
+    if action == 'handoff':
+        journal = Path(state) / 'deployment' / release / 'journal.json'
+        value.update(observed=observed, reason=reason,
+                     journal_sha256=hashlib.sha256(journal.read_bytes()).hexdigest())
     path = Path(state) / 'control/incoming' / (ident + '.json')
     atomic_json(path, value)
     return {'request_id': ident, 'release_id': release, 'action': action, 'state': 'queued'}
@@ -140,6 +154,9 @@ def consume(controller):
                     desired = state / 'deployment/desired.json'
                     if not desired.is_file() or json.loads(desired.read_text())['release_id'] != release:
                         raise ValueError('only the selected deployment can be resumed')
+                    journal = state / 'deployment' / release / 'journal.json'
+                    if journal.is_file() and json.loads(journal.read_text()).get('state') == 'handed_off':
+                        raise ValueError('deployment was handed off; a new qualified release is required')
                 platforms = [value['platform']] if value.get('platform') else [
                     row[0] for row in controller.ledger.db.execute('SELECT platform FROM platforms WHERE candidate=?', (release,))]
                 resumed = []
@@ -158,11 +175,15 @@ def consume(controller):
                 from release_deployment import request_rollback
                 request_rollback(state, release)
                 result = {'state': 'accepted', 'rollback': 'pending'}
+            elif value['action'] == 'handoff' and value.get('platform') is None:
+                from release_deployment import handoff
+                handoff(state, controller.ledger.manifest(release), value)
+                result = {'state': 'accepted', 'deployment': 'handed_off', 'qualification': 'unchanged'}
             else:
                 raise ValueError('unsupported operator request')
         except BlockingIOError:
             continue  # Keep the operator request queued while the rollout owns its lock.
-        except (ValueError, KeyError, TypeError, OSError) as error:
+        except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as error:
             result = {'state': 'rejected', 'reason': str(error) if isinstance(error, ValueError) else type(error).__name__}
         atomic_json(output, result)
         path.unlink()
