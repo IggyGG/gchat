@@ -71,6 +71,8 @@ def collect(manifest, target, work, request_id, reconcile=False):
             if marker.exists() and time.time() - json.loads(marker.read_text())['at'] > 1800:
                 raise ValueError('worker dispatch not visible after 30 minutes; no blind resubmission')
             return None
+        if os.environ.get('GCHAT_RELEASE_RECONCILE_ONLY') == '1':
+            raise ValueError('build deadline expired before provider dispatch; original request retained')
         refs = manifest['refs']
         for project in ('gchat', 'gcoms'):
             ref_path = refs[project].removeprefix('refs/')
@@ -96,6 +98,8 @@ def collect(manifest, target, work, request_id, reconcile=False):
         raise ValueError('worker run does not bind the requested source/workflow')
     if run['status'] != 'completed': return None
     if run['conclusion'] != 'success':
+        if os.environ.get('GCHAT_RELEASE_RECONCILE_ONLY') == '1':
+            raise ValueError('original native build failed after its deadline; no new recovery dispatch')
         from release_recovery import collect as collect_recovery
         return collect_recovery(manifest, target, work, run)
     artifacts = gh(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']

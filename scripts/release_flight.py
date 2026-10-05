@@ -71,6 +71,18 @@ def select(state, ledger, minutes=False):
             (DONE | {'blocked', 'failed', 'processing', 'in_review'}) or
             (row['platform'] == 'ios' and row['state'] in ('verified', 'submitting')
              and external_ios_wait(state, ledger, active)) for row in rows)
+        load_path = state / 'relay-load' / active / 'status.json'
+        owner_path = state / 'deployment/owner.json'
+        load = json.loads(load_path.read_text()) if load_path.is_file() else {}
+        owner = json.loads(owner_path.read_text()) if owner_path.is_file() else {}
+        # A failed mandatory gate cannot occupy the flight forever while its
+        # otherwise verified platforms wait for a deployment that cannot start.
+        # Preserve every provider request and artifact; an owned rollout still
+        # finishes or rolls back before admitting a successor.
+        if (load.get('state') == 'blocked' and load.get('release_id') == active
+                and load.get('sources') == ledger.manifest(active)['sources']
+                and owner.get('release_id') != active):
+            terminal = True
     if active is None or terminal or internal_complete(ledger, active, state):
         active = waiting[0] if waiting else active
         waiting = [release for release in waiting if release != active]

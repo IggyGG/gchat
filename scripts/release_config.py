@@ -30,6 +30,7 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
                 workers[target]['prerequisite']=recipe('release_store_worker.py','--state',state,'--config',config/'stores.json',timeout=600)
         else:workers[target]['publish']=recipe('release_publish.py','--state',state,'--config',config/'publisher.json',timeout=900)
     workers['linux-x86_64']['infrastructure']=recipe('release_infrastructure_bundle.py','--state',state,'--config',config/'infrastructure.json',timeout=900)
+    workers['linux-x86_64']['relay_load']=recipe('release_relay_load.py','--state',state,timeout=900)
     return {'schema':1,'publication_policy':'production-minutes-v1','automatic_recovery':True,'nonblocking_workers':True,'maximum_workers':3,'single_flight':True,
         'nonblocking_deployment':True,'maximum_acceptance_workers':6,'deployment_step_timeout_seconds':1800,
         'deployment_file':str(config/'deployment.json'),

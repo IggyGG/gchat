@@ -37,6 +37,9 @@ def main():
                 print(f"Active stage: {progress['target']}/{progress['stage']}  deadline={progress['deadline_at']}")
             for worker in value.get('running_workers', []):
                 print(f"Worker: {worker['platform']}/{worker['stage']}")
+            load = value.get('relay_load')
+            if load:
+                print(f"Relay load: {load['state']}  {load.get('reason', '')}")
             deployment = value['deployment']
             print(f"Deployment: {deployment['state']}  {deployment['reason']}")
             for target in deployment['targets']:

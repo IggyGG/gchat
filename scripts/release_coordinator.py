@@ -159,6 +159,15 @@ class Coordinator:
             'worker': self.config.get('workers', {}).get(platform, {}).get(stage)})).hexdigest()
 
     def resume_corrected(self, release, platform, target):
+        # Old controllers blocked even read-only collection after one hour.
+        # Resume only the retained effect; execute() cannot dispatch another
+        # provider request once that original build budget has expired.
+        if (target.get('reason', '').startswith('routine release exceeded 60 minutes at ')
+                and target.get('resume_state') in ('building', 'verifying', 'verified')):
+            from release_flight import already_dispatched
+            if already_dispatched(self.state, self.ledger, release, platform):
+                self.ledger.transition(release, platform, target['resume_state'], evidence=target['evidence'])
+                return True
         path = self.recovery_path(release, platform)
         if not path.exists(): return False
         recovery = json.loads(path.read_text())
@@ -213,6 +222,31 @@ class Coordinator:
                           'transient': isinstance(error, (TimeoutError, ConnectionError, subprocess.TimeoutExpired)),
                           'retry_at': int(time.time()) + min(300, 30 * 2 ** min(attempts - 1, 4))})
 
+    def relay_load_ready(self, manifest):
+        """Collect the same Linux workflow's gate; never dispatch another load."""
+        if 'relay_load' not in self.config.get('workers', {}).get('linux-x86_64', {}):
+            return True  # Standalone/test configurations opt into the worker.
+        release = manifest['release_id']
+        path = self.state / 'relay-load' / release / 'status.json'
+        previous = json.loads(path.read_text()) if path.is_file() else {}
+        if previous.get('state') == 'blocked':
+            return False  # Original failure stays retained; no automatic rerun.
+        status = {'schema': 1, 'release_id': release, 'sources': manifest['sources'],
+                  'state': 'waiting', 'observed_at': int(time.time())}
+        try:
+            completed = self.execute(manifest, 'linux-x86_64', 'relay_load')
+            if completed is not None:
+                report, digest = completed
+                if report.get('relay_load_verified') is not True:
+                    raise ValueError('original relay load evidence was not verified')
+                status.update(state='passed', receipt_sha256=digest)
+        except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
+            status.update(state='blocked', reason=(str(error)[:240] if isinstance(error, ValueError)
+                          else 'Relay load evidence requires investigation'),
+                          error_type=type(error).__name__)
+        atomic_json(path, status)
+        return status['state'] == 'passed'
+
     def reconcile_deployment(self):
         """Select monotonically; a late old build must never downgrade the fleet."""
         configured = self.config.get('deployment_file')
@@ -245,6 +279,18 @@ class Coordinator:
         if not manifest['policy'].get('deployment_required', False):
             return
         try:
+            # Continue observing an already deployed release during the upgrade.
+            # Every new deployment requires its own original load evidence.
+            journal = self.state / 'deployment' / selected['id'] / 'journal.json'
+            deployed = json.loads(journal.read_text()) if journal.is_file() else {}
+            retained = (previous and previous['release_id'] == selected['id']
+                        and deployed.get('state') == 'deployed'
+                        and deployed.get('sources') == manifest['sources'])
+            if not retained and not self.relay_load_ready(manifest):
+                atomic_json(self.state / 'public/deployment.json', {
+                    'schema': 1, 'release_id': selected['id'], 'state': 'waiting_load_acceptance',
+                    'reason': 'Waiting for this candidate\'s verified 64-client relay load evidence'})
+                return
             if infrastructure_required:
                 if self.execute(manifest, 'linux-x86_64', 'infrastructure') is None:
                     atomic_json(self.state / 'public/deployment.json', {
@@ -366,9 +412,21 @@ class Coordinator:
         environment = dict(os.environ, GCHAT_RELEASE_MANIFEST=str(source),
                            GCHAT_RELEASE_RECEIPT=str(output), GCHAT_RELEASE_TARGET=platform,
                            GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'])
+        if stage == 'build' and self.minutes and platform != 'sdk':
+            from release_minutes import budget
+            try:
+                budget(self.state, manifest, platform, 'building')
+            except ValueError as error:
+                if not str(error).startswith('routine release exceeded 60 minutes'):
+                    raise
+                if not marker.exists():
+                    raise
+                # The worker may collect the original request, but must not
+                # initiate a first dispatch or recovery run after the deadline.
+                environment['GCHAT_RELEASE_RECONCILE_ONLY'] = '1'
         if self.config.get('nonblocking_workers', False):
-            acceptance = stage == 'acceptance'
-            occupied = sum(item['process'].poll() is None and (item['stage'] == 'acceptance') == acceptance
+            acceptance = stage in ('acceptance', 'relay_load')
+            occupied = sum(item['process'].poll() is None and (item['stage'] in ('acceptance', 'relay_load')) == acceptance
                            for item in self.running_workers.values())
             limit = self.maximum_acceptance_workers if acceptance else self.maximum_workers
             if occupied >= limit:
@@ -378,7 +436,7 @@ class Coordinator:
                 active = select(self.state, self.ledger, minutes=self.minutes)['active']
                 if manifest['release_id'] != active and active is not None and not internal_complete(self.ledger, active):
                     background = sum(item['process'].poll() is None and item['release_id'] != active and
-                                     (item['stage'] == 'acceptance') == acceptance
+                                     (item['stage'] in ('acceptance', 'relay_load')) == acceptance
                                      for item in self.running_workers.values())
                     # Retain older dispatched requests, but keep capacity for a
                     # resumed active release even when a provider poll is slow.
@@ -435,12 +493,18 @@ class Coordinator:
         try:
             from release_minutes import enabled, budget
             minutes = enabled(self.config)
-            if minutes and platform != 'sdk' and state not in ('processing', 'in_review'):
-                from release_flight import external_ios_wait
-                external = platform == 'ios' and state in ('verified', 'submitting') and external_ios_wait(self.state, self.ledger, release)
-                budget(self.state, manifest, platform, state, paused=external)
             if state in {'verified', 'publishing', 'submitting'} and platform != 'sdk' and not self.deployment_ready(manifest):
+                publication = self.state / 'publication-runs' / release / (platform + '.json')
+                if minutes and publication.is_file():
+                    budget(self.state, manifest, platform, state, paused=True, phase='publication')
                 return
+            if minutes and platform != 'sdk':
+                if state == 'queued':
+                    budget(self.state, manifest, platform, state)
+                elif state in ('verified', 'publishing', 'submitting'):
+                    from release_flight import external_ios_wait
+                    external = platform == 'ios' and external_ios_wait(self.state, self.ledger, release)
+                    budget(self.state, manifest, platform, state, paused=external, phase='publication')
             if state == 'queued':
                 active = self.ledger.db.execute("""SELECT 1 FROM platforms
                     WHERE platform=? AND candidate!=? AND state IN ('building','verifying')""",
@@ -543,6 +607,8 @@ class Coordinator:
                 c.seq DESC,p.rowid''', (publishing, publishing, active)).fetchall()
         for row in rows:
             self.step(row['candidate'], row['platform'])
+        if active is not None:
+            self.relay_load_ready(self.ledger.manifest(active))
         if self.minutes:
             from release_control import qualifications
             qualifications(self)

@@ -115,6 +115,26 @@ class MinutesTests(unittest.TestCase):
         self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], second)
         self.assertEqual(self.controller.ledger.target(first, 'android')['state'], 'blocked')
 
+    def test_failed_load_gate_releases_flight_without_discarding_verified_artifacts(self):
+        first = self.manifest['release_id']
+        second = self.controller.ledger.add(candidate(2))
+        self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=?", (first,))
+        atomic_json(self.root / 'release-flight.json', {'active': first, 'pending': second})
+        atomic_json(self.root / 'relay-load' / first / 'status.json', {
+            'state': 'blocked', 'release_id': first, 'sources': self.manifest['sources']})
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], second)
+        self.assertEqual(self.controller.ledger.target(first, 'linux-x86_64')['state'], 'verified')
+
+    def test_failed_load_gate_cannot_abandon_an_owned_rollout(self):
+        first = self.manifest['release_id']
+        second = self.controller.ledger.add(candidate(2))
+        self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=?", (first,))
+        atomic_json(self.root / 'release-flight.json', {'active': first, 'pending': second})
+        atomic_json(self.root / 'deployment/owner.json', {'release_id': first})
+        atomic_json(self.root / 'relay-load' / first / 'status.json', {
+            'state': 'blocked', 'release_id': first, 'sources': self.manifest['sources']})
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+
     def test_separate_qualification_failure_does_not_change_publication_state(self):
         from release_control import request, consume, qualifications
         queued = request(self.root, 'qualify', self.manifest['release_id'], 'android')
@@ -181,14 +201,81 @@ class MinutesTests(unittest.TestCase):
             self.controller.tick()
         self.assertEqual(step.call_args_list[0].args, (release, 'android'))
 
-    def test_verified_ios_external_prerequisite_pauses_the_active_budget(self):
+    def test_waiting_for_deployment_does_not_start_publication_budget(self):
         release = self.manifest['release_id']
         self.controller.config['workers'] = {'ios': {'compatibility': {}}}
         self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=? AND platform='ios'", (release,))
         with patch('release_flight.external_ios_wait', return_value=True), \
              patch.object(self.controller, 'deployment_ready', return_value=False):
             self.controller.step(release, 'ios')
-        self.assertIn('paused_at', json.loads((self.root / 'routine-runs' / release / 'ios.json').read_text()))
+        self.assertFalse((self.root / 'publication-runs' / release / 'ios.json').exists())
+
+    def test_publication_has_its_own_persistent_budget_after_long_build(self):
+        budget(self.root, self.manifest, 'android', 'building', now=100)
+        first = budget(self.root, self.manifest, 'android', 'verified', now=10000, phase='publication')
+        self.assertEqual(first['deadline_at'], 13600)
+        self.assertEqual(budget(self.root, self.manifest, 'android', 'submitting', now=11000,
+                                phase='publication'), first)
+        with self.assertRaisesRegex(ValueError, '60 minutes'):
+            budget(self.root, self.manifest, 'android', 'submitting', now=13600, phase='publication')
+        with self.assertRaisesRegex(ValueError, '60 minutes'):
+            budget(self.root, self.manifest, 'android', 'building', now=10000)
+
+    def test_overdue_build_reconciles_original_request_without_reset_or_redispatch(self):
+        release = self.manifest['release_id']
+        self.controller.config.update(minimum_free_bytes=0, workers={'android': {'build': {
+            'run': ['dispatch-once'], 'reconcile': ['collect-original']}}})
+        result = type('Result', (), {'returncode': 75})()
+        with patch('release_minutes.time.time', return_value=100), \
+             patch('release_coordinator.subprocess.run', return_value=result) as run:
+            self.controller.step(release, 'android')
+        self.assertEqual(run.call_args.args[0], ['dispatch-once'])
+        effect = self.controller.ledger.effect(release, 'android', 'build')
+        self.controller.ledger.transition(release, 'android', 'blocked',
+            reason='routine release exceeded 60 minutes at building; retained requests require reconciliation')
+        with patch('release_minutes.time.time', return_value=7000), \
+             patch('release_coordinator.subprocess.run', return_value=result) as run:
+            self.controller.step(release, 'android')
+        self.assertEqual(self.controller.ledger.target(release, 'android')['state'], 'building')
+        self.assertEqual(run.call_args.args[0], ['collect-original'])
+        self.assertEqual(run.call_args.kwargs['env']['GCHAT_RELEASE_RECONCILE_ONLY'], '1')
+        self.assertEqual(self.controller.ledger.effect(release, 'android', 'build')['id'], effect['id'])
+        retained = json.loads((self.root / 'routine-runs' / release / 'android.json').read_text())
+        self.assertEqual((retained['started_at'], retained['deadline_at']), (100, 3700))
+
+    def test_expired_build_without_dispatch_cannot_start_a_worker(self):
+        release = self.manifest['release_id']
+        self.controller.config.update(minimum_free_bytes=0, workers={'android': {'build': {
+            'run': ['must-not-dispatch'], 'reconcile': ['collect-original']}}})
+        self.controller.ledger.transition(release, 'android', 'building')
+        budget(self.root, self.manifest, 'android', 'building', now=100)
+        with patch('release_minutes.time.time', return_value=7000), \
+             patch('release_coordinator.subprocess.run') as run:
+            self.controller.step(release, 'android')
+        run.assert_not_called()
+        self.assertEqual(self.controller.ledger.target(release, 'android')['state'], 'blocked')
+
+    def test_overdue_provider_collection_cannot_dispatch_an_unseen_request(self):
+        from release_jobs import collect
+        with patch.dict('os.environ', {'GCHAT_RELEASE_RECONCILE_ONLY': '1'}), \
+             patch('release_jobs.gh', return_value={'workflow_runs': []}) as provider:
+            with self.assertRaisesRegex(ValueError, 'expired before provider dispatch'):
+                collect(self.manifest, 'linux-x86_64', self.root, 'f' * 64, reconcile=True)
+        self.assertTrue(all(call.kwargs.get('method', 'GET') == 'GET' for call in provider.call_args_list))
+
+    def test_overdue_failed_native_request_cannot_dispatch_a_recovery_build(self):
+        from release_jobs import collect
+        request = 'f' * 64
+        run = {'display_title': 'Forgejo Linux ' + request,
+               'head_sha': self.manifest['sources']['gchat']['commit'], 'event': 'workflow_dispatch',
+               'head_repository': {'full_name': 'IggyGG/gchat'},
+               'path': '.github/workflows/linux-release.yml', 'status': 'completed', 'conclusion': 'failure'}
+        with patch.dict('os.environ', {'GCHAT_RELEASE_RECONCILE_ONLY': '1'}), \
+             patch('release_jobs.gh', return_value={'workflow_runs': [run]}), \
+             patch('release_recovery.collect') as recovery:
+            with self.assertRaisesRegex(ValueError, 'no new recovery dispatch'):
+                collect(self.manifest, 'linux-x86_64', self.root, request, reconcile=True)
+        recovery.assert_not_called()
 
     def test_completed_uncollected_workers_do_not_hold_publication_capacity(self):
         self.controller.config.update(nonblocking_workers=True, single_flight=True,

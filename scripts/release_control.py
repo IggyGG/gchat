@@ -53,6 +53,11 @@ def status(state, release=None, now=None):
             run = json.loads(routine.read_text())
             item['routine_deadline_at'] = run.get('deadline_at')
             item['external_wait'] = 'paused_at' in run
+        publication = state / 'publication-runs' / release / (item['platform'] + '.json')
+        if publication.is_file():
+            run = json.loads(publication.read_text())
+            item['publication_deadline_at'] = run.get('deadline_at')
+            item['publication_wait'] = 'paused_at' in run
     journal = state / 'deployment' / release / 'journal.json'
     deployment = json.loads(journal.read_text()) if journal.is_file() else {}
     targets = [{'id': name, 'state': value.get('state', 'pending'),
@@ -70,12 +75,15 @@ def status(state, release=None, now=None):
     public = json.loads(public_path.read_text()) if public_path.is_file() else {}
     progress_path = state / 'deployment' / release / 'progress.json'
     progress = json.loads(progress_path.read_text()) if progress_path.is_file() else {}
+    load_path = state / 'relay-load' / release / 'status.json'
+    load = json.loads(load_path.read_text()) if load_path.is_file() else {}
     return {'schema': 1, 'release_id': release, 'sequence': candidate['seq'],
             'versions': manifest['versions'], 'sources': manifest['sources'], 'observed_at': now,
             'deployment': {'state': deployment.get('state', 'waiting_artifacts'),
                            'reason': deployment.get('reason', ''), 'targets': targets},
             'platforms': platforms, 'flight': public.get('flight'),
             'publication_policy': public.get('publication_policy'),
+            'relay_load': load,
             'controller_status_age_seconds': max(0, now - public['observed_at']) if public.get('observed_at') else None,
             'running_workers': [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')
                                  if key in item} for item in public.get('running_workers', [])],

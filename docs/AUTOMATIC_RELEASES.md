@@ -1,3 +1,7 @@
+The Linux workflow runs GChat CI, GComs CI and the isolated 64-client relay campaign concurrently on separate runners. Both native receipts authorize signing; the source-bound load receipt separately authorizes infrastructure activation. The load job performs a two-client preflight, then one 30-minute campaign. It retains original failed evidence and never automatically restarts a campaign. Runner hardware is recorded; thresholds remain <1% refusals and recipient p95 <5 seconds, with verified DS-sized file delivery and relay restart recovery. `release.py status` reports the load gate.
+
+The original 60-minute build deadline prevents new dispatches after expiry but permits collection and verification of the same provider request. Publication receives its own persistent 60-minute active budget once infrastructure is ready; infrastructure and external review waits pause that budget. Restarts do not reset either clock or create a second provider request.
+
 Push source to Forgejo to start a release. The existing source mirror and Kubernetes coordinator handle qualification, rollout, publication and reconciliation. The local package timer installs signed desktop updates. Check the actual release with:
 
 ```sh

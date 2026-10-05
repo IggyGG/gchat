@@ -256,6 +256,48 @@ class CoordinatorTests(unittest.TestCase):
         self.assertEqual(json.loads(desired.read_text()),previous)
         self.assertEqual(json.loads((self.root/'public/deployment.json').read_text())['state'],'waiting_artifacts')
 
+    def test_relay_load_waits_without_advancing_or_restarting_the_fleet(self):
+        c, (first, second) = self.deployment_candidates()
+        c.config['workers']['linux-x86_64']['relay_load'] = {}
+        self.mark_verified(c, second, 'linux-x86_64')
+        desired = self.root / 'deployment/desired.json'
+        previous = {'release_id': first['release_id'], 'sequence': 1}
+        atomic_json(desired, previous)
+        with patch.object(c, 'execute', return_value=None) as execute, \
+             patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        execute.assert_called_once_with(second, 'linux-x86_64', 'relay_load')
+        reconcile.assert_not_called()
+        self.assertEqual(json.loads(desired.read_text()), previous)
+        self.assertEqual(json.loads((self.root / 'public/deployment.json').read_text())['state'],
+                         'waiting_load_acceptance')
+
+    def test_valid_original_relay_gate_allows_the_existing_infrastructure_path(self):
+        c, (_, second) = self.deployment_candidates()
+        c.config['workers']['linux-x86_64']['relay_load'] = {}
+        self.mark_verified(c, second, 'linux-x86_64')
+        with patch.object(c, 'execute', side_effect=[({'relay_load_verified': True}, 'a' * 64), ({}, 'b' * 64)]) as execute, \
+             patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        self.assertEqual([call.args[2] for call in execute.call_args_list], ['relay_load', 'infrastructure'])
+        self.assertEqual(reconcile.call_args.args[1], second)
+
+    def test_failed_relay_gate_is_retained_without_automatic_reruns(self):
+        c, (_, second) = self.deployment_candidates()
+        c.config['workers']['linux-x86_64']['relay_load'] = {}
+        with patch.object(c, 'execute', side_effect=ValueError('original load failed')) as execute:
+            self.assertFalse(c.relay_load_ready(second))
+            self.assertFalse(c.relay_load_ready(second))
+        self.assertEqual(execute.call_count, 1)
+        status = json.loads((self.root / 'relay-load' / second['release_id'] / 'status.json').read_text())
+        self.assertEqual(status['state'], 'blocked')
+
+    def test_load_worker_does_not_accept_an_unverified_pass_flag(self):
+        c, (_, second) = self.deployment_candidates()
+        c.config['workers']['linux-x86_64']['relay_load'] = {}
+        with patch.object(c, 'execute', return_value=({'passed': True}, 'a' * 64)):
+            self.assertFalse(c.relay_load_ready(second))
+
     def test_invalid_infrastructure_receipt_cannot_advance_desired_release(self):
         c,(first,second)=self.deployment_candidates()
         self.mark_verified(c,second,'linux-x86_64')

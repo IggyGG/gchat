@@ -22,10 +22,13 @@ def enabled(config):
     return policy == POLICY
 
 
-def budget(state, manifest, platform, stage, now=None, paused=False):
+def budget(state, manifest, platform, stage, now=None, paused=False, phase='build'):
     """A restart or retry never starts another hour for the same routine run."""
     now = int(time.time()) if now is None else now
-    path = Path(state) / 'routine-runs' / manifest['release_id'] / (platform + '.json')
+    if phase not in ('build', 'publication'):
+        raise ValueError('unknown routine budget phase')
+    folder = 'routine-runs' if phase == 'build' else 'publication-runs'
+    path = Path(state) / folder / manifest['release_id'] / (platform + '.json')
     if path.is_file():
         run = json.loads(path.read_text())
         if (run.get('release_id') != manifest['release_id'] or run.get('platform') != platform

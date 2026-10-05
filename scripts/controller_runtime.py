@@ -15,6 +15,8 @@ SUITES = (
     'release_minutes_test',
     'release_config_test', 'release_acceptance_test', 'mobile_acceptance_test',
     'release_coordinator_test', 'release_deployment_test',
+    'release_relay_load_test',
+    'relay_load_run_test',
     'release_rollback_image_test', 'release_infrastructure_bundle_test',
     'release_kubernetes_worker_test', 'release_host_install_test',
     'release_rollout_watchdog_test', 'release_inputs_test',
