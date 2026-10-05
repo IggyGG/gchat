@@ -221,6 +221,59 @@ class CoordinatorTests(unittest.TestCase):
                 Coordinator(state,{'poll_interval_seconds':interval})
             self.assertFalse(state.exists())
 
+    def test_selected_flight_admits_new_build_while_old_requests_only_reconcile(self):
+        from types import SimpleNamespace
+        from release_minutes import POLICY, budget
+        for recovery in (False, True):
+            with self.subTest(storage_recovery=recovery):
+                root = self.root / str(recovery)
+                recipe = {'run': ['dispatch-original'], 'reconcile': ['collect-original']}
+                c = Coordinator(root, {'single_flight': True, 'publication_policy': POLICY,
+                    'automatic_recovery': True, 'minimum_free_bytes': 0,
+                    'workers': {'linux-x86_64': {'build': recipe}}})
+                self.addCleanup(c.ledger.close)
+                manifests = [candidate(i) for i in (1, 2, 3, 4)]
+                old, verifying, selected = [c.ledger.add(m) for m in manifests[:3]]
+                c.ledger.transition(old, 'linux-x86_64', 'building')
+                for state in ('building', 'verifying'):
+                    c.ledger.transition(verifying, 'linux-x86_64', state)
+                original = c.ledger.effect(old, 'linux-x86_64', 'build')
+                marker = root / 'jobs' / original['id'] / 'attempted.json'
+                atomic_json(marker, {'request_id': original['id'], 'attempted': 100})
+                budget(root, manifests[0], 'linux-x86_64', 'building', now=100)
+                atomic_json(root / 'release-flight.json', {'schema': 1, 'active': selected, 'pending': None})
+                if recovery:
+                    c.ledger.transition(selected, 'linux-x86_64', 'building')
+                    c.ledger.transition(selected, 'linux-x86_64', 'blocked', reason=STORAGE_HEADROOM_REASON)
+                    atomic_json(c.recovery_path(selected, 'linux-x86_64'), {
+                        'stage': 'build', 'cause': 'storage_headroom',
+                        'revision': c.worker_revision('linux-x86_64', 'build')})
+                with patch('release_coordinator.subprocess.run', return_value=SimpleNamespace(returncode=75)) as run:
+                    c.step(selected, 'linux-x86_64')
+                    self.assertEqual(c.ledger.target(selected, 'linux-x86_64')['state'], 'building')
+                    self.assertEqual(run.call_args.args[0], ['dispatch-original'])
+                    pending = c.ledger.add(manifests[3])
+                    c.step(pending, 'linux-x86_64')
+                    self.assertEqual(run.call_count, 1)
+                    self.assertEqual(c.ledger.target(pending, 'linux-x86_64')['state'], 'queued')
+                    c.step(old, 'linux-x86_64')
+                    self.assertEqual(run.call_args.args[0], ['collect-original'])
+                    self.assertEqual(run.call_args.kwargs['env']['GCHAT_RELEASE_RECONCILE_ONLY'], '1')
+                self.assertEqual(json.loads(marker.read_text())['request_id'], original['id'])
+                self.assertEqual(c.ledger.effect(old, 'linux-x86_64', 'build')['id'], original['id'])
+                self.assertEqual(c.ledger.target(verifying, 'linux-x86_64')['state'], 'verifying')
+
+    def test_without_single_flight_other_build_still_blocks_queued_admission(self):
+        c = Coordinator(self.root, {'workers': {'linux-x86_64': {'build': {'run': ['unused']}}}})
+        self.addCleanup(c.ledger.close)
+        old = c.ledger.add(candidate(1))
+        latest = c.ledger.add(candidate(2))
+        c.ledger.transition(old, 'linux-x86_64', 'building')
+        with patch.object(c, 'execute') as execute:
+            c.step(latest, 'linux-x86_64')
+        execute.assert_not_called()
+        self.assertEqual(c.ledger.target(latest, 'linux-x86_64')['state'], 'queued')
+
     def test_required_deployment_blocks_even_a_verified_platform(self):
         from release_pair import canonical
         manifest=copy.deepcopy(self.manifest)

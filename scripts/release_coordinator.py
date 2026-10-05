@@ -147,6 +147,17 @@ class Coordinator:
                 # observation is never converted into a successful effect.
                 del self.running_workers[effect_id]
 
+    def build_admission_blocked(self, release, platform):
+        if self.config.get('single_flight', False):
+            from release_flight import select
+            if select(self.state, self.ledger, minutes=self.minutes)['active'] == release:
+                # Older dispatched builds remain collectible without owning the
+                # selected flight. execute() still enforces worker capacity.
+                return False
+        return self.ledger.db.execute('''SELECT 1 FROM platforms WHERE platform=?
+            AND candidate!=? AND state IN ('building','verifying') LIMIT 1''',
+            (platform, release)).fetchone() is not None
+
     def deployment_ready(self, manifest):
         if not manifest['policy'].get('deployment_required', False):
             return True
@@ -211,9 +222,7 @@ class Coordinator:
                         self.ledger.transition(release, platform, 'superseded',
                             reason='Newer candidate queued before build started; storage recovered')
                         return True
-                    active = self.ledger.db.execute('''SELECT 1 FROM platforms WHERE platform=?
-                        AND candidate!=? AND state IN ('building','verifying') LIMIT 1''', (platform, release)).fetchone()
-                    if active:
+                    if self.build_admission_blocked(release, platform):
                         return False
                 self.ledger.transition(release, platform, 'building', evidence=target['evidence'])
                 return True
@@ -521,10 +530,7 @@ class Coordinator:
                     external = platform == 'ios' and external_ios_wait(self.state, self.ledger, release)
                     budget(self.state, manifest, platform, state, paused=external, phase='publication')
             if state == 'queued':
-                active = self.ledger.db.execute("""SELECT 1 FROM platforms
-                    WHERE platform=? AND candidate!=? AND state IN ('building','verifying')""",
-                    (platform, release)).fetchone()
-                if active:
+                if self.build_admission_blocked(release, platform):
                     return  # Coalesce newer commits before dispatch; preserve frozen workers.
                 self.ledger.transition(release, platform, 'building')
                 state = 'building'

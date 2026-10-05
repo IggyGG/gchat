@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "date": "2026-10-05",
+  "kind": "selected_flight_build_admission",
+  "original_observation": {
+    "path": "/run/media/user/SSD-2/retained/gchat-release148-monitor-20261005/candidate150-queued-blockers.json",
+    "sha256": "df8684089d691eadcccd1e5721e5d1a93de88f6688d6e2cb518b52f3691f52ab",
+    "candidate_sequence": 150,
+    "active_release": "8b0f09238815f3064aa19778494e0beaf3bdcc008d7fb3210e9e6f7764ec041b",
+    "retained_building_or_verifying_rows": 76,
+    "old_candidate_sequences": [
+      53,
+      85
+    ]
+  },
+  "changed_sources": {
+    "scripts/release_coordinator.py": "9d7972fa27ba20191ec8fba501e7f8e877885842bc31080bd77181b3b99e5bcd",
+    "scripts/tests/release_coordinator_test.py": "69c9798575018af6abd5b532afae58ad7ccc5c7b149ff3921debccb4a5b76901"
+  },
+  "regression": {
+    "before_patch": "Both queued and storage-recovery cases failed admission.",
+    "after_patch": "Selected original dispatch, pending admission denial, expired original request collection and non-single-flight coalescing passed.",
+    "test_count": 2
+  },
+  "evidence": {
+    "original-regression.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-flight-admission-20261005/original-regression.log",
+      "sha256": "fcd8dc023dc0b7e316cd5c8cef46fed1fe0c246c2bb42d1345803e2f5a85dc76"
+    },
+    "regression.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-flight-admission-20261005/regression.log",
+      "sha256": "b29ebe368859ac649e251d2810b705b3acf2d5d2287d23d4aa5f411893bf945f"
+    },
+    "focused.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-flight-admission-20261005/focused.log",
+      "sha256": "a67be694fc89c0e321c5905aeec7b1a75233a776ccfd5ac318c96e1026cf7ae0"
+    },
+    "source.log": {
+      "path": "/run/media/user/SSD-2/retained/gchat-flight-admission-20261005/source.log",
+      "sha256": "ddac5c9ad7423895e55f09e180ff35b5604a03837eb7b5a84d4d0ce1807b34c0"
+    }
+  },
+  "production_ledger_changed": false,
+  "production_controller_activated": false,
+  "required_remaining": "Actual-image qualification and normal controller activation.",
+  "validation": {
+    "focused_tests": 85,
+    "seconds": 99.901,
+    "source_paths_checked": 837,
+    "passed": true
+  }
+}
