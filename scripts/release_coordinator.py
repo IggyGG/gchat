@@ -279,12 +279,14 @@ class Coordinator:
         if not manifest['policy'].get('deployment_required', False):
             return
         try:
-            # Continue observing an already deployed release during the upgrade.
-            # Every new deployment requires its own original load evidence.
+            # Existing source-bound deployments must still be observed or finish
+            # their owned recovery. Gate every new deployment selection instead
+            # of requiring historical load evidence before an existing rollback.
             journal = self.state / 'deployment' / selected['id'] / 'journal.json'
             deployed = json.loads(journal.read_text()) if journal.is_file() else {}
             retained = (previous and previous['release_id'] == selected['id']
-                        and deployed.get('state') == 'deployed'
+                        and (deployed.get('state') == 'deployed'
+                             or (active and active['release_id'] == selected['id']))
                         and deployed.get('sources') == manifest['sources'])
             if not retained and not self.relay_load_ready(manifest):
                 atomic_json(self.state / 'public/deployment.json', {

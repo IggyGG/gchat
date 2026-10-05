@@ -282,6 +282,52 @@ class CoordinatorTests(unittest.TestCase):
         self.assertEqual([call.args[2] for call in execute.call_args_list], ['relay_load', 'infrastructure'])
         self.assertEqual(reconcile.call_args.args[1], second)
 
+    def test_existing_owned_rollback_does_not_require_historical_load_evidence(self):
+        c, (first, second) = self.deployment_candidates()
+        c.config['workers']['linux-x86_64']['relay_load'] = {}
+        self.mark_verified(c, first, 'linux-x86_64')
+        self.mark_verified(c, second, 'linux-x86_64')
+        desired = self.root / 'deployment/desired.json'
+        previous = {'release_id': first['release_id'], 'sequence': 1}
+        atomic_json(desired, previous)
+        owner = self.root / 'deployment/owner.json'
+        atomic_json(owner, {'release_id': first['release_id']})
+        journal = self.root / 'deployment' / first['release_id'] / 'journal.json'
+        atomic_json(journal, {'release_id': first['release_id'], 'sources': first['sources'],
+                             'state': 'blocked', 'targets': {'relay-1': {'state': 'rollback_failed'}}})
+        retained = {path: path.read_bytes() for path in (owner, journal)}
+        with patch.object(c, 'execute', return_value=({}, 'a' * 64)) as execute, \
+             patch('release_deployment.reconcile') as reconcile:
+            c.reconcile_deployment()
+        execute.assert_called_once_with(first, 'linux-x86_64', 'infrastructure')
+        self.assertEqual(reconcile.call_args.args[1], first)
+        self.assertEqual(json.loads(desired.read_text()), previous)
+        self.assertFalse((self.root / 'relay-load').exists())
+        for path, original in retained.items():
+            self.assertEqual(path.read_bytes(), original)
+
+    def test_owned_recovery_exemption_requires_matching_sources_and_owner(self):
+        c, (first, second) = self.deployment_candidates()
+        c.config['workers']['linux-x86_64']['relay_load'] = {}
+        self.mark_verified(c, first, 'linux-x86_64')
+        desired = self.root / 'deployment/desired.json'
+        previous = {'release_id': first['release_id'], 'sequence': 1}
+        atomic_json(desired, previous)
+        owner = self.root / 'deployment/owner.json'
+        journal = self.root / 'deployment' / first['release_id'] / 'journal.json'
+        for missing in ('matching_sources', 'owner'):
+            with self.subTest(missing=missing):
+                atomic_json(owner, {'release_id': first['release_id']})
+                atomic_json(journal, {'release_id': first['release_id'], 'state': 'blocked',
+                    'sources': second['sources'] if missing == 'matching_sources' else first['sources']})
+                if missing == 'owner': owner.unlink()
+                with patch.object(c, 'execute', return_value=None) as execute, \
+                     patch('release_deployment.reconcile') as reconcile:
+                    c.reconcile_deployment()
+                execute.assert_called_once_with(first, 'linux-x86_64', 'relay_load')
+                reconcile.assert_not_called()
+                self.assertEqual(json.loads(desired.read_text()), previous)
+
     def test_failed_relay_gate_is_retained_without_automatic_reruns(self):
         c, (_, second) = self.deployment_candidates()
         c.config['workers']['linux-x86_64']['relay_load'] = {}
