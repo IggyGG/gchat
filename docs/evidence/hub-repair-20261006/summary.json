@@ -87,8 +87,8 @@
     }
   },
   "pending": [
-    "Full C-DS file integrity, fresh enrollment/join and fresh targeted reply; partial transfer is not acceptance.",
-    "Qualified signed successor and explicit retirement of exact owned hub/catalog repair overrides."
+    "Fresh C-DS full-file integrity, enrollment/join and targeted reply: latest 600-second acceptance failed; normal template remains unchanged.",
+    "Release storage capacity, qualified signed successor, and explicit retirement of exact owned hub/catalog repair overrides."
   ],
   "retirement": {
     "catalog": {
@@ -118,5 +118,95 @@
       "diagnostic_environment_removed": true
     }
   },
-  "local_repair_artifacts_and_private_profiles_are_not_committed": true
+  "local_repair_artifacts_and_private_profiles_are_not_committed": true,
+  "native_client_qualification": {
+    "passed": false,
+    "compiled_source": "e390a0b8d8e21f0372d9f15bdd80bd537253758a",
+    "evidence_task_commit": "00d71db",
+    "source_publication": "Dropship task branch; unqualified native template not promoted",
+    "template_sha256": "78f8925739956220c30ce34252a820b663095287aa2182c1515761031ff48c21",
+    "received_bytes": 396000,
+    "expected_bytes": 5235248,
+    "window_seconds": 600,
+    "new_member_count": 0,
+    "forwards": {
+      "total": 223,
+      "accepted": 217,
+      "natural_refused": 0,
+      "transport_failed": 6
+    },
+    "cleanup_complete": true,
+    "default_template_promoted": false,
+    "rust_tests_passed": 54,
+    "native_asan_ubsan_passed": true,
+    "strict_clippy_passed": false,
+    "unchanged_baseline_clippy_diagnostics": 84,
+    "remaining_investigation": "Observed stalls remain unattributed. Native request begin and pull open/close can perform blocking writes; time those calls before another behavior change or attempt.",
+    "acceptance": {
+      "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/receiver-isolated-rpc/c-ds-attempt-20261006T154213Z/acceptance-summary.json",
+      "sha256": "94a1563c9b3028977fda41539a5877233a4f6485c977e9dad7cdffe59fb1a0de"
+    }
+  },
+  "managed_successor_observation": {
+    "observed_at": "2026-10-06T15:03:00.910757+00:00",
+    "candidate": 160,
+    "release_id": "f0290d0414b013483d7bdf6f76845f2bed050c23e2f395519e0cfd29c5da0710",
+    "linux_version": "0.1.165",
+    "sources": {
+      "gchat": {
+        "commit": "aa6e577f24adb2842a7c9d15a4033a9f986d1f6d",
+        "tree": "1ebf371a0542c002e895191e3ae7e55730023f33"
+      },
+      "gcoms": {
+        "commit": "1d9c8a3206c175a20109731de5d9e7b6d55d8a75",
+        "tree": "1b931d6e36570b6b1501b291e79f8d5753deecb5"
+      }
+    },
+    "hub_fix_ancestry_verified": true,
+    "all_seven_platform_states": "blocked",
+    "reason": "release storage is below reserved headroom; export retained artifacts before retrying",
+    "free_bytes": 16768012288,
+    "required_floor_bytes": 17179869184,
+    "pvc": {
+      "name": "gchat-release-state-hel",
+      "namespace": "ghost-com",
+      "phase": "Bound",
+      "capacity": "160Gi",
+      "requested": "192Gi",
+      "condition": "Resizing",
+      "condition_transition": "2026-10-06T14:58:27Z"
+    },
+    "resize_denied_nodes": [
+      "triform-1",
+      "triform-3"
+    ],
+    "safe_useful_cleanup_found": false,
+    "free_vg_extents_found": false,
+    "eligible_replacement_replica_nodes": 0,
+    "reserve_reduced": false,
+    "replicas_reduced": false,
+    "retained_artifacts_deleted": false,
+    "receipts": {
+      "release-retention-bounded-audit-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/release-retention-bounded-audit-20261006.json",
+        "sha256": "3ed3a84a372ad6b888cdadcfd8f64d35689e5eb9ddc2158c72a120e9b38a46f1"
+      },
+      "release-volume-expansion-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/release-volume-expansion-readonly-20261006.json",
+        "sha256": "c6694fec7a194ff69daf79461dfdcf289c29339c54dc043810ac4ef9462b3857"
+      },
+      "node-image-headroom-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/node-image-headroom-readonly-20261006.json",
+        "sha256": "ee3b85f83ac72cb3932745cd1c79210fcb8a65b5b4a1736ae20fa8c108cba028"
+      },
+      "longhorn-vg-extents-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/longhorn-vg-extents-readonly-20261006.json",
+        "sha256": "4f6ce3b8911efce1003f24b3a26be17050af26ea78c109fa0992c94b1db7f075"
+      },
+      "release-replica-alternatives-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/release-replica-alternatives-readonly-20261006.json",
+        "sha256": "9559f6ff46aede3082d52d4fa7a247e6cdf6b5e8f235e7641d6665294d137bd7"
+      }
+    }
+  }
 }

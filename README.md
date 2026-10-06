@@ -4,7 +4,10 @@ Both provider catalogs now accommodate the hub's invitations across channels;
 the per-channel invitation/member limit remains 64. The repaired hub and visible
 desktop are stable with the supported fleet managed-update guard. These are
 temporary source-bound repairs; full bulk bootstrap/enrollment and the next
-qualified signed release remain separate. See the [live evidence and exact
+qualified signed release remain separate. The latest isolated native-client run
+received 396,000 of 5,235,248 bytes in 600 seconds and did not enroll a new member;
+its template remains unpromoted. The signed successor includes the hub fixes but
+is blocked by release-volume capacity. See the [live evidence and exact
 override retirement requirements](docs/evidence/hub-repair-20261006/summary.json).
 
 Release scope, 2026-10-05: desktop relay sharing is deferred; the release retains the fleet capacity repairs, with Pi access tunnels replacing desktop contribution. Desktop sharing and router mapping stay disabled, including explicit attempts to enable sharing. Existing messaging remains available.
