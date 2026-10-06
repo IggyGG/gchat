@@ -32,10 +32,37 @@ fn domain(message: String) -> ChatError {
     }
 }
 fn record_id(key: &OperationKey) -> String {
-    if key.method == "submit" {
-        key.operation_id.as_str().into()
+    operation_record_id(&key.method, key.operation_id.as_str())
+}
+fn operation_record_id(method: &str, operation_id: &str) -> String {
+    if method == "submit" {
+        operation_id.into()
     } else {
-        format!("rpc:{}:{}", key.method, key.operation_id.as_str())
+        format!("rpc:{method}:{operation_id}")
+    }
+}
+
+// Execution liveness is separate from the durable outcome. A stopped worker
+// can remain uncertain forever without blocking a later archive checkpoint.
+struct AdmissionGuard<'a> {
+    gate: &'a update_gate::UpdateGate,
+    id: String,
+    armed: bool,
+}
+impl<'a> AdmissionGuard<'a> {
+    fn new(gate: &'a update_gate::UpdateGate, id: String) -> Self {
+        Self {
+            gate,
+            id,
+            armed: true,
+        }
+    }
+}
+impl Drop for AdmissionGuard<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            self.gate.completed(&self.id);
+        }
     }
 }
 
@@ -189,6 +216,9 @@ impl ChatService {
     }
     async fn rpc_complete(&self, key: &OperationKey, result: ReplyBody) -> Result<(), RpcError> {
         self.check_key(key)?;
+        // Invocation has ended. A failed/cancelled completion save preserves the
+        // unknown admission but must not keep execution marked active.
+        let _finished = AdmissionGuard::new(&self.update_gate, record_id(key));
         let mut session = self.session.lock().await;
         // A view locking while an admitted operation completes must not discard
         // its result. Reading the result still requires an unlocked view.
@@ -218,7 +248,6 @@ impl ChatService {
         unlocked.store.save(&candidate).map_err(storage)?;
         unlocked.state = candidate;
         self.invalidate();
-        self.update_gate.completed(&record_id(key));
         Ok(())
     }
 }
@@ -586,6 +615,19 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
         method: &str,
         args: serde_json::Value,
     ) -> Result<Outcome, RpcError> {
+        let service = if context.operation.is_some() {
+            self.0 .0 .0.clone().rpc_service().await
+        } else {
+            None
+        };
+        let mut execution = context.operation.as_ref().and_then(|operation| {
+            service.as_ref().map(|service| {
+                AdmissionGuard::new(
+                    &service.update_gate,
+                    operation_record_id(method, operation.id.as_str()),
+                )
+            })
+        });
         let outcome = self.0.invoke(context, method, args).await?;
         if matches!(method, "submit" | "network_operation")
             && matches!(&outcome, Outcome::Error(value) if value["code"] == "outcome_unknown")
@@ -596,6 +638,11 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
                 ErrorCode::Unavailable,
                 "chat operation outcome unknown",
             ));
+        }
+        // Known results still block maintenance until their durable completion
+        // attempt ends. Error, panic and cancellation paths drop the armed guard.
+        if let Some(execution) = &mut execution {
+            execution.armed = false;
         }
         Ok(outcome)
     }
@@ -749,3 +796,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "rpc_liveness_tests.rs"]
+mod liveness_tests;

@@ -884,3 +884,10 @@ completion. A reusable invitation returns its link while the public operation
 history keeps the redacted receipt. Repeating the same operation ID, including
 after reopening, returns the saved result without consuming another invitation
 slot. The 64-invitation limit and component permissions are unchanged.
+
+A stopped RPC worker no longer blocks a later update checkpoint when its outcome
+is unknown or its completion could not be saved. The durable admission stays
+unknown, and retrying the same operation cannot repeat its effects. Active workers
+and pending completion writes still block maintenance. The focused regressions
+exercise an effect followed by uncertainty or panic, and a failed encrypted-store
+write; see [validation](docs/evidence/update-gate-20261006/source-validation.json).
