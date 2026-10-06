@@ -122,6 +122,24 @@ mod fixture {
         }
     }
 
+    fn routing_bootstrap_for_start(
+        create: bool,
+        inbox_card: bool,
+        bootstrap: Option<PathBuf>,
+    ) -> Result<Option<PathBuf>, String> {
+        if create {
+            return bootstrap
+                .map(Some)
+                .ok_or("fixture bootstrap missing".into());
+        }
+        if inbox_card || bootstrap.is_some() {
+            return Err(
+                "fixture reopen must use retained routing without bootstrap or inbox card".into(),
+            );
+        }
+        Ok(None)
+    }
+
     async fn invitation_setup(runtime: ProtocolRuntime, home: PathBuf) -> Result<(), String> {
         use std::os::unix::fs::{MetadataExt, PermissionsExt};
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -374,6 +392,11 @@ mod fixture {
             };
             return network(bootstrap, output);
         };
+        let routing_bootstrap = routing_bootstrap_for_start(
+            create,
+            inbox_card.is_some(),
+            std::env::var_os("GC_ROUTING_BOOTSTRAP").map(PathBuf::from),
+        )?;
         gchat_core::private_fs::validate_private_file(&passphrase_file, "fixture secret")?;
         let secret = zeroize::Zeroizing::new(
             std::fs::read_to_string(passphrase_file).map_err(|e| e.to_string())?,
@@ -432,8 +455,10 @@ mod fixture {
         let (stop, receiver) = tokio::sync::watch::channel(false);
         let setup = fixture_invitations
             .then(|| tokio::spawn(invitation_setup(runtime.clone(), home.clone())));
-        let path = std::env::var_os("GC_ROUTING_BOOTSTRAP").ok_or("fixture bootstrap missing")?;
-        let mut routing = tokio::spawn(refresh_fixture_routing(runtime.clone(), path.into()));
+        // Reopened clients must recover through their encrypted retained view
+        // and authenticated relay re-entry, without fixture bundle injection.
+        let mut routing = routing_bootstrap
+            .map(|path| tokio::spawn(refresh_fixture_routing(runtime.clone(), path)));
         let mut server = tokio::spawn({
             let service = Arc::clone(&service);
             let endpoint = home.join("protocol.chat");
@@ -443,12 +468,19 @@ mod fixture {
             .map_err(|e| e.to_string())?;
         let (server_finished, early) = tokio::select! {
             result = &mut server => (true, Some(result.map_err(|e| e.to_string())?)),
-            result = &mut routing => (false, Some(result.map_err(|e|e.to_string())?)),
+            result = async {
+                match routing.as_mut() {
+                    Some(task) => task.await,
+                    None => std::future::pending().await,
+                }
+            } => (false, Some(result.map_err(|e|e.to_string())?)),
             _ = term.recv() => (false, None),
             _ = tokio::signal::ctrl_c() => (false, None),
         };
         let _ = stop.send(true);
-        routing.abort();
+        if let Some(routing) = routing {
+            routing.abort();
+        }
         if let Some(setup) = setup {
             setup.abort();
             let _ = setup.await;
@@ -464,6 +496,36 @@ mod fixture {
         service.disconnect().await?;
         runtime.shutdown().await?;
         early.unwrap_or(Ok(()))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn fresh_fixture_requires_bootstrap_for_renewal() {
+            assert!(routing_bootstrap_for_start(true, false, None).is_err());
+            let path = PathBuf::from("fixture-bootstrap");
+            assert_eq!(
+                routing_bootstrap_for_start(true, true, Some(path.clone())).unwrap(),
+                Some(path)
+            );
+        }
+
+        #[test]
+        fn reopened_fixture_refuses_injected_routing_and_has_no_renewal_input() {
+            assert_eq!(
+                routing_bootstrap_for_start(false, false, None).unwrap(),
+                None
+            );
+            assert!(routing_bootstrap_for_start(false, true, None).is_err());
+            assert!(routing_bootstrap_for_start(
+                false,
+                false,
+                Some(PathBuf::from("fixture-bootstrap"))
+            )
+            .is_err());
+        }
     }
 }
 

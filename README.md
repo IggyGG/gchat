@@ -869,3 +869,9 @@ Android native OCR groups words by physical row overlap rather than sparse recog
 iOS acceptance reads only the exact identity and safety-number static texts and binds accessibility results by element identity, avoiding unstable index scans. Public diagnostics retain only counts. See [Apple’s query documentation](https://developer.apple.com/documentation/xcuiautomation/xcuielementquery/allelementsboundbyaccessibilityelement).
 
 Android body-row observations account for lowercase x-height within ordinary line spacing. Distant rows, changed words and unrelated delivered statuses remain refused; a flat-row text match is diagnostic only.
+
+The Linux `turnover_daemon` fixture requires bootstrap input only for fresh
+profiles. Reopened profiles reject startup seeds and inbox cards, and recover
+through their encrypted retained directory and authenticated relay re-entry.
+Fixture bundle renewal runs only for freshly created profiles. This preserves
+the retained-state check in GComs' `gchat-turnover.py --mode smoke` journey.
