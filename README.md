@@ -1,3 +1,12 @@
+Live hub repair, 2026-10-06: normal controller invitation creation, exact-result
+replay/reopen and authenticated replies from both existing Pis are verified.
+Both provider catalogs now accommodate the hub's invitations across channels;
+the per-channel invitation/member limit remains 64. The repaired hub and visible
+desktop are stable with the supported fleet managed-update guard. These are
+temporary source-bound repairs; full bulk bootstrap/enrollment and the next
+qualified signed release remain separate. See the [live evidence and exact
+override retirement requirements](docs/evidence/hub-repair-20261006/summary.json).
+
 Release scope, 2026-10-05: desktop relay sharing is deferred; the release retains the fleet capacity repairs, with Pi access tunnels replacing desktop contribution. Desktop sharing and router mapping stay disabled, including explicit attempts to enable sharing. Existing messaging remains available.
 
 Release admission repair, 2026-10-05: old builds retained for late result collection no longer prevent the selected release from starting. Original requests remain reconcilable under existing worker limits; deployment and publication still require their normal evidence. Controller activation is a separate remaining step.
