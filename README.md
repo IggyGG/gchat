@@ -875,3 +875,6 @@ profiles. Reopened profiles reject startup seeds and inbox cards, and recover
 through their encrypted retained directory and authenticated relay re-entry.
 Fixture bundle renewal runs only for freshly created profiles. This preserves
 the retained-state check in GComs' `gchat-turnover.py --mode smoke` journey.
+The [validated smoke record](docs/evidence/bootstrap-20261006/smoke.json) covers
+both-direction acknowledgments, file integrity and delivery after retained
+profile reopening; it does not qualify a new installer or fleet deployment.
