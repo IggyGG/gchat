@@ -878,3 +878,9 @@ the retained-state check in GComs' `gchat-turnover.py --mode smoke` journey.
 The [validated smoke record](docs/evidence/bootstrap-20261006/smoke.json) covers
 both-direction acknowledgments, file integrity and delivery after retained
 profile reopening; it does not qualify a new installer or fleet deployment.
+
+Typed chat operations now wait for their own saved RPC result before reporting
+completion. A reusable invitation returns its link while the public operation
+history keeps the redacted receipt. Repeating the same operation ID, including
+after reopening, returns the saved result without consuming another invitation
+slot. The 64-invitation limit and component permissions are unchanged.
