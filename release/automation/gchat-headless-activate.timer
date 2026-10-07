@@ -1,0 +1,10 @@
+[Unit]
+Description=Check installed GChat package against the opted-in running hub
+
+[Timer]
+OnStartupSec=30s
+OnUnitActiveSec=1min
+RandomizedDelaySec=10s
+
+[Install]
+WantedBy=timers.target

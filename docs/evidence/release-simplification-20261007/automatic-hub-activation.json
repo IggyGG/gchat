@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "scope": "release tooling simplification; headless activation automation",
+  "full_script_tests": {
+    "passed": true,
+    "tests": 1073,
+    "skipped": 5,
+    "seconds": 159.01,
+    "log_sha256": "5e70a1179dec8c65a3cf8a729417d4a92feaaec0eb41ca7d7b09bef580da3361"
+  },
+  "headless_focused_tests": 23,
+  "source_audit_paths": 868,
+  "activation_enabled": true,
+  "initial_activation_result": {
+    "path": "/usr/bin/gchat",
+    "reason": "running hub already uses installed bytes",
+    "sha256": "a21ebf8e2129a36cb58eca295166b1d0d89ce7623ac448302cf969ce44b17701",
+    "state": "current",
+    "version": "0.1.167"
+  },
+  "unchanged_hub_pid": 725150,
+  "unchanged_hub_restarts": 0,
+  "watchdog_enabled": false,
+  "candidate_runtime_deployed": false,
+  "limits": [
+    "Process hash proves executable activation, not network delivery.",
+    "New executable activation is suppressed after one attempted activation until reviewed.",
+    "The 64-client full release campaign remains required."
+  ],
+  "file_sha256": {
+    "release/automation/headless-activate.py": "6541d2cd0a41fecac1e021be7d3f088a2923effb425a90b1ef1775bad659e74c",
+    "release/automation/gchat-headless-activate.service": "a7f5eb4f78af2b546642dc42aa705e4bd4f1abc374743e58fb060a05e3d7fe2a",
+    "release/automation/gchat-headless-activate.timer": "98a4aa3cd7685ab555f82f1f0922eb47e249883bd2156870704215ab980150b3",
+    "scripts/install-local-updates.py": "ea2d5be71b0e139c2653f9e2596f254de6683cd7a82c15950feec9448e034c4e"
+  }
+}

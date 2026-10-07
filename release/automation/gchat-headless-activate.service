@@ -1,0 +1,9 @@
+[Unit]
+Description=Activate signed GChat packages for the opted-in running hub
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/gchat-headless-activate
+TimeoutStartSec=6min
+UMask=0077
+NoNewPrivileges=yes

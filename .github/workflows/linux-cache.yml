@@ -64,7 +64,9 @@ jobs:
             ~/.npm/_cacache
             ${{ steps.compiler.outputs.target }}
           key: ${{ steps.compiler.outputs.key }}
-          restore-keys: ${{ steps.compiler.outputs.restore_prefix }}
+          restore-keys: |
+            ${{ steps.compiler.outputs.restore_prefix }}
+            ${{ steps.compiler.outputs.legacy_restore_key }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         if: steps.cache.outputs.cache-hit != 'true'
         with:

@@ -71,7 +71,9 @@ jobs:
             ~/.npm/_cacache
             ${{ steps.compiler.outputs.target }}
           key: ${{ steps.compiler.outputs.key }}
-          restore-keys: ${{ steps.compiler.outputs.restore_prefix }}
+          restore-keys: |
+            ${{ steps.compiler.outputs.restore_prefix }}
+            ${{ steps.compiler.outputs.legacy_restore_key }}
       - name: Prepare native compiler
         run: |
           sudo apt-get update -qq
@@ -223,7 +225,9 @@ jobs:
             ~/.npm/_cacache
             ${{ steps.compiler.outputs.target }}
           key: ${{ steps.compiler.outputs.key }}
-          restore-keys: ${{ steps.compiler.outputs.restore_prefix }}
+          restore-keys: |
+            ${{ steps.compiler.outputs.restore_prefix }}
+            ${{ steps.compiler.outputs.legacy_restore_key }}
       - name: Prepare native tools
         run: |
           sudo apt-get update -qq
@@ -302,7 +306,9 @@ jobs:
             ~/.npm/_cacache
             ${{ steps.compiler.outputs.target }}
           key: ${{ steps.compiler.outputs.key }}
-          restore-keys: ${{ steps.compiler.outputs.restore_prefix }}
+          restore-keys: |
+            ${{ steps.compiler.outputs.restore_prefix }}
+            ${{ steps.compiler.outputs.legacy_restore_key }}
       - name: Prepare native tools
         run: |
           sudo apt-get update -qq

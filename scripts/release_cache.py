@@ -56,20 +56,41 @@ def dependencies(workspace):
     return {'rust': sorted(rust.values(), key=digest), 'npm': sorted(npm.values(), key=digest)}
 
 
-def identity(workspace, scope, image):
-    if scope not in SCOPES or not image:
+def identity(workspace, scope, image, environment=None):
+    image_os, separator, image_version = image.partition('/')
+    if scope not in SCOPES or not separator or not image_os or not image_version or '/' in image_version:
         raise ValueError('known cache scope and runner image required')
+    environment = os.environ if environment is None else environment
     pins = [tomllib.loads((workspace / project / 'rust-toolchain.toml').read_text())['toolchain']
             for project in LOCKS]
     if pins[0] != pins[1]:
         raise ValueError('paired Rust toolchains differ')
     # Change this profile revision if compiler flags or warm-build graphs change.
-    profile = {'revision': 1, 'scope': scope, 'target': 'x86_64-unknown-linux-gnu',
-               'image': image, 'rust': pins[0], 'node': '22.23.2', 'npm': '11.6.2',
-               'incremental': False, 'dev_debug': 0, 'test_debug': 0}
-    prefix = 'linux-compiler-v1-' + scope + '-' + digest(profile)[:20] + '-'
-    return {'key': prefix + digest(dependencies(workspace)), 'restore_prefix': prefix,
-            'target': SCOPES[scope], 'qualification_reused': False}
+    flags = {name: environment.get(name, '') for name in
+             ('RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS', 'CARGO_BUILD_TARGET')}
+    flags.update({name: value for name, value in environment.items()
+                  if name.startswith('CARGO_PROFILE_')
+                  and name not in ('CARGO_PROFILE_DEV_DEBUG', 'CARGO_PROFILE_TEST_DEBUG')})
+    profile = {'revision': 2, 'scope': scope, 'target': 'x86_64-unknown-linux-gnu',
+               'image_os': image_os, 'rust': pins[0], 'node': '22.23.2', 'npm': '11.6.2',
+               'incremental': environment.get('CARGO_INCREMENTAL', '0'),
+               'dev_debug': environment.get('CARGO_PROFILE_DEV_DEBUG', '0'),
+               'test_debug': environment.get('CARGO_PROFILE_TEST_DEBUG', '0'), 'flags': flags}
+    # GitHub rolls out multiple weekly images concurrently under ubuntu-24.04.
+    # Prefer exact-image bytes; a same-OS/compiler/profile fallback still runs
+    # Cargo and every release gate. No qualification result is cached here.
+    prefix = 'linux-compiler-v2-' + scope + '-' + digest(profile)[:20] + '-'
+    exact = {'image': image, 'dependencies': dependencies(workspace)}
+    legacy_key = ''
+    if (flags == {name: '' for name in ('RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS', 'CARGO_BUILD_TARGET')}
+            and all(profile[name] == '0' for name in ('incremental', 'dev_debug', 'test_debug'))):
+        # One-time migration reads only an exact v1 image/toolchain/dependency
+        # key with its original flags. New writes always use v2.
+        legacy = {name: profile[name] for name in ('scope', 'target', 'rust', 'node', 'npm')}
+        legacy.update(revision=1, image=image, incremental=False, dev_debug=0, test_debug=0)
+        legacy_key = 'linux-compiler-v1-' + scope + '-' + digest(legacy)[:20] + '-' + digest(exact['dependencies'])
+    return {'key': prefix + digest(exact), 'restore_prefix': prefix,
+            'legacy_restore_key': legacy_key, 'target': SCOPES[scope], 'qualification_reused': False}
 
 
 def main():
@@ -84,7 +105,7 @@ def main():
     result = identity(args.workspace.resolve(), args.scope, args.image)
     if args.github_output:
         with args.github_output.open('a') as output:
-            for key in ('key', 'restore_prefix', 'target'):
+            for key in ('key', 'restore_prefix', 'legacy_restore_key', 'target'):
                 output.write(key + '=' + result[key] + '\n')
     print(json.dumps(result))
 

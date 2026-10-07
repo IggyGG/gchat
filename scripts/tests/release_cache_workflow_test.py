@@ -54,6 +54,29 @@ class TrustedCompilerWarmup(unittest.TestCase):
         for forbidden in ('~/.ssh', '~/.cargo/credentials', 'native-evidence/', 'signed/', 'run.lock'):
             self.assertNotIn(forbidden, workflow)
 
+    def test_warm_save_and_release_restore_use_identical_path_version_inputs(self):
+        root = Path(__file__).resolve().parents[2]
+        paths = []
+        for name in ('linux-cache.yml', 'linux-release.yml'):
+            workflow = (root / '.github/workflows' / name).read_text()
+            for step in workflow.split('      - '):
+                if 'uses: actions/cache/' not in step:
+                    continue
+                if 'uses: actions/cache/restore@' in step:
+                    self.assertIn('restore-keys: |\n', step)
+                    self.assertIn('${{ steps.compiler.outputs.restore_prefix }}', step)
+                    self.assertIn('${{ steps.compiler.outputs.legacy_restore_key }}', step)
+                block = step.split('          path: |\n', 1)[1]
+                selected = []
+                for line in block.splitlines():
+                    if not line.startswith('            '):
+                        break
+                    selected.append(line.strip())
+                paths.append(tuple(selected))
+        expected = ('~/.cargo/registry', '~/.cargo/git', '~/.cargo/bin/cargo-deny',
+                    '~/.npm/_cacache', '${{ steps.compiler.outputs.target }}')
+        self.assertEqual(paths, [expected] * 5)
+
 
 if __name__ == '__main__':
     unittest.main()
