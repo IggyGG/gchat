@@ -1,4 +1,5 @@
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -37,6 +38,38 @@ class ControllerRuntimeTests(unittest.TestCase):
         self.assertTrue(proof['production_controller_revision_tested'])
         self.assertEqual(proof['source'], self.source)
         self.assertEqual(proof['inventory_sha256'], hashlib.sha256(canonical(self.request['files'])).hexdigest())
+
+    def test_noisy_test_import_and_cli_output_do_not_corrupt_json_proof(self):
+        from contextlib import redirect_stderr, redirect_stdout
+        stdout, stderr = io.StringIO(), io.StringIO()
+        def noisy_loader(_):
+            print('test import diagnostic')
+            return unittest.TestSuite([unittest.FunctionTestCase(
+                lambda: print('provider quota; retained original operation'))])
+        with redirect_stdout(stdout), redirect_stderr(stderr), \
+             patch.object(runtime.unittest.defaultTestLoader, 'loadTestsFromNames', side_effect=noisy_loader), \
+             patch.object(runtime, 'MINIMUM_TESTS', 1):
+            # This is the same check-then-print protocol as the container entry.
+            print(json.dumps(runtime.check(self.request, self.root)), flush=True)
+        proof = json.loads(stdout.getvalue())
+        self.assertTrue(proof['passed'])
+        self.assertEqual(proof['source'], self.source)
+        self.assertIn('test import diagnostic', stderr.getvalue())
+        self.assertIn('provider quota; retained original operation', stderr.getvalue())
+        self.assertIn('Ran 1 test', stderr.getvalue())
+
+    def test_noisy_failure_retains_diagnostics_without_success_json(self):
+        from contextlib import redirect_stderr, redirect_stdout
+        stdout, stderr = io.StringIO(), io.StringIO()
+        def noisy_failure():
+            print('failed operation diagnostic')
+            raise AssertionError('original test failure')
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            with self.assertRaisesRegex(ValueError, 'tests did not complete'):
+                print(json.dumps(self.execute(noisy_failure)), flush=True)
+        self.assertEqual(stdout.getvalue(), '')
+        self.assertIn('failed operation diagnostic', stderr.getvalue())
+        self.assertIn('original test failure', stderr.getvalue())
 
     def test_wrong_production_revision_is_refused_before_tests(self):
         with patch.dict(os.environ, GCHAT_CONTROLLER_REVISION='c' * 40), \
