@@ -27,9 +27,9 @@ JOBS={'rust':('rust-integrations.yml','GComs SDK Rust ',{}),
       'mobile-base':('mobile-integrations.yml','GComs SDK Mobile ',{'platform':'all','role':'all','push':False}),
       'mobile-push':('mobile-integrations.yml','GComs SDK Mobile ',{'platform':'all','role':'all','push':True})}
 
-def api(path,body=None):
+def api(path,body=None,*,refresh=False):
     from release_provider import github
-    return github(path, repo=REPO, method='POST' if body is not None else 'GET', body=body)
+    return github(path, repo=REPO, method='POST' if body is not None else 'GET', body=body, refresh=refresh)
 
 def expected_names(kind,commit):
     if kind=='rust':return {f'rust-integrations-{runner}-{commit}' for runner in ('ubuntu-24.04','macos-15','macos-15-intel','windows-2022')}
@@ -154,12 +154,17 @@ def build(manifest,cache):
             continue
         work=cache/kind;work.mkdir(exist_ok=True);request=hashlib.sha256(canonical([commit,kind])).hexdigest()
         marker=work/'dispatch.json'
-        found=[]
-        for page in range(1,11):
-            runs=api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}')['workflow_runs']
-            found += [r for r in runs if matching_run(r,kind,commit,request,prefix)
-                      or (r.get('event') == 'workflow_dispatch' and r.get('display_title') == prefix + request)]
-            if len(runs)<100:break
+        for refresh in (False,True):
+            found=[]
+            for page in range(1,11):
+                runs=api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}',
+                         **({'refresh':True} if refresh else {}))['workflow_runs']
+                found += [r for r in runs if matching_run(r,kind,commit,request,prefix)
+                          or (r.get('event') == 'workflow_dispatch' and r.get('display_title') == prefix + request)]
+                if len(runs)<100:break
+            # Cached absence cannot authorize a new external effect. Recheck
+            # GitHub once before the first dispatch; existing intents still wait.
+            if found or marker.exists():break
         # Retain both independently created provider records; selecting one
         # neither cancels the other nor changes its source or original result.
         for run in found:

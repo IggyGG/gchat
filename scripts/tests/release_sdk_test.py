@@ -170,6 +170,48 @@ class ExistingSdkRunTests(unittest.TestCase):
                 self.assertIsNone(build(manifest, Path(directory)))
                 self.assertEqual(api.call_count, 2)
 
+    def test_stale_empty_listing_refreshes_before_dispatch_and_reuses_visible_main(self):
+        import tempfile
+        from unittest.mock import patch
+        from release_sdk import build, JOBS
+        from release_automation_test import candidate
+        manifest = candidate(); push, _ = self.provider_runs(manifest)
+        push.update(status='in_progress', conclusion=None)
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            with patch('release_sdk.JOBS', {'rust': JOBS['rust']}), \
+                    patch('release_sdk.reuse_qualification', return_value=None), \
+                    patch('release_sdk.api', side_effect=[{'workflow_runs': []},
+                                                         {'workflow_runs': [push]}]) as api:
+                self.assertIsNone(build(manifest, cache))
+                self.assertEqual(api.call_count, 2)
+                self.assertEqual(api.call_args_list[1].kwargs, {'refresh': True})
+                self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list), 'no duplicate POST')
+                work = cache / manifest['sources']['gcoms']['commit'] / 'rust'
+                self.assertFalse((work / 'dispatch.json').exists())
+                self.assertTrue((work / 'observed-run-1.json').exists())
+
+    def test_fresh_absence_dispatches_once_and_unknown_outcome_cannot_redispatch(self):
+        import tempfile
+        from unittest.mock import patch
+        from release_sdk import build, JOBS
+        from release_automation_test import candidate
+        manifest = candidate(); manifest['refs'] = {'gcoms': 'refs/heads/release/exact'}
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            with patch('release_sdk.JOBS', {'rust': JOBS['rust']}), \
+                    patch('release_sdk.reuse_qualification', return_value=None), \
+                    patch('release_sdk.api', return_value={'workflow_runs': []}) as api:
+                self.assertIsNone(build(manifest, cache))
+                self.assertEqual(api.call_count, 3)
+                self.assertEqual(api.call_args_list[1].kwargs, {'refresh': True})
+                self.assertEqual(len(api.call_args_list[2].args), 2)
+                api.reset_mock()
+                self.assertIsNone(build(manifest, cache))
+                self.assertEqual(api.call_count, 1)
+                self.assertEqual(len(api.call_args.args), 1)
+                self.assertEqual(api.call_args.kwargs, {})
+
     def test_reuses_only_exact_main_default_matrix_and_never_push_for_optional_push(self):
         from release_sdk import matching_run
         commit='a'*40; request='b'*64; prefix='GComs SDK Mobile '
