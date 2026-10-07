@@ -97,6 +97,79 @@ class SdkMatrixTests(unittest.TestCase):
                 publish_archives(manifest, [(payload, expected)], public)
 
 class ExistingSdkRunTests(unittest.TestCase):
+    def provider_runs(self, manifest):
+        import hashlib
+        from release_pair import canonical
+        from release_sdk import REPO
+        commit = manifest['sources']['gcoms']['commit']
+        request = hashlib.sha256(canonical([commit, 'rust'])).hexdigest()
+        base = {'head_sha': commit, 'head_repository': {'full_name': REPO},
+                'path': '.github/workflows/rust-integrations.yml',
+                'status': 'completed', 'conclusion': 'success'}
+        return [dict(base, id=1, event='push', head_branch='main',
+                     display_title='GComs SDK Rust ' + commit),
+                dict(base, id=2, event='workflow_dispatch', head_branch='release/exact',
+                     display_title='GComs SDK Rust ' + request,
+                     status='queued', conclusion=None)]
+
+    def test_request_dispatch_owns_collection_and_both_provider_records_are_retained(self):
+        import tempfile, json
+        from unittest.mock import patch
+        from release_sdk import build, JOBS
+        from release_automation_test import candidate
+        manifest = candidate(); push, dispatched = self.provider_runs(manifest)
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            with patch('release_sdk.JOBS', {'rust': JOBS['rust']}), \
+                    patch('release_sdk.reuse_qualification', return_value=None), \
+                    patch('release_sdk.api', return_value={'workflow_runs': [push, dispatched]}) as api:
+                self.assertIsNone(build(manifest, cache))
+                self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list), 'no duplicate POST')
+                work = cache / manifest['sources']['gcoms']['commit'] / 'rust'
+                self.assertEqual(json.loads((work / 'observed-run-1.json').read_text()), push)
+                self.assertEqual(json.loads((work / 'observed-run-2.json').read_text()), dispatched)
+                # A temporarily missing dispatch must not fall back to a main
+                # pass or authorize a replacement external request.
+                api.return_value = {'workflow_runs': [push]}
+                self.assertIsNone(build(manifest, cache))
+                self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
+                dispatched.update(status='completed', conclusion='failure')
+                api.return_value = {'workflow_runs': [push, dispatched]}
+                with self.assertRaisesRegex(ValueError, 'native SDK qualification failed: 2'):
+                    build(manifest, cache)
+
+    def test_dispatch_selection_rejects_duplicates_and_all_identity_mismatches(self):
+        from release_sdk import select_run
+        from release_automation_test import candidate
+        manifest = candidate(); push, dispatched = self.provider_runs(manifest)
+        commit = manifest['sources']['gcoms']['commit']; workflow = 'rust-integrations.yml'
+        for runs in ([push, dispatched], [dispatched, push]):
+            self.assertEqual(select_run(runs, commit, workflow, False), dispatched)
+        self.assertEqual(select_run([push], commit, workflow, False), push)
+        self.assertIsNone(select_run([push], commit, workflow, True))
+        for runs in ([dispatched, dict(dispatched, id=3)], [push, dict(push, id=3)]):
+            with self.assertRaisesRegex(ValueError, 'duplicate SDK dispatch'):
+                select_run(runs, commit, workflow, False)
+        for field, value in [('head_sha', 'f' * 40), ('head_repository', {'full_name': 'other/repo'}),
+                             ('path', '.github/workflows/other.yml')]:
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'SDK workflow/source mismatch'):
+                select_run([push, dict(dispatched, **{field: value})], commit, workflow, False)
+
+    def test_main_push_does_not_hide_request_dispatch_on_a_later_provider_page(self):
+        import tempfile
+        from unittest.mock import patch
+        from release_sdk import build, JOBS
+        from release_automation_test import candidate
+        manifest = candidate(); push, dispatched = self.provider_runs(manifest)
+        unrelated = dict(push, head_sha='f' * 40, display_title='unrelated')
+        with tempfile.TemporaryDirectory() as directory:
+            with patch('release_sdk.JOBS', {'rust': JOBS['rust']}), \
+                    patch('release_sdk.reuse_qualification', return_value=None), \
+                    patch('release_sdk.api', side_effect=[{'workflow_runs': [push] + [unrelated] * 99},
+                                                         {'workflow_runs': [dispatched]}]) as api:
+                self.assertIsNone(build(manifest, Path(directory)))
+                self.assertEqual(api.call_count, 2)
+
     def test_reuses_only_exact_main_default_matrix_and_never_push_for_optional_push(self):
         from release_sdk import matching_run
         commit='a'*40; request='b'*64; prefix='GComs SDK Mobile '

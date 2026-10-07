@@ -48,6 +48,22 @@ def matching_run(run, kind, commit, request, prefix):
             and run.get('display_title') == prefix + commit)
 
 
+def select_run(found, commit, workflow, dispatched):
+    for run in found:
+        if (run.get('head_sha') != commit
+                or run.get('head_repository', {}).get('full_name') != REPO
+                or run.get('path') != '.github/workflows/' + workflow):
+            raise ValueError('SDK workflow/source mismatch')
+    requested = [run for run in found if run.get('event') == 'workflow_dispatch']
+    if len(requested) > 1 or (not requested and len(found) > 1):
+        raise ValueError('duplicate SDK dispatch requires reconciliation')
+    if requested:
+        return requested[0]
+    # An attempted/observed dispatch owns this request even while GitHub's
+    # listing is incomplete. A main-push pass cannot replace its unknown result.
+    return None if dispatched or not found else found[0]
+
+
 def qualification_inputs(repository, commit):
     """Retain every build, test, feature, platform and toolchain input."""
     from release_inputs import GCOMS_STATUS_FILES
@@ -137,14 +153,20 @@ def build(manifest,cache):
             archives.extend(reused)
             continue
         work=cache/kind;work.mkdir(exist_ok=True);request=hashlib.sha256(canonical([commit,kind])).hexdigest()
+        marker=work/'dispatch.json'
         found=[]
         for page in range(1,11):
             runs=api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}')['workflow_runs']
-            found += [r for r in runs if matching_run(r,kind,commit,request,prefix)]
-            if len(runs)<100 or found:break
-        if len(found)>1:raise ValueError('duplicate SDK dispatch requires reconciliation')
-        if not found:
-            marker=work/'dispatch.json'
+            found += [r for r in runs if matching_run(r,kind,commit,request,prefix)
+                      or (r.get('event') == 'workflow_dispatch' and r.get('display_title') == prefix + request)]
+            if len(runs)<100:break
+        # Retain both independently created provider records; selecting one
+        # neither cancels the other nor changes its source or original result.
+        for run in found:
+            retained = work / ('observed-run-' + str(int(run['id'])) + '.json')
+            if not retained.exists():atomic_json(retained,run)
+        run=select_run(found,commit,workflow,marker.exists())
+        if run is None:
             if not marker.exists():
                 atomic_json(marker,{'at':int(time.time()),'request':request,'commit':commit})
                 api(f'actions/workflows/{workflow}/dispatches',{'ref':manifest['refs']['gcoms'].removeprefix('refs/heads/'),
@@ -152,9 +174,8 @@ def build(manifest,cache):
             elif time.time()-json.loads(marker.read_text())['at']>1800:
                 raise ValueError('SDK dispatch outcome unknown; no blind resubmission')
             complete=False;continue
-        run=found[0]
-        if run['head_sha']!=commit or run.get('head_repository',{}).get('full_name')!=REPO or run['path']!='.github/workflows/'+workflow:
-            raise ValueError('SDK workflow/source mismatch')
+        if run.get('event') == 'workflow_dispatch' and not marker.exists():
+            atomic_json(marker,{'at':int(time.time()),'request':request,'commit':commit,'observed_run':run['id']})
         if run['status']!='completed':complete=False;continue
         if run['conclusion']!='success':raise ValueError('native SDK qualification failed: '+str(run['id']))
         values=api(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts'];names=expected_names(kind,commit)
