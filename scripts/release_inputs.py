@@ -124,6 +124,12 @@ def controller_only(path):
 # packaging. Rust, locks and unclassified evidence remain artifact inputs.
 GCOMS_STATUS_FILES = frozenset({
     'PLAN.md', 'README.md', 'TESTPLAN.md',
+    'docs/evidence/gc2-flow-control-20261007/machine-scope-checkpoint.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-intelmac-diagnostic.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-consolidated-deployment-proof.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-local-hub-handoff.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-final-release-status.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-controller-completion.json',
     'docs/evidence/stabilization-20261001/durable-reopen.json',
     'docs/evidence/stabilization-20261001/contact-request-window.json',
     'docs/evidence/stabilization-20261001/windows-locked-storage-tests.json',
