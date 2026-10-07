@@ -851,7 +851,7 @@ class MobileAcceptanceTests(unittest.TestCase):
         device='12345678-1234-1234-1234-123456789ABC'
         for build_result in (0,65):
             with self.subTest(build_result=build_result),tempfile.TemporaryDirectory() as temporary:
-                deadline=time.monotonic()+600
+                deadline=1600.0
                 events=[];processes=[]
                 def wait(**kwargs):
                     events.append('compiled')
@@ -879,7 +879,8 @@ class MobileAcceptanceTests(unittest.TestCase):
                     return {'passed':True}
                 replies=['Xcode 26.2\nBuild version pinned',json.dumps({'devicetypes':[]}),
                     json.dumps({'devices':{}}),device,json.dumps(inventory)]
-                with patch('mobile_ios_ui.ios.output',side_effect=replies), \
+                with patch('mobile_ios_ui.time.monotonic',return_value=1000.0), \
+                     patch('mobile_ios_ui.ios.output',side_effect=replies), \
                      patch('mobile_ios_ui.secrets.token_hex',return_value='deadbeefcafe'), \
                      patch('mobile_ios_ui.Bridge',return_value=bridge), \
                      patch('mobile_ios_ui.ios.simulator_runtime',return_value='runtime'), \
