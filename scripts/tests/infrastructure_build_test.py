@@ -44,6 +44,16 @@ class RetainedServiceTests(unittest.TestCase):
                            'GITHUB_WORKFLOW_SHA': manifest['sources']['gchat']['commit'],
                            'GITHUB_SHA': manifest['sources']['gchat']['commit']}
             retained = root / 'native'; packaged = root / 'packaged'; commands = []
+            certificates = root / 'fixture-ca.crt'
+            certificates.write_bytes(b'fixture trust bundle\n')
+            copy_file = build.shutil.copy2
+            certificate_copies = []
+
+            def copy_fixture(source, destination, *args, **kwargs):
+                if source == '/etc/ssl/certs/ca-certificates.crt':
+                    certificate_copies.append(destination)
+                    source = certificates
+                return copy_file(source, destination, *args, **kwargs)
 
             def execute(command, **kwargs):
                 commands.append(command)
@@ -68,6 +78,7 @@ class RetainedServiceTests(unittest.TestCase):
                  patch.object(build, 'identity', side_effect=lambda path: manifest['sources']['gcoms' if path == source else 'gchat']), \
                  patch.object(artifacts, 'rustc', return_value='rustc pinned\nhost: ' + artifacts.TARGET + '\n'), \
                  patch.object(build.subprocess, 'run', side_effect=execute), \
+                 patch.object(build.shutil, 'copy2', side_effect=copy_fixture), \
                  patch.object(build, 'archive_config', return_value='sha256:' + 'e' * 64), \
                  patch.object(build, 'qualify_controller', side_effect=qualification), \
                  patch.object(sys, 'argv', ['build', '--gcoms', str(source), '--output', str(retained), '--binaries-only']):
@@ -79,6 +90,8 @@ class RetainedServiceTests(unittest.TestCase):
                     build.main()
             self.assertEqual(sum(command[0] == 'cargo' for command in commands), 1)
             self.assertEqual(sum(command[:2] == ['docker', 'build'] for command in commands), 3)
+            self.assertEqual(certificate_copies, [packaged / 'ca-certificates.crt'])
+            self.assertEqual((packaged / 'ca-certificates.crt').read_bytes(), certificates.read_bytes())
             for name in build.BINARIES:
                 self.assertEqual(artifacts.digest(packaged / name), record['files'][name])
             # The live controller's verifier requires the existing exact public
@@ -86,6 +99,8 @@ class RetainedServiceTests(unittest.TestCase):
             from release_infrastructure_bundle import FILES, RUNTIME_FILES
             self.assertEqual(set(json.loads((packaged / 'build.json').read_text())['sha256']),
                              set(FILES + RUNTIME_FILES))
+            self.assertEqual(json.loads((packaged / 'build.json').read_text())['sha256']['ca-certificates.crt'],
+                             artifacts.digest(certificates))
             self.assertFalse((packaged / 'native-build.json').exists())
 
 

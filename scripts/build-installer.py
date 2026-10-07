@@ -26,6 +26,20 @@ TARGETS = {
 }
 
 
+def retained_deb_desktop_sha(path, expected_sha):
+    """Bind the shipped desktop to the one mutation made by pinned Tauri."""
+    original = path.read_bytes()
+    if hashlib.sha256(original).hexdigest() != expected_sha:
+        raise ValueError('retained native build desktop changed before package verification')
+    # Tauri CLI 2.11.4's tauri-bundler/src/bundle.rs::patch_binary changes
+    # only the first bundle-kind marker before copying the binary into a DEB.
+    # Compare that exact transformation, never normalize arbitrary binary data.
+    marker = b'__TAURI_BUNDLE_TYPE_VAR_UNK'
+    if marker not in original:
+        raise ValueError('retained native build desktop is missing the Tauri bundle marker')
+    return hashlib.sha256(original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_DEB', 1)).hexdigest()
+
+
 def run(args, **kwargs):
     result = subprocess.run(args, cwd=kwargs.pop('cwd', ROOT), **kwargs)
     if result.returncode:
@@ -335,8 +349,9 @@ def bundle(target, output, environment, identity, policy, checkout, retained_lin
             if not cli.is_file() or cli.is_symlink(): raise ValueError('Linux installer is missing its qualified CLI')
             if sha(cli) != sha(sidecar): raise ValueError('packaged Linux CLI differs from its source build')
             if not executable.is_file() or executable.is_symlink(): raise ValueError('packaged Linux executable is missing')
-            if retained_report is not None and (sha(executable) != retained_report['files']['bin/gchat-desktop']
-                                               or sha(cli) != retained_report['files']['bin/gchat']):
+            if retained_report is not None and (sha(executable) != retained_deb_desktop_sha(
+                    retained_linux / 'bin/gchat-desktop', retained_report['files']['bin/gchat-desktop'])
+                    or sha(cli) != retained_report['files']['bin/gchat']):
                 raise ValueError('packaged Linux executables differ from retained native build')
             executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
             executables.append({'name': cli.name, 'sha256': sha(cli), 'size': cli.stat().st_size})

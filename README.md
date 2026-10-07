@@ -1,3 +1,5 @@
+Candidate167 packaging correction, 2026-10-07: pinned Tauri marks DEB binaries by changing `UNK` to `DEB`. Retained-build verification now permits precisely that three-byte mutation and checks every other byte; the CLI still requires its original hash. Actual qualified167 binaries reproduce and pass the corrected comparison. The protected signed build and full relay gate remain required.
+
 Release simplification, 2026-10-07: Linux qualification, production compilation and load testing share verified retained binaries; signing bundles without compiling again. Trusted-main compiler caches serve successive release branches. Independent channel setup runs in parallel, and relay restart readiness no longer interrupts load observation. `release.py status` exposes native job steps; an explicit `resume --platform linux-x86_64` permits one failed-job retry while keeping successful jobs. The full 64-client/30-minute gate and signed managed activation remain required. See [automatic releases](docs/AUTOMATIC_RELEASES.md). Hosted timings and activation must be observed separately.
 
 Live hub repair, 2026-10-06: normal controller invitation creation, exact-result

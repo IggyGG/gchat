@@ -341,7 +341,8 @@ class LinuxApplicationTest(unittest.TestCase):
                 config.write_text(json.dumps({'version': manifest['versions']['linux-x86_64']}))
                 manifest_path = root / 'candidate.json'; manifest_path.write_text(json.dumps(manifest))
                 target = output / 'build/x86_64-unknown-linux-gnu/release'
-                expected = {'gchat': b'qualified cli', 'gchat-desktop': b'qualified desktop'}
+                expected = {'gchat': b'qualified cli', 'gchat-desktop': b'qualified __TAURI_BUNDLE_TYPE_VAR_UNK desktop'}
+                packaged_desktop = expected['gchat-desktop'].replace(b'_VAR_UNK', b'_VAR_DEB', 1)
                 report = {'files': {'bin/' + name: hashlib.sha256(data).hexdigest() for name, data in expected.items()}}
                 commands = []
 
@@ -350,6 +351,8 @@ class LinuxApplicationTest(unittest.TestCase):
                                      (root / 'retained', output / 'build', root, manifest, {'qualified': True}))
                     target.mkdir(parents=True)
                     for name, data in expected.items(): (target / name).write_bytes(data)
+                    (retained / 'bin').mkdir(parents=True)
+                    (retained / 'bin/gchat-desktop').write_bytes(expected['gchat-desktop'])
                     return report
 
                 def execute(command, **kwargs):
@@ -364,7 +367,8 @@ class LinuxApplicationTest(unittest.TestCase):
                     elif command[:2] == ['dpkg-deb', '--extract']:
                         binaries = Path(command[-1]) / 'usr/bin'; binaries.mkdir(parents=True)
                         for name, data in expected.items():
-                            (binaries / name).write_bytes(b'changed' if changed_desktop and name == 'gchat-desktop' else data)
+                            if name == 'gchat-desktop': data = b'changed' if changed_desktop else packaged_desktop
+                            (binaries / name).write_bytes(data)
                     return subprocess.CompletedProcess(command, 0)
 
                 def metadata(command, **kwargs):
@@ -383,8 +387,30 @@ class LinuxApplicationTest(unittest.TestCase):
                     else:
                         _, entries = installer.bundle(*arguments)
                         self.assertEqual([entry['sha256'] for entry in entries],
-                                         [report['files']['bin/gchat-desktop'], report['files']['bin/gchat']])
+                                         [hashlib.sha256(packaged_desktop).hexdigest(), report['files']['bin/gchat']])
                 self.assertFalse(any(command[:2] == ['cargo', 'build'] or 'scripts/collect-notices.py' in command for command in commands))
+
+    def test_retained_deb_allows_only_the_first_exact_tauri_marker_mutation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'desktop'
+            marker = b'__TAURI_BUNDLE_TYPE_VAR_UNK'
+            original = b'ELF prefix' + marker + b'code' + marker + b'suffix'
+            path.write_bytes(original)
+            expected_sha = hashlib.sha256(original).hexdigest()
+            actual = installer.retained_deb_desktop_sha(path, expected_sha)
+            packaged = original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_DEB', 1)
+            self.assertEqual(actual, hashlib.sha256(packaged).hexdigest())
+            for changed in (original, packaged + b'extra', packaged.replace(b'code', b'evil'),
+                            original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_DEB'),
+                            original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_APP', 1)):
+                with self.subTest(changed=changed):
+                    self.assertNotEqual(actual, hashlib.sha256(changed).hexdigest())
+            path.write_bytes(original + b'tampered retained artifact')
+            with self.assertRaisesRegex(ValueError, 'desktop changed'):
+                installer.retained_deb_desktop_sha(path, expected_sha)
+            path.write_bytes(b'missing marker')
+            with self.assertRaisesRegex(ValueError, 'missing.*marker'):
+                installer.retained_deb_desktop_sha(path, hashlib.sha256(path.read_bytes()).hexdigest())
 
     def test_linux_bundle_requires_the_shipped_cli_to_match_its_build(self):
         for shipped in (b'qualified cli', b'changed cli', None):

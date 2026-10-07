@@ -851,6 +851,7 @@ class MobileAcceptanceTests(unittest.TestCase):
         device='12345678-1234-1234-1234-123456789ABC'
         for build_result in (0,65):
             with self.subTest(build_result=build_result),tempfile.TemporaryDirectory() as temporary:
+                deadline=time.monotonic()+600
                 events=[];processes=[]
                 def wait(**kwargs):
                     events.append('compiled')
@@ -890,10 +891,10 @@ class MobileAcceptanceTests(unittest.TestCase):
                      patch.object(IOSUI,'cleanup',autospec=True,side_effect=clean):
                     if build_result:
                         with self.assertRaisesRegex(ValueError,'fixture compilation failed'):
-                            IOSUI(Path(temporary),'fixture',lambda:time.monotonic()+600,{'app':'original.app'})
+                            IOSUI(Path(temporary),'fixture',lambda:deadline,{'app':'original.app'})
                         self.assertEqual(len(processes),1)
                     else:
-                        ui=IOSUI(Path(temporary),'fixture',lambda:time.monotonic()+600,{'app':'original.app'})
+                        ui=IOSUI(Path(temporary),'fixture',lambda:deadline,{'app':'original.app'})
                         self.assertEqual(len(processes),2)
                         ui.log.close()
 
