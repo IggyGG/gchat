@@ -54,7 +54,7 @@ class ControllerQualificationTests(unittest.TestCase):
             bundle, request, proof = bundle_fixture(root, intent)
             work = root / 'proof'; work.mkdir()
             image = 'registry/controller@sha256:' + 'b' * 64
-            target = {'probe_namespace': 'ghost-bench'}
+            target = {'probe_namespace': 'ghost-bench', 'probe_dns_nameservers': ['10.96.254.54']}
             def create(argv, **kwargs):
                 if 'get' in argv: return b''
                 if 'create' in argv: return b'created'
@@ -62,6 +62,13 @@ class ControllerQualificationTests(unittest.TestCase):
             with patch('release_controller.subprocess.check_output', side_effect=create):
                 self.assertIsNone(controller.kubernetes_qualify(intent, bundle, image, target, work))
             job = controller.read(work / 'kubernetes-request.json')
+            spec = job['spec']['template']['spec']
+            self.assertEqual(spec['dnsPolicy'], 'None')
+            self.assertEqual(spec['dnsConfig'], {'nameservers': ['10.96.254.54']})
+            self.assertEqual(spec['affinity'], {'nodeAffinity': {
+                'requiredDuringSchedulingIgnoredDuringExecution': {'nodeSelectorTerms': [{
+                    'matchExpressions': [{'key': 'kubernetes.io/hostname',
+                        'operator': 'NotIn', 'values': ['triform-1']}]}]}}})
             self.assertFalse(job['spec']['template']['spec']['automountServiceAccountToken'])
             self.assertEqual(job['spec']['template']['spec']['volumes'], [{'name': 'tmp', 'emptyDir': {'sizeLimit': '256Mi'}}])
             job['status'] = {'succeeded': 1}
@@ -80,6 +87,36 @@ class ControllerQualificationTests(unittest.TestCase):
             saved = controller.read(work / 'kubernetes-runtime.json')
             self.assertEqual(saved['pod_uid'], 'exact-pod')
             self.assertEqual(saved['image_id'], image)
+
+    def test_invalid_probe_dns_is_rejected_before_any_kubernetes_request(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); intent = fixtures.intent_fixture(root)
+            bundle, _, _ = bundle_fixture(root, intent)
+            work = root / 'proof'; work.mkdir()
+            for dns in ([], ['10.96.254.54'] * 4, '10.96.254.54', ['not-an-address']):
+                with self.subTest(dns=dns), patch('release_controller.subprocess.check_output') as kube:
+                    with self.assertRaises(ValueError):
+                        controller.kubernetes_qualify(intent, bundle, 'registry@sha256:' + 'b' * 64,
+                            {'probe_namespace': 'ghost-bench', 'probe_dns_nameservers': dns}, work)
+                    kube.assert_not_called()
+                    self.assertFalse((work / 'kubernetes-request.json').exists())
+
+    def test_retained_job_cannot_change_dns_or_scheduling_constraints(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); intent = fixtures.intent_fixture(root)
+            bundle, _, _ = bundle_fixture(root, intent)
+            work = root / 'proof'; work.mkdir()
+            target = {'probe_namespace': 'ghost-bench', 'probe_dns_nameservers': ['10.96.254.54']}
+            image = 'registry@sha256:' + 'b' * 64
+            with patch('release_controller.subprocess.check_output', side_effect=[b'', b'created']):
+                self.assertIsNone(controller.kubernetes_qualify(intent, bundle, image, target, work))
+            for key, replacement in (('dnsPolicy', 'ClusterFirst'), ('dnsConfig', {'nameservers': ['8.8.8.8']}),
+                                     ('affinity', {})):
+                job = controller.read(work / 'kubernetes-request.json')
+                job['spec']['template']['spec'][key] = replacement
+                with self.subTest(key=key), patch('release_controller.subprocess.check_output', return_value=canonical(job)):
+                    with self.assertRaisesRegex(ValueError, 'qualification job changed'):
+                        controller.kubernetes_qualify(intent, bundle, image, target, work)
 
 
 if __name__ == '__main__': unittest.main()

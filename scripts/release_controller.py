@@ -7,6 +7,7 @@ import argparse
 import base64
 import copy
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -202,6 +203,11 @@ def kubernetes_qualify(intent, bundle, image, target, work):
     """Run the retained image's actual runtime suite without production state."""
     name = 'controller-check-' + intent['id'][:20]
     namespace = target['probe_namespace']
+    dns = target.get('probe_dns_nameservers')
+    if dns is not None:
+        if not isinstance(dns, list) or not 1 <= len(dns) <= 3:
+            raise ValueError('controller probe requires one to three DNS addresses')
+        dns = [str(ipaddress.ip_address(value)) for value in dns]
     def kube(*args, value=None):
         return subprocess.check_output(['kubectl', '-n', namespace, *args],
             input=None if value is None else canonical(value), stderr=subprocess.PIPE, timeout=120)
@@ -210,6 +216,9 @@ def kubernetes_qualify(intent, bundle, image, target, work):
         'backoffLimit': 0, 'activeDeadlineSeconds': 600,
         'template': {'metadata': {'labels': {'gchat-controller-qualification': intent['id'][:20]}}, 'spec': {
             'restartPolicy': 'Never', 'automountServiceAccountToken': False,
+            'affinity': {'nodeAffinity': {'requiredDuringSchedulingIgnoredDuringExecution': {
+                'nodeSelectorTerms': [{'matchExpressions': [{'key': 'kubernetes.io/hostname',
+                    'operator': 'NotIn', 'values': ['triform-1']}]}]}}},
             'securityContext': {'runAsUser': 10001, 'runAsGroup': 10001, 'fsGroup': 10001},
             'containers': [{'name': 'qualify', 'image': image, 'imagePullPolicy': 'Always',
                 'command': ['python3', '-c', 'import json,os;from controller_runtime import check;'
@@ -224,6 +233,8 @@ def kubernetes_qualify(intent, bundle, image, target, work):
                                     'capabilities': {'drop': ['ALL']}},
                 'volumeMounts': [{'name': 'tmp', 'mountPath': '/tmp'}]}],
             'volumes': [{'name': 'tmp', 'emptyDir': {'sizeLimit': '256Mi'}}]}}}}
+    if dns is not None:
+        job['spec']['template']['spec'].update(dnsPolicy='None', dnsConfig={'nameservers': dns})
     marker = work / 'kubernetes-request.json'
     if marker.exists() and read(marker) != job:
         raise ValueError('controller Kubernetes qualification request changed')
@@ -242,6 +253,9 @@ def kubernetes_qualify(intent, bundle, image, target, work):
             or container.get('env') != wanted['containers'][0]['env']
             or spec.get('automountServiceAccountToken') is not False
             or spec.get('restartPolicy') != 'Never'
+            or spec.get('affinity') != wanted['affinity']
+            or (dns is not None and (spec.get('dnsPolicy') != 'None'
+                                    or spec.get('dnsConfig') != wanted['dnsConfig']))
             or spec.get('volumes') != wanted['volumes']
             or any(spec.get('securityContext', {}).get(k) != v for k,v in wanted['securityContext'].items())
             or any(container.get('securityContext', {}).get(k) != v for k,v in wanted['containers'][0]['securityContext'].items())
