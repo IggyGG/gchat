@@ -358,13 +358,42 @@ def close(controller):
     log.close(); controller._controller_worker = None
 
 
+def acceptance_intents(jobs):
+    """Visit writer-owned job/followup directories, never extracted artifacts."""
+    pending = [jobs] if jobs.exists() else []
+    while pending:
+        group = pending.pop()
+        if group.is_symlink():
+            raise ValueError('acceptance intent directory is a symlink')
+        with os.scandir(group) as entries:
+            directories = []
+            for entry in entries:
+                if entry.is_symlink():
+                    raise ValueError('acceptance job or followup is a symlink')
+                if entry.is_dir(follow_symlinks=False):
+                    directories.append(Path(entry.path))
+        for work in directories:
+            intent = work / 'acceptance-intent.json'
+            if intent.is_symlink():
+                raise ValueError('acceptance intent is a symlink')
+            if intent.is_file():
+                yield intent
+            # failed_followup() can recursively create further followups. A
+            # cleaned parent must not hide an active child or sibling request.
+            followups = work / 'followups'
+            if followups.is_symlink():
+                raise ValueError('acceptance followup directory is a symlink')
+            if followups.exists():
+                pending.append(followups)
+
+
 def quiescent(controller):
     if controller.running_workers or getattr(controller.deployment_runner, 'pending', None): return False
     # A remote reader may have no local subprocess. Wait for all native/mobile
     # acceptance grants to finish their ordinary cleanup before replacing nginx's
     # colocated coordinator pod and its sole Service endpoint.
     now = time.time()
-    for path in (controller.state / 'jobs').glob('**/acceptance-intent.json'):
+    for path in acceptance_intents(controller.state / 'jobs'):
         intent = read(path)
         if intent.get('cleaned') is True: continue
         delivery = path.parent / 'sealed-delivery.json'

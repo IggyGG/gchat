@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -24,6 +25,51 @@ def intent_fixture(state):
 
 
 class ControllerTests(unittest.TestCase):
+    def test_quiescence_skips_artifact_trees_but_checks_all_followup_branches(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original = root / 'jobs' / ('a' * 64)
+            artifact = original / 'native' / 'ios-output' / 'Index.noindex'
+            controller.save(artifact / 'acceptance-intent.json', {'cleaned': False})
+            controller.save(original / 'acceptance-intent.json', {'cleaned': True})
+            first = original / 'followups' / ('b' * 40)
+            second = original / 'followups' / ('c' * 40)
+            nested = first / 'followups' / ('d' * 40)
+            for work in (first, second, nested):
+                controller.save(work / 'acceptance-intent.json', {'cleaned': True})
+            owner = SimpleNamespace(state=root, running_workers={},
+                                    deployment_runner=SimpleNamespace(pending=None))
+            visited = []
+            original_scandir = os.scandir
+            def bounded_scandir(path):
+                path = Path(path)
+                self.assertFalse(path.is_relative_to(original / 'native'),
+                                 'quiescence descended into an extracted artifact')
+                visited.append(path)
+                return original_scandir(path)
+            with patch('release_controller.os.scandir', side_effect=bounded_scandir), \
+                 patch('release_controller.time.time', return_value=1000):
+                self.assertTrue(controller.quiescent(owner))
+                self.assertEqual(set(visited), {root / 'jobs', original / 'followups', first / 'followups'})
+                for work in (second, nested):
+                    controller.save(work / 'acceptance-intent.json', {'cleaned': False, 'delivery_protocol': 'sealed'})
+                    controller.save(work / 'sealed-delivery.json', {'expires_at': 5000})
+                    self.assertFalse(controller.quiescent(owner))
+                    controller.save(work / 'acceptance-intent.json', {'cleaned': True})
+                self.assertTrue(controller.quiescent(owner))
+
+    @unittest.skipUnless(os.name == 'posix', 'retained controller state uses POSIX directories')
+    def test_quiescence_refuses_symlinked_followup_without_traversal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original = root / 'jobs' / ('a' * 64)
+            controller.save(original / 'acceptance-intent.json', {'cleaned': True})
+            (original / 'followups').symlink_to(root / 'jobs', target_is_directory=True)
+            owner = SimpleNamespace(state=root, running_workers={},
+                                    deployment_runner=SimpleNamespace(pending=None))
+            with self.assertRaisesRegex(ValueError, 'followup directory is a symlink'):
+                controller.quiescent(owner)
+
     def test_intent_is_idempotent_and_never_changes_application_manifest(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
