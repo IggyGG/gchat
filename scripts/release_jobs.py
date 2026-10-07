@@ -54,18 +54,47 @@ def extract(archive, destination):
         bundle.extractall(destination)
 
 
+def validate_run(run, expected, workflow, title, ident=None):
+    if (not isinstance(run, dict) or type(run.get('id')) is not int or run['id'] <= 0
+            or (ident is not None and run['id'] != ident)
+            or run.get('head_sha') != expected or run.get('event') != 'workflow_dispatch'
+            or run.get('display_title') != title
+            or not isinstance(run.get('head_repository'), dict)
+            or run.get('head_repository', {}).get('full_name') != REPO
+            or run.get('path') != '.github/workflows/' + workflow):
+        raise ValueError('worker run does not bind the requested source/workflow')
+
+
 def collect(manifest, target, work, request_id, reconcile=False):
     workflow, prefix = WORKFLOWS[target]
     marker = work / 'dispatch.json'
     expected = manifest['sources']['gchat']['commit']
-    matches = []
-    # Reconciliation never trusts a branch name or the most recent run alone.
-    for page in range(1, 11):
-        runs = gh(f'actions/workflows/{workflow}/runs?event=workflow_dispatch&per_page=100&page={page}')['workflow_runs']
-        matches += [r for r in runs if r.get('display_title') == prefix + request_id]
-        if len(runs) < 100 or matches: break
-    if len(matches) > 1: raise ValueError('duplicate external request IDs require reconciliation')
-    if not matches:
+    run_path = work / 'run.json'
+    binding = {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
+               'platform': target, 'request_id': request_id}
+    if run_path.exists():
+        retained = json.loads(run_path.read_text())
+        if (not isinstance(retained, dict) or type(retained.get('schema')) is not int
+                or any(retained.get(k) != v for k, v in binding.items())
+                or type(retained.get('id')) is not int or retained['id'] <= 0):
+            raise ValueError('retained worker run binding changed')
+        # A known run must never become an unseen dispatch merely because a
+        # later workflow listing omits it. Missing IDs fail without redispatch.
+        run = gh(f'actions/runs/{retained["id"]}')
+        validate_run(run, expected, workflow, prefix + request_id, retained['id'])
+    else:
+        matches = []
+        # Discover a legacy/unseen request; never trust the newest run alone.
+        for page in range(1, 11):
+            runs = gh(f'actions/workflows/{workflow}/runs?event=workflow_dispatch&per_page=100&page={page}')['workflow_runs']
+            matches += [r for r in runs if r.get('display_title') == prefix + request_id]
+            if len(runs) < 100 or matches: break
+        if len(matches) > 1: raise ValueError('duplicate external request IDs require reconciliation')
+        run = matches[0] if matches else None
+        if run is not None:
+            validate_run(run, expected, workflow, prefix + request_id)
+            atomic_json(run_path, {**binding, 'id': run['id']})
+    if run is None:
         if marker.exists():
             if marker.exists() and time.time() - json.loads(marker.read_text())['at'] > 1800:
                 raise ValueError('worker dispatch not visible after 30 minutes; no blind resubmission')
@@ -91,11 +120,6 @@ def collect(manifest, target, work, request_id, reconcile=False):
         atomic_json(marker, {'at': int(time.time()), 'request_id': request_id, 'commit': expected})
         gh(f'actions/workflows/{workflow}/dispatches', method='POST', body={'ref': refs['gchat'].removeprefix('refs/heads/'), 'inputs': inputs})
         return None
-    run = matches[0]
-    if (run['head_sha'] != expected or run['event'] != 'workflow_dispatch'
-            or run.get('head_repository', {}).get('full_name') != REPO
-            or run['path'] != '.github/workflows/' + workflow):
-        raise ValueError('worker run does not bind the requested source/workflow')
     if run['status'] != 'completed': return None
     if run['conclusion'] != 'success':
         if os.environ.get('GCHAT_RELEASE_RECONCILE_ONLY') == '1':

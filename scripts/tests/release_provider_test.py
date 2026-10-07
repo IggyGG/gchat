@@ -1,16 +1,126 @@
 """Provider waits preserve operation identity and leave local supervision runnable."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import Mock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import release_provider as provider
 from release_automation_test import candidate
 from release_coordinator import Coordinator, atomic_json
+import release_jobs
+
+
+class NativeRunBindingTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.manifest = candidate()
+        self.request = 'f' * 64
+        self.target = 'macos-x86_64'
+        self.run = {'id': 123, 'display_title': 'Forgejo macOS ' + self.request,
+                    'head_sha': self.manifest['sources']['gchat']['commit'],
+                    'event': 'workflow_dispatch', 'head_repository': {'full_name': release_jobs.REPO},
+                    'path': '.github/workflows/macos-release.yml', 'status': 'in_progress',
+                    'conclusion': None, 'html_url': 'https://github.com/IggyGG/gchat/actions/runs/123'}
+        atomic_json(self.root / 'dispatch.json', {'at': 1, 'request_id': self.request,
+                                                'commit': self.run['head_sha']})
+
+    def collect(self):
+        return release_jobs.collect(self.manifest, self.target, self.root, self.request, reconcile=True)
+
+    def discover(self):
+        with patch('release_jobs.gh', return_value={'workflow_runs': [self.run]}) as api:
+            self.assertIsNone(self.collect())
+        self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))
+
+    def test_known_running_job_survives_listing_omission_after_dispatch_deadline(self):
+        self.discover()
+        def provider(path, **kwargs):
+            self.assertEqual(kwargs.get('method', 'GET'), 'GET')
+            return self.run if path == 'actions/runs/123' else {'workflow_runs': []}
+        with patch('release_jobs.gh', side_effect=provider) as api, \
+             patch('release_jobs.time.time', return_value=4000):
+            self.assertIsNone(self.collect())
+        api.assert_called_once_with('actions/runs/123')
+        self.assertEqual(json.loads((self.root / 'run.json').read_text())['id'], 123)
+
+    def test_legacy_dispatched_job_can_be_bound_without_dispatching_again(self):
+        with patch('release_jobs.time.time', return_value=4000):
+            self.discover()
+        binding = json.loads((self.root / 'run.json').read_text())
+        self.assertEqual((binding['release_id'], binding['sources'], binding['platform'], binding['request_id']),
+                         (self.manifest['release_id'], self.manifest['sources'], self.target, self.request))
+
+    def test_pinned_completion_uses_original_artifact_and_original_run(self):
+        self.discover()
+        archive = self.root / 'native.zip'
+        with zipfile.ZipFile(archive, 'w') as bundle:
+            bundle.writestr('original-evidence.txt', 'original protected native artifact')
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        completed = {**self.run, 'status': 'completed', 'conclusion': 'success'}
+        artifact = {'id': 456, 'name': self.target, 'expired': False,
+                    'digest': 'sha256:' + digest, 'size_in_bytes': archive.stat().st_size}
+        with patch('release_jobs.gh', side_effect=[completed, {'artifacts': [artifact]}]) as api:
+            result = self.collect()
+        self.assertEqual([c.args[0] for c in api.call_args_list],
+                         ['actions/runs/123', 'actions/runs/123/artifacts?per_page=100'])
+        self.assertEqual((result['external_id'], result['evidence']),
+                         ('123', [{'path': 'native.zip', 'sha256': digest}]))
+        self.assertEqual((self.root / 'native/original-evidence.txt').read_text(),
+                         'original protected native artifact')
+
+    def test_missing_pinned_run_never_falls_back_or_redispatches(self):
+        self.discover()
+        before = (self.root / 'run.json').read_bytes()
+        with patch('release_jobs.gh', side_effect=subprocess.CalledProcessError(1, ['gh'], stderr=b'HTTP404')) as api:
+            with self.assertRaises(subprocess.CalledProcessError): self.collect()
+        api.assert_called_once_with('actions/runs/123')
+        self.assertEqual((self.root / 'run.json').read_bytes(), before)
+
+    def test_changed_pinned_provider_identity_is_rejected_without_rebinding(self):
+        self.discover()
+        before = (self.root / 'run.json').read_bytes()
+        for key, value in [('id', 124), ('id', True), ('head_sha', '0' * 40),
+                           ('event', 'push'), ('head_repository', None),
+                           ('head_repository', {'full_name': 'other/gchat'}),
+                           ('path', '.github/workflows/other.yml'), ('display_title', 'another request')]:
+            with self.subTest(key=key, value=value), \
+                 patch('release_jobs.gh', return_value={**self.run, key: value}) as api:
+                with self.assertRaisesRegex(ValueError, 'requested source/workflow'): self.collect()
+                api.assert_called_once_with('actions/runs/123')
+                self.assertEqual((self.root / 'run.json').read_bytes(), before)
+
+    def test_changed_retained_binding_is_refused_before_provider_reads(self):
+        self.discover()
+        binding = json.loads((self.root / 'run.json').read_text())
+        for key, value in [('schema', 2), ('schema', True), ('release_id', '0' * 64), ('sources', {}),
+                           ('platform', 'macos-aarch64'), ('request_id', '0' * 64), ('id', True)]:
+            atomic_json(self.root / 'run.json', {**binding, key: value})
+            with self.subTest(key=key), patch('release_jobs.gh') as api:
+                with self.assertRaisesRegex(ValueError, 'retained worker run binding'): self.collect()
+                api.assert_not_called()
+
+    def test_ambiguous_or_invalid_discovery_never_creates_a_binding(self):
+        for runs in ([self.run, {**self.run, 'id': 124}], [{**self.run, 'head_sha': '0' * 40}]):
+            with self.subTest(runs=len(runs)), patch('release_jobs.gh', return_value={'workflow_runs': runs}) as api:
+                with self.assertRaises(ValueError): self.collect()
+                self.assertFalse((self.root / 'run.json').exists())
+                self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))
+
+    def test_overdue_pinned_failure_does_not_start_a_recovery_workflow(self):
+        self.discover()
+        with patch.dict(os.environ, GCHAT_RELEASE_RECONCILE_ONLY='1'), \
+             patch('release_jobs.gh', return_value={**self.run, 'status': 'completed', 'conclusion': 'failure'}), \
+             patch('release_recovery.collect') as recover:
+            with self.assertRaisesRegex(ValueError, 'no new recovery dispatch'): self.collect()
+        recover.assert_not_called()
 
 
 class ProviderTests(unittest.TestCase):

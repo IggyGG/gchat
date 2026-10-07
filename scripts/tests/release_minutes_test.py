@@ -265,7 +265,7 @@ class MinutesTests(unittest.TestCase):
     def test_overdue_failed_native_request_cannot_dispatch_a_recovery_build(self):
         from release_jobs import collect
         request = 'f' * 64
-        run = {'display_title': 'Forgejo Linux ' + request,
+        run = {'id': 123, 'display_title': 'Forgejo Linux ' + request,
                'head_sha': self.manifest['sources']['gchat']['commit'], 'event': 'workflow_dispatch',
                'head_repository': {'full_name': 'IggyGG/gchat'},
                'path': '.github/workflows/linux-release.yml', 'status': 'completed', 'conclusion': 'failure'}
