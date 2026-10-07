@@ -155,7 +155,10 @@ class CoordinatorTests(unittest.TestCase):
             self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
         self.assertEqual(c.running_workers[effect['id']]['process'].pid, pid)
         release_worker.touch()
-        c.running_workers[effect['id']]['process'].wait(timeout=5)
+        # Both owned children exit on the same marker; reap the sibling too so
+        # cleanup does not race a naturally exiting process group on macOS.
+        for item in list(c.running_workers.values()):
+            item['process'].wait(timeout=5)
         self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
         self.assertNotIn(effect['id'], c.running_workers)
         self.assertEqual(c.ledger.effect(self.manifest['release_id'], 'linux-x86_64', 'build')['id'], effect['id'])
