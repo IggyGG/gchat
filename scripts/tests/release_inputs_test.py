@@ -88,6 +88,7 @@ class InputTests(unittest.TestCase):
             for path in ('release/downloads.json', 'scripts/website.py',
                          'scripts/release_inventory.py', 'scripts/release_sdk.py',
                          'scripts/release_host_install.py', 'release/automation/kubernetes.yaml',
+                         'release/automation/operations.yaml',
                          'scripts/macos-package.py', '.github/workflows/macos-package.yml',
                          'scripts/release_macos_recovery.py', 'release/automation/qualification/native-recoveries.json',
                          'scripts/copy-release-registry.py', 'release/automation/registry.yaml',
@@ -106,12 +107,16 @@ class InputTests(unittest.TestCase):
                 after = fingerprints(roots, sources)
                 self.assertEqual(before['artifacts'], after['artifacts'])
                 self.assertNotEqual(before['qualification'], after['qualification'])
+                if path == 'release/automation/operations.yaml':
+                    self.assertEqual(before['infrastructure'], after['infrastructure'])
+                    self.assertNotEqual(before['controller'], after['controller'])
             for project, path in [('gchat', 'new-unclassified-input'),
                                   ('gchat', 'marketing/play-store/retro-v1/new-input.js'),
                                   ('gchat', 'marketing/app-store/retro-v2/listing.json'),
                                   ('gchat', 'apps/client/src-tauri/icons/icon.png'),
                                   ('gchat', 'scripts/release_prepare.py'),
                                   ('gchat', 'release/publication.json'),
+                                  ('gchat', 'release/automation/unclassified-operations.yaml'),
                                   ('gchat', '.github/workflows/windows-release.yml'),
                                   ('gcoms', 'crates/node/src/lib.rs')]:
                 before = fingerprints(roots, sources)

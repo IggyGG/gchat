@@ -111,6 +111,7 @@ CONTROLLER_FILES = frozenset({
     'scripts/tests/controller_runtime_test.py',
     'release/automation/Dockerfile', 'release/automation/requirements.txt',
     'release/automation/kubernetes.yaml', 'release/automation/compaction.yaml',
+    'release/automation/operations.yaml',
 })
 CONTROL_FILES = CONTROL_FILES | CONTROLLER_FILES
 
