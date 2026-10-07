@@ -108,6 +108,7 @@ CONTROLLER_FILES = frozenset({
     'scripts/release_host_serve.py', 'scripts/release_canary_grant.py',
     'scripts/release_network_canary.py', 'scripts/release_evidence.py',
     'scripts/release_compaction.py', 'scripts/controller_runtime.py',
+    'scripts/tests/controller_runtime_test.py',
     'release/automation/Dockerfile', 'release/automation/requirements.txt',
     'release/automation/kubernetes.yaml', 'release/automation/compaction.yaml',
 })
