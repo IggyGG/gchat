@@ -182,6 +182,21 @@ class NativeFailedJobRetryTests(unittest.TestCase):
         self.assertTrue(release_jobs.require_passed_checks(checks, ('qualify', 'qualify-gcoms', 'linux')))
         self.assertIn('native-build', self.checks()['jobs'])
 
+    def test_macos_checks_match_provider_matrix_names_for_the_requested_architecture(self):
+        for target, name, wrong_name in (
+                ('macos-aarch64', 'macos (macos-aarch64)', 'macos (macos-x86_64)'),
+                ('macos-x86_64', 'macos (macos-x86_64)', 'macos (macos-aarch64)')):
+            with self.subTest(target=target):
+                run = {**self.run, 'path': '.github/workflows/macos-release.yml',
+                       'display_title': 'Forgejo macOS ' + self.request}
+                with patch('release_jobs.gh', return_value={'jobs': [self.job(name, 1)]}):
+                    checks = release_jobs.native_checks(run, target, self.root)
+                self.assertTrue(release_jobs.require_passed_checks(checks, release_jobs.NATIVE_JOBS[target]))
+                for rejected in (wrong_name, 'macos'):
+                    with patch('release_jobs.gh', return_value={'jobs': [self.job(rejected, 1)]}), \
+                            self.assertRaisesRegex(ValueError, 'identity'):
+                        release_jobs.native_checks(run, target, self.root)
+
     def test_job_run_source_and_attempt_are_not_borrowed_or_ambiguous(self):
         for field, value in [('run_id', 124), ('head_sha', '0' * 40), ('run_attempt', 0),
                              ('run_attempt', 2), ('id', True), ('name', 'unreviewed')]:
@@ -267,7 +282,7 @@ class NativeFailedJobRetryTests(unittest.TestCase):
         self.assertEqual(proof['evidence'][1]['path'], 'native-checks-passed.json')
 
     def test_single_job_native_retry_uses_same_contract_without_store_actions(self):
-        for target in ('macos-x86_64', 'windows-x86_64', 'android', 'ios'):
+        for target in ('macos-aarch64', 'macos-x86_64', 'windows-x86_64', 'android', 'ios'):
             work = self.root / target; work.mkdir()
             workflow, prefix = release_jobs.WORKFLOWS[target]
             run = {**self.run, 'path': '.github/workflows/' + workflow, 'display_title': prefix + self.request}

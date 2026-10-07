@@ -100,7 +100,7 @@ def resolve_run(manifest, target, work, request_id, api=None):
 # These are build workflows only. Store submission and encrypted acceptance
 # requests have different side-effect contracts and are deliberately excluded.
 NATIVE_JOBS = {'linux-x86_64': ('native-build', 'qualify', 'qualify-gcoms', 'relay-load', 'linux'),
-               'macos-aarch64': ('macos',), 'macos-x86_64': ('macos',),
+               'macos-aarch64': ('macos (macos-aarch64)',), 'macos-x86_64': ('macos (macos-x86_64)',),
                'windows-x86_64': ('windows',), 'android': ('android',), 'ios': ('ios',)}
 MAX_NATIVE_ATTEMPTS = 2
 RETRY_AUTHORIZATION_SECONDS = 7200
