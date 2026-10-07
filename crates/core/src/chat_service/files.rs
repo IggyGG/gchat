@@ -402,20 +402,22 @@ impl ChatService {
         snapshot
     }
     // Both control calls and binary reads/writes can race a successful unlock.
-    // Wait without the session lock so startup, history and lock can all progress.
-    async fn wait_for_file_cache(&self) -> Result<(), String> {
+    // Release the session lock while waiting so startup, history and lock can
+    // progress. Return the ready guard so another Lock/Unlock cannot disable the
+    // cache between the readiness check and the operation using it.
+    async fn wait_for_file_cache(
+        &self,
+    ) -> Result<tokio::sync::MutexGuard<'_, Option<Unlocked>>, String> {
         tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 let session = self.session.lock().await;
-                let preparing = session.as_ref().is_some_and(|s| {
-                    !s.ui_locked
-                        && s.files.is_none()
-                        && s.file_error.as_deref() == Some("Preparing encrypted file cache…")
-                });
-                drop(session);
+                let preparing = session
+                    .as_ref()
+                    .is_some_and(|s| !s.ui_locked && s.files_preparing);
                 if !preparing || *self.stopped.borrow() {
-                    break;
+                    break session;
                 }
+                drop(session);
                 tokio::time::sleep(Duration::from_millis(25)).await;
             }
         })
@@ -425,9 +427,8 @@ impl ChatService {
 
     pub(super) async fn files_request(&self, request: FileRequest) -> Result<FileSnapshot, String> {
         self.require_files()?;
-        self.wait_for_file_cache().await?;
         let publications = matches!(request, FileRequest::Publications { .. });
-        let mut session = self.session.lock().await;
+        let mut session = self.wait_for_file_cache().await?;
         let unlocked = session
             .as_mut()
             .filter(|s| !s.ui_locked)
@@ -708,8 +709,7 @@ impl ChatService {
         if !header.upload && !bytes.is_empty() {
             return Err("Download request contains unexpected bytes".into());
         }
-        self.wait_for_file_cache().await?;
-        let session = self.session.lock().await;
+        let session = self.wait_for_file_cache().await?;
         let unlocked = session
             .as_ref()
             .filter(|s| !s.ui_locked)
@@ -782,7 +782,10 @@ impl ChatService {
                 tokio::select! { _ = stopped.changed() => break, _ = interval.tick() => {} }
                 let Some(service) = weak.upgrade() else { break };
                 let mut session = tokio::select! { _ = stopped.changed() => break, session = service.session.lock() => session };
-                let Some(unlocked) = session.as_mut().filter(|s| !s.ui_locked) else {
+                let Some(unlocked) = session
+                    .as_mut()
+                    .filter(|s| !s.ui_locked && !s.files_preparing)
+                else {
                     continue;
                 };
                 let Some(files) = &unlocked.files else {

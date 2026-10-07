@@ -146,6 +146,7 @@ struct OperationRecord {
 }
 struct Unlocked {
     files: Option<Arc<files::FileRuntime>>,
+    files_preparing: bool,
     file_error: Option<String>,
     hosted_error: Option<String>,
     contact_error: Option<String>,
@@ -685,6 +686,7 @@ impl ChatService {
                 store.save(&state)?;
                 *session = Some(Unlocked {
                     files: None,
+                    files_preparing: true,
                     hosted_error: None,
                     contact_error: None,
                     file_error: Some("Preparing encrypted file cache…".into()),
@@ -697,6 +699,10 @@ impl ChatService {
             if let Some(current) = session.as_mut() {
                 if current.ui_locked {
                     current.store.verify_passphrase(&passphrase)?;
+                    // The retained cache is disabled by Lock. Keep file calls
+                    // behind background reactivation while local unlock returns.
+                    current.files_preparing = true;
+                    current.file_error = Some("Preparing encrypted file cache…".into());
                     current.ui_locked = false;
                 }
             }
@@ -2537,6 +2543,7 @@ impl ChatService {
                         };
                         let mut session = service.session.lock().await;
                         if let Some(current) = session.as_mut().filter(|s| !s.ui_locked) {
+                            current.files_preparing = false;
                             match result {
                                 Ok(files) => { current.files = Some(files); current.file_error = None; }
                                 Err(error) => current.file_error = Some(format!("File cache unavailable: {error}. Chat history remains available.")),

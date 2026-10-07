@@ -65,6 +65,111 @@ async fn local_unlock_does_not_wait_for_background_restoration() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn file_commit_replay_and_read_wait_for_reactivation_after_unlock() {
+    use gchat_api::{files::FileIo, FileRequest};
+    let (_home, runtime, service) = fixture().await;
+    service
+        .handle(Request::Unlock {
+            passphrase: "responsiveness-fixture".into(),
+            create: true,
+        })
+        .await
+        .unwrap();
+    let Response::Applied {
+        conversation: Some(channel),
+        ..
+    } = service
+        .handle(Request::Submit {
+            operation_id: "file-reactivation-channel".into(),
+            conversation: None,
+            text: "/create #files tester".into(),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("file fixture channel");
+    };
+    let original = "01010101010101010101010101010101";
+    let duplicate = "02020202020202020202020202020202";
+    let bytes = b"retained upload";
+    let frame = |id: &str, upload, bytes: &[u8]| {
+        gchat_api::files::encode_io(
+            &FileIo {
+                instance: service.id.clone(),
+                id: id.into(),
+                piece: 0,
+                upload,
+            },
+            bytes,
+        )
+        .unwrap()
+    };
+    for id in [original, duplicate] {
+        service
+            .handle(Request::Files {
+                request: FileRequest::Prepare {
+                    id: id.into(),
+                    conversation: channel.clone(),
+                    name: "retained.bin".into(),
+                    size_bytes: bytes.len().to_string(),
+                },
+            })
+            .await
+            .unwrap();
+        service.file_piece_io(frame(id, true, bytes)).await.unwrap();
+        service
+            .handle(Request::Files {
+                request: FileRequest::Commit { id: id.into() },
+            })
+            .await
+            .unwrap();
+    }
+    service.handle(Request::Lock).await.unwrap();
+    // Retain the disabled cache and hold only its background reactivation.
+    // Unlock must finish locally, while both control and binary I/O wait.
+    let gate = service.network_operations.lock().await;
+    service
+        .handle(Request::Unlock {
+            passphrase: "responsiveness-fixture".into(),
+            create: false,
+        })
+        .await
+        .unwrap();
+    let replay = service.handle(Request::Files {
+        request: FileRequest::Commit {
+            id: duplicate.into(),
+        },
+    });
+    let read = service.file_piece_io(frame(original, false, &[]));
+    tokio::pin!(replay, read);
+    let premature = tokio::time::timeout(Duration::from_millis(100), &mut replay).await;
+    assert!(
+        premature.is_err(),
+        "commit must await cache reactivation: {premature:?}"
+    );
+    let premature = tokio::time::timeout(Duration::from_millis(100), &mut read).await;
+    assert!(
+        premature.is_err(),
+        "binary read must await cache reactivation: {premature:?}"
+    );
+    drop(gate);
+    let (replayed, retained) = tokio::time::timeout(Duration::from_secs(10), async {
+        tokio::join!(&mut replay, &mut read)
+    })
+    .await
+    .expect("file operations resume once the cache is enabled");
+    let Response::Files { snapshot } = replayed.unwrap() else {
+        panic!("replayed file commit");
+    };
+    assert_eq!(snapshot.files.len(), 1);
+    assert_eq!(snapshot.files[0].id, original);
+    assert_eq!(snapshot.files[0].aliases, Some(vec![duplicate.into()]));
+    assert_eq!(retained.unwrap(), bytes);
+    service.disconnect().await.unwrap();
+    runtime.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn pending_membership_does_not_block_local_unlock() {
     use gcoms::sdk::{ChannelStatus, ChannelVisibility, ClientEvent};
     let (home, runtime, service) = fixture().await;

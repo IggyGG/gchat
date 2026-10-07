@@ -1786,9 +1786,7 @@ async fn file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive(
         Response::Error { .. }
     ));
     unlock(&service, false).await;
-    let Response::Files {
-        snapshot: recovered,
-    } = request(
+    let recovered_response = request(
         &service,
         Request::Files {
             request: FileRequest::Commit {
@@ -1796,9 +1794,12 @@ async fn file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive(
             },
         },
     )
-    .await
+    .await;
+    let Response::Files {
+        snapshot: recovered,
+    } = recovered_response
     else {
-        panic!("lost commit recovery")
+        panic!("lost commit recovery: {recovered_response:?}")
     };
     assert_eq!(recovered.files.len(), 1);
     assert_eq!(recovered.files[0].id, handle);

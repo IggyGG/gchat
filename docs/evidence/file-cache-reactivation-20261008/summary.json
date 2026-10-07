@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "at": "2026-10-07T22:57:32.219935+00:00",
+  "issue": "Candidate170 duplicate upload Commit replay fails after archive Lock/Unlock",
+  "base_gchat": "47abb3989ac659d9002293c1aea562b0d0dba805",
+  "cause": "Lock disables the retained file runtime. Unlock returns before service-owned background reactivation. The previous readiness check skipped an existing runtime, so immediate Commit replay reached a disabled cache and returned permission denied.",
+  "fix": [
+    "Track preparation independently of whether a file runtime already exists.",
+    "Retain the existing 30-second wait bound and keep local unlock/history responsive.",
+    "Return the ready session guard to serialize file runtime use against another Lock/Unlock.",
+    "Pause file observation while preparation is pending; clear preparation after successful or failed reactivation."
+  ],
+  "native_tests": {
+    "old_code": {
+      "passed": 0,
+      "failed": 1,
+      "seconds": 16.39,
+      "error": "commit must await cache reactivation: Ok(Err(\"permission denied\"))",
+      "log": "test-evidence/candidate170-20261007/file-reactivation-red.log",
+      "sha256": "99e4e34a583e3fc22d3d4fa4a74de2d7eb1f7906506cdf22e61c5d4ba0f8810b"
+    },
+    "fixed_code": {
+      "passed": 3,
+      "failed": 0,
+      "unit_seconds": 20.6,
+      "integration_seconds": 48.82,
+      "tests": [
+        "chat_service::responsiveness_tests::file_commit_replay_and_read_wait_for_reactivation_after_unlock",
+        "chat_service::responsiveness_tests::local_unlock_does_not_wait_for_background_restoration",
+        "file_controls_binary_io_lock_and_restart_keep_plaintext_out_of_archive"
+      ],
+      "log": "test-evidence/candidate170-20261007/file-reactivation-green.log",
+      "sha256": "186a4637a38e8de577d52e9b91a52109912cc91018734713f89f65fa46e976ff"
+    }
+  },
+  "checks": {
+    "source_audit": "871 source paths passed",
+    "retained_contracts": "18 stable methods retained; 3 existing optional methods; API2 fixtures unchanged",
+    "rustfmt": "passed for all four changed Rust files",
+    "diff_check": "passed",
+    "strict_core_clippy": {
+      "passed": true,
+      "command": "cargo clippy -p gchat-core --all-features --all-targets --offline -- -D warnings",
+      "seconds": 68,
+      "log": "test-evidence/candidate170-20261007/file-reactivation-clippy.log",
+      "sha256": "12d376a1c7aa8c4fc71ecb4fd0603fab5ea21f7963146529bbb335cd19ad6a0c"
+    }
+  },
+  "compatibility": "Only transient private Unlocked state changes; no public API, wire format, SDK or archive schema changes.",
+  "files_sha256": {
+    "crates/core/src/chat_service/files.rs": "2b756e0e834c81e93cd931096c0b5d4da01bee4766e8db3f74caf16eee69693a",
+    "crates/core/src/chat_service/mod.rs": "2696a0e96ce1795b378ab6b1f50d3ddc49ea69a830cd6eb850e746913005c921",
+    "crates/core/src/chat_service/responsiveness_tests.rs": "8be8c0e56e841355c8ab0a703795afa0b4ee9ce0e25e0833fff335fec0f7bfad",
+    "crates/core/tests/chat_service.rs": "6a2d38d6bf5ab9a042b568a935ad6b7316a702e2a12c773efa594900b19eeea5"
+  },
+  "review": "Independent review approved lifecycle lock order and ready-guard serialization.",
+  "limitations": [
+    "The original CI assertion omitted the actual response; the equivalent held-reactivation regression supplies the decisive permission-denied reproduction.",
+    "These local checks are not the signed native release, 64-client load gate, or deployment acceptance.",
+    "Generated RPC check was unavailable because the local @gcoms/rpc-codegen dependency is not installed; no generated contract files changed."
+  ],
+  "companion_gcoms": "55aa58ccf2ed9a478e911d368a7444523386a413",
+  "retained_check_attempts": [
+    {
+      "log": "test-evidence/candidate170-20261007/file-reactivation-clippy-admission.log",
+      "sha256": "fc89caa9a6dc2b01336d7ed3b299f6e56d6c2d18e744cf6122d4cb075b341076",
+      "outcome": "No compiler ran: idle output reclaimed while waiting for disk capacity."
+    },
+    {
+      "log": "test-evidence/candidate170-20261007/file-reactivation-clippy-cold-timeout.log",
+      "sha256": "f24835279dca84633f7bfa5421f6202474cfdbef5bd7459debb540efe0290867",
+      "outcome": "Cold metadata build stopped at the 120-second local build bound, with no lint finding. Retained output resumed under the original 240-second local build bound."
+    }
+  ]
+}
