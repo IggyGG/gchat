@@ -163,13 +163,13 @@ def classify(provider, method, path, status, headers, body):
         quota(provider, status, headers, 'listing_quota')
 
 
-def github(path, *, repo, method='GET', body=None):
+def github(path, *, repo, method='GET', body=None, refresh=False):
     """Preserve response headers without logging provider bodies or credentials."""
     before_request('github')
     root = state_root()
     key = hashlib.sha256(json.dumps([repo, path]).encode()).hexdigest()
     cache = root / 'cache' / (key + '.json') if root and method == 'GET' and path.startswith('actions/') else None
-    if cache:
+    if cache and not refresh:
         value = read(cache)
         if value and value.get('repo') == repo and value.get('path') == path and 0 <= time.time() - value['at'] < 120:
             return value['response']

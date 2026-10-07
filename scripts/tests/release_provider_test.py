@@ -123,6 +123,162 @@ class NativeRunBindingTests(unittest.TestCase):
         recover.assert_not_called()
 
 
+class NativeFailedJobRetryTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name); self.manifest = candidate(); self.request = 'f' * 64
+        self.target = 'linux-x86_64'
+        self.run = {'id': 123, 'display_title': 'Forgejo Linux ' + self.request,
+                    'head_sha': self.manifest['sources']['gchat']['commit'], 'run_attempt': 1,
+                    'event': 'workflow_dispatch', 'head_repository': {'full_name': release_jobs.REPO},
+                    'path': '.github/workflows/linux-release.yml', 'status': 'completed',
+                    'conclusion': 'failure', 'html_url': 'https://github.com/IggyGG/gchat/actions/runs/123'}
+        self.binding = {'schema': 1, 'release_id': self.manifest['release_id'], 'sources': self.manifest['sources'],
+                        'platform': self.target, 'request_id': self.request, 'id': 123}
+        atomic_json(self.root / 'run.json', self.binding)
+        self.rows = [self.job(n, i + 1, 'failure' if n == 'relay-load' else 'success')
+                     for i, n in enumerate(release_jobs.NATIVE_JOBS[self.target])]
+
+    def job(self, name, ident, result='success', attempt=1):
+        return {'id': ident, 'name': name, 'run_id': 123, 'head_sha': self.run['head_sha'],
+                'run_attempt': attempt, 'status': 'completed', 'conclusion': result,
+                'steps': [{'name': 'exact original gate', 'status': 'completed', 'conclusion': result}]}
+
+    def checks(self, run=None, rows=None):
+        values = self.rows if rows is None else rows
+        def api(path):
+            attempt = int(path.split('/attempts/')[1].split('/')[0])
+            return {'jobs': [r for r in values if r.get('run_attempt') == attempt]}
+        with patch('release_jobs.gh', side_effect=api):
+            return release_jobs.native_checks(run or self.run, self.target, self.root)
+
+    def authorize(self):
+        return release_jobs.authorize_native_retry(self.manifest, self.target, self.root, self.request, 'a' * 32)
+
+    def retry(self, run=None, checks=None):
+        return release_jobs.retry_failed_jobs(self.manifest, self.target, self.root, self.request,
+                                             run or self.run, checks or self.checks())
+
+    def test_newest_job_execution_wins_without_discarding_other_prior_successes(self):
+        rows = self.rows + [self.job('relay-load', 9, 'success', 2)]
+        proof = self.checks({**self.run, 'run_attempt': 2}, rows)
+        self.assertEqual(proof['jobs']['qualify']['attempt'], 1)
+        self.assertEqual(proof['jobs']['relay-load']['attempt'], 2)
+        self.assertTrue(release_jobs.require_passed_checks(proof, release_jobs.NATIVE_JOBS[self.target]))
+        rows[-1]['conclusion'] = 'failure'
+        with self.assertRaisesRegex(ValueError, 'relay-load failure.*attempt 2'):
+            release_jobs.require_passed_checks(self.checks({**self.run, 'run_attempt': 2}, rows), ('relay-load',))
+
+    def test_current_attempt_missing_jobs_never_reuses_prior_success(self):
+        with patch('release_jobs.gh', return_value={'jobs': []}) as api:
+            proof = release_jobs.native_checks({**self.run, 'run_attempt': 2, 'status': 'in_progress'}, self.target, self.root)
+        self.assertEqual(api.call_count, 1); self.assertEqual(proof['jobs'], {})
+        self.assertFalse(release_jobs.require_passed_checks(proof, ('relay-load',)))
+
+    def test_legacy_linux_without_native_build_keeps_original_required_checks(self):
+        rows = [row for row in self.rows if row['name'] != 'native-build']
+        checks = self.checks(rows=rows)
+        self.assertNotIn('native-build', checks['jobs'])
+        self.assertTrue(release_jobs.require_passed_checks(checks, ('qualify', 'qualify-gcoms', 'linux')))
+        self.assertIn('native-build', self.checks()['jobs'])
+
+    def test_job_run_source_and_attempt_are_not_borrowed_or_ambiguous(self):
+        for field, value in [('run_id', 124), ('head_sha', '0' * 40), ('run_attempt', 0),
+                             ('run_attempt', 2), ('id', True), ('name', 'unreviewed')]:
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'identity'):
+                with patch('release_jobs.gh', return_value={'jobs': [{**self.rows[0], field: value}]}):
+                    release_jobs.native_checks(self.run, self.target, self.root)
+        with self.assertRaisesRegex(ValueError, 'ambiguous'):
+            self.checks(rows=[self.rows[0], self.rows[0]])
+
+    def test_resume_authorization_does_not_change_sources_or_rearm_on_repeat(self):
+        original = (self.root / 'run.json').read_bytes(); first = self.authorize()
+        self.assertEqual(release_jobs.authorize_native_retry(self.manifest, self.target, self.root,
+                                                            self.request, 'b' * 32), first)
+        self.assertEqual((self.root / 'run.json').read_bytes(), original)
+
+    def test_retry_needs_explicit_authorization_and_terminal_failed_workflow(self):
+        proof = self.checks()
+        with patch('release_jobs.gh') as api:
+            self.assertFalse(self.retry(checks=proof)); api.assert_not_called()
+        self.authorize()
+        with patch('release_jobs.gh') as api:
+            self.assertTrue(self.retry(run={**self.run, 'status': 'in_progress'}, checks=proof))
+            api.assert_not_called()
+        good = self.checks(rows=[self.job('relay-load', 3)])
+        with patch('release_jobs.gh') as api:
+            self.assertFalse(self.retry(checks=good)); api.assert_not_called()
+
+    def test_one_failed_jobs_post_has_durable_intent_and_fresh_compare(self):
+        self.authorize(); proof = self.checks(); calls = []
+        def api(path, **kwargs):
+            calls.append((path, kwargs))
+            if kwargs.get('method') == 'POST':
+                marker = json.loads((self.root / 'native-retry.json').read_text())
+                self.assertEqual(marker['state'], 'intent'); self.assertEqual(marker['from_attempt'], 1)
+                self.assertEqual(set(marker['failed_jobs']), {'relay-load'})
+                return None
+            self.assertTrue(kwargs.get('refresh')); return self.run
+        with patch('release_jobs.gh', side_effect=api), patch.dict(os.environ, GCHAT_RELEASE_RECONCILE_ONLY='1'):
+            self.assertTrue(self.retry(checks=proof)); self.assertTrue(self.retry(checks=proof))
+        self.assertEqual([x[0] for x in calls], ['actions/runs/123', 'actions/runs/123/rerun-failed-jobs'])
+        self.assertEqual(json.loads((self.root / 'native-retry.json').read_text())['state'], 'accepted')
+
+    def test_unknown_post_outcome_is_reconciled_without_a_second_request(self):
+        self.authorize(); proof = self.checks()
+        with patch('release_jobs.gh', side_effect=[self.run, subprocess.TimeoutExpired('gh', 30)]):
+            with self.assertRaises(subprocess.TimeoutExpired): self.retry(checks=proof)
+        with patch('release_jobs.gh') as api:
+            self.assertTrue(self.retry(checks=proof)); api.assert_not_called()
+            self.assertFalse(self.retry(run={**self.run, 'run_attempt': 2, 'status': 'in_progress'}, checks=proof))
+            api.assert_not_called()
+        self.assertEqual(json.loads((self.root / 'native-retry.json').read_text())['state'], 'observed')
+
+    def test_final_provider_compare_refuses_an_external_retry_or_source_drift(self):
+        self.authorize(); proof = self.checks()
+        for change in ({'status': 'in_progress'}, {'run_attempt': 2}):
+            with patch('release_jobs.gh', return_value={**self.run, **change}) as api:
+                self.assertTrue(self.retry(checks=proof)); self.assertEqual(api.call_count, 1)
+                self.assertFalse((self.root / 'native-retry.json').exists())
+        with patch('release_jobs.gh', return_value={**self.run, 'head_sha': '0' * 40}):
+            with self.assertRaisesRegex(ValueError, 'requested source/workflow'): self.retry(checks=proof)
+
+    def test_expired_authorization_and_second_retry_fail_closed(self):
+        grant = self.authorize(); proof = self.checks()
+        with patch('release_jobs.time.time', return_value=grant['expires_at'] + 1), patch('release_jobs.gh') as api:
+            with self.assertRaisesRegex(ValueError, 'expired'): self.retry(checks=proof)
+            api.assert_not_called()
+        with patch('release_jobs.gh') as api:
+            with self.assertRaisesRegex(ValueError, 'limit reached'):
+                self.retry(run={**self.run, 'run_attempt': 2}, checks=proof)
+            api.assert_not_called()
+
+    def test_passed_native_package_is_collected_while_relay_sibling_failed(self):
+        archive = self.root / 'native.zip'
+        with zipfile.ZipFile(archive, 'w') as bundle: bundle.writestr('signed/proof', 'unchanged signed package')
+        sha = hashlib.sha256(archive.read_bytes()).hexdigest()
+        artifact = {'id': 456, 'name': self.target, 'expired': False, 'size_in_bytes': archive.stat().st_size,
+                    'digest': 'sha256:' + sha, 'workflow_run': {'id': 123, 'head_sha': self.run['head_sha']}}
+        with patch('release_jobs.gh', side_effect=[self.run, {'jobs': self.rows}, {'artifacts': [artifact]}]) as api:
+            proof = release_jobs.collect(self.manifest, self.target, self.root, self.request)
+        self.assertEqual(proof['external_id'], '123'); self.assertTrue(proof['passed'])
+        self.assertEqual(proof['evidence'][0]['sha256'], sha)
+        self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))
+        self.assertEqual(proof['evidence'][1]['path'], 'native-checks-passed.json')
+
+    def test_single_job_native_retry_uses_same_contract_without_store_actions(self):
+        for target in ('macos-x86_64', 'windows-x86_64', 'android', 'ios'):
+            work = self.root / target; work.mkdir()
+            workflow, prefix = release_jobs.WORKFLOWS[target]
+            run = {**self.run, 'path': '.github/workflows/' + workflow, 'display_title': prefix + self.request}
+            atomic_json(work / 'run.json', {**self.binding, 'platform': target})
+            release_jobs.authorize_native_retry(self.manifest, target, work, self.request, 'a' * 32)
+            check = {'jobs': {release_jobs.NATIVE_JOBS[target][0]: {'status': 'completed', 'conclusion': 'failure'}}}
+            with patch('release_jobs.gh', side_effect=[run, None]) as api:
+                self.assertTrue(release_jobs.retry_failed_jobs(self.manifest, target, work, self.request, run, check))
+            self.assertEqual(api.call_args_list[-1].args[0], 'actions/runs/123/rerun-failed-jobs')
+
+
 class ProviderTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
@@ -186,6 +342,17 @@ class ProviderTests(unittest.TestCase):
         with patch('release_provider.subprocess.run', return_value=reply) as run, patch('release_provider.time.time', return_value=1120):
             provider.github('actions/runs/7', repo='owner/repo')
             run.assert_called_once()
+
+    def test_explicit_final_refresh_bypasses_only_the_get_cache(self):
+        reply = subprocess.CompletedProcess([], 0, b'HTTP/2 200 OK\r\n\r\n{"id": 7}', b'')
+        with patch('release_provider.subprocess.run', return_value=reply) as run, patch('release_provider.time.time', return_value=1000):
+            provider.github('actions/runs/7', repo='owner/repo')
+            provider.github('actions/runs/7', repo='owner/repo')
+            self.assertEqual(run.call_count, 1)
+            provider.github('actions/runs/7', repo='owner/repo', refresh=True)
+            self.assertEqual(run.call_count, 2)
+            provider.github('actions/runs/7', repo='owner/repo')
+            self.assertEqual(run.call_count, 2)
 
     def test_github_header_quota_prevents_further_requests_and_body_is_not_retained(self):
         reply = subprocess.CompletedProcess([], 1, b'HTTP/2 403 Forbidden\r\nx-ratelimit-remaining: 0\r\n\r\n{"secret":"do-not-retain"}', b'HTTP 403')

@@ -1,0 +1,100 @@
+name: Shared Linux compiler cache
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/package-lock.json'
+      - 'rust-toolchain.toml'
+      - 'scripts/release_cache.py'
+      - 'scripts/warm_linux_cache.py'
+      - 'scripts/linux_build_artifacts.py'
+      - '.github/workflows/linux-cache.yml'
+permissions:
+  contents: read
+concurrency:
+  group: trusted-linux-compiler-cache
+  cancel-in-progress: false
+jobs:
+  warm:
+    if: github.ref == 'refs/heads/main' && github.repository == 'IggyGG/gchat'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        scope: [gchat, gcoms, services]
+    env:
+      CARGO_BUILD_JOBS: '3'
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      RUSTFLAGS: ''
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: main
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12.10'
+      - name: Identify compatible compiler inputs
+        id: compiler
+        run: python3 gchat/scripts/release_cache.py --scope ${{ matrix.scope }} --github-output "$GITHUB_OUTPUT"
+      - name: Restore trusted compiler and dependency bytes
+        id: cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-deny
+            ~/.npm/_cacache
+            ${{ steps.compiler.outputs.target }}
+          key: ${{ steps.compiler.outputs.key }}
+          restore-keys: ${{ steps.compiler.outputs.restore_prefix }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          node-version: '22.23.2'
+      - name: Prepare pinned native toolchain
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pkg-config libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          python3 - <<'PYTHON'
+          import os, subprocess, tomllib
+          from pathlib import Path
+          pins=[tomllib.loads(Path(p,'rust-toolchain.toml').read_text())['toolchain'] for p in ('gchat','gcoms')]
+          assert pins[0]==pins[1]
+          subprocess.run(['rustup','toolchain','install',pins[0]['channel'],'--profile','minimal','--component','clippy,rustfmt'],check=True)
+          with open(os.environ['GITHUB_ENV'],'a') as stream:stream.write('RUSTUP_TOOLCHAIN='+pins[0]['channel']+'\n')
+          PYTHON
+          npm install --global npm@11.6.2
+          if ! cargo deny --version 2>/dev/null | grep -qx "cargo-deny 0.20.2"; then cargo install cargo-deny --locked --version 0.20.2; fi
+      - name: Compile without running tests or signing
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: python3 gchat/scripts/warm_linux_cache.py --scope ${{ matrix.scope }} --work "$RUNNER_TEMP/compiler-warm-${{ matrix.scope }}"
+      - name: Save only successful trusted-main compilation
+        if: success() && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-deny
+            ~/.npm/_cacache
+            ${{ steps.compiler.outputs.target }}
+          key: ${{ steps.compiler.outputs.key }}

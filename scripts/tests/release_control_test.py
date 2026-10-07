@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -49,6 +50,25 @@ class ControlTests(unittest.TestCase):
         proof = json.loads((self.root / 'control/results' / (response['request_id'] + '.json')).read_text())
         self.assertEqual(proof['state'], 'accepted')
 
+    def test_resume_authorizes_exact_run_once_and_preserves_failed_load_evidence(self):
+        from release_publish import job
+        self.blocked(); work = job(self.root, self.manifest, 'linux-x86_64', 'build')
+        atomic_json(work / 'run.json', {'schema': 1, 'release_id': self.release, 'sources': self.manifest['sources'],
+                    'platform': 'linux-x86_64', 'request_id': work.name, 'id': 123})
+        failed = {'schema': 1, 'release_id': self.release, 'sources': self.manifest['sources'],
+                  'state': 'blocked', 'reason': 'original relay failed'}
+        load = self.root / 'relay-load' / self.release / 'status.json'; atomic_json(load, failed)
+        request = control.request(self.root, 'resume', platform='linux-x86_64'); control.consume(self.controller)
+        grant = json.loads((work / 'native-retry-authorization.json').read_text())
+        self.assertEqual(grant['operator_request_id'], request['request_id']); self.assertEqual(grant['run_id'], 123)
+        current = json.loads(load.read_text()); self.assertEqual(current['state'], 'waiting')
+        old = list((self.root / 'control/relay-load-failures' / self.release).glob('*.json'))
+        self.assertEqual(len(old), 1); self.assertEqual(json.loads(old[0].read_text()), failed)
+        self.assertFalse((work / 'native-retry.json').exists())  # Coordinator never calls the provider here.
+        self.controller.ledger.transition(self.release, 'linux-x86_64', 'blocked', reason='again')
+        control.request(self.root, 'resume', platform='linux-x86_64'); control.consume(self.controller)
+        self.assertEqual(json.loads((work / 'native-retry-authorization.json').read_text()), grant)
+
     def test_completed_stages_survive_resume_and_manifests_never_change(self):
         self.blocked()
         baseline = self.controller.ledger.manifest(self.release)
@@ -58,6 +78,30 @@ class ControlTests(unittest.TestCase):
         self.assertEqual(self.controller.ledger.manifest(self.release), baseline)
         config = control.deployment_config(self.root, baseline, {'targets': []})
         self.assertIn('operator_retry', config)
+
+    def test_load_only_resume_preserves_already_verified_native_build(self):
+        from release_publish import job
+        work = job(self.root, self.manifest, 'linux-x86_64', 'build')
+        atomic_json(work / 'run.json', {'schema': 1, 'release_id': self.release, 'sources': self.manifest['sources'],
+                    'platform': 'linux-x86_64', 'request_id': work.name, 'id': 123})
+        atomic_json(work / 'receipt.json', {'retained': 'original verified native artifact'})
+        receipt = (work / 'receipt.json').read_bytes()
+        for stage in ('building', 'verifying', 'verified'):
+            self.controller.ledger.transition(self.release, 'linux-x86_64', stage,
+                                              evidence=hashlib.sha256(receipt).hexdigest())
+        before = self.controller.ledger.target(self.release, 'linux-x86_64')
+        load = self.root / 'relay-load' / self.release / 'status.json'
+        atomic_json(load, {'release_id': self.release, 'sources': self.manifest['sources'],
+                          'state': 'blocked', 'reason': 'relay-load failed'})
+        request = control.request(self.root, 'resume', platform='linux-x86_64')
+        control.consume(self.controller)
+        self.assertEqual(self.controller.ledger.target(self.release, 'linux-x86_64'), before)
+        self.assertEqual((work / 'receipt.json').read_bytes(), receipt)
+        self.assertEqual(json.loads(load.read_text())['state'], 'waiting')
+        self.assertTrue((work / 'native-retry-authorization.json').is_file())
+        result = json.loads((self.root / 'control/results' / (request['request_id'] + '.json')).read_text())
+        self.assertEqual(result['resumed_platforms'], [])
+        self.assertEqual(result['native_retry_platforms'], ['linux-x86_64'])
 
     def test_unknown_release_platform_and_invalid_ids_do_not_queue_requests(self):
         for kwargs in [{'release': '../escape'}, {'platform': 'other'}, {'action': 'delete'}]:

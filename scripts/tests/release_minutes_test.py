@@ -265,16 +265,19 @@ class MinutesTests(unittest.TestCase):
     def test_overdue_failed_native_request_cannot_dispatch_a_recovery_build(self):
         from release_jobs import collect
         request = 'f' * 64
-        run = {'id': 123, 'display_title': 'Forgejo Linux ' + request,
+        run = {'id': 123, 'run_attempt': 1, 'display_title': 'Forgejo Linux ' + request,
                'head_sha': self.manifest['sources']['gchat']['commit'], 'event': 'workflow_dispatch',
                'head_repository': {'full_name': 'IggyGG/gchat'},
                'path': '.github/workflows/linux-release.yml', 'status': 'completed', 'conclusion': 'failure'}
         with patch.dict('os.environ', {'GCHAT_RELEASE_RECONCILE_ONLY': '1'}), \
-             patch('release_jobs.gh', return_value={'workflow_runs': [run]}), \
+             patch('release_jobs.gh', side_effect=[{'workflow_runs': [run]}, {'jobs': [
+                 {'id': 456, 'name': 'qualify-gcoms', 'run_id': 123, 'run_attempt': 1,
+                  'head_sha': run['head_sha'], 'status': 'completed', 'conclusion': 'failure'}]}]) as api, \
              patch('release_recovery.collect') as recovery:
-            with self.assertRaisesRegex(ValueError, 'no new recovery dispatch'):
+            with self.assertRaisesRegex(ValueError, 'native check qualify-gcoms failure'):
                 collect(self.manifest, 'linux-x86_64', self.root, request, reconcile=True)
         recovery.assert_not_called()
+        self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))
 
     def test_completed_uncollected_workers_do_not_hold_publication_capacity(self):
         self.controller.config.update(nonblocking_workers=True, single_flight=True,

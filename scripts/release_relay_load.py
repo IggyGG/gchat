@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect the original Linux worker's source-bound relay load gate; never dispatch."""
+"""Collect original relay evidence and reconcile explicitly authorized same-run retries."""
 from release_provider import github_download
 import argparse
 import hashlib
@@ -13,7 +13,8 @@ import subprocess
 
 from release_coordinator import atomic_json
 from release_evidence import digest, file_reference, read_json, require
-from release_jobs import REPO, WORKFLOWS, extract, gh
+from release_jobs import (REPO, extract, gh, resolve_run, native_checks, retry_failed_jobs,
+                          require_passed_checks)
 from release_pair import canonical, validate
 from release_publish import job
 
@@ -94,6 +95,32 @@ def fixture(root, name, build, summary):
     return worker, events
 
 
+def verify_production_relay(root, build, manifest, provider, summary):
+    """New workers load-test the same production gcnode later put in the images."""
+    supplied = build.get('provided_relay')
+    if supplied is None: return  # Original frozen workers built their fixture directly.
+    from linux_build_artifacts import SERVICE_COMMAND, SERVICES, TARGET
+    receipt = read_json(root / 'native-services.json')
+    require(supplied == {'receipt': receipt, 'receipt_sha256': digest(root / 'native-services.json')}
+            and summary['evidence'].get('native-services.json') == supplied['receipt_sha256'],
+            'production relay receipt is not retained in the load evidence')
+    origin = receipt.get('provider', {})
+    require(receipt.get('schema') == 1 and receipt.get('kind') == 'linux_native_services'
+            and receipt.get('passed') is True and receipt.get('release_id') == manifest['release_id']
+            and receipt.get('sources') == manifest['sources'] and receipt.get('target') == TARGET
+            and receipt.get('commands') == [SERVICE_COMMAND] and receipt.get('rustflags') == ''
+            and receipt.get('compiler_environment') == {'RUSTFLAGS': '', 'CARGO_ENCODED_RUSTFLAGS': '', 'CARGO_BUILD_TARGET': ''}
+            and isinstance(receipt.get('rustc'), str) and f'host: {TARGET}\n' in receipt['rustc'],
+            'production relay source, target or build command changed')
+    require(all(origin.get(k) == provider[k] for k in ('repository', 'run_id', 'workflow_commit'))
+            and type(origin.get('run_attempt')) is int and 1 <= origin['run_attempt'] <= provider['run_attempt'],
+            'production relay belongs to another source/run/attempt')
+    inventory = receipt.get('files', {})
+    require(set(inventory) == set(SERVICES) and all(SHA.fullmatch(str(h)) for h in inventory.values())
+            and build['artifacts']['gcnode']['sha256'] == inventory['gcnode'],
+            'load-tested relay differs from the retained production binary')
+
+
 def verify(root, manifest, provider):
     """Derive the gate from retained worker observations, not a passed flag."""
     root = Path(root)
@@ -120,6 +147,7 @@ def verify(root, manifest, provider):
     for binary in build['artifacts'].values():
         require(SHA.fullmatch(str(binary.get('sha256', ''))) and integer(binary.get('size'), 'binary size', 1),
                 'invalid fixture executable identity')
+    verify_production_relay(root, build, manifest, provider, summary)
     preflight, preflight_events = fixture(root, 'preflight', build, summary)
     short = preflight.get('relay_preflight', {})
     require(preflight.get('config', {}).get('mode') == 'relay-preflight' and short.get('clients') == 2 and
@@ -207,21 +235,15 @@ def collect(state, manifest, output):
     build = job(state, manifest, 'linux-x86_64', 'build')
     if not (build / 'dispatch.json').is_file(): return None
     request_id = build.name
-    workflow, prefix = WORKFLOWS['linux-x86_64']
-    matches = []
-    for page in range(1, 11):
-        runs = gh(f'actions/workflows/{workflow}/runs?event=workflow_dispatch&per_page=100&page={page}')['workflow_runs']
-        matches.extend(r for r in runs if r.get('display_title') == prefix + request_id)
-        if len(runs) < 100 or matches: break
-    require(len(matches) <= 1, 'duplicate original relay load provider requests')
-    if not matches: return None
-    run = matches[0]
-    require(run.get('head_sha') == manifest['sources']['gchat']['commit'] and
-            run.get('event') == 'workflow_dispatch' and run.get('head_repository', {}).get('full_name') == REPO and
-            run.get('path') == '.github/workflows/' + workflow, 'relay load provider source/workflow changed')
-    if run.get('status') != 'completed': return None
-    require(run.get('conclusion') == 'success', 'original relay load workflow did not pass; retained failure requires correction')
-    attempt = integer(run.get('run_attempt'), 'provider attempt', 1)
+    run = resolve_run(manifest, 'linux-x86_64', build, request_id, api=gh)
+    if run is None: return None
+    checks = native_checks(run, 'linux-x86_64', build, api=gh)
+    retrying = retry_failed_jobs(manifest, 'linux-x86_64', build, request_id, run, checks, api=gh)
+    if retrying and checks['jobs'].get('relay-load', {}).get('conclusion') != 'success': return None
+    if not require_passed_checks(checks, ('relay-load',)): return None
+    # Failed-job retries omit successful jobs. The passing job's own attempt,
+    # rather than the workflow's newest attempt, binds the original evidence.
+    attempt = checks['jobs']['relay-load']['attempt']
     inventory = gh(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']
     artifacts = [a for a in inventory if a.get('name') == 'relay-load-' + str(attempt)]
     require(len(artifacts) == 1 and artifacts[0].get('expired') is False, 'original relay load artifact is missing or ambiguous')
@@ -236,18 +258,20 @@ def collect(state, manifest, output):
     require(binding.get('id') == run['id'] and binding.get('head_sha') == run['head_sha'],
             'relay load artifact belongs to another run')
     output.parent.mkdir(parents=True, exist_ok=True)
-    archive = output.parent / 'relay-load.zip'
+    # Preserve legacy attempt1 paths; later attempts have independent closures.
+    suffix = '' if attempt == 1 else '-' + str(attempt)
+    archive = output.parent / ('relay-load' + suffix + '.zip')
     if not archive.exists():
-        temporary = output.parent / 'relay-load.partial'
+        temporary = output.parent / ('relay-load' + suffix + '.partial')
         with temporary.open('wb') as stream:
             github_download(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, stream=stream, timeout=600)
         require(digest(temporary) == sha, 'relay load archive download hash mismatch')
         os.replace(temporary, archive)
     require(digest(archive) == sha, 'retained relay load archive changed')
-    root = output.parent / 'relay-load'
+    root = output.parent / ('relay-load' + suffix)
     # An immutable archive is extracted once; incomplete extraction is never accepted.
     if not root.exists():
-        temporary = output.parent / '.relay-load-extract'
+        temporary = output.parent / ('.relay-load-extract' + suffix)
         if temporary.exists(): shutil.rmtree(temporary)
         extract(archive, temporary)
         os.replace(temporary, root)
@@ -260,7 +284,7 @@ def collect(state, manifest, output):
             'provider': provider, 'qualified_scopes': ['relay_capacity_64', 'covered_delivery', 'relay_restart', 'ds_sized_file'],
             'provider_policy_qualified': False, 'privacy_qualified': False,
             'evidence': [{'path': archive.name, 'sha256': sha},
-                         {'path': 'relay-load/summary.json', 'sha256': digest(root / 'summary.json')}],
+                         {'path': root.name + '/summary.json', 'sha256': digest(root / 'summary.json')}],
             'summary_sha256': digest(root / 'summary.json')}
 
 

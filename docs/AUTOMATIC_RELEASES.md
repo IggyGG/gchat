@@ -1,4 +1,8 @@
-The Linux workflow runs GChat CI, GComs CI and the isolated 64-client relay campaign concurrently on separate runners. Both native receipts authorize signing; the source-bound load receipt separately authorizes infrastructure activation. The load job performs a two-client preflight, then one 30-minute campaign. It retains original failed evidence and never automatically restarts a campaign. Runner hardware is recorded; thresholds remain <1% refusals and recipient p95 <5 seconds, with verified DS-sized file delivery and relay restart recovery. `release.py status` reports the load gate.
+Linux releases compile each production binary once. GChat CI, GComs CI and the production relay/fixture build run concurrently. The relay campaign consumes those retained production relay bytes; packaging consumes the same relay bytes and the desktop/CLI already built by GChat CI. Signing verifies exact source, workflow, compiler, commands, dependencies and file hashes before bundling. It does not rerun Cargo or the frontend build.
+
+Compiler caches are written by the trusted `main` workflow and restored by release branches. They contain compiler/dependency bytes, never qualification or signing authority. Keys separate toolchains, runner images and build roles while allowing dependency reuse across application version changes. Every candidate still runs its required tests. This avoids the old cache isolation between successive release branches; see [GitHub's cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
+
+The isolated load gate still uses all 64 clients, a two-client preflight and one full 30-minute campaign. Four independent setup chains run concurrently; joins within each channel stay ordered. Relay restart readiness has a bounded wait while delivery measurement continues. Thresholds remain <1% refusals and recipient p95 <5 seconds, with verified DS-sized file delivery and relay restart recovery. Native receipts authorize signing; the load receipt separately authorizes infrastructure activation. The mandatory campaign means a complete release cannot finish in a few minutes, even with warm caches. First-time compilation and runner queues add time.
 
 The original 60-minute build deadline prevents new dispatches after expiry but permits collection and verification of the same provider request. Publication receives its own persistent 60-minute active budget once infrastructure is ready; infrastructure and external review waits pause that budget. Restarts do not reset either clock or create a second provider request.
 
@@ -25,8 +29,14 @@ helper. A lost or still-running request is reconciled instead of resubmitted;
 missing successful reports never become passes.
 
 Use `python3 scripts/release.py status` for the selected release, actual deployment
-versions and platform waiting/failure states. `resume --platform linux-x86_64`
-queues an operator retry of its original stage; `resume` also retries the selected
+versions and platform waiting/failure states. Native check details include each
+job's current or failed step and original attempt. `resume --platform linux-x86_64`
+authorizes one bounded retry of failed jobs in the existing source-bound workflow;
+successful sibling jobs and their verified artifacts are retained. The worker
+records intent before requesting the retry and reconciles an uncertain response
+without submitting it again. A second failure stays blocked. Changed source
+requires a new candidate. Original failures remain retained; neither the original
+build budget nor the full load campaign is shortened or reset. `resume` also retries the selected
 deployment. `rollback` queues restoration of recorded infrastructure versions.
 These commands use the running coordinator and never create a second ledger writer.
 Store publications cannot be rolled back by that command. Use `--json` for status
@@ -391,13 +401,14 @@ review does not prevent preparing the next candidate.
 The public status document distinguishes building, verification, publication,
 processing, review, blocked and available.
 
-Linux qualification and packaging have separate 120-minute native jobs. The
-first runs both unchanged repository CI entrypoints and retains their logs,
-paired source/dependency evidence and workflow/release bindings. The signing job
-requires that successful job, fetches its exact same-run artifact by ID, checks
-the provider digest and every retained binding against its clean frozen pair,
-then prepares and rechecks the installer's dependency inputs. A packaging retry
-may reuse that run's earlier successful qualification. Qualification and failed
+Linux qualification, production/fixture compilation, load and packaging have
+separate bounded native jobs. The two qualification jobs run the existing
+repository CI entrypoints and retain logs, paired source/dependency evidence and
+workflow/release bindings. The signing job requires both successful qualifications
+and the production build, fetches their exact same-run artifacts by ID, checks
+provider digests and every retained binding against its clean frozen pair, then
+bundles the retained desktop/CLI and production service binaries. A failed-job
+retry may reuse that run's earlier successful jobs. Qualification and failed
 build archives include their attempt number; successful packages keep the
 `linux-x86_64` provider name. Neither failed CI nor another run's artifact can
 authorize signing. Application recovery deadlines and acceptance gates remain

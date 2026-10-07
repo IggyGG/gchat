@@ -12,6 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_automation_test import candidate
 from release_evidence import EvidenceError, digest
+from release_jobs import authorize_native_retry
 from release_pair import canonical
 from release_publish import job
 from release_relay_load import MEMBERS, SCOPE, collect, verify
@@ -133,6 +134,30 @@ class RelayLoadTests(unittest.TestCase):
         self.write('summary.json', self.summary)
         with self.assertRaisesRegex(EvidenceError, 'contribution'): self.check()
 
+    def test_production_relay_receipt_binds_exact_loaded_binary_and_original_attempt(self):
+        from linux_build_artifacts import SERVICE_COMMAND, SERVICES, TARGET
+        from release_relay_load import verify_production_relay
+        receipt = {'schema': 1, 'kind': 'linux_native_services', 'passed': True,
+                   'release_id': self.manifest['release_id'], 'sources': self.manifest['sources'],
+                   'provider': self.provider, 'target': TARGET, 'commands': [SERVICE_COMMAND],
+                   'rustflags': '', 'rustc': 'rustc1\nhost: ' + TARGET + '\n',
+                   'compiler_environment': {'RUSTFLAGS': '', 'CARGO_ENCODED_RUSTFLAGS': '', 'CARGO_BUILD_TARGET': ''},
+                   'files': {n: 'e' * 64 for n in SERVICES}}
+        def check(value, loaded_sha='e' * 64):
+            self.write('native-services.json', value)
+            sha = digest(self.root / 'native-services.json')
+            build = {'provided_relay': {'receipt': value, 'receipt_sha256': sha},
+                     'artifacts': {'gcnode': {'sha256': loaded_sha}}}
+            verify_production_relay(self.root, build, self.manifest, {**self.provider, 'run_attempt': 2},
+                                    {'evidence': {'native-services.json': sha}})
+        check(receipt)
+        for change in ({'sources': {}}, {'commands': [['cargo', 'build']]}, {'target': 'other'},
+                       {'provider': {**self.provider, 'run_id': '999'}},
+                       {'provider': {**self.provider, 'run_attempt': 3}}, {'rustflags': '-Copt-level=0'},
+                       {'compiler_environment': {**receipt['compiler_environment'], 'CARGO_PROFILE_RELEASE_LTO': 'off'}}):
+            with self.subTest(change=change), self.assertRaises(EvidenceError): check({**receipt, **change})
+        with self.assertRaisesRegex(EvidenceError, 'retained production binary'): check(receipt, 'a' * 64)
+
     def test_source_provider_and_cleanup_must_match(self):
         bad = copy.deepcopy(self.manifest); bad['sources']['gchat']['commit'] = '9' * 40
         with self.assertRaises(EvidenceError): verify(self.root, bad, self.provider)
@@ -147,16 +172,22 @@ class RelayLoadTests(unittest.TestCase):
     def test_collector_reconciles_original_request_and_rejects_duplicate_or_failed_run(self):
         state = self.root / 'state'; build = job(state, self.manifest, 'linux-x86_64', 'build')
         build.mkdir(parents=True); (build / 'dispatch.json').write_text('{}')
-        run = {'display_title': 'Forgejo Linux ' + build.name,
+        run = {'id': 123, 'run_attempt': 1, 'display_title': 'Forgejo Linux ' + build.name,
                'head_sha': self.manifest['sources']['gchat']['commit'], 'event': 'workflow_dispatch',
                'head_repository': {'full_name': 'IggyGG/gchat'}, 'path': '.github/workflows/linux-release.yml',
                'status': 'in_progress'}
-        with patch('release_relay_load.gh', return_value={'workflow_runs': [run]}) as called:
+        with patch('release_relay_load.gh', side_effect=[{'workflow_runs': [run]}, {'jobs': []}]) as called:
             self.assertIsNone(collect(state, self.manifest, self.root / 'receipt.json'))
-            self.assertEqual(called.call_count, 1)
-        for runs in ([run, run], [{**run, 'status': 'completed', 'conclusion': 'failure'}]):
-            with patch('release_relay_load.gh', return_value={'workflow_runs': runs}), self.assertRaises(EvidenceError):
-                collect(state, self.manifest, self.root / 'receipt.json')
+            self.assertEqual(called.call_count, 2)
+        (build / 'run.json').unlink()
+        with patch('release_relay_load.gh', return_value={'workflow_runs': [run, run]}), self.assertRaises(ValueError):
+            collect(state, self.manifest, self.root / 'receipt.json')
+        failed = {**run, 'status': 'completed', 'conclusion': 'failure'}
+        provider_job = {'id': 9, 'name': 'relay-load', 'run_id': 123, 'head_sha': run['head_sha'], 'run_attempt': 1,
+               'status': 'completed', 'conclusion': 'failure'}
+        with patch('release_relay_load.gh', side_effect=[{'workflow_runs': [failed]}, {'jobs': [provider_job]}]), \
+                self.assertRaisesRegex(ValueError, 'native check relay-load failure'):
+            collect(state, self.manifest, self.root / 'receipt.json')
 
     def test_collector_authenticates_retained_archive_and_never_rebuilds(self):
         evidence = [p for p in self.root.rglob('*') if p.is_file()]
@@ -174,17 +205,65 @@ class RelayLoadTests(unittest.TestCase):
         artifact = {'id': 456, 'name': 'relay-load-1', 'expired': False,
                     'digest': 'sha256:' + digest(archive), 'size_in_bytes': archive.stat().st_size,
                     'workflow_run': {'id': 123, 'head_sha': run['head_sha']}}
+        job_attempt, job_conclusion = 1, 'success'
         def provider(path):
-            return {'workflow_runs': [run]} if '/workflows/' in path else {'artifacts': [artifact]}
+            if '/workflows/' in path: return {'workflow_runs': [run]}
+            if path == 'actions/runs/123': return run
+            if '/jobs?' in path:
+                requested_attempt = int(path.split('/attempts/')[1].split('/')[0])
+                if requested_attempt == job_attempt:
+                    return {'jobs': [{'id': 9, 'name': 'relay-load', 'run_id': 123, 'head_sha': run['head_sha'],
+                                     'run_attempt': job_attempt, 'status': 'completed', 'conclusion': job_conclusion}]}
+                return {'jobs': [{'id': 10, 'name': 'qualify-gcoms', 'run_id': 123, 'head_sha': run['head_sha'],
+                                 'run_attempt': requested_attempt, 'status': 'completed', 'conclusion': 'failure'}]}
+            return {'artifacts': [artifact]}
         with patch('release_relay_load.gh', side_effect=provider), \
                 patch('release_relay_load.subprocess.run', side_effect=AssertionError('no redispatch/download')):
             receipt = collect(state, self.manifest, output)
             self.assertTrue(receipt['relay_load_verified'])
             self.assertEqual(receipt['stage'], 'relay_load')
             self.assertFalse(receipt['provider_policy_qualified'])
+            run.update(run_attempt=2, conclusion='failure')
+            retained = collect(state, self.manifest, output)
+            self.assertEqual(retained['provider']['run_attempt'], 1)
+            self.assertEqual(retained['evidence'], receipt['evidence'])
+            job_attempt, job_conclusion = 2, 'failure'
+            with self.assertRaisesRegex(ValueError, 'native check relay-load failure.*attempt 2'):
+                collect(state, self.manifest, output)
+            job_attempt, job_conclusion = 1, 'success'
             archive.write_bytes(b'tampered')
             with self.assertRaisesRegex(EvidenceError, 'archive changed'):
                 collect(state, self.manifest, output)
+
+    def test_load_only_retry_runs_after_native_receipt_completion_once(self):
+        state = self.root / 'state'; build = job(state, self.manifest, 'linux-x86_64', 'build')
+        build.mkdir(parents=True); (build / 'dispatch.json').write_text('{}')
+        original_receipt = b'{"passed": true, "retained": "original signed native artifact"}\n'
+        (build / 'receipt.json').write_bytes(original_receipt)
+        run = {'id': 123, 'run_attempt': 1, 'display_title': 'Forgejo Linux ' + build.name,
+               'head_sha': self.manifest['sources']['gchat']['commit'], 'event': 'workflow_dispatch',
+               'head_repository': {'full_name': 'IggyGG/gchat'}, 'path': '.github/workflows/linux-release.yml',
+               'status': 'completed', 'conclusion': 'failure'}
+        binding = {'schema': 1, 'release_id': self.manifest['release_id'], 'sources': self.manifest['sources'],
+                   'platform': 'linux-x86_64', 'request_id': build.name, 'id': run['id']}
+        (build / 'run.json').write_text(json.dumps(binding))
+        authorize_native_retry(self.manifest, 'linux-x86_64', build, build.name, 'a' * 32)
+        provider_job = {'id': 9, 'name': 'relay-load', 'run_id': 123, 'head_sha': run['head_sha'], 'run_attempt': 1,
+                        'status': 'completed', 'conclusion': 'failure'}
+        mutations = []
+        def provider(path, **kwargs):
+            if kwargs.get('method') == 'POST':
+                mutations.append(path)
+                self.assertEqual(json.loads((build / 'native-retry.json').read_text())['state'], 'intent')
+                return None
+            if '/jobs?' in path: return {'jobs': [provider_job]}
+            self.assertEqual(path, 'actions/runs/123')
+            return run
+        with patch('release_relay_load.gh', side_effect=provider):
+            self.assertIsNone(collect(state, self.manifest, self.root / 'receipt.json'))
+            self.assertIsNone(collect(state, self.manifest, self.root / 'receipt.json'))
+        self.assertEqual(mutations, ['actions/runs/123/rerun-failed-jobs'])
+        self.assertEqual((build / 'receipt.json').read_bytes(), original_receipt)
 
 
 if __name__ == '__main__': unittest.main()

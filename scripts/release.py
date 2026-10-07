@@ -52,6 +52,10 @@ def main():
                 print(f"  {target['id']}: {target['state']}  healthy={target['healthy']}  matches={target['matches']}  {running}")
             for item in value['platforms']:
                 print(f"  {item['platform']}: {item['state']}  age={item['state_age_seconds']}s  {item['reason']}")
+                for name, check in item.get('native_checks', {}).get('jobs', {}).items():
+                    outcome = check.get('conclusion') or check.get('status', 'unknown')
+                    step = (' / ' + check['step']) if check.get('step') else ''
+                    print(f"    {name}: {outcome} (attempt {check['attempt']}){step}")
     else:
         observations = None
         if args.observed:

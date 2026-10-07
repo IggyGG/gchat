@@ -7,11 +7,16 @@ import tempfile
 import tarfile
 import unittest
 import sys
+import os
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 spec = importlib.util.spec_from_file_location('infrastructure_build', Path(__file__).resolve().parents[1] / 'build-infrastructure.py')
 build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
+import linux_build_artifacts as artifacts
+from release_automation_test import candidate
+from release_pair import canonical
 
 
 class ArchiveConfigurationTests(unittest.TestCase):
@@ -25,6 +30,63 @@ class ArchiveConfigurationTests(unittest.TestCase):
                     entry = tarfile.TarInfo(name); entry.size = len(data); archive.addfile(entry, io.BytesIO(data))
             self.assertEqual(build.archive_config(path, 'qualified:source'), 'sha256:' + hashlib.sha256(config).hexdigest())
             with self.assertRaisesRegex(ValueError, 'exact build tag'): build.archive_config(path, 'another:tag')
+
+
+class RetainedServiceTests(unittest.TestCase):
+    def test_production_compiles_once_then_container_packaging_uses_identical_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve(); source = root / 'gcoms'; source.mkdir()
+            target = root / 'target/release'; target.mkdir(parents=True)
+            manifest = candidate(); manifest_path = root / 'manifest.json'; manifest_path.write_bytes(canonical(manifest))
+            environment = {'GCHAT_RELEASE_MANIFEST': str(manifest_path), 'CARGO_TARGET_DIR': str(target.parent),
+                           'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'IggyGG/gchat',
+                           'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1', 'RUSTFLAGS': '',
+                           'GITHUB_WORKFLOW_SHA': manifest['sources']['gchat']['commit'],
+                           'GITHUB_SHA': manifest['sources']['gchat']['commit']}
+            retained = root / 'native'; packaged = root / 'packaged'; commands = []
+
+            def execute(command, **kwargs):
+                commands.append(command)
+                if command[0] == 'cargo':
+                    self.assertEqual(command, artifacts.SERVICE_COMMAND)
+                    for name in build.BINARIES: (target / name).write_bytes(('production ' + name).encode())
+                elif command[:2] == ['docker', 'save']:
+                    Path(command[command.index('-o') + 1]).write_bytes(b'container archive')
+                elif command[:2] == ['git', 'archive']:
+                    with tarfile.open(fileobj=kwargs['stdout'], mode='w') as archive:
+                        entry = tarfile.TarInfo('release/automation/Dockerfile'); entry.size = 13
+                        archive.addfile(entry, io.BytesIO(b'FROM scratch\n'))
+                elif command[0] == 'python3':
+                    context = Path(command[command.index('--output') + 1]); context.mkdir()
+                    (context / 'context-manifest.json').write_text('{}')
+
+            def qualification(*args):
+                (packaged / 'controller-runtime.json').write_text('{"passed":true}')
+                (packaged / 'controller-runtime.log').write_text('actual image tests retained')
+
+            with patch.dict(os.environ, environment, clear=True), \
+                 patch.object(build, 'identity', side_effect=lambda path: manifest['sources']['gcoms' if path == source else 'gchat']), \
+                 patch.object(artifacts, 'rustc', return_value='rustc pinned\nhost: ' + artifacts.TARGET + '\n'), \
+                 patch.object(build.subprocess, 'run', side_effect=execute), \
+                 patch.object(build, 'archive_config', return_value='sha256:' + 'e' * 64), \
+                 patch.object(build, 'qualify_controller', side_effect=qualification), \
+                 patch.object(sys, 'argv', ['build', '--gcoms', str(source), '--output', str(retained), '--binaries-only']):
+                build.main()
+                self.assertEqual(commands, [artifacts.SERVICE_COMMAND])
+                record = artifacts.verify(retained, manifest, 'linux_native_services', environment)
+                self.assertFalse((retained / 'build.json').exists())
+                with patch.object(sys, 'argv', ['build', '--gcoms', str(source), '--output', str(packaged), '--native-build', str(retained)]):
+                    build.main()
+            self.assertEqual(sum(command[0] == 'cargo' for command in commands), 1)
+            self.assertEqual(sum(command[:2] == ['docker', 'build'] for command in commands), 3)
+            for name in build.BINARIES:
+                self.assertEqual(artifacts.digest(packaged / name), record['files'][name])
+            # The live controller's verifier requires the existing exact public
+            # inventory. Build-once receipts remain in the upstream artifact.
+            from release_infrastructure_bundle import FILES, RUNTIME_FILES
+            self.assertEqual(set(json.loads((packaged / 'build.json').read_text())['sha256']),
+                             set(FILES + RUNTIME_FILES))
+            self.assertFalse((packaged / 'native-build.json').exists())
 
 
 if __name__ == '__main__': unittest.main()

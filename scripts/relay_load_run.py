@@ -58,7 +58,7 @@ def execute(command, workspace, log, timeout):
     completed.check_returncode()
 
 
-def run(workspace, output, work, target):
+def run(workspace, output, work, target, retained_build=None):
     workspace, output, work = map(lambda p: Path(p).resolve(), (workspace, output, work))
     manifest = validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
     provider = context(manifest, os.environ)
@@ -70,11 +70,16 @@ def run(workspace, output, work, target):
               'source_unchanged': False, 'evidence': {}, 'started_at': int(time.time()),
               'hardware': {'logical_cpus': os.cpu_count(),
                            'memory_bytes': os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')}}
-    build = work / 'build'
+    build = Path(retained_build).resolve() / 'relay-build' if retained_build else work / 'build'
     try:
-        execute(['python3', workspace / 'gcoms/scripts/build-fleet-files.py',
-                 '--gchat', workspace / 'gchat', '--output', build, '--target-dir', target, '--fetch'],
-                workspace, output / 'build.log', 1800)
+        if retained_build:
+            from linux_build_artifacts import verify_fleet
+            verify_fleet(Path(retained_build).resolve(), manifest)
+            shutil.copyfile(Path(retained_build) / 'native-services/receipt.json', output / 'native-services.json')
+        else:
+            execute(['python3', workspace / 'gcoms/scripts/build-fleet-files.py',
+                     '--gchat', workspace / 'gchat', '--output', build, '--target-dir', target, '--fetch'],
+                    workspace, output / 'build.log', 1800)
         for mode, name, timeout in [('relay-preflight', 'preflight', 330), ('relay-load', 'load', 4530)]:
             command = ['python3', workspace / 'gcoms/scripts/gchat-turnover.py',
                        '--build', build, '--fixture-host', build / 'bin/turnover_daemon',
@@ -119,5 +124,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--work', type=Path, required=True)
     parser.add_argument('--target-dir', type=Path, required=True)
+    parser.add_argument('--retained-build', type=Path, help='same-run verified production services and fixture binaries')
     args = parser.parse_args()
-    run(args.workspace, args.output, args.work, args.target_dir)
+    run(args.workspace, args.output, args.work, args.target_dir, args.retained_build)
