@@ -126,7 +126,9 @@ def request(state, action, release=None, platform=None, *, observed=None, reason
 
 
 def deployment_config(state, manifest, config):
-    """Explicit operator retries change a rollout revision, never a manifest."""
+    """Qualified controller overlays and retries never change a manifest."""
+    from release_controller import deployment_config as controller_config
+    config = controller_config(state, manifest, config)
     path = Path(state) / 'control/deployment-retries' / (manifest['release_id'] + '.json')
     return {**config, 'operator_retry': json.loads(path.read_text())['id']} if path.is_file() else config
 

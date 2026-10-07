@@ -903,3 +903,7 @@ unknown, and retrying the same operation cannot repeat its effects. Active worke
 and pending completion writes still block maintenance. The focused regressions
 exercise an effect followed by uncertainty or panic, and a failed encrypted-store
 write; see [validation](docs/evidence/update-gate-20261006/source-validation.json).
+
+## Release operations
+
+The release controller supervises active local work every 10 seconds, GitHub jobs every 2 minutes and store review status every 15 minutes. Confirmed provider quota exhaustion creates a durable shared cooldown (15 minutes to 6 hours, honoring provider reset times); ordinary permission errors remain blocked. Status includes the waiting reason and next check. Accepted submissions retain their original operation IDs. Controller-only updates use independent image qualification and the managed deployment path, preserving application versions. An explicit Intel-only test correction can reference the existing deployment only after unchanged-runtime provenance and fresh health/load evidence are verified; its own native qualification and installed acceptance remain mandatory.

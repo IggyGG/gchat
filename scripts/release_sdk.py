@@ -4,6 +4,7 @@
 Runs the existing native Rust matrix and both mobile variants (base/push). All
 three jobs bind the immutable companion ref; unchanged SDK inputs reuse receipts.
 """
+from release_provider import github_download
 import argparse
 import hashlib
 import json
@@ -27,10 +28,8 @@ JOBS={'rust':('rust-integrations.yml','GComs SDK Rust ',{}),
       'mobile-push':('mobile-integrations.yml','GComs SDK Mobile ',{'platform':'all','role':'all','push':True})}
 
 def api(path,body=None):
-    args=['gh','api','--method','POST' if body is not None else 'GET','repos/'+REPO+'/'+path]
-    if body is not None:args+=['--input','-']
-    result=subprocess.check_output(args,input=canonical(body) if body is not None else None,stderr=subprocess.PIPE)
-    return json.loads(result) if result.strip() else None
+    from release_provider import github
+    return github(path, repo=REPO, method='POST' if body is not None else 'GET', body=body)
 
 def expected_names(kind,commit):
     if kind=='rust':return {f'rust-integrations-{runner}-{commit}' for runner in ('ubuntu-24.04','macos-15','macos-15-intel','windows-2022')}
@@ -167,7 +166,7 @@ def build(manifest,cache):
             if not 0<artifact['size_in_bytes']<=2*1024**3:raise ValueError('SDK archive exceeds storage budget')
             if not path.exists():
                 temporary=path.with_suffix('.partial')
-                with temporary.open('wb') as stream:subprocess.run(['gh','api',f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'],stdout=stream,stderr=subprocess.PIPE,check=True,timeout=600)
+                with temporary.open('wb') as stream:github_download(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, stream=stream, timeout=600)
                 if 'sha256:'+digest(temporary)!=expected:raise ValueError('SDK archive download mismatch')
                 os.replace(temporary,path)
             if 'sha256:'+digest(path)!=expected:raise ValueError('retained SDK archive changed')
@@ -294,4 +293,6 @@ def main():
         'passed':True,'source_unchanged':True,'consumers_compatible':True,'evidence':evidence,
         **({'qualification_reuse':qualification_reuse} if qualification_reuse is not None else {})})
 
-if __name__=='__main__':main()
+if __name__ == '__main__':
+    from release_provider import worker_main
+    worker_main(main)

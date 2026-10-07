@@ -1,0 +1,61 @@
+name: Controller qualification
+run-name: Forgejo Controller ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+      intent:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  controller:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: gchat
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read frozen controller intent
+        id: intent
+        env:
+          CONTROLLER_INTENT: ${{ inputs.intent }}
+          CONTROLLER_REQUEST_ID: ${{ inputs.request_id }}
+          PYTHONPATH: gchat/scripts
+        run: |
+          python3 - <<'PY'
+          import base64,json,os
+          from release_controller import validate_intent,qualification_ref
+          value=json.loads(base64.b64decode(os.environ['CONTROLLER_INTENT'],validate=True))
+          validate_intent(value)
+          assert value['id']==os.environ['CONTROLLER_REQUEST_ID']
+          assert value['sources']['gchat']['commit']==os.environ['GITHUB_SHA']
+          assert qualification_ref(value)==os.environ['GITHUB_REF']
+          with open(os.environ['GITHUB_OUTPUT'],'a') as stream:
+              stream.write('gcoms_commit='+value['sources']['gcoms']['commit']+'\n')
+          PY
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: IggyGG/gcoms
+          ref: ${{ steps.intent.outputs.gcoms_commit }}
+          path: gcoms
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build and qualify the controller image
+        env:
+          CONTROLLER_INTENT: ${{ inputs.intent }}
+          CONTROLLER_REQUEST_ID: ${{ inputs.request_id }}
+        run: python3 gchat/scripts/build-controller.py --gcoms gcoms --output controller-evidence
+      - name: Retain immutable qualified controller
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: controller-qualified
+          path: controller-evidence/*
+          if-no-files-found: error
+          retention-days: 30

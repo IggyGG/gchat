@@ -1,0 +1,85 @@
+{
+  "base_commit": "fc356227a64d8e9f452d1fa59a08d0689522c2f5",
+  "checks": [
+    {
+      "command": "PYTHONPATH=scripts:scripts/tests python3 -m unittest release_provider_test release_stores_test release_store_worker_test release_config_test release_flight_test release_coordinator_test release_acceptance_test release_relay_load_test release_sdk_test -q",
+      "passed": true,
+      "point": "before three added download/journal regression controls",
+      "seconds": 1.734,
+      "tests": 148
+    },
+    {
+      "command": "unittest.defaultTestLoader.loadTestsFromNames(controller_runtime.SUITES)",
+      "passed": true,
+      "point": "before final quota timing validation and synchronous completed-schedule removal",
+      "seconds": 11.022,
+      "tests": 366
+    },
+    {
+      "command": "PYTHONPATH=scripts:scripts/tests python3 -m unittest release_provider_test release_coordinator_test release_flight_test -q",
+      "passed": true,
+      "seconds": 0.368,
+      "tests": 79
+    },
+    {
+      "command": "PYTHONPATH=scripts:scripts/tests python3 -m unittest release_provider_test -q",
+      "passed": true,
+      "point": "final provider source",
+      "seconds": 0.067,
+      "tests": 16
+    },
+    {
+      "command": "python3 scripts/check-source.py",
+      "passed": true,
+      "paths": 852
+    },
+    {
+      "command": "git diff --check",
+      "passed": true
+    }
+  ],
+  "created_at": 1791370755,
+  "defaults_seconds": {
+    "github_poll": 120,
+    "local_supervision": 10,
+    "quota_fallback_maximum": 21600,
+    "quota_minimum": 900,
+    "store_poll": 900
+  },
+  "guarantees": [
+    "Exact Play GET listing quota403 classified; ordinary permission403 remains blocking",
+    "Provider reset and Retry-After honored; bounded jittered exponential fallback; cooldown and per-effect schedule durable",
+    "Reconcile uses original effect/request and store mutation journal after restart",
+    "Accepted store commit resumes read-only observation; no repeated upload or commit",
+    "Active local process completion collected independently of provider polling",
+    "Shared GitHub metadata cache, quota classification for streamed downloads, original archive hashes unchanged",
+    "Apple review freshness tied to original source-bound observation and valid provider schedule; no invented approval",
+    "Unknown mutation outcomes retain prior no-blind-resubmission policy"
+  ],
+  "not_performed": [
+    "live provider requests",
+    "image build",
+    "deployment",
+    "application build"
+  ],
+  "passed": true,
+  "schema": 1,
+  "scope": "Controller provider polling and quota reconciliation only; no application or live-provider calls",
+  "source_files": {
+    "scripts/controller_runtime.py": "e4b66f39bffe0458feb648e51bea43b63d691c0482b47b95187e5cd32575f87a",
+    "scripts/release_acceptance.py": "446aa2448825e5d9b3f600b52c7fcb00db44fb73e50e6ea87a98510cdc169d01",
+    "scripts/release_acceptance_delivery.py": "75b06648957f13bd9006a4d2bdbbff581a85c11f8787742fdfdd5c1b02098edc",
+    "scripts/release_config.py": "132bd279261567e9ea996ede8a9553ea62d526aaa8d2352c1ac1b6cf374fe3cc",
+    "scripts/release_coordinator.py": "41a65b2d322d939ef25be605968120559173b43fc850cd83231159ce77e7c752",
+    "scripts/release_flight.py": "3d76ad9af5eb225f27b7e459258669b3cc088e9661f0d4b78cf706ea907eb283",
+    "scripts/release_jobs.py": "f0982a89199223e0c7a0e3ae1ed731d7ad726d3809e7f980b3a93bdda5e8cd3c",
+    "scripts/release_provider.py": "580ea8d4498d23a82f84fd74bfc12b5d2e988bbe1d55af51db9200ed771b80a0",
+    "scripts/release_recovery.py": "3e72ade32af7cc0801e46aa237cd607699e0ffbbe72b19e23e3162a22aaf5203",
+    "scripts/release_relay_load.py": "79f5ea611c608e5ec184f4a591f293814c5183b0276729c8bd56453228b219bf",
+    "scripts/release_sdk.py": "67ab64de42d97099343f83cade791e7572ddc529ea84fae5289716da1bbb9b04",
+    "scripts/release_store_worker.py": "b0cb0dea2b4c2bb0c6e6a1a1645aa720d686ff569cd6b2fa11f3eb6ff399d5a8",
+    "scripts/release_stores.py": "a9a84141467e2c0544506da7682e7849d25e7df7639c7daad0cefd9be690e1b8",
+    "scripts/tests/release_coordinator_test.py": "c0dc51b97d6d16d9da1a3b9d39febe1f14657d0b8425b0af9cd246d85cbdaaf5",
+    "scripts/tests/release_provider_test.py": "e821c8467e2e94cb4b5771b20425e811713237543a8a7746baf7575f37c097b3"
+  }
+}

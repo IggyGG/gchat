@@ -92,9 +92,16 @@ class Coordinator:
     def __init__(self, state, config):
         from release_minutes import enabled
         self.minutes = enabled(config)
-        self.poll_interval = config.get('poll_interval_seconds', 30)
+        self.poll_interval = config.get('poll_interval_seconds', 10)
         if type(self.poll_interval) is not int or not 10 <= self.poll_interval <= 300:
             raise ValueError('poll_interval_seconds must be an integer between 10 and 300')
+        self.github_poll_interval = config.get('github_poll_interval_seconds', 120)
+        self.store_poll_interval = config.get('store_poll_interval_seconds', 900)
+        for name, value, lower, upper in (
+                ('github_poll_interval_seconds', self.github_poll_interval, 30, 3600),
+                ('store_poll_interval_seconds', self.store_poll_interval, 60, 21600)):
+            if type(value) is not int or not lower <= value <= upper:
+                raise ValueError(f'{name} must be an integer between {lower} and {upper}')
         self.maximum_workers = config.get('maximum_workers', 3)
         if type(self.maximum_workers) is not int or not 1 <= self.maximum_workers <= 8:
             raise ValueError('maximum_workers must be an integer between 1 and 8')
@@ -119,6 +126,8 @@ class Coordinator:
         self.deployment_runner = DeploymentRunner(self.state, deployment_timeout)
 
     def close_workers(self):
+        from release_controller import close as close_controller
+        close_controller(self)
         self.deployment_runner.close()
         for item in list(self.running_workers.values()):
             process = item['process']
@@ -159,6 +168,9 @@ class Coordinator:
             (platform, release)).fetchone() is not None
 
     def deployment_ready(self, manifest):
+        if manifest.get('deployment_baseline'):
+            from release_platform_deployment import ready
+            return ready(self.state, self.config, self.ledger, manifest)
         if not manifest['policy'].get('deployment_required', False):
             return True
         path = self.state / 'deployment' / manifest['release_id'] / 'journal.json'
@@ -248,6 +260,9 @@ class Coordinator:
 
     def relay_load_ready(self, manifest):
         """Collect the same Linux workflow's gate; never dispatch another load."""
+        if manifest.get('deployment_baseline'):
+            from release_platform_deployment import ready
+            return ready(self.state, self.config, self.ledger, manifest)
         if 'relay_load' not in self.config.get('workers', {}).get('linux-x86_64', {}):
             return True  # Standalone/test configurations opt into the worker.
         release = manifest['release_id']
@@ -345,8 +360,20 @@ class Coordinator:
                 'reason': 'Deployment inventory or worker is unavailable; publication is waiting',
                 'error_type': type(error).__name__})
 
+    def provider_defer(self, manifest, platform, stage, effect, provider, work):
+        if provider is None:
+            return
+        from release_provider import defer_effect
+        waiting = work / 'provider-wait.json'
+        wait = json.loads(waiting.read_text()) if waiting.is_file() else None
+        interval = self.github_poll_interval if provider == 'github' else self.store_poll_interval
+        defer_effect(self.state, manifest['release_id'], platform, stage, effect['id'], provider, interval, wait)
+
     def execute(self, manifest, platform, stage, action='run'):
         recipe = self.config['workers'][platform][stage]
+        from release_provider import recipe_provider, schedule, cooldown, defer_effect
+        provider = recipe_provider(recipe, platform)
+        scheduled = schedule(self.state, manifest['release_id'], platform, stage) if provider else None
         if stage == 'build':
             import shutil
             existing = self.ledger.db.execute('''SELECT id FROM effects
@@ -362,6 +389,8 @@ class Coordinator:
                 effect_kind = json.loads(pointer.read_text())['kind']
             previous = self.ledger.effect(manifest['release_id'], platform, effect_kind)
             if previous['state'] == 'confirmed':
+                if scheduled and time.time() < scheduled['next_poll_at']:
+                    return None
                 effect_kind = 'observe-after-' + previous['id']
             atomic_json(pointer, {'kind': effect_kind})
         if stage == 'acceptance' and 'max_age_seconds' in recipe:
@@ -411,6 +440,7 @@ class Coordinator:
             pending['log'].close()
             del self.running_workers[effect['id']]
             if process.returncode == 75:
+                self.provider_defer(manifest, platform, stage, effect, provider, work)
                 return None
             if process.returncode == 76:
                 raise ConnectionError(stage + ' provider temporarily unavailable; original request retained')
@@ -424,7 +454,19 @@ class Coordinator:
         if output.exists():
             report, digest = read_receipt(output, manifest, platform, stage)
             self.ledger.complete_effect(effect['id'], str(report.get('external_id', effect['id'])), digest)
+            if provider and stage != 'observe':
+                from release_provider import schedule_path
+                schedule_path(self.state, manifest['release_id'], platform, stage).unlink(missing_ok=True)
             return report, digest
+        if provider:
+            if scheduled and time.time() < scheduled['next_poll_at']:
+                return None
+            cooling = cooldown(self.state / 'provider-poll', provider)
+            if cooling:
+                bound = dict(cooling, release_id=manifest['release_id'], platform=platform,
+                             stage=stage, request_id=effect['id'])
+                defer_effect(self.state, manifest['release_id'], platform, stage, effect['id'], provider, 0, bound)
+                return None
         mode = 'reconcile' if marker.exists() else action
         argv = recipe.get(mode)
         if not argv:
@@ -435,7 +477,8 @@ class Coordinator:
         # out of shell commands. No shell=True and no textual command expansion.
         environment = dict(os.environ, GCHAT_RELEASE_MANIFEST=str(source),
                            GCHAT_RELEASE_RECEIPT=str(output), GCHAT_RELEASE_TARGET=platform,
-                           GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'])
+                           GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'],
+                           GCHAT_RELEASE_PROVIDER_STATE=str(self.state / 'provider-poll'))
         if stage == 'build' and self.minutes and platform != 'sdk':
             from release_minutes import budget
             try:
@@ -466,6 +509,8 @@ class Coordinator:
                     # resumed active release even when a provider poll is slow.
                     if background >= min(1, limit - 1):
                         return None
+            (work / 'provider-wait.json').unlink(missing_ok=True)
+            self.provider_defer(manifest, platform, stage, effect, provider, work)
             log_path = work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')
             log = log_path.open('xb')
             atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
@@ -483,11 +528,14 @@ class Coordinator:
             atomic_json(work / 'progress.json', {'stage': stage, 'started_at': int(time.time()),
                         'deadline_at': int(time.time()) + timeout, 'log': log_path.name})
             return None
+        (work / 'provider-wait.json').unlink(missing_ok=True)
+        self.provider_defer(manifest, platform, stage, effect, provider, work)
         atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
         with (work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')).open('xb') as log:
             result = subprocess.run(argv, env=environment, cwd=work, stdout=log,
                                     stderr=subprocess.STDOUT, timeout=recipe.get('timeout', 120))
         if result.returncode == 75:
+            self.provider_defer(manifest, platform, stage, effect, provider, work)
             return None  # asynchronous job accepted/running; next cycle reconciles
         if result.returncode == 76:
             raise ConnectionError(stage + ' provider temporarily unavailable; original request retained')
@@ -495,6 +543,9 @@ class Coordinator:
             raise ValueError(stage + ' worker failed; inspect retained worker log')
         report, digest = read_receipt(output, manifest, platform, stage)
         self.ledger.complete_effect(effect['id'], str(report.get('external_id', effect['id'])), digest)
+        if provider and stage != 'observe':
+            from release_provider import schedule_path
+            schedule_path(self.state, manifest['release_id'], platform, stage).unlink(missing_ok=True)
         return report, digest
 
     def step(self, release, platform):
@@ -528,7 +579,9 @@ class Coordinator:
                 elif state in ('verified', 'publishing', 'submitting'):
                     from release_flight import external_ios_wait
                     external = platform == 'ios' and external_ios_wait(self.state, self.ledger, release)
-                    budget(self.state, manifest, platform, state, paused=external, phase='publication')
+                    from release_provider import quota_waiting
+                    budget(self.state, manifest, platform, state,
+                           paused=external or quota_waiting(self.state, release, platform), phase='publication')
             if state == 'queued':
                 if self.build_admission_blocked(release, platform):
                     return  # Coalesce newer commits before dispatch; preserve frozen workers.
@@ -633,12 +686,20 @@ class Coordinator:
         if self.minutes:
             from release_control import qualifications
             qualifications(self)
+        from release_controller import reconcile as reconcile_controller
+        try:
+            reconcile_controller(self)
+        except (ValueError, OSError, subprocess.SubprocessError) as error:
+            atomic_json(self.state / 'controller-update-blocked.json', {
+                'schema': 1, 'reason': type(error).__name__, 'at': int(time.time())})
         self.reconcile_deployment()
         public = self.ledger.status()
         public['observed_at'] = int(time.time())
         if self.config.get('single_flight', False):
             from release_flight import select
             public['flight'] = select(self.state, self.ledger, minutes=self.minutes)
+        from release_provider import public_waits
+        public['provider_waits'] = public_waits(self.state)
         public['publication_policy'] = self.config.get('publication_policy')
         public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')}
                                     for item in self.running_workers.values() if item['process'].poll() is None]

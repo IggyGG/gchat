@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Dispatch once and reconcile exact-source GitHub workers by durable request ID."""
+from release_provider import github_download
 import argparse
 import base64
 import hashlib
@@ -30,10 +31,8 @@ def acceptance_archive(spec, destination):
 
 
 def gh(path, *, method='GET', body=None):
-    command = ['gh', 'api', '--method', method, 'repos/' + REPO + '/' + path]
-    if body is not None: command += ['--input', '-']
-    raw = subprocess.check_output(command, input=None if body is None else canonical(body), stderr=subprocess.PIPE)
-    return json.loads(raw) if raw.strip() else None
+    from release_provider import github
+    return github(path, repo=REPO, method=method, body=body)
 
 
 def extract(archive, destination):
@@ -77,7 +76,8 @@ def collect(manifest, target, work, request_id, reconcile=False):
         for project in ('gchat', 'gcoms'):
             ref_path = refs[project].removeprefix('refs/')
             try:
-                visible = json.loads(subprocess.check_output(['gh','api',f'repos/IggyGG/{project}/git/ref/{ref_path}'],stderr=subprocess.PIPE))
+                from release_provider import github
+                visible = github('git/ref/' + ref_path, repo='IggyGG/' + project)
             except subprocess.CalledProcessError:
                 return None  # publication of the immutable companion ref is still pending
             if visible.get('object', {}).get('sha') != manifest['sources'][project]['commit']:
@@ -115,8 +115,7 @@ def collect(manifest, target, work, request_id, reconcile=False):
     if not archive.exists():
         partial = work / 'native.partial'
         with partial.open('wb') as stream:
-            subprocess.run(['gh', 'api', f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'],
-                           stdout=stream, stderr=subprocess.PIPE, check=True, timeout=600)
+            github_download(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, stream=stream, timeout=600)
         with partial.open('rb') as stream: actual = hashlib.file_digest(stream, 'sha256').hexdigest()
         if 'sha256:' + actual != digest: raise ValueError('native artifact download hash mismatch')
         os.replace(partial, archive)
@@ -147,4 +146,6 @@ def main():
     atomic_json(output, result)
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    from release_provider import worker_main
+    worker_main(main)

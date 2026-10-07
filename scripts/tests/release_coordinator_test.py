@@ -479,7 +479,7 @@ class CoordinatorTests(unittest.TestCase):
                     patch('release_coordinator.time.sleep',side_effect=KeyboardInterrupt) as sleep:
                 with self.assertRaises(KeyboardInterrupt):release_coordinator.main()
                 tick.assert_called_once()
-                sleep.assert_called_once_with(30 if interval is None else interval)
+                sleep.assert_called_once_with(10 if interval is None else interval)
             # The next daemon can acquire the same lock after interruption.
 
     def test_selected_platforms_preserve_other_queued_and_active_work(self):

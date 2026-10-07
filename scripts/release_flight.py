@@ -19,6 +19,7 @@ def external_ios_wait(state, ledger, release):
     if not (work/'attempted.json').is_file():
         return False
     try:
+        from release_provider import external_wait_fresh
         waiting = json.loads((work/'external-prerequisite.json').read_text())
         observation_path = work/'encryption-observation.json'
         observed = json.loads(observation_path.read_text())
@@ -26,7 +27,7 @@ def external_ios_wait(state, ledger, release):
             or waiting.get('sources') != manifest['sources'] or waiting.get('platform') != 'ios'
             or waiting.get('kind') != 'apple_encryption_review'
             or waiting.get('uploaded') is not False or waiting.get('submitted') is not False
-            or type(waiting.get('at')) is not int or not 0 <= time.time()-waiting['at'] <= 600
+            or not external_wait_fresh(state, release, 'ios', stage, work.name, waiting.get('at'))
             or waiting.get('encryption_observation_sha256') != digest(observation_path)
             or observed.get('release_id') != release or observed.get('sources') != manifest['sources']
             or observed.get('state') != 'IN_REVIEW' or observed.get('includes_france') is not True):

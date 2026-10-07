@@ -6,6 +6,7 @@ encrypted delivery. Existing requests retain their original repository secret.
 Deployment SSH/signing credentials remain in the coordinator.
 Platform receipts require that platform's current/baseline and actual journey.
 """
+from release_provider import github_download
 import argparse
 from contextlib import closing
 import base64
@@ -460,8 +461,7 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
     if not archive.exists():
         partial = work / 'acceptance.partial'
         with partial.open('wb') as stream:
-            subprocess.run(['gh', 'api', f'repos/IggyGG/gchat/actions/artifacts/{artifact["id"]}/zip'],
-                           stdout=stream, stderr=subprocess.PIPE, check=True, timeout=300)
+            github_download(f'actions/artifacts/{artifact["id"]}/zip', repo='IggyGG/gchat', stream=stream, timeout=300)
         if 'sha256:' + digest(partial) != artifact['digest']: raise ValueError('native acceptance archive changed in transit')
         os.replace(partial, archive)
     if 'sha256:' + digest(archive) != artifact['digest']: raise ValueError('retained native acceptance archive changed')
@@ -486,12 +486,16 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
     rollback = json.loads((destination / 'rollback/report.json').read_text())
     network = json.loads((destination / 'network/report.json').read_text())
     qualify_native(report, rollback, network, manifest, target, intent['inputs'], int(time.time()))
+    relay_manifest, deployment_proof = manifest, None
+    if manifest.get('deployment_baseline'):
+        from release_platform_deployment import retained
+        relay_manifest, deployment_proof = retained(state, manifest)
     relays = []
     for relay in [item for item in inventory(json.loads(Path(config['deployment_file']).read_text())) if item.get('binary_name') == 'gcnode']:
-        proof = invoke(relay, 'observe', manifest, work / 'relays' / relay['id'])
+        proof = invoke(relay, 'observe', relay_manifest, work / 'relays' / relay['id'])
         if proof is None: return None
         if not (proof['healthy'] and proof['matches']): raise ValueError('compatible native relay is not running')
-        relays.append({'id': relay['id'], 'healthy': True, 'gcoms_commit': manifest['sources']['gcoms']['commit'],
+        relays.append({'id': relay['id'], 'healthy': True, 'gcoms_commit': relay_manifest['sources']['gcoms']['commit'],
                        'carrier_profile': manifest['policy']['carrier_profile']})
     check = network['file_check']; elapsed = network['elapsed_seconds']
     proof = {'schema': 1, 'passed': True, 'sources': manifest['sources'], 'release_id': manifest['release_id'],
@@ -502,7 +506,10 @@ def collect(state, config, manifest, target, work, request, *, frozen_revision=N
                 'total_elapsed_seconds': elapsed, 'source_sha256': check['sha256'], 'export_sha256': check['sha256'],
                 'abrupt_stop': True, 'verified_pieces_retained': True, 'same_identity': True, 'authenticated_chat_ack': True,
                 'hash_verified_after_reopen': True, 'cleanup_complete': True}}
-    verify_compatibility(proof, manifest, int(time.time()), target)
+    if deployment_proof is not None:
+        from release_platform_deployment import binding
+        proof['deployment_reuse_sha256'] = binding(deployment_proof)
+    verify_compatibility(proof, manifest, int(time.time()), target, deployment_proof)
     receipts = state / 'acceptance' / target; retained = receipts / manifest['release_id']; retained.mkdir(parents=True, exist_ok=True)
     import shutil
     saved = retained / 'native.zip'; shutil.copyfile(archive, saved)
@@ -541,4 +548,6 @@ def main():
     atomic_json(output, result)
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    from release_provider import worker_main
+    worker_main(main)

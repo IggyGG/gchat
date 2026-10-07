@@ -139,6 +139,23 @@ def discover(config, state, ledger):
                 'sources': upstream, 'inputs': current_inputs,
                 'artifact_inputs_unchanged': True, 'qualification_passed': False,
                 'reason': 'Qualification/controller revision; retain original artifact source bindings'})
+            if prior_inputs['controller'] != current_inputs['controller']:
+                from release_controller import queue, qualification_ref
+                observed = Path(state) / 'controller-observed.json'
+                previous = json.loads(observed.read_text()) if observed.exists() else {}
+                if previous.get('sources') != upstream:
+                    atomic_json(observed, {'sources': upstream, 'since': int(time.time())})
+                    return baseline['release_id']
+                if time.time() - previous['since'] < config.get('settle_seconds', 60):
+                    return baseline['release_id']
+                intent = queue(state, baseline, upstream, prior_inputs, current_inputs)
+                published = Path(state) / 'controller-updates' / intent['id'] / 'ref-published.json'
+                if not published.exists():
+                    for destination in config.get('candidate_remotes', []):
+                        subprocess.run(['git', '-C', str(root), 'push', destination,
+                            upstream['gchat']['commit'] + ':' + qualification_ref(intent)],
+                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+                    atomic_json(published, {'source': upstream['gchat'], 'ref': qualification_ref(intent)})
             return baseline['release_id']
     observed_path = Path(state) / 'observed-sources.json'
     observation = {'sources': upstream, 'policy': policy}

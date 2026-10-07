@@ -45,7 +45,7 @@ def file_policy(manifest, proof, platform):
     return {**policy, 'bytes': authorized['bytes']}
 
 
-def verify(proof, manifest, now, platform=None):
+def verify(proof, manifest, now, platform=None, deployment_proof=None):
     if (proof.get('schema') != 1 or proof.get('passed') is not True or
         proof.get('sources') != manifest['sources'] or proof.get('release_id') != manifest['release_id'] or
         proof.get('carrier_profile') != manifest['policy']['carrier_profile']):
@@ -58,9 +58,21 @@ def verify(proof, manifest, now, platform=None):
         raise ValueError('required application/upgrade acceptance remains incomplete')
     if 'file_qualification' in manifest['policy']:
         verify_file_check(proof.get('file_check'), file_policy(manifest, proof, platform))
+    relay_commit = manifest['sources']['gcoms']['commit']
+    if manifest.get('deployment_baseline'):
+        from release_platform_deployment import binding
+        if (platform != 'macos-x86_64' or manifest.get('selected_platforms') != ['macos-x86_64']
+                or not isinstance(deployment_proof, dict) or deployment_proof.get('passed') is not True
+                or deployment_proof.get('release_id') != manifest['release_id']
+                or deployment_proof.get('sources') != manifest['sources']
+                or deployment_proof.get('baseline_release_id') != manifest['deployment_baseline']
+                or not 0 <= now - deployment_proof.get('observed_at', 0) <= 300
+                or proof.get('deployment_reuse_sha256') != binding(deployment_proof)):
+            raise ValueError('Intel compatibility requires its separate fresh deployment provenance')
+        relay_commit = deployment_proof['baseline_sources']['gcoms']['commit']
     relays = proof.get('relays', [])
     if len(relays) != 8 or len({r.get('id') for r in relays}) != 8 or any(
-            r.get('healthy') is not True or r.get('gcoms_commit') != manifest['sources']['gcoms']['commit']
+            r.get('healthy') is not True or r.get('gcoms_commit') != relay_commit
             or r.get('carrier_profile') != manifest['policy']['carrier_profile'] for r in relays):
         raise ValueError('all eight compatible relay observations are required')
     if proof.get('rollback_state_compatible') is not True:
@@ -96,7 +108,11 @@ def main():
     manifest=validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
     source=a.receipts/(manifest['release_id']+'.json')
     if not source.is_file(): raise SystemExit(75)
-    proof=verify(json.loads(source.read_text()),manifest,int(time.time()),os.environ['GCHAT_RELEASE_TARGET'])
+    deployment_proof = None
+    if manifest.get('deployment_baseline'):
+        from release_platform_deployment import retained
+        _, deployment_proof = retained(a.receipts.parent.parent, manifest)
+    proof=verify(json.loads(source.read_text()),manifest,int(time.time()),os.environ['GCHAT_RELEASE_TARGET'],deployment_proof)
     output=Path(os.environ['GCHAT_RELEASE_RECEIPT']);dest=output.parent/'network-acceptance.json';shutil.copyfile(source,dest)
     linked=[]
     for ref in proof.get('evidence',[]):

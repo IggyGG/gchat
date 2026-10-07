@@ -32,6 +32,7 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
     workers['linux-x86_64']['infrastructure']=recipe('release_infrastructure_bundle.py','--state',state,'--config',config/'infrastructure.json',timeout=900)
     workers['linux-x86_64']['relay_load']=recipe('release_relay_load.py','--state',state,timeout=900)
     return {'schema':1,'publication_policy':'production-minutes-v1','automatic_recovery':True,'nonblocking_workers':True,'maximum_workers':3,'single_flight':True,
+        'poll_interval_seconds':10,'github_poll_interval_seconds':120,'store_poll_interval_seconds':900,
         'nonblocking_deployment':True,'maximum_acceptance_workers':6,'deployment_step_timeout_seconds':1800,
         'deployment_file':str(config/'deployment.json'),
         'maintenance':{'apt':{'root':str(state/'public/updates/apt'),'key':'F4F6F8550D2AA952A189640D58430838AA3230BB'}},'minimum_free_bytes':16*1024**3,'workers':workers,

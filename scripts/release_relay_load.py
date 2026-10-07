@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Collect the original Linux worker's source-bound relay load gate; never dispatch."""
+from release_provider import github_download
 import argparse
 import hashlib
 import json
@@ -239,8 +240,7 @@ def collect(state, manifest, output):
     if not archive.exists():
         temporary = output.parent / 'relay-load.partial'
         with temporary.open('wb') as stream:
-            subprocess.run(['gh', 'api', f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'],
-                           stdout=stream, stderr=subprocess.PIPE, check=True, timeout=600)
+            github_download(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, stream=stream, timeout=600)
         require(digest(temporary) == sha, 'relay load archive download hash mismatch')
         os.replace(temporary, archive)
     require(digest(archive) == sha, 'retained relay load archive changed')
@@ -276,4 +276,6 @@ def main():
     atomic_json(output, result)
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    from release_provider import worker_main
+    worker_main(main)

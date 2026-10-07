@@ -82,7 +82,8 @@ class InputTests(unittest.TestCase):
             commit('gchat', 'scripts/release_coordinator.py', '# new controller')
             second = fingerprints(roots, sources)
             self.assertEqual(first['artifacts'], second['artifacts'])
-            self.assertNotEqual(first['infrastructure'], second['infrastructure'])
+            self.assertEqual(first['infrastructure'], second['infrastructure'])
+            self.assertNotEqual(first['controller'], second['controller'])
             self.assertNotEqual(first['qualification'], second['qualification'])
             for path in ('release/downloads.json', 'scripts/website.py',
                          'scripts/release_inventory.py', 'scripts/release_sdk.py',
@@ -137,9 +138,11 @@ class InputTests(unittest.TestCase):
                 self.assertNotEqual(before['qualification'],after['qualification'])
                 if project == 'gcoms' or path.startswith('docs/'):
                     self.assertEqual(before['infrastructure'],after['infrastructure'])
-                elif path in ('.github/workflows/mobile-acceptance.yml',
-                              'scripts/release_compaction.py', 'release/automation/compaction.yaml'):
+                elif path == '.github/workflows/mobile-acceptance.yml':
                     self.assertNotEqual(before['infrastructure'],after['infrastructure'])
+                elif path in ('scripts/release_compaction.py', 'release/automation/compaction.yaml'):
+                    self.assertEqual(before['infrastructure'],after['infrastructure'])
+                    self.assertNotEqual(before['controller'],after['controller'])
             for project,path in [('gchat','scripts/mobile-build-new.py'),
                                  ('gchat','.github/workflows/ios-release.yml'),
                                  ('gchat','scripts/android-build.py'),
