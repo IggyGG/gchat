@@ -1462,7 +1462,7 @@
     }
   },
   "latest_observation": {
-    "observed_at": "2026-10-08T03:21:15.017131+00:00",
+    "observed_at": "2026-10-08T03:50:16.548863+00:00",
     "candidate": 171,
     "release_id": "cafb4646f7bbf8040a2a2f9d9e848a53a9fb8ce66addd67d97246739a6af85e5",
     "linux_version": "0.1.176",
@@ -1475,8 +1475,9 @@
       "targets": 17,
       "healthy_matching_targets": 17,
       "relays": 8,
-      "controller_source": "a28551cb68e6e044b4005ea6c83ec033d9768de4",
-      "actual_identity_evidence": "test-evidence/candidate171-20261008/fleet-final-acceptance-summary.json"
+      "controller_source": "8eb7e28eabf4a0c50011339d1b5d0c4f304ecf7a",
+      "actual_identity_evidence": "test-evidence/candidate171-20261008/fleet-final-acceptance-summary.json",
+      "controller_image": "sha256:d01714941b59dbf3306fb784db91e5ce52138932fd817a1fb7046ff5ebdc9433"
     },
     "load": {
       "clients": 64,
@@ -1499,7 +1500,7 @@
         "macos-x86_64",
         "sdk"
       ],
-      "ios": "verified; Apple encryption declaration IN_REVIEW; guarded predecessor handoff implemented and awaiting qualified controller activation"
+      "ios": "submitting; predecessor retired automatically; Apple encryption declaration IN_REVIEW; no upload/submission yet"
     },
     "local": {
       "installed_version": "0.1.176",
@@ -1517,10 +1518,9 @@
       ]
     },
     "limits": [
-      "The prior hub recorded a 60-second subscription gap; not erased by later observations.",
-      "Android worker launch is not proven. First fresh attempt returned installer=7 while controller IPC refused; second attempt is in progress with recovered IPC.",
-      "Apple review is external; verified is not available.",
-      "Another actor or automation restarted the local hub at 03:12 UTC; this workstream did not initiate it."
+      "Current process had31\u201343-second routing readiness gaps, exceeding the10-second target. Capacity/persistence counters do not explain the gaps.",
+      "First attempt returned installer=7 while fleet IPC refused. After IPC recovery, controller logs show AndroidX64 admission and bootstrap payload replies at03:22 and03:35 UTC, with zero runtime errors in the observed03:15:40\u201303:41:10 window. No transfer-contact, pull-offer or launch receipt was observed. Correlation to the root-started app process is incomplete because that process was later replaced; mobile source, APK contents and private app data remain uninspected.",
+      "The old unsubmitted162 entry was automatically superseded and171 advanced using its original qualified build. Fresh Apple observation remains IN_REVIEW. No upload or store submission has been claimed."
     ],
     "automation": "Push main, inspect release.py status; reuse passed exact-source build/load receipts, resume only a failed stage, retain rollback and all failure evidence.",
     "ios_handoff": {
@@ -1533,8 +1533,25 @@
       "source_audit_paths": 871,
       "independent_review": "passed",
       "application_changes": false,
-      "live_activation": false,
-      "checks": "Exact retained source/hash-bound no-upload evidence; no provider mutation markers or unknown/active worker; newer verified and deployed successor with confirmed compatibility; atomic audited state change; original effects/artifacts retained."
-    }
+      "live_activation": true,
+      "checks": "Exact retained source/hash-bound no-upload evidence; no provider mutation markers or unknown/active worker; newer verified and deployed successor with confirmed compatibility; atomic audited state change; original effects/artifacts retained.",
+      "actual_image_tests": 415,
+      "actual_source_files_verified": 263,
+      "qualification_sha256": "b20d31c74237839dd7c4c4159f46d857dd9ecbf86eb8aed651084172d0d71318",
+      "network_check": "full authenticated delivery passed",
+      "automatic_handoff": {
+        "at": "2026-10-08T03:45:35Z",
+        "predecessor_162": "superseded",
+        "successor_171": "submitting",
+        "original_build_retained": 37700241328,
+        "provider_upload_started": false,
+        "provider_submission_started": false,
+        "apple_observed_at": "2026-10-08T03:45:49Z",
+        "apple_state": "IN_REVIEW",
+        "evidence": "ios-automatic-handoff-live.json",
+        "evidence_sha256": "ee47280cd907aaebaeb7a59bce09c025aebfbfae05f57d61aaff8fd69d30ba02"
+      }
+    },
+    "final_audit": "test-evidence/candidate171-20261008/FINAL-AUDIT.json"
   }
 }
