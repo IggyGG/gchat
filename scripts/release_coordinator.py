@@ -548,6 +548,26 @@ class Coordinator:
             schedule_path(self.state, manifest['release_id'], platform, stage).unlink(missing_ok=True)
         return report, digest
 
+    def supersede_unsubmitted_ios(self, manifest, compatibility):
+        desired = self.state / 'deployment/desired.json'
+        release = manifest['release_id']
+        if (not desired.is_file() or json.loads(desired.read_text()).get('release_id') != release
+                or not self.deployment_ready(manifest)):
+            return
+        from release_flight import unsubmitted_ios_wait
+        rows = self.ledger.db.execute("""SELECT p.candidate FROM platforms p JOIN candidates c ON c.id=p.candidate
+            WHERE p.platform='ios' AND p.state='submitting'
+            AND c.seq < (SELECT seq FROM candidates WHERE id=?)""", (release,)).fetchall()
+        for row in rows:
+            previous = row['candidate']
+            if any(item['release_id'] == previous and item['platform'] == 'ios'
+                   for item in self.running_workers.values()):
+                continue
+            evidence = unsubmitted_ios_wait(self.state, self.ledger, previous)
+            if evidence:
+                self.ledger.supersede_unsubmitted_ios(previous, release,
+                                                      evidence=evidence, compatibility=compatibility)
+
     def step(self, release, platform):
         manifest = self.ledger.manifest(release)
         target = self.ledger.target(release, platform)
@@ -606,6 +626,8 @@ class Coordinator:
                 if platform == 'sdk' and report.get('consumers_compatible') is not True:
                     raise ValueError('SDK consumer compatibility receipt is missing')
                 if platform in {'ios', 'android'}:
+                    if platform == 'ios':
+                        self.supersede_unsubmitted_ios(manifest, evidence)
                     other = self.ledger.db.execute("""SELECT 1 FROM platforms
                         WHERE platform=? AND candidate!=?
                         AND (state IN ('submitting','processing','in_review') OR

@@ -1460,5 +1460,81 @@
       "elapsed_seconds": 48.726,
       "original_request_retained": true
     }
+  },
+  "latest_observation": {
+    "observed_at": "2026-10-08T03:21:15.017131+00:00",
+    "candidate": 171,
+    "release_id": "cafb4646f7bbf8040a2a2f9d9e848a53a9fb8ce66addd67d97246739a6af85e5",
+    "linux_version": "0.1.176",
+    "sources": {
+      "gchat": "29d8b692168ea9835867954708146394a110c68a",
+      "gcoms": "55aa58ccf2ed9a478e911d368a7444523386a413"
+    },
+    "fleet": {
+      "state": "deployed",
+      "targets": 17,
+      "healthy_matching_targets": 17,
+      "relays": 8,
+      "controller_source": "a28551cb68e6e044b4005ea6c83ec033d9768de4",
+      "actual_identity_evidence": "test-evidence/candidate171-20261008/fleet-final-acceptance-summary.json"
+    },
+    "load": {
+      "clients": 64,
+      "duration_seconds": 1800.004,
+      "delivered": 720,
+      "expected": 720,
+      "refusals": 0,
+      "p95_seconds": 1.792,
+      "file_bytes": 5235248,
+      "relay_restart_seconds": 0.643,
+      "receipt_sha256": "307d38a4139db693363ddff26bd79f8785de6fcfcae14ebd1ca82283297d3fd9",
+      "rerun": false
+    },
+    "publication": {
+      "available": [
+        "android",
+        "linux-x86_64",
+        "windows-x86_64",
+        "macos-arm64",
+        "macos-x86_64",
+        "sdk"
+      ],
+      "ios": "verified; Apple encryption declaration IN_REVIEW; guarded predecessor handoff implemented and awaiting qualified controller activation"
+    },
+    "local": {
+      "installed_version": "0.1.176",
+      "gchat_sha256": "97a48b4dbdbdc940c3a842289a2ec8370c3fdf0fc6b409ef93b5cdc6c2f12dde",
+      "desktop_sha256": "c6e2a942a1d3fa49287f9f831e8d25e2c2fad9aa7f997e6a2c8ee7d71443ddc2",
+      "desktop_visible": true,
+      "launcher_uses_packaged_binary": true,
+      "current_hub_pid": 849610,
+      "controller_sdk_connected": true,
+      "automatic_activation_failure_preserved": true,
+      "watchdog": "inactive",
+      "evidence": [
+        "test-evidence/candidate171-20261008/activation-reconciliation.json",
+        "test-evidence/candidate171-20261008/local-ipc-after-unexpected-restart.json"
+      ]
+    },
+    "limits": [
+      "The prior hub recorded a 60-second subscription gap; not erased by later observations.",
+      "Android worker launch is not proven. First fresh attempt returned installer=7 while controller IPC refused; second attempt is in progress with recovered IPC.",
+      "Apple review is external; verified is not available.",
+      "Another actor or automation restarted the local hub at 03:12 UTC; this workstream did not initiate it."
+    ],
+    "automation": "Push main, inspect release.py status; reuse passed exact-source build/load receipts, resume only a failed stage, retain rollback and all failure evidence.",
+    "ios_handoff": {
+      "source_changes": [
+        "scripts/release_coordinator.py",
+        "scripts/release_flight.py",
+        "scripts/release_ledger.py"
+      ],
+      "tests_passed": 442,
+      "source_audit_paths": 871,
+      "independent_review": "passed",
+      "application_changes": false,
+      "live_activation": false,
+      "checks": "Exact retained source/hash-bound no-upload evidence; no provider mutation markers or unknown/active worker; newer verified and deployed successor with confirmed compatibility; atomic audited state change; original effects/artifacts retained."
+    }
   }
 }

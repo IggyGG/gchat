@@ -165,6 +165,31 @@ class Ledger:
                 if newest is None or newest[0] < sequence:
                     self.db.execute('INSERT OR REPLACE INTO latest VALUES(?,?)', (platform, release))
 
+    def supersede_unsubmitted_ios(self, release, successor, *, evidence, compatibility):
+        """Release only proven pre-upload ownership; keep every provider effect."""
+        if any(not isinstance(value, str) or len(value) != 64 or
+               any(c not in '0123456789abcdef' for c in value) for value in (evidence, compatibility)):
+            raise ValueError('iOS handoff needs verified evidence')
+        with self.transaction():
+            current, following = self.target(release, 'ios'), self.target(successor, 'ios')
+            sequence = dict(self.db.execute('SELECT id,seq FROM candidates WHERE id IN (?,?)', (release, successor)))
+            compatible = self.db.execute("SELECT state,evidence FROM effects WHERE candidate=? AND platform='ios' AND kind='compatibility'",
+                                         (successor,)).fetchone()
+            submitted = self.db.execute("SELECT state,external_id,evidence FROM effects WHERE candidate=? AND platform='ios' AND kind='submit'",
+                                        (release,)).fetchone()
+            if (current['state'] != 'submitting' or following['state'] != 'verified'
+                    or sequence[successor] <= sequence[release] or compatible is None
+                    or compatible['state'] != 'confirmed' or compatible['evidence'] != compatibility
+                    or submitted is None or tuple(submitted) != ('reserved', None, None)):
+                raise ValueError('iOS predecessor is not eligible for pre-upload handoff')
+            reason = 'Unsubmitted iOS prerequisite wait superseded by ' + successor
+            self.db.execute("UPDATE platforms SET state='superseded',resume_state=NULL,reason=? WHERE candidate=? AND platform='ios'",
+                            (reason, release))
+            self.db.execute('INSERT INTO events(time,candidate,platform,state,detail) VALUES(?,?,?,?,?)',
+                            (int(time.time()), release, 'ios', 'superseded', canonical({
+                                'reason': reason, 'successor': successor, 'pre_upload_evidence': evidence,
+                                'successor_compatibility': compatibility}).decode()))
+
     def effect(self, release, platform, kind):
         """Reserve an external action BEFORE sending it. Unknown outcome is not a retry.
 
