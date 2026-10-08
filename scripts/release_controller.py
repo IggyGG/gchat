@@ -232,7 +232,8 @@ def kubernetes_qualify(intent, bundle, image, target, work):
                 'securityContext': {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
                                     'capabilities': {'drop': ['ALL']}},
                 'volumeMounts': [{'name': 'tmp', 'mountPath': '/tmp'}]}],
-            'volumes': [{'name': 'tmp', 'emptyDir': {'sizeLimit': '256Mi'}}]}}}}
+            # Match CI's bounded tmpfs; test fsync must not depend on host journal load.
+            'volumes': [{'name': 'tmp', 'emptyDir': {'medium': 'Memory', 'sizeLimit': '256Mi'}}]}}}}
     if dns is not None:
         job['spec']['template']['spec'].update(dnsPolicy='None', dnsConfig={'nameservers': dns})
     marker = work / 'kubernetes-request.json'
@@ -264,7 +265,19 @@ def kubernetes_qualify(intent, bundle, image, target, work):
             or actual['spec'].get('activeDeadlineSeconds') != 600):
         raise ValueError('controller Kubernetes qualification job changed')
     status = actual.get('status', {})
-    if status.get('failed'): raise ValueError('controller Kubernetes runtime qualification failed')
+    if status.get('failed'):
+        failure = {'job': actual}
+        save(work / 'kubernetes-failure.json', failure)
+        try:
+            failure['pods'] = json.loads(kube('get', 'pods', '-l', 'job-name=' + name, '-o', 'json'))['items']
+            save(work / 'kubernetes-failure.json', failure)
+            for index, pod in enumerate(failure['pods']):
+                logs = kube('logs', pod['metadata']['name'], '-c', 'qualify')
+                (work / f'kubernetes-failure-{index}.log').write_bytes(logs)
+        except (subprocess.SubprocessError, ValueError) as error:
+            failure['diagnostic_error'] = str(error)
+            save(work / 'kubernetes-failure.json', failure)
+        raise ValueError('controller Kubernetes runtime qualification failed')
     if not status.get('succeeded'): return None
     pods = json.loads(kube('get', 'pods', '-l', 'job-name=' + name, '-o', 'json'))['items']
     if len(pods) != 1: raise ValueError('controller qualification pod is ambiguous')

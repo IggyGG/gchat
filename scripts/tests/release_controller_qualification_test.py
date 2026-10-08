@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -70,7 +71,8 @@ class ControllerQualificationTests(unittest.TestCase):
                     'matchExpressions': [{'key': 'kubernetes.io/hostname',
                         'operator': 'NotIn', 'values': ['triform-1']}]}]}}})
             self.assertFalse(job['spec']['template']['spec']['automountServiceAccountToken'])
-            self.assertEqual(job['spec']['template']['spec']['volumes'], [{'name': 'tmp', 'emptyDir': {'sizeLimit': '256Mi'}}])
+            self.assertEqual(job['spec']['template']['spec']['volumes'],
+                             [{'name': 'tmp', 'emptyDir': {'medium': 'Memory', 'sizeLimit': '256Mi'}}])
             job['status'] = {'succeeded': 1}
             pod = {'metadata': {'name': 'qualified-pod', 'uid': 'exact-pod'}, 'status': {'containerStatuses': [{
                 'imageID': image, 'state': {'terminated': {'exitCode': 0}}}]}}
@@ -101,7 +103,7 @@ class ControllerQualificationTests(unittest.TestCase):
                     kube.assert_not_called()
                     self.assertFalse((work / 'kubernetes-request.json').exists())
 
-    def test_retained_job_cannot_change_dns_or_scheduling_constraints(self):
+    def test_retained_job_cannot_change_dns_scheduling_or_temporary_storage(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); intent = fixtures.intent_fixture(root)
             bundle, _, _ = bundle_fixture(root, intent)
@@ -111,12 +113,45 @@ class ControllerQualificationTests(unittest.TestCase):
             with patch('release_controller.subprocess.check_output', side_effect=[b'', b'created']):
                 self.assertIsNone(controller.kubernetes_qualify(intent, bundle, image, target, work))
             for key, replacement in (('dnsPolicy', 'ClusterFirst'), ('dnsConfig', {'nameservers': ['8.8.8.8']}),
-                                     ('affinity', {})):
+                                     ('affinity', {}),
+                                     ('volumes', [{'name': 'tmp', 'emptyDir': {'sizeLimit': '256Mi'}}])):
                 job = controller.read(work / 'kubernetes-request.json')
                 job['spec']['template']['spec'][key] = replacement
                 with self.subTest(key=key), patch('release_controller.subprocess.check_output', return_value=canonical(job)):
                     with self.assertRaisesRegex(ValueError, 'qualification job changed'):
                         controller.kubernetes_qualify(intent, bundle, image, target, work)
+
+    def test_failed_job_retains_status_and_available_pod_logs_without_qualification(self):
+        for state in ('available', 'deleted', 'logs_unavailable'):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); intent = fixtures.intent_fixture(root)
+                bundle, _, _ = bundle_fixture(root, intent)
+                work = root / 'proof'; work.mkdir()
+                target = {'probe_namespace': 'ghost-bench'}
+                image = 'registry@sha256:' + 'b' * 64
+                with patch('release_controller.subprocess.check_output', side_effect=[b'', b'created']):
+                    controller.kubernetes_qualify(intent, bundle, image, target, work)
+                job = controller.read(work / 'kubernetes-request.json')
+                job['status'] = {'failed': 1}
+                pod = {'metadata': {'name': 'failed-pod', 'uid': 'failed-uid'},
+                       'status': {'containerStatuses': [{'state': {'terminated': {'exitCode': 1}}}]}}
+                def failed(argv, **kwargs):
+                    if 'pods' in argv: return canonical({'items': [] if state == 'deleted' else [pod]})
+                    if 'logs' in argv:
+                        if state == 'logs_unavailable': raise subprocess.CalledProcessError(1, argv)
+                        return b'original runtime failure\n'
+                    return canonical(job)
+                with patch('release_controller.subprocess.check_output', side_effect=failed):
+                    with self.assertRaisesRegex(ValueError, 'runtime qualification failed'):
+                        controller.kubernetes_qualify(intent, bundle, image, target, work)
+                retained = controller.read(work / 'kubernetes-failure.json')
+                self.assertEqual(retained['job'], job)
+                self.assertEqual(retained['pods'], [] if state == 'deleted' else [pod])
+                self.assertEqual('diagnostic_error' in retained, state == 'logs_unavailable')
+                log = work / 'kubernetes-failure-0.log'
+                if state == 'available': self.assertEqual(log.read_bytes(), b'original runtime failure\n')
+                else: self.assertFalse(log.exists())
+                self.assertFalse((work / 'kubernetes-runtime.json').exists())
 
 
 if __name__ == '__main__': unittest.main()
