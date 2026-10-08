@@ -213,7 +213,7 @@ def provider(state, manifest, target):
     retained = retained_provider(directory, manifest, target, proof, receipts['verify'], sha)
     with zipfile.ZipFile(archive) as source:
         reports = ([name for name in source.namelist() if name == retained['manifest']] if retained else
-                   [name for name in source.namelist() if name.endswith('build.json') and not any(
+                   [name for name in source.namelist() if Path(name).name == 'build.json' and not any(
                        part in ('inputs', 'build', 'native-tests', 'infrastructure') for part in Path(name).parts[:-1])])
         if len(reports) != 1: raise ValueError('acceptance provider build report is ambiguous')
         build = json.loads(source.read(reports[0]))

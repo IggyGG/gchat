@@ -40,7 +40,7 @@ def acquire(state, manifest, work):
         raise ValueError('canary provider archive has no verified build binding')
     with zipfile.ZipFile(archive) as source:
         names = source.namelist()
-        reports = [n for n in names if n.endswith('build.json') and not any(
+        reports = [n for n in names if Path(n).name == 'build.json' and not any(
             part in ('inputs', 'build', 'native-tests', 'infrastructure') for part in Path(n).parts[:-1])]
         if len(reports) != 1 or len(names) != len(set(names)):
             raise ValueError('canary needs one unambiguous native installer report')
