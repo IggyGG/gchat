@@ -331,6 +331,87 @@ class DiskImageApplicationTest(unittest.TestCase):
 
 
 class LinuxApplicationTest(unittest.TestCase):
+    def test_retained_linux_bundles_without_building_and_checks_both_executable_hashes(self):
+        from release_automation_test import candidate
+        manifest = candidate()
+        for changed_desktop in (False, True):
+            with self.subTest(changed_desktop=changed_desktop), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); output = root / 'output'; output.mkdir()
+                config = root / 'apps/client/src-tauri/tauri.conf.json'; config.parent.mkdir(parents=True)
+                config.write_text(json.dumps({'version': manifest['versions']['linux-x86_64']}))
+                manifest_path = root / 'candidate.json'; manifest_path.write_text(json.dumps(manifest))
+                target = output / 'build/x86_64-unknown-linux-gnu/release'
+                expected = {'gchat': b'qualified cli', 'gchat-desktop': b'qualified __TAURI_BUNDLE_TYPE_VAR_UNK desktop'}
+                packaged_desktop = expected['gchat-desktop'].replace(b'_VAR_UNK', b'_VAR_DEB', 1)
+                report = {'files': {'bin/' + name: hashlib.sha256(data).hexdigest() for name, data in expected.items()}}
+                commands = []
+
+                def stage(retained, build, checkout, actual_manifest, inputs, environment):
+                    self.assertEqual((retained, build, checkout, actual_manifest, inputs),
+                                     (root / 'retained', output / 'build', root, manifest, {'qualified': True}))
+                    target.mkdir(parents=True)
+                    for name, data in expected.items(): (target / name).write_bytes(data)
+                    (retained / 'bin').mkdir(parents=True)
+                    (retained / 'bin/gchat-desktop').write_bytes(expected['gchat-desktop'])
+                    return report
+
+                def execute(command, **kwargs):
+                    commands.append(command)
+                    if command[:3] == ['npm', 'run', 'tauri']:
+                        self.assertEqual(command[6], 'bundle')
+                        self.assertEqual(command[command.index('--target') + 1], 'x86_64-unknown-linux-gnu')
+                        for name in ('deb/GChat.deb', 'appimage/GChat.AppImage'):
+                            path = target / 'bundle' / name; path.parent.mkdir(parents=True, exist_ok=True)
+                            path.write_bytes(b'package')
+                        (target / 'bundle/appimage/GChat.AppImage.sig').write_bytes(b'updater signature')
+                    elif command[:2] == ['dpkg-deb', '--extract']:
+                        binaries = Path(command[-1]) / 'usr/bin'; binaries.mkdir(parents=True)
+                        for name, data in expected.items():
+                            if name == 'gchat-desktop': data = b'changed' if changed_desktop else packaged_desktop
+                            (binaries / name).write_bytes(data)
+                    return subprocess.CompletedProcess(command, 0)
+
+                def metadata(command, **kwargs):
+                    return manifest['sources']['gchat']['commit'] + '\n' if command[0] == 'git' else b'{}'
+
+                with patch('linux_build_artifacts.stage_desktop', side_effect=stage), \
+                     patch.object(installer, 'run', side_effect=execute), \
+                     patch.object(installer, 'required', return_value='test-key'), \
+                     patch.object(installer, 'fingerprint', return_value='A' * 40), \
+                     patch.object(installer, 'verify'), patch.object(installer, 'verify_resolved_protocol'), \
+                     patch.object(installer.subprocess, 'check_output', side_effect=metadata):
+                    arguments = ('linux-x86_64', output, {'GCHAT_RELEASE_MANIFEST': str(manifest_path)},
+                                 {'name': 'Gh0st'}, 'self-signed', root, root / 'retained', {'qualified': True})
+                    if changed_desktop:
+                        with self.assertRaisesRegex(ValueError, 'retained native build'): installer.bundle(*arguments)
+                    else:
+                        _, entries = installer.bundle(*arguments)
+                        self.assertEqual([entry['sha256'] for entry in entries],
+                                         [hashlib.sha256(packaged_desktop).hexdigest(), report['files']['bin/gchat']])
+                self.assertFalse(any(command[:2] == ['cargo', 'build'] or 'scripts/collect-notices.py' in command for command in commands))
+
+    def test_retained_deb_allows_only_the_first_exact_tauri_marker_mutation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'desktop'
+            marker = b'__TAURI_BUNDLE_TYPE_VAR_UNK'
+            original = b'ELF prefix' + marker + b'code' + marker + b'suffix'
+            path.write_bytes(original)
+            expected_sha = hashlib.sha256(original).hexdigest()
+            actual = installer.retained_deb_desktop_sha(path, expected_sha)
+            packaged = original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_DEB', 1)
+            self.assertEqual(actual, hashlib.sha256(packaged).hexdigest())
+            for changed in (original, packaged + b'extra', packaged.replace(b'code', b'evil'),
+                            original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_DEB'),
+                            original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_APP', 1)):
+                with self.subTest(changed=changed):
+                    self.assertNotEqual(actual, hashlib.sha256(changed).hexdigest())
+            path.write_bytes(original + b'tampered retained artifact')
+            with self.assertRaisesRegex(ValueError, 'desktop changed'):
+                installer.retained_deb_desktop_sha(path, expected_sha)
+            path.write_bytes(b'missing marker')
+            with self.assertRaisesRegex(ValueError, 'missing.*marker'):
+                installer.retained_deb_desktop_sha(path, hashlib.sha256(path.read_bytes()).hexdigest())
+
     def test_linux_bundle_requires_the_shipped_cli_to_match_its_build(self):
         for shipped in (b'qualified cli', b'changed cli', None):
             with self.subTest(shipped=shipped), tempfile.TemporaryDirectory() as temporary:

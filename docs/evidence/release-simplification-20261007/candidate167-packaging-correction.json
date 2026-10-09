@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "original_release": 167,
+  "original_linux_run": 37659106992,
+  "native_qualifications_passed": true,
+  "original_packaging_passed": false,
+  "actual_bundle_reproduction": {
+    "schema": 1,
+    "passed": true,
+    "original_run_id": 37659106992,
+    "original_artifact_id": 11502572095,
+    "original_artifact_sha256": "7660997949cbcd757623729b539c2188f2178d8b668780014602d429bb37059f",
+    "retained_receipt_sha256": "1768c31a3ee30faaac7eb85c42e28b344c24fee024f22e1face0aef3bf0cbb36",
+    "command": [
+      "npm",
+      "exec",
+      "--yes",
+      "--package=@tauri-apps/cli@2.11.4",
+      "--",
+      "tauri",
+      "bundle",
+      "--target",
+      "x86_64-unknown-linux-gnu",
+      "--bundles",
+      "deb",
+      "--ci"
+    ],
+    "native_compilation": false,
+    "signed_release": false,
+    "diagnostic_scope": "Actual qualified binaries bundled by pinned Tauri using minimal packaging metadata; production protected signing and original app resources are not requalified here.",
+    "original_desktop_sha256": "691e08dbee14cf5a6b674bc7f1a3b6c0b6ab720c1c76493616a94670c6d921fa",
+    "packaged_desktop_sha256": "ddb714dbab02f195b9b3d2665708da09679f43d00e59f99b502f0e18ab9b31c8",
+    "cli_sha256": "3701298012aae3cf625abf8260f325892f729091d9349e673bf1b10e43085e4d",
+    "changed_byte_offsets": [
+      5122439,
+      5122440,
+      5122441
+    ],
+    "raw_comparison_reproduced_failure": true,
+    "exact_tauri_marker_comparison_passed": true,
+    "log_sha256": "db965025a1ca633f84887372ed46859d663bbedd32a4f9ba1ba7a19bbe175d94"
+  },
+  "focused_tests": {
+    "installer_publisher": 22,
+    "infrastructure_build": 2,
+    "mobile_acceptance": 73
+  },
+  "portability_corrections": [
+    "Use fixture CA bytes when testing Linux packaging on other platforms; retain copy and SHA verification.",
+    "Use a fixed absolute test deadline; do not change production timeout behavior."
+  ],
+  "remaining": [
+    "new protected signing",
+    "full 64-client 30-minute load gate",
+    "managed deployment and installed hub activation"
+  ]
+}

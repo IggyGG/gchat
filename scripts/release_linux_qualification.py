@@ -90,6 +90,11 @@ def verify(root, manifest, environment, scope=None):
             'native dependency inputs belong to another source/platform')
     verify_native_ci_inputs(native, inputs)
     verify_retained_inputs(root / 'paired-gchat', inputs)
+    if 'linux_build' in report:
+        from linux_build_artifacts import verify as verify_build
+        receipt = file_reference(root, report['linux_build'])
+        require(receipt == root / 'paired-gchat/linux-build/receipt.json', 'unexpected retained Linux build location')
+        verify_build(receipt.parent, manifest, 'linux_desktop', environment, inputs)
     if scope is None and 'scopes' in report:
         require(set(report['scopes']) == set(SCOPES), 'both original scope receipts are required')
         for name in SCOPES:
@@ -152,6 +157,9 @@ def qualify(workspace, manifest, environment, scope=None):
                 for key, name in [('native_ci', 'native-ci.json'), ('inputs', 'inputs.json')]:
                     path = root / 'paired-gchat' / name
                     report[key] = {'path': path.relative_to(root).as_posix(), 'sha256': digest(path)}
+                retained = root / 'paired-gchat/linux-build/receipt.json'
+                if retained.is_file():
+                    report['linux_build'] = {'path': retained.relative_to(root).as_posix(), 'sha256': digest(retained)}
             report['passed'] = True
     finally:
         (root / 'qualification.json').write_bytes(canonical(report))

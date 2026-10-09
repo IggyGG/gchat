@@ -4,6 +4,7 @@
 Runs the existing native Rust matrix and both mobile variants (base/push). All
 three jobs bind the immutable companion ref; unchanged SDK inputs reuse receipts.
 """
+from release_provider import github_download
 import argparse
 import hashlib
 import json
@@ -26,11 +27,9 @@ JOBS={'rust':('rust-integrations.yml','GComs SDK Rust ',{}),
       'mobile-base':('mobile-integrations.yml','GComs SDK Mobile ',{'platform':'all','role':'all','push':False}),
       'mobile-push':('mobile-integrations.yml','GComs SDK Mobile ',{'platform':'all','role':'all','push':True})}
 
-def api(path,body=None):
-    args=['gh','api','--method','POST' if body is not None else 'GET','repos/'+REPO+'/'+path]
-    if body is not None:args+=['--input','-']
-    result=subprocess.check_output(args,input=canonical(body) if body is not None else None,stderr=subprocess.PIPE)
-    return json.loads(result) if result.strip() else None
+def api(path,body=None,*,refresh=False):
+    from release_provider import github
+    return github(path, repo=REPO, method='POST' if body is not None else 'GET', body=body, refresh=refresh)
 
 def expected_names(kind,commit):
     if kind=='rust':return {f'rust-integrations-{runner}-{commit}' for runner in ('ubuntu-24.04','macos-15','macos-15-intel','windows-2022')}
@@ -47,6 +46,22 @@ def matching_run(run, kind, commit, request, prefix):
     return (kind in ('rust', 'mobile-base') and run.get('event') == 'push'
             and run.get('head_branch') == 'main'
             and run.get('display_title') == prefix + commit)
+
+
+def select_run(found, commit, workflow, dispatched):
+    for run in found:
+        if (run.get('head_sha') != commit
+                or run.get('head_repository', {}).get('full_name') != REPO
+                or run.get('path') != '.github/workflows/' + workflow):
+            raise ValueError('SDK workflow/source mismatch')
+    requested = [run for run in found if run.get('event') == 'workflow_dispatch']
+    if len(requested) > 1 or (not requested and len(found) > 1):
+        raise ValueError('duplicate SDK dispatch requires reconciliation')
+    if requested:
+        return requested[0]
+    # An attempted/observed dispatch owns this request even while GitHub's
+    # listing is incomplete. A main-push pass cannot replace its unknown result.
+    return None if dispatched or not found else found[0]
 
 
 def qualification_inputs(repository, commit):
@@ -138,14 +153,25 @@ def build(manifest,cache):
             archives.extend(reused)
             continue
         work=cache/kind;work.mkdir(exist_ok=True);request=hashlib.sha256(canonical([commit,kind])).hexdigest()
-        found=[]
-        for page in range(1,11):
-            runs=api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}')['workflow_runs']
-            found += [r for r in runs if matching_run(r,kind,commit,request,prefix)]
-            if len(runs)<100 or found:break
-        if len(found)>1:raise ValueError('duplicate SDK dispatch requires reconciliation')
-        if not found:
-            marker=work/'dispatch.json'
+        marker=work/'dispatch.json'
+        for refresh in (False,True):
+            found=[]
+            for page in range(1,11):
+                runs=api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}',
+                         **({'refresh':True} if refresh else {}))['workflow_runs']
+                found += [r for r in runs if matching_run(r,kind,commit,request,prefix)
+                          or (r.get('event') == 'workflow_dispatch' and r.get('display_title') == prefix + request)]
+                if len(runs)<100:break
+            # Cached absence cannot authorize a new external effect. Recheck
+            # GitHub once before the first dispatch; existing intents still wait.
+            if found or marker.exists():break
+        # Retain both independently created provider records; selecting one
+        # neither cancels the other nor changes its source or original result.
+        for run in found:
+            retained = work / ('observed-run-' + str(int(run['id'])) + '.json')
+            if not retained.exists():atomic_json(retained,run)
+        run=select_run(found,commit,workflow,marker.exists())
+        if run is None:
             if not marker.exists():
                 atomic_json(marker,{'at':int(time.time()),'request':request,'commit':commit})
                 api(f'actions/workflows/{workflow}/dispatches',{'ref':manifest['refs']['gcoms'].removeprefix('refs/heads/'),
@@ -153,9 +179,8 @@ def build(manifest,cache):
             elif time.time()-json.loads(marker.read_text())['at']>1800:
                 raise ValueError('SDK dispatch outcome unknown; no blind resubmission')
             complete=False;continue
-        run=found[0]
-        if run['head_sha']!=commit or run.get('head_repository',{}).get('full_name')!=REPO or run['path']!='.github/workflows/'+workflow:
-            raise ValueError('SDK workflow/source mismatch')
+        if run.get('event') == 'workflow_dispatch' and not marker.exists():
+            atomic_json(marker,{'at':int(time.time()),'request':request,'commit':commit,'observed_run':run['id']})
         if run['status']!='completed':complete=False;continue
         if run['conclusion']!='success':raise ValueError('native SDK qualification failed: '+str(run['id']))
         values=api(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts'];names=expected_names(kind,commit)
@@ -167,7 +192,7 @@ def build(manifest,cache):
             if not 0<artifact['size_in_bytes']<=2*1024**3:raise ValueError('SDK archive exceeds storage budget')
             if not path.exists():
                 temporary=path.with_suffix('.partial')
-                with temporary.open('wb') as stream:subprocess.run(['gh','api',f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'],stdout=stream,stderr=subprocess.PIPE,check=True,timeout=600)
+                with temporary.open('wb') as stream:github_download(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, stream=stream, timeout=600)
                 if 'sha256:'+digest(temporary)!=expected:raise ValueError('SDK archive download mismatch')
                 os.replace(temporary,path)
             if 'sha256:'+digest(path)!=expected:raise ValueError('retained SDK archive changed')
@@ -294,4 +319,6 @@ def main():
         'passed':True,'source_unchanged':True,'consumers_compatible':True,'evidence':evidence,
         **({'qualification_reuse':qualification_reuse} if qualification_reuse is not None else {})})
 
-if __name__=='__main__':main()
+if __name__ == '__main__':
+    from release_provider import worker_main
+    worker_main(main)

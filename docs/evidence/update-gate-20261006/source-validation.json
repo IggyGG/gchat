@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "private GChat execution-liveness repair; no public API, journal schema or wire changes",
+  "gchat_parent": "9826dfed6aea3603361218b0a51def5b77a09aa6",
+  "gcoms_source": "1d9c8a3206c175a20109731de5d9e7b6d55d8a75",
+  "files": {
+    "crates/core/src/chat_service/rpc.rs": "ad6d5a8a0440d2f7e51c76222034fd41d4780abee19a1d36db64e920fe0afb6c",
+    "crates/core/src/chat_service/rpc_liveness_tests.rs": "b5dc956cf2c4511d2f3cf90414fe013674f21ee368179b8fec15730e88b4ab99"
+  },
+  "checks": [
+    {
+      "name": "rpc-tests",
+      "exit_code": 0,
+      "command": [
+        "cargo",
+        "--config",
+        "/run/media/user/SSD-2/retained/gchat-bootstrap-rig-20261006/build/source.toml",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "gchat-core",
+        "--lib",
+        "--features",
+        "gc2-carrier",
+        "chat_service::rpc::",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "seconds": 151.85158235905692,
+      "log_sha256": "1cf9493ca8d7978c5b9e85e373004550d6246c4e360b4d7616a4a108f0186b86"
+    },
+    {
+      "name": "typed-invitation",
+      "exit_code": 0,
+      "command": [
+        "cargo",
+        "--config",
+        "/run/media/user/SSD-2/retained/gchat-bootstrap-rig-20261006/build/source.toml",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "gchat-core",
+        "--lib",
+        "--features",
+        "gc2-carrier",
+        "chat_service::invitation_journey_tests::typed_invitation_response_retries_and_reopens_without_another_mint",
+        "--",
+        "--exact",
+        "--test-threads=1"
+      ],
+      "seconds": 43.03643069299869,
+      "log_sha256": "4eb2281f5e885a74558540e7e0cdbd5957d2f3b77da1c467078c044b3bf253e1"
+    },
+    {
+      "name": "clippy",
+      "exit_code": 0,
+      "command": [
+        "/home/user/.cargo/bin/cargo",
+        "clippy",
+        "--config",
+        "/run/media/user/SSD-2/retained/gchat-bootstrap-rig-20261006/build/source.toml",
+        "--offline",
+        "--locked",
+        "-p",
+        "gchat-core",
+        "--lib",
+        "--tests",
+        "--features",
+        "gc2-carrier",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "seconds": 103.70924537698738,
+      "log_sha256": "73cb00640662375536c236379cff630eee28bff147daa6e0a715c78de68e06f4"
+    }
+  ],
+  "assertions": [
+    "An admitted worker with a durable partial effect blocks update preparation while active.",
+    "Stopped uncertain and panicked workers permit update preparation while keeping the durable result unknown.",
+    "Same-operation retries remain OutcomeUnknown and never repeat the effect.",
+    "Failed encrypted completion save releases execution liveness and keeps admission unknown.",
+    "Known typed completion still persists before update preparation succeeds.",
+    "Existing typed reusable invitation retries and reopen preserve one record and the exact protected result."
+  ],
+  "format_and_diff_check": true,
+  "snapshot_restored": true,
+  "locks_unchanged": true,
+  "resolved_locks": {
+    "gchat": "41253cd8f92ef08fc6ecb02f4e3024ca39afe68e6f7363612639d728024efe89",
+    "gcoms": "e69cf263a381f66112fa319826b78cb208973c49295c77f20bc3e04167c97df0"
+  },
+  "retained": {
+    "directory": "/run/media/user/SSD-2/retained/gchat-update-gate-20261006",
+    "behavioral_checks_sha256": "285fc59a691fa934b7af36a0d381dcaa91e6597c596da2b3627bfdaea9237407",
+    "strict_clippy_sha256": "f852fdb735e6ea0a38f3a29f2bab39dcc7b7d4de5d2c8d96c663969ae3285f62",
+    "source_bindings_sha256": "e98582ace50d171ea1a86372d4349097ef484eb30403c138b5e18e25148ca6cf"
+  },
+  "earlier_fixture_runs": [
+    {
+      "receipt_sha256": "159974ef83800cfefc033d7746434f37332af0886cda6f3bf2f0ec2b50e48a75",
+      "cause": "Initial failure injection replaced archive rather than the actual archive.service companion; RPC uncertain/panic and legacy controls passed."
+    },
+    {
+      "receipt_sha256": "60f2dd7958db02ee5cc9c6e045f5b5090c13bcdc48805bb3347a97541a9557ea",
+      "cause": "Whole-test 30-second bound included two slow debug encrypted-profile setups. Final test retains a 30-second bound for each actual RPC lifecycle, excluding fixture creation and cleanup; production code unchanged."
+    }
+  ],
+  "tool_invocation_retries": {
+    "attempt03": "Clippy config preceded external subcommand and was not forwarded; stopped before compilation. Tests passed.",
+    "attempt04": "Nested build wrapper rejected redundant capacity admission before compilation.",
+    "attempt05": "Real Cargo inside the same existing quota-enforced manager job; same explicit target/output roots; no manager changes.",
+    "attempt04_receipt_sha256": "c88dfc0c99faddca2e8ca52eb9960284b0aa5ccc524bf0832087af3d94294872"
+  },
+  "qualification": "Focused local source validation only; actual binary smoke and activation recorded separately.",
+  "source_audit": {
+    "command": [
+      "python3",
+      "scripts/check-source.py"
+    ],
+    "exit_code": 0,
+    "paths_checked": 842,
+    "result": "no prohibited artifacts/dependencies detected"
+  }
+}

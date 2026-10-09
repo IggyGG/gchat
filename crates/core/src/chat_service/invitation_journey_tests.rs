@@ -116,6 +116,115 @@ async fn history_contains(service: &Arc<ChatService>, channel: &str, text: &str)
     .await
     .expect("remote message in encrypted archive");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn typed_invitation_response_retries_and_reopens_without_another_mint() {
+    use gchat_api::rpc::{ChatClient as TypedChat, SubmitOutcome};
+    use gcoms::rpc::{Caller, Client, EmbeddedTransport, ErrorCode};
+    tokio::time::timeout(Duration::from_secs(60), async {
+        let home = tempfile::tempdir().unwrap();
+        crate::private_fs::make_private(home.path(), true).unwrap();
+        let (runtime, service) = Box::pin(open(home.path(), false, 0)).await;
+        command(&service, None, "/create reusable Owner".into()).await;
+        let channel = service.snapshot().await.unwrap().conversations[0]
+            .id
+            .clone();
+        let typed = |service: Arc<ChatService>| {
+            TypedChat::new(Client::new(
+                EmbeddedTransport {
+                    router: rpc::router(service.clone()).unwrap(),
+                    caller: Caller {
+                        principal: "local-owner".into(),
+                    },
+                    destination: "invitation-fixture".into(),
+                },
+                service.id.clone(),
+            ))
+        };
+        let client = typed(service.clone());
+        let prepared = client
+            .prepare_submit(Some(channel.clone()), "/invite friends".into())
+            .unwrap();
+        let response: Response = client.inner.start_and_wait(&prepared).await.unwrap().into();
+        let Response::Output {
+            output: CommandOutput::ReusableInvitation { link, id, .. },
+            ..
+        } = &response
+        else {
+            panic!("typed invitation must return its bearer result: {response:?}")
+        };
+        assert!(!link.is_empty());
+        assert_eq!(id.len(), 32);
+        let expected = serde_json::to_value(&response).unwrap();
+        let repeated: Response = client.inner.start_and_wait(&prepared).await.unwrap().into();
+        assert_eq!(serde_json::to_value(repeated).unwrap(), expected);
+        let snapshot = service.snapshot().await.unwrap();
+        assert!(!serde_json::to_string(&snapshot).unwrap().contains(link));
+        let operation = snapshot
+            .operations
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|r| r.id == prepared.handle.operation.id.as_str())
+            .unwrap();
+        assert!(matches!(operation.output, Some(CommandOutput::Text { .. })));
+        assert!(client.lock().await.unwrap().locked);
+        assert_eq!(
+            client
+                .inner
+                .status(&prepared.handle)
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::Unauthorized
+        );
+        client
+            .unlock("test-only-passphrase".into(), false)
+            .await
+            .unwrap();
+        drop(client);
+        service.disconnect().await.unwrap();
+        drop(service);
+        runtime.shutdown().await.unwrap();
+
+        let (runtime, service) = Box::pin(open(home.path(), true, 0)).await;
+        let client = typed(service.clone());
+        let resumed = client
+            .inner
+            .resume::<SubmitOutcome, gchat_api::ChatError>(&prepared.handle)
+            .await
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(Response::from(resumed)).unwrap(),
+            expected
+        );
+        let repeated: Response = client.inner.start_and_wait(&prepared).await.unwrap().into();
+        assert_eq!(serde_json::to_value(repeated).unwrap(), expected);
+        let Response::Output {
+            output: CommandOutput::Invitations { records, .. },
+            ..
+        } = command(&service, Some(&channel), "/invites".into()).await
+        else {
+            panic!("invitation ledger")
+        };
+        assert_eq!(
+            records.len(),
+            1,
+            "same operation must not consume another invitation slot"
+        );
+        assert_eq!(&records[0].id, id);
+        assert!(!serde_json::to_string(&service.snapshot().await.unwrap())
+            .unwrap()
+            .contains(link));
+        drop(client);
+        service.disconnect().await.unwrap();
+        drop(service);
+        runtime.shutdown().await.unwrap();
+    })
+    .await
+    .expect("bounded single-profile typed invitation recovery");
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn friends_reuse_one_invitation_for_chat_file_reopen_and_revocation() {
     tokio::time::timeout(Duration::from_secs(180), Box::pin(journey()))

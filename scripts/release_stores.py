@@ -22,16 +22,27 @@ class ProviderError(RuntimeError):
 class Provider:
     def __init__(self, session, base):
         self.session, self.base = session, base
+        self.provider = 'play' if 'androidpublisher.googleapis.com' in base else 'apple'
 
     def request(self, method, path, **kwargs):
+        from release_provider import before_request, classify, reset_after_success
+        before_request(self.provider)
         response = self.session.request(method, self.base + path, timeout=(15, 120), **kwargs)
         if not response.ok:
+            try:
+                body = response.json()
+            except ValueError:
+                body = None
+            classify(self.provider, method, path, response.status_code, response.headers, body)
             # Provider bodies can contain temporary URLs or personal details.
             raise ProviderError(f'Provider HTTP {response.status_code}; action requires reconciliation')
+        reset_after_success(self.provider)
         return response.json() if response.content else {}
 
 
 def google(config):
+    from release_provider import before_request
+    before_request('play')
     import jwt
     import requests
     credentials = json.loads(Path(config['credentials']).read_text())

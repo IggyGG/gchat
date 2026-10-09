@@ -99,6 +99,26 @@ class ReleaseLedgerTests(unittest.TestCase):
             self.ledger.transition(release, 'linux-x86_64', 'available', evidence='f' * 64)
         self.assertEqual(self.ledger.status()['available']['linux-x86_64'], second)
 
+    def test_pre_upload_ios_handoff_is_narrow_atomic_and_requires_successor_gates(self):
+        second = self.ledger.add(candidate(2))
+        self.verified(self.first, 'ios')
+        self.ledger.transition(self.first, 'ios', 'submitting')
+        self.ledger.effect(self.first, 'ios', 'submit')
+        with self.assertRaisesRegex(ValueError, 'invalid release transition'):
+            self.ledger.transition(self.first, 'ios', 'superseded')
+        def handoff():
+            self.ledger.supersede_unsubmitted_ios(self.first, second, evidence='a'*64, compatibility='b'*64)
+        for gate in ('unverified', 'unconfirmed', 'wrong_evidence'):
+            with self.subTest(gate=gate):
+                if gate == 'unconfirmed': self.verified(second, 'ios')
+                if gate == 'wrong_evidence':
+                    effect = self.ledger.effect(second, 'ios', 'compatibility')
+                    self.ledger.complete_effect(effect['id'], 'retained-compatible', 'c'*64)
+                with self.assertRaisesRegex(ValueError, 'not eligible'):
+                    handoff()
+                self.assertEqual(self.ledger.target(self.first, 'ios')['state'], 'submitting')
+                self.assertEqual(self.ledger.db.execute("SELECT COUNT(*) FROM events WHERE state='superseded'").fetchone()[0], 0)
+
     def test_manifest_tampering_is_rejected(self):
         item = candidate()
         item['sources']['gcoms']['commit'] = 'd' * 40

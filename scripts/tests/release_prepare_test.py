@@ -87,18 +87,22 @@ class PreparationTests(unittest.TestCase):
                 self.assertFalse(observation['qualification_passed'])
                 self.assertEqual(ledger.manifest(release),manifest)
                 # Controller bytes now ship in the retained infrastructure image
-                # and require their own exact-source candidate and qualification.
+                # and require their own exact-source intent, not application versions.
                 (origin/'scripts').mkdir()
                 (origin/'scripts/release_coordinator.py').write_text('# controller revision\n')
                 git('add','.');git('commit','-m','controller only')
-                self.assertIsNone(discover(config,state,ledger))
-                self.assertNotEqual(discover(config,state,ledger),release)
-                self.assertEqual(len(ledger.status()['candidates']),2)
+                self.assertEqual(discover(config,state,ledger),release)
+                self.assertEqual(discover(config,state,ledger),release)
+                self.assertEqual(len(ledger.status()['candidates']),1)
+                intent_id=json.loads((state/'controller-updates/desired.json').read_text())['id']
+                intent=json.loads((state/'controller-updates'/intent_id/'intent.json').read_text())
+                self.assertEqual(intent['baseline'],manifest)
+                self.assertEqual(ledger.manifest(release),manifest)
                 (origin/'new-runtime-input').write_text('must rebuild')
                 git('add','.');git('commit','-m','runtime input')
                 self.assertIsNone(discover(config,state,ledger))
                 self.assertNotEqual(discover(config,state,ledger),release)
-                self.assertEqual(len(ledger.status()['candidates']),3)
+                self.assertEqual(len(ledger.status()['candidates']),2)
             finally:ledger.close()
 
     def test_invalid_historical_reservation_gets_new_immutable_ref_and_retries(self):

@@ -26,6 +26,20 @@ TARGETS = {
 }
 
 
+def retained_deb_desktop_sha(path, expected_sha):
+    """Bind the shipped desktop to the one mutation made by pinned Tauri."""
+    original = path.read_bytes()
+    if hashlib.sha256(original).hexdigest() != expected_sha:
+        raise ValueError('retained native build desktop changed before package verification')
+    # Tauri CLI 2.11.4's tauri-bundler/src/bundle.rs::patch_binary changes
+    # only the first bundle-kind marker before copying the binary into a DEB.
+    # Compare that exact transformation, never normalize arbitrary binary data.
+    marker = b'__TAURI_BUNDLE_TYPE_VAR_UNK'
+    if marker not in original:
+        raise ValueError('retained native build desktop is missing the Tauri bundle marker')
+    return hashlib.sha256(original.replace(marker, b'__TAURI_BUNDLE_TYPE_VAR_DEB', 1)).hexdigest()
+
+
 def run(args, **kwargs):
     result = subprocess.run(args, cwd=kwargs.pop('cwd', ROOT), **kwargs)
     if result.returncode:
@@ -222,7 +236,7 @@ def application_from_nsis(bundle_dir, policy):
         raise ValueError('NSIS installer changed during application verification')
 
 
-def bundle(target, output, environment, identity, policy, checkout):
+def bundle(target, output, environment, identity, policy, checkout, retained_linux=None, dependency_inputs=None):
     system, arch, triple, bundles = TARGETS[target]
     config = {'bundle': {'publisher': identity['name']}}
     release_manifest = environment.get('GCHAT_RELEASE_MANIFEST')
@@ -263,23 +277,33 @@ def bundle(target, output, environment, identity, policy, checkout):
         if build_root.exists():
             raise ValueError('use a new output directory for each build')
         environment['CARGO_TARGET_DIR'] = str(build_root)
+        retained_report = None
+        if retained_linux is not None:
+            if system != 'Linux' or not release_manifest:
+                raise ValueError('retained Linux packaging requires its frozen release manifest')
+            from linux_build_artifacts import stage_desktop
+            retained_report = stage_desktop(retained_linux, build_root, checkout, candidate,
+                                           dependency_inputs, environment)
         if system == 'Linux':
             # The same signed installer owns the CLI and desktop service code.
             # A retained repair binary must not keep the fleet daemon on an old
             # release after the desktop package advances.
-            run(['cargo', 'build', '--locked', '--release', '--target', triple,
-                 '-p', 'gchat-tui', '--features', 'gc2-carrier'], env=environment, cwd=checkout)
+            if retained_linux is None:
+                run(['cargo', 'build', '--locked', '--release', '--target', triple,
+                     '-p', 'gchat-tui', '--features', 'gc2-carrier'], env=environment, cwd=checkout)
             cli = build_root / triple / 'release/gchat'
             sidecar = build_root / ('gchat-' + triple)
             shutil.copy2(cli, sidecar)
             config['bundle']['externalBin'] = [str(build_root / 'gchat')]
             config_path.write_text(json.dumps(config))
-        run([sys.executable, 'scripts/collect-notices.py'], env=environment, cwd=checkout)
+        if retained_linux is None:
+            run([sys.executable, 'scripts/collect-notices.py'], env=environment, cwd=checkout)
         npm = 'npm.cmd' if system == 'Windows' else 'npm'
         # A DMG implicitly builds then removes its .app. Tauri only retains
         # the signed updater archive when app is also an explicit target.
         build_bundles = ['app', *bundles] if system == 'Darwin' else bundles
-        run([npm, 'run', 'tauri', '-w', '@gchat/client', '--', 'build', '--target', triple, '--bundles', ','.join(build_bundles), '--config', str(config_path)], env=environment, cwd=checkout)
+        action = 'bundle' if retained_linux is not None else 'build'
+        run([npm, 'run', 'tauri', '-w', '@gchat/client', '--', action, '--target', triple, '--bundles', ','.join(build_bundles), '--config', str(config_path)], env=environment, cwd=checkout)
         graph = json.loads(subprocess.check_output(
             ['cargo', 'metadata', '--manifest-path', 'apps/client/src-tauri/Cargo.toml',
              '--locked', '--filter-platform', triple, '--format-version=1'],
@@ -325,6 +349,10 @@ def bundle(target, output, environment, identity, policy, checkout):
             if not cli.is_file() or cli.is_symlink(): raise ValueError('Linux installer is missing its qualified CLI')
             if sha(cli) != sha(sidecar): raise ValueError('packaged Linux CLI differs from its source build')
             if not executable.is_file() or executable.is_symlink(): raise ValueError('packaged Linux executable is missing')
+            if retained_report is not None and (sha(executable) != retained_deb_desktop_sha(
+                    retained_linux / 'bin/gchat-desktop', retained_report['files']['bin/gchat-desktop'])
+                    or sha(cli) != retained_report['files']['bin/gchat']):
+                raise ValueError('packaged Linux executables differ from retained native build')
             executables.append({'name': executable.name, 'sha256': sha(executable), 'size': executable.stat().st_size})
             executables.append({'name': cli.name, 'sha256': sha(cli), 'size': cli.stat().st_size})
         patterns = {'deb':'deb/*.deb', 'appimage':'appimage/*.AppImage', 'nsis':'nsis/*.exe', 'dmg':'dmg/*.dmg'}
@@ -370,6 +398,7 @@ def bundle(target, output, environment, identity, policy, checkout):
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--target',choices=TARGETS,required=True);p.add_argument('--gcoms',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--native-ci-report', type=Path, required=True, help='successful paired native-ci.json from this target and source pair')
+    p.add_argument('--retained-linux', type=Path, help='source-bound unsigned outputs from the same native qualification')
     a=p.parse_args(argv)
     system,arch,triple,_=TARGETS[a.target]
     actual={'amd64':'x86_64','arm64':'aarch64'}.get(platform.machine().lower(),platform.machine().lower())
@@ -396,7 +425,10 @@ def main(argv=None):
     native_ci = verify_native_ci_inputs(ci_report, dependency_inputs)
     if system=='Darwin':
         with apple_keychain(policy) as environment: files,executables=bundle(a.target,output,environment,identity,policy,checkout)
-    else: files,executables=bundle(a.target,output,dict(os.environ),identity,policy,checkout)
+    else: files,executables=bundle(a.target,output,dict(os.environ),identity,policy,checkout,
+                                 a.retained_linux.resolve() if a.retained_linux else None, dependency_inputs)
+    if a.retained_linux:
+        shutil.copyfile(a.retained_linux / 'receipt.json', output / 'provenance/linux-build.json')
     verify_derived_inputs(checkout, dependency_inputs)
     verify_retained_inputs(output / 'provenance', dependency_inputs)
     for name,path in [('gchat',ROOT),('gcoms',a.gcoms.resolve())]:

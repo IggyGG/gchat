@@ -8,7 +8,7 @@ from release_coordinator import atomic_json, read_receipt
 DONE = {'available', 'superseded'}
 
 
-def external_ios_wait(state, ledger, release):
+def _external_ios_wait(state, ledger, release, *, fresh):
     if state is None:
         return False
     from release_publish import job
@@ -19,6 +19,7 @@ def external_ios_wait(state, ledger, release):
     if not (work/'attempted.json').is_file():
         return False
     try:
+        from release_provider import external_wait_fresh
         waiting = json.loads((work/'external-prerequisite.json').read_text())
         observation_path = work/'encryption-observation.json'
         observed = json.loads(observation_path.read_text())
@@ -26,7 +27,7 @@ def external_ios_wait(state, ledger, release):
             or waiting.get('sources') != manifest['sources'] or waiting.get('platform') != 'ios'
             or waiting.get('kind') != 'apple_encryption_review'
             or waiting.get('uploaded') is not False or waiting.get('submitted') is not False
-            or type(waiting.get('at')) is not int or not 0 <= time.time()-waiting['at'] <= 600
+            or (fresh and not external_wait_fresh(state, release, 'ios', stage, work.name, waiting.get('at')))
             or waiting.get('encryption_observation_sha256') != digest(observation_path)
             or observed.get('release_id') != release or observed.get('sources') != manifest['sources']
             or observed.get('state') != 'IN_REVIEW' or observed.get('includes_france') is not True):
@@ -35,9 +36,47 @@ def external_ios_wait(state, ledger, release):
             report, sha = read_receipt(job(Path(state), manifest, 'ios', stage)/'receipt.json', manifest, 'ios', stage)
             if waiting.get(binding) != sha or (stage == 'compatibility' and report.get('relay_compatible') is not True):
                 return False
-        return True
+        return waiting
     except (OSError, ValueError, KeyError, TypeError):
         return False
+
+
+def external_ios_wait(state, ledger, release):
+    return bool(_external_ios_wait(state, ledger, release, fresh=True))
+
+
+def unsubmitted_ios_wait(state, ledger, release):
+    """Retained no-upload proof, not a claim about Apple's current decision."""
+    from release_publish import job
+    from release_feed import digest
+    if ledger.target(release, 'ios')['state'] != 'submitting':
+        return None
+    waiting = _external_ios_wait(state, ledger, release, fresh=False)
+    if not waiting:
+        return None
+    work = job(Path(state), ledger.manifest(release), 'ios', 'submit')
+    try:
+        effect = ledger.db.execute("SELECT * FROM effects WHERE candidate=? AND platform='ios' AND kind='submit'",
+                                   (release,)).fetchone()
+        attempted = json.loads((work/'attempted.json').read_text())
+        if (effect is None or effect['state'] != 'reserved' or effect['external_id'] is not None
+                or effect['evidence'] is not None or attempted.get('request_id') != effect['id']
+                or type(attempted.get('attempted')) is not int or type(waiting.get('at')) is not int
+                or not 0 <= attempted['attempted'] <= waiting['at'] <= time.time()):
+            return None
+        # Every provider mutation has a durable marker before dispatch. An
+        # unknown outcome must retain ownership, even after its worker exited.
+        if any((work/name).exists() for name in ('upload-dispatch.json', 'upload-worker.json',
+                'apple-build.json', 'version-attempted.json', 'provider.json', 'provider-state.json', 'receipt.json')):
+            return None
+        progress = work/'progress.json'
+        if progress.exists():
+            deadline = json.loads(progress.read_text()).get('deadline_at')
+            if type(deadline) is not int or deadline >= time.time():
+                return None  # Also covers a worker orphaned by a controller restart.
+        return digest(work/'external-prerequisite.json')
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
 def internal_complete(ledger, release, state=None):

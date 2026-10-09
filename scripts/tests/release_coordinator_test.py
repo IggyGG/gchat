@@ -130,6 +130,120 @@ class CoordinatorTests(unittest.TestCase):
                         self.assertEqual(c.ledger.target(latest,platform)['state'],'verified')
                         self.assertEqual(c.ledger.target(old,platform)['state'],waiting)
 
+    def ios_handoff_fixture(self, name):
+        from release_publish import job
+        from release_feed import digest
+        from release_store_worker import retain_external_wait
+        root = self.root / name
+        c = Coordinator(root, {'workers': {'ios': {'compatibility': {}, 'prerequisite': {}, 'submit': {}}}})
+        self.addCleanup(c.ledger.close)
+        old, latest = [c.ledger.add(candidate(n)) for n in (1, 2)]
+        for release in (old, latest):
+            manifest = c.ledger.manifest(release)
+            for stage in ('verify', 'compatibility'):
+                folder = job(root, manifest, 'ios', stage)
+                atomic_json(folder/'evidence.json', {'fixture': release, 'stage': stage})
+                atomic_json(folder/'receipt.json', {'schema': 1, 'release_id': release,
+                    'sources': manifest['sources'], 'platform': 'ios', 'stage': stage,
+                    'passed': True, 'source_unchanged': True, 'relay_compatible': True,
+                    'evidence': [{'path': 'evidence.json', 'sha256': digest(folder/'evidence.json')}]})
+                effect = c.ledger.effect(release, 'ios', stage)
+                c.ledger.complete_effect(effect['id'], 'retained-' + stage, digest(folder/'receipt.json'))
+            for state in ('building', 'verifying', 'verified'):
+                c.ledger.transition(release, 'ios', state, evidence=digest(job(root, manifest, 'ios', 'verify')/'receipt.json'))
+        c.ledger.transition(old, 'ios', 'submitting')
+        manifest = c.ledger.manifest(old)
+        work = job(root, manifest, 'ios', 'submit')
+        effect = c.ledger.effect(old, 'ios', 'submit')
+        atomic_json(work/'attempted.json', {'request_id': effect['id'], 'attempted': 1000})
+        atomic_json(work/'progress.json', {'started_at': 1000, 'deadline_at': 1010})
+        atomic_json(work/'encryption-observation.json', {'schema': 1, 'release_id': old,
+            'sources': manifest['sources'], 'state': 'IN_REVIEW', 'includes_france': True, 'at': 1001})
+        with patch('release_store_worker.time.time', return_value=1001):
+            retain_external_wait(manifest, work, job(root, manifest, 'ios', 'verify')/'receipt.json',
+                                 job(root, manifest, 'ios', 'compatibility')/'receipt.json')
+        atomic_json(root/'deployment/desired.json', {'release_id': latest})
+        return c, old, latest, work
+
+    def test_deployed_ios_successor_releases_only_proven_unsubmitted_predecessor(self):
+        from release_publish import job
+        from release_flight import external_ios_wait
+        c, old, latest, work = self.ios_handoff_fixture('handoff')
+        originals = {path: path.read_bytes() for path in work.iterdir()}
+        effects = [tuple(row) for row in c.ledger.db.execute('SELECT * FROM effects WHERE candidate=?', (old,))]
+        old_evidence = c.ledger.target(old, 'ios')['evidence']
+        # The historical proof is deliberately stale: it attests no upload,
+        # rather than asserting Apple's present decision or pausing a budget.
+        self.assertFalse(external_ios_wait(c.state, c.ledger, old))
+        calls = []
+        approved = False
+        def execute(manifest, platform, stage):
+            calls.append((manifest['release_id'], stage))
+            self.assertEqual(manifest['release_id'], latest)
+            if stage == 'compatibility':
+                return read_receipt(job(c.state, manifest, platform, stage)/'receipt.json', manifest, platform, stage)
+            self.assertEqual(stage, 'submit')
+            return ({'provider_state': 'in_review'}, 'd'*64) if approved else None
+        with patch.object(c, 'deployment_ready', side_effect=lambda m: m['release_id'] == latest), \
+             patch.object(c, 'execute', side_effect=execute):
+            c.step(old, 'ios')  # Reproduces the stale deployment ownership gate.
+            self.assertEqual(calls, [])
+            c.step(latest, 'ios')
+            self.assertEqual(c.ledger.target(old, 'ios')['state'], 'superseded')
+            self.assertEqual(c.ledger.target(latest, 'ios')['state'], 'submitting')
+            c.step(latest, 'ios')  # Still awaiting the external approval.
+            self.assertEqual(c.ledger.target(latest, 'ios')['state'], 'submitting')
+            approved = True
+            c.step(latest, 'ios')
+            c.step(old, 'ios')
+        self.assertEqual(calls, [(latest, 'compatibility'), (latest, 'submit'), (latest, 'submit')])
+        self.assertEqual(c.ledger.target(latest, 'ios')['state'], 'in_review')
+        self.assertEqual(c.ledger.target(old, 'ios')['evidence'], old_evidence)
+        self.assertEqual({path: path.read_bytes() for path in work.iterdir()}, originals)
+        self.assertEqual([tuple(row) for row in c.ledger.db.execute('SELECT * FROM effects WHERE candidate=?', (old,))], effects)
+        events = c.ledger.db.execute("SELECT detail FROM events WHERE candidate=? AND state='superseded'", (old,)).fetchall()
+        self.assertEqual(len(events), 1)
+        self.assertEqual(json.loads(events[0][0])['successor'], latest)
+        self.assertNotIn('ios', c.ledger.status()['available'])
+
+    def test_ios_pre_upload_handoff_fails_closed_on_provider_or_worker_ambiguity(self):
+        from release_publish import job
+        mutations = ('upload-dispatch.json', 'upload-worker.json', 'apple-build.json', 'version-attempted.json',
+                     'provider.json', 'provider-state.json', 'receipt.json')
+        for change in (*mutations, 'active_worker', 'live_deadline', 'invalid_deadline', 'newer_attempt',
+                       'wrong_request', 'wrong_source', 'changed_evidence', 'confirmed_submit',
+                       'processing', 'in_review', 'blocked', 'not_desired', 'not_deployed', 'incompatible'):
+            with self.subTest(change=change):
+                c, old, latest, work = self.ios_handoff_fixture(change)
+                if change in mutations: atomic_json(work/change, {})
+                if change == 'active_worker':
+                    c.running_workers['old'] = {'release_id': old, 'platform': 'ios'}
+                if change in ('live_deadline', 'invalid_deadline'):
+                    atomic_json(work/'progress.json', {'deadline_at': 10**12 if change == 'live_deadline' else 'unknown'})
+                if change in ('newer_attempt', 'wrong_request'):
+                    attempted = json.loads((work/'attempted.json').read_text())
+                    attempted['attempted' if change == 'newer_attempt' else 'request_id'] = 1002 if change == 'newer_attempt' else 'wrong'
+                    atomic_json(work/'attempted.json', attempted)
+                if change == 'wrong_source':
+                    waiting = json.loads((work/'external-prerequisite.json').read_text()); waiting['sources'] = {}
+                    atomic_json(work/'external-prerequisite.json', waiting)
+                if change == 'changed_evidence':
+                    (job(c.state, c.ledger.manifest(old), 'ios', 'verify')/'evidence.json').write_text('{}')
+                if change == 'confirmed_submit':
+                    c.ledger.complete_effect(c.ledger.effect(old, 'ios', 'submit')['id'], 'unknown-provider', 'f'*64)
+                if change in ('processing', 'in_review', 'blocked'):
+                    c.ledger.transition(old, 'ios', change, reason='original unknown outcome')
+                if change == 'not_desired': atomic_json(c.state/'deployment/desired.json', {'release_id': old})
+                before = c.ledger.target(old, 'ios')
+                manifest = c.ledger.manifest(latest)
+                report, digest = read_receipt(job(c.state, manifest, 'ios', 'compatibility')/'receipt.json', manifest, 'ios', 'compatibility')
+                if change == 'incompatible': report['relay_compatible'] = False
+                with patch.object(c, 'deployment_ready', return_value=change != 'not_deployed'), \
+                     patch.object(c, 'execute', return_value=(report, digest)):
+                    c.step(latest, 'ios')
+                self.assertEqual(c.ledger.target(old, 'ios'), before)
+                self.assertIn(c.ledger.target(latest, 'ios')['state'], ('verified', 'blocked'))
+
     @unittest.skipUnless(os.name == 'posix', 'controller uses POSIX process groups')
     def test_nonblocking_worker_does_not_prevent_another_platform_and_reconciles_same_effect(self):
         import sys
@@ -155,7 +269,10 @@ class CoordinatorTests(unittest.TestCase):
             self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
         self.assertEqual(c.running_workers[effect['id']]['process'].pid, pid)
         release_worker.touch()
-        c.running_workers[effect['id']]['process'].wait(timeout=5)
+        # Both owned children exit on the same marker; reap the sibling too so
+        # cleanup does not race a naturally exiting process group on macOS.
+        for item in list(c.running_workers.values()):
+            item['process'].wait(timeout=5)
         self.assertIsNone(c.execute(self.manifest, 'linux-x86_64', 'build'))
         self.assertNotIn(effect['id'], c.running_workers)
         self.assertEqual(c.ledger.effect(self.manifest['release_id'], 'linux-x86_64', 'build')['id'], effect['id'])
@@ -479,7 +596,7 @@ class CoordinatorTests(unittest.TestCase):
                     patch('release_coordinator.time.sleep',side_effect=KeyboardInterrupt) as sleep:
                 with self.assertRaises(KeyboardInterrupt):release_coordinator.main()
                 tick.assert_called_once()
-                sleep.assert_called_once_with(30 if interval is None else interval)
+                sleep.assert_called_once_with(10 if interval is None else interval)
             # The next daemon can acquire the same lock after interruption.
 
     def test_selected_platforms_preserve_other_queued_and_active_work(self):

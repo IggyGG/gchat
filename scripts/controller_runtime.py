@@ -1,4 +1,5 @@
 """Qualify the actual controller image before retaining its release bundle."""
+from contextlib import redirect_stdout
 import hashlib
 import json
 import os
@@ -12,7 +13,9 @@ from release_pair import canonical
 
 
 SUITES = (
-    'release_minutes_test',
+    'release_minutes_test', 'release_provider_test', 'release_stores_test', 'release_store_worker_test',
+    'release_controller_test', 'release_controller_qualification_test',
+    'release_discovery_test', 'release_platform_deployment_test',
     'release_config_test', 'release_acceptance_test', 'mobile_acceptance_test',
     'release_coordinator_test', 'release_deployment_test', 'release_control_test',
     'release_relay_load_test',
@@ -56,8 +59,11 @@ def check(request, root=Path('/opt/gchat')):
         actual = root / name
         if actual.is_symlink() or hashlib.sha256(actual.read_bytes()).hexdigest() != expected:
             raise ValueError('controller runtime source bytes changed: ' + name)
-    suite = unittest.defaultTestLoader.loadTestsFromNames(SUITES)
-    result = unittest.TextTestRunner(stream=sys.stderr, verbosity=1).run(suite)
+    # stdout is the machine-readable proof channel. Test imports and exercised
+    # CLI handlers may print diagnostics; retain those in the qualification log.
+    with redirect_stdout(sys.stderr):
+        suite = unittest.defaultTestLoader.loadTestsFromNames(SUITES)
+        result = unittest.TextTestRunner(stream=sys.stderr, verbosity=1).run(suite)
     if not result.wasSuccessful() or result.testsRun < MINIMUM_TESTS or result.skipped:
         raise ValueError('controller runtime tests did not complete successfully')
     # Tests must not silently alter the source they just qualified.

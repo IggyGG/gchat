@@ -11,6 +11,7 @@ from release_pair import canonical
 
 
 CONTROL_FILES = frozenset({
+    'docs/evidence/controller-automation-20261007/provider-validation.json',
     'scripts/release_minutes.py', 'scripts/tests/release_minutes_test.py',
     'docs/evidence/stabilization-20261001/node-image-headroom.json',
     'scripts/node-image-headroom.py', 'scripts/tests/node_image_headroom_test.py',
@@ -86,6 +87,40 @@ CONTROL_FILES = frozenset({
     'docs/evidence/stabilization-20261001/launch-simplification.json',
 })
 
+# Only these reviewed controller paths may change independently of native
+# infrastructure. Unknown scripts, packaging, native workflows and all GComs
+# runtime/test inputs still require their ordinary release qualification.
+CONTROLLER_FILES = frozenset({
+    'scripts/release_provider.py', 'scripts/release_controller.py',
+    'scripts/release_platform_deployment.py', 'scripts/release_compatibility.py',
+    'scripts/build-controller.py', '.github/workflows/controller-release.yml',
+    'scripts/release_inputs.py', 'scripts/release_discovery.py',
+    'scripts/release_coordinator.py', 'scripts/release_config.py',
+    'scripts/release_ledger.py', 'scripts/release_maintenance.py',
+    'scripts/release.py', 'scripts/release_control.py', 'scripts/release_flight.py',
+    'scripts/release_minutes.py', 'scripts/release_jobs.py', 'scripts/release_sdk.py',
+    'scripts/release_recovery.py', 'scripts/release_relay_load.py',
+    'scripts/release_stores.py', 'scripts/release_store_worker.py',
+    'scripts/release_acceptance.py', 'scripts/release_acceptance_delivery.py',
+    'scripts/release_deployment_runner.py', 'scripts/release_deployment.py',
+    'scripts/release_inventory.py', 'scripts/release_kubernetes_worker.py',
+    'scripts/release_host_worker.py', 'scripts/release_host_install.py',
+    'scripts/release_host_serve.py', 'scripts/release_canary_grant.py',
+    'scripts/release_network_canary.py', 'scripts/release_evidence.py',
+    'scripts/release_compaction.py', 'scripts/controller_runtime.py',
+    'scripts/tests/controller_runtime_test.py',
+    'release/automation/Dockerfile', 'release/automation/requirements.txt',
+    'release/automation/kubernetes.yaml', 'release/automation/compaction.yaml',
+    'release/automation/operations.yaml',
+})
+CONTROL_FILES = CONTROL_FILES | CONTROLLER_FILES
+
+
+def controller_only(path):
+    return path in CONTROLLER_FILES or (
+        path.startswith('scripts/tests/release_') and path.endswith('_test.py'))
+
+
 # Reviewed status/validation documents do not enter GComs application code or
 # packaging. Rust, locks and unclassified evidence remain artifact inputs.
 # The opt-in Android agent has a separate, bounded workstation release lane.
@@ -100,6 +135,12 @@ GCOMS_ANDROID_RELEASE_FILES = frozenset({
 })
 GCOMS_STATUS_FILES = GCOMS_ANDROID_RELEASE_FILES | frozenset({
     'PLAN.md', 'README.md', 'TESTPLAN.md',
+    'docs/evidence/gc2-flow-control-20261007/machine-scope-checkpoint.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-intelmac-diagnostic.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-consolidated-deployment-proof.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-local-hub-handoff.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-final-release-status.json',
+    'docs/evidence/gc2-flow-control-20261007/candidate162-controller-completion.json',
     'docs/evidence/stabilization-20261001/durable-reopen.json',
     'docs/evidence/stabilization-20261001/contact-request-window.json',
     'docs/evidence/stabilization-20261001/windows-locked-storage-tests.json',
@@ -173,7 +214,7 @@ def qualification_only(project, path):
 
 
 def fingerprints(repositories, sources):
-    artifacts, qualification, infrastructure = {}, {}, {}
+    artifacts, qualification, infrastructure, controller = {}, {}, {}, {}
     for project in ('gchat', 'gcoms'):
         raw = subprocess.check_output(['git', '-C', str(repositories[project]),
             'ls-tree', '-rz', '--full-tree', sources[project]['commit']])
@@ -186,18 +227,22 @@ def fingerprints(repositories, sources):
             entries.append([path.decode('utf-8'), mode, kind, oid])
         entries.sort()
         qualification[project] = entries
-        # The controller is now a retained infrastructure artifact. A reviewed
-        # controller-only edit may keep application bytes equivalent, but its
-        # image must receive fresh exact-source qualification and deployment.
+        # Controller bytes receive their own exact-source image qualification.
+        # They do not invalidate unchanged client/native-service artifacts.
         infrastructure[project] = [entry for entry in entries if
             (project == 'gcoms' and entry[0] not in GCOMS_STATUS_FILES) or
-            (project == 'gchat' and (entry[0].startswith(('scripts/', 'release/')) or
+            (project == 'gchat' and not controller_only(entry[0]) and (entry[0].startswith(('scripts/', 'release/')) or
                                     entry[0] in ('.dockerignore',
                                         '.github/workflows/native-acceptance.yml',
                                         '.github/workflows/mobile-acceptance.yml')))]
+        if project == 'gchat':
+            controller[project] = [entry for entry in entries if
+                entry[0].startswith(('scripts/', 'release/')) or
+                entry[0] == '.github/workflows/controller-release.yml']
         artifacts[project] = [entry for entry in entries
                               if not qualification_only(project, entry[0])]
     return {'schema': 1,
             'artifacts': hashlib.sha256(canonical(artifacts)).hexdigest(),
             'infrastructure': hashlib.sha256(canonical(infrastructure)).hexdigest(),
-            'qualification': hashlib.sha256(canonical(qualification)).hexdigest()}
+            'qualification': hashlib.sha256(canonical(qualification)).hexdigest(),
+            'controller': hashlib.sha256(canonical(controller)).hexdigest()}

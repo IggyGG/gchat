@@ -20,6 +20,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import release_acceptance as acceptance
+import release_network_canary as canary
 import acceptance_delivery as transport
 import release_acceptance_delivery as delivery
 from release_automation_test import candidate
@@ -80,6 +81,86 @@ def retained_build(root, manifest, target, main, build, metadata, run, flag):
         retained.append({'path':name, 'sha256':ref['sha256']})
     atomic_json(verified / 'receipt.json', {**common, 'stage':'verify', flag:True, 'evidence':retained})
     return directory
+
+
+class InstallerReportSelectionTests(unittest.TestCase):
+    def provider_archive(self, root, *, extra_report=False, wrong_source=False):
+        manifest = candidate()
+        sources = {key: value['commit'] for key, value in manifest['sources'].items()}
+        package = b'qualified Debian package fixture'
+        build = {'target': 'linux-x86_64', 'sources': sources,
+                 'files': [{'format': 'deb', 'name': 'gchat.deb',
+                            'sha256': hashlib.sha256(package).hexdigest()}]}
+        if wrong_source: build['sources'] = {**sources, 'gcoms': '0' * 40}
+        directory = acceptance.job(root, manifest, 'linux-x86_64', 'build')
+        directory.mkdir(parents=True)
+        archive = directory / 'native.zip'
+        with zipfile.ZipFile(archive, 'w') as bundle:
+            bundle.writestr('signed/build.json', json.dumps(build))
+            # The real build-once archive retains this differently shaped report.
+            bundle.writestr('signed/provenance/linux-build.json', json.dumps({
+                'kind': 'native-services', 'target': 'x86_64-unknown-linux-gnu',
+                'sources': manifest['sources']}))
+            bundle.writestr('signed/provenance/native-ci.json', '{}')
+            bundle.writestr('signed/gchat.deb', package)
+            if extra_report: bundle.writestr('other/build.json', json.dumps(build))
+        common = {'schema': 1, 'release_id': manifest['release_id'],
+                  'sources': manifest['sources'], 'platform': 'linux-x86_64',
+                  'passed': True, 'source_unchanged': True, 'external_id': '1',
+                  'worker': {'artifact_id': 2, 'workflow_commit': 'a' * 40},
+                  'evidence': [{'path': 'native.zip', 'sha256': acceptance.digest(archive)}]}
+        atomic_json(directory / 'receipt.json', {**common, 'stage': 'build'})
+        verified = acceptance.job(root, manifest, 'linux-x86_64', 'verify')
+        verified.mkdir(parents=True)
+        (verified / 'native.zip').write_bytes(archive.read_bytes())
+        atomic_json(verified / 'receipt.json', {**common, 'stage': 'verify'})
+        return manifest, archive, package
+
+    def test_installer_report_ignores_native_build_provenance_for_acceptance(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest, archive, _ = self.provider_archive(root)
+            result = acceptance.provider(root, manifest, 'linux-x86_64')
+            self.assertEqual(result['manifest'], 'signed/build.json')
+            self.assertEqual(result['archive'], acceptance.digest(archive))
+            self.assertEqual(result['sources'], {k: v['commit'] for k, v in manifest['sources'].items()})
+
+    def test_installer_report_ignores_native_build_provenance_for_canary(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest, _, package = self.provider_archive(root)
+            work = root / 'canary'; work.mkdir()
+            smoke = SimpleNamespace(validate_artifacts=Mock())
+            def extract(command, **kwargs):
+                self.assertEqual(command[:2], ['dpkg-deb', '--extract'])
+                binary = Path(command[-1]) / 'usr/bin/gchat'
+                binary.parent.mkdir(parents=True); binary.write_bytes(b'qualified CLI fixture')
+            with patch.object(canary, 'module', return_value=SimpleNamespace(smoke=smoke)), \
+                 patch('subprocess.run', side_effect=extract):
+                binary = canary.acquire(root, manifest, work)
+            self.assertEqual((work / 'package.deb').read_bytes(), package)
+            smoke.validate_artifacts.assert_called_once_with(binary, work / 'build.json', work / 'native-ci.json')
+
+    def test_installer_report_still_rejects_two_real_reports_and_wrong_sources(self):
+        for condition in ('extra_report', 'wrong_source'):
+            with self.subTest(condition=condition), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                manifest, _, _ = self.provider_archive(root, **{condition: True})
+                with self.assertRaises(ValueError):
+                    acceptance.provider(root, manifest, 'linux-x86_64')
+                work = root / 'canary'; work.mkdir()
+                with self.assertRaises(ValueError): canary.acquire(root, manifest, work)
+
+    def test_installer_report_still_rejects_changed_verified_archive(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest, archive, _ = self.provider_archive(root)
+            with archive.open('ab') as stream: stream.write(b'changed after verification')
+            with self.assertRaisesRegex(ValueError, 'worker evidence changed'):
+                acceptance.provider(root, manifest, 'linux-x86_64')
+            work = root / 'canary'; work.mkdir()
+            with self.assertRaisesRegex(ValueError, 'worker evidence changed'):
+                canary.acquire(root, manifest, work)
 
 
 class RetainedProviderTests(unittest.TestCase):

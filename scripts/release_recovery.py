@@ -3,6 +3,7 @@
 This registry is deliberately narrow. It is not a retry loop, does not mutate
 original reports, and does not grant application, rollback or fleet acceptance.
 """
+from release_provider import github_download
 import hashlib
 import json
 from pathlib import Path
@@ -79,8 +80,7 @@ def collect(manifest, target, work, original):
         if not archive.exists():
             partial = recovery / (prefix + '.partial')
             with partial.open('wb') as stream:
-                subprocess.run(['gh', 'api', f'repos/IggyGG/gchat/actions/artifacts/{artifact_id}/zip'],
-                               stdout=stream, stderr=subprocess.PIPE, check=True, timeout=600)
+                github_download(f'actions/artifacts/{artifact_id}/zip', repo='IggyGG/gchat', stream=stream, timeout=600)
             require(partial.stat().st_size == artifact['size_in_bytes'] and sha(partial) == expected,
                     'retained recovery download differs')
             partial.replace(archive)

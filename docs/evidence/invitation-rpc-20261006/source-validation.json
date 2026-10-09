@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "at": "2026-10-06T12:22:09.452731+00:00",
+  "passed": true,
+  "scope": "local exact production source regression validation; no live invitation, deployment or quota changes",
+  "gchat_base": "966881c0c8fb0bd4974aa1f34ae8379fe0ab749d",
+  "gcoms_at_preparation": "ce0d20833a1c4ac2d65bd64b95dcd6a284d98858",
+  "source_files": {
+    "crates/core/src/chat_service/rpc.rs": {
+      "baseline_sha256": "813e5fe4b0503e800cb94add11ca74b20c990b17834d15bf5266b42073d8a6f3",
+      "patched_sha256": "dc9e025cb20044db2e2335a233cb190fdf29f99346ce43521983aeac4a6c8948"
+    },
+    "crates/core/src/chat_service/invitation_journey_tests.rs": {
+      "baseline_sha256": "776826844e2b6b43ed2e0cf62c57c466c43eabe443bb513771b289c1196b2813",
+      "patched_sha256": "5d8582f3745190d87869f95bc04965ab88bbc677e605e89609c4df02def43593"
+    }
+  },
+  "source_binding": {
+    "path": "/run/media/user/SSD-2/retained/gchat-invitation-rpc-20261006/source-binding.json",
+    "sha256": "9830a7b85181f64b59de9f7d95bd249aef4a577a7d18d61fd3f7bfccab1264b3"
+  },
+  "cause": "RPC-bound records fell back to their already-saved redacted public response before typed completion committed. Status could prematurely return Done(Text) in this interval.",
+  "change": "RPC-bound records return only the RPC completion; legacy response fallback is restricted to records without an RPC binding.",
+  "checks": {
+    "rpc_regressions": {
+      "passed": true,
+      "tests": 3,
+      "log": "/run/media/user/SSD-2/retained/gchat-invitation-rpc-20261006/attempt02/rpc-tests.log",
+      "sha256": "c02ac8c255d53be0d82e43fd4a96452627f6c180616cc19dfed46ac727048af6"
+    },
+    "typed_invitation_reopen": {
+      "passed": true,
+      "tests": 1,
+      "seconds": 3.3201180410105735,
+      "log": "/run/media/user/SSD-2/retained/gchat-invitation-rpc-20261006/private-home-probe.log",
+      "sha256": "4c16a3f2805f12c78e08165461e02419f4d09f0071e3f0fda2aa1e19f01c5255",
+      "fixture_difference": "Final test explicitly calls existing make_private(home.path(), true); executed test used process umask077 instead. Production source and every assertion are unchanged."
+    },
+    "existing_redaction_and_policy": {
+      "passed": true,
+      "tests": 2,
+      "log": "/run/media/user/SSD-2/retained/gchat-invitation-rpc-20261006/redaction-tests.log",
+      "sha256": "b80cc61624acc1b6803f7c33836628ea0e14d066610fc031883849957da08a82"
+    },
+    "strict_lib_and_test_clippy": {
+      "name": "clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--release",
+        "--offline",
+        "--locked",
+        "--config",
+        "/run/media/user/SSD-2/retained/gchat-bootstrap-rig-20261006/build/source.toml",
+        "-p",
+        "gchat-core",
+        "--lib",
+        "--features",
+        "gc2-carrier,gcoms-node/client-persist,gcoms-node/experimental-gc2",
+        "--tests",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 19.949169140076265,
+      "log_sha256": "af633b48e571778ec02a0491acfc578ed89b9023b05904fb5d629e8373e93b26"
+    }
+  },
+  "assertions": [
+    "intermediate redacted save is not terminal typed completion",
+    "typed success and typed failure retained only after RPC completion",
+    "legacy-only redacted and unknown outcomes unchanged",
+    "real typed reusable invitation returns bearer link and exact ID",
+    "same operation retry and retained encrypted reopen preserve link/ID",
+    "exactly one invitation ledger record after retry and reopen",
+    "locked view cannot inspect operation status",
+    "public operation snapshot remains redacted"
+  ],
+  "migration": "No schema or data migration. Completed saved RPC outcomes remain recoverable. Incomplete bound operations remain active or unknown after worker loss; no automatic replay. Existing legacy-only receipts retain their original semantics.",
+  "source_only_baseline": "The deterministic intermediate-state regression exercises the former fallback directly; no separate baseline LTO compile was requested.",
+  "original_failures_retained": [
+    "/run/media/user/SSD-2/retained/gchat-invitation-rpc-20261006/attempt01/result.json",
+    "/run/media/user/SSD-2/retained/gchat-invitation-rpc-20261006/attempt02/result.json"
+  ],
+  "format_and_diff_check": "rustfmt --edition2021 --check on both changed files and git diff --check passed",
+  "snapshot_restored": true,
+  "locks_unchanged": true,
+  "original_artifacts_unchanged": true,
+  "final_validation_receipt": {
+    "path": "/run/media/user/SSD-2/retained/gchat-invitation-rpc-20261006/result.json",
+    "sha256": "8a8d882a639343f22a5cdc301fb91d0d2b29ff8fa9f6c6a42bd7179c92724e17"
+  },
+  "independent_review": "transport_validation reviewed production branch, router pending/unknown mapping and new tests; no blockers",
+  "not_claimed": [
+    "deployed behavior",
+    "new live invitation success",
+    "changes to controller ChannelAdmin or invitation quota"
+  ]
+}

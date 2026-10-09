@@ -32,10 +32,37 @@ fn domain(message: String) -> ChatError {
     }
 }
 fn record_id(key: &OperationKey) -> String {
-    if key.method == "submit" {
-        key.operation_id.as_str().into()
+    operation_record_id(&key.method, key.operation_id.as_str())
+}
+fn operation_record_id(method: &str, operation_id: &str) -> String {
+    if method == "submit" {
+        operation_id.into()
     } else {
-        format!("rpc:{}:{}", key.method, key.operation_id.as_str())
+        format!("rpc:{method}:{operation_id}")
+    }
+}
+
+// Execution liveness is separate from the durable outcome. A stopped worker
+// can remain uncertain forever without blocking a later archive checkpoint.
+struct AdmissionGuard<'a> {
+    gate: &'a update_gate::UpdateGate,
+    id: String,
+    armed: bool,
+}
+impl<'a> AdmissionGuard<'a> {
+    fn new(gate: &'a update_gate::UpdateGate, id: String) -> Self {
+        Self {
+            gate,
+            id,
+            armed: true,
+        }
+    }
+}
+impl Drop for AdmissionGuard<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            self.gate.completed(&self.id);
+        }
     }
 }
 
@@ -74,23 +101,22 @@ impl ChatService {
                 "operation unavailable",
             ));
         }
-        // A legacy response was itself durably saved before acknowledgement.
-        let result = record
-            .rpc
-            .as_ref()
-            .and_then(|r| r.result.clone())
-            .or_else(|| {
-                record.response.clone().map(|response| {
-                    if matches!(&response, Response::Error { code, .. } if code == "outcome_unknown") {
-                        return ReplyBody::OutcomeUnknown;
-                    }
-                    let outcome = gcoms::rpc::encode_outcome(SubmitOutcome::try_from(response));
-                    match outcome {
-                        Ok(outcome) => ReplyBody::Done { outcome },
-                        Err(error) => ReplyBody::Failed { error },
-                    }
-                })
-            });
+        // Typed completion has its own durable commit. The legacy response may
+        // already be saved (and redacted) while that commit is still pending.
+        // Only operations admitted without an RPC binding use the legacy result.
+        let result = match &record.rpc {
+            Some(binding) => binding.result.clone(),
+            None => record.response.clone().map(|response| {
+                if matches!(&response, Response::Error { code, .. } if code == "outcome_unknown") {
+                    return ReplyBody::OutcomeUnknown;
+                }
+                let outcome = gcoms::rpc::encode_outcome(SubmitOutcome::try_from(response));
+                match outcome {
+                    Ok(outcome) => ReplyBody::Done { outcome },
+                    Err(error) => ReplyBody::Failed { error },
+                }
+            }),
+        };
         Ok(gcoms::rpc::OperationRecord {
             key: key.clone(),
             digest: record.digest.clone(),
@@ -190,6 +216,9 @@ impl ChatService {
     }
     async fn rpc_complete(&self, key: &OperationKey, result: ReplyBody) -> Result<(), RpcError> {
         self.check_key(key)?;
+        // Invocation has ended. A failed/cancelled completion save preserves the
+        // unknown admission but must not keep execution marked active.
+        let _finished = AdmissionGuard::new(&self.update_gate, record_id(key));
         let mut session = self.session.lock().await;
         // A view locking while an admitted operation completes must not discard
         // its result. Reading the result still requires an unlocked view.
@@ -219,7 +248,6 @@ impl ChatService {
         unlocked.store.save(&candidate).map_err(storage)?;
         unlocked.state = candidate;
         self.invalidate();
-        self.update_gate.completed(&record_id(key));
         Ok(())
     }
 }
@@ -587,6 +615,19 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
         method: &str,
         args: serde_json::Value,
     ) -> Result<Outcome, RpcError> {
+        let service = if context.operation.is_some() {
+            self.0 .0 .0.clone().rpc_service().await
+        } else {
+            None
+        };
+        let mut execution = context.operation.as_ref().and_then(|operation| {
+            service.as_ref().map(|service| {
+                AdmissionGuard::new(
+                    &service.update_gate,
+                    operation_record_id(method, operation.id.as_str()),
+                )
+            })
+        });
         let outcome = self.0.invoke(context, method, args).await?;
         if matches!(method, "submit" | "network_operation")
             && matches!(&outcome, Outcome::Error(value) if value["code"] == "outcome_unknown")
@@ -597,6 +638,11 @@ impl<S: ChatEndpoint> Dispatch for ChatDispatch<S> {
                 ErrorCode::Unavailable,
                 "chat operation outcome unknown",
             ));
+        }
+        // Known results still block maintenance until their durable completion
+        // attempt ends. Error, panic and cancellation paths drop the armed guard.
+        if let Some(execution) = &mut execution {
+            execution.armed = false;
         }
         Ok(outcome)
     }
@@ -636,3 +682,121 @@ fn args_size(value: &serde_json::Value) -> usize {
         .and_then(|v| v.as_str())
         .map_or(0, str::len)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn saved_response(response: Response) -> (OperationKey, OperationRecord) {
+        let key = OperationKey {
+            caller: "local-owner".into(),
+            instance: "fixture-instance".into(),
+            service: SERVICE.into(),
+            version: SERVICE_VERSION,
+            method: "submit".into(),
+            operation_id: gcoms::rpc::OperationId::new("invitation-operation").unwrap(),
+        };
+        let record = OperationRecord {
+            action: "/invite".into(),
+            conversation: Some("channel/fixture".into()),
+            digest: "fixture-digest".into(),
+            at: 1,
+            response: Some(response),
+            rpc: Some(RecordBinding {
+                key: key.clone(),
+                result: None,
+            }),
+        };
+        (key, record)
+    }
+
+    #[test]
+    fn invitation_poll_waits_for_typed_completion_after_redacted_legacy_save() {
+        let response = Response::Output {
+            conversation: Some("channel/fixture".into()),
+            output: gchat_api::CommandOutput::ReusableInvitation {
+                channel: "fixture".into(),
+                link: "test-only-bearer".into(),
+                id: "0123456789abcdef0123456789abcdef".into(),
+                expires: None,
+                limit: Some(25),
+                local_only: true,
+            },
+        };
+        let (key, mut record) = saved_response(invitations::retained_response(&response));
+        assert!(!serde_json::to_string(&record.response)
+            .unwrap()
+            .contains("test-only-bearer"));
+        // Exact intermediate state: handle_mode saved the public receipt, but
+        // the RPC worker has not committed its typed completion yet.
+        assert_eq!(ChatService::rpc_record(&key, &record).unwrap().result, None);
+        let completed = ReplyBody::Done {
+            outcome: gcoms::rpc::encode_outcome(SubmitOutcome::try_from(response)).unwrap(),
+        };
+        record.rpc.as_mut().unwrap().result = Some(completed.clone());
+        assert_eq!(
+            ChatService::rpc_record(&key, &record).unwrap().result,
+            Some(completed)
+        );
+        assert!(!serde_json::to_string(&record.response)
+            .unwrap()
+            .contains("test-only-bearer"));
+    }
+
+    #[test]
+    fn typed_failure_waits_for_commit_and_never_uses_the_legacy_fallback() {
+        let (key, mut record) = saved_response(Response::Error {
+            code: "rejected".into(),
+            message: "Only the channel owner can manage invitations".into(),
+        });
+        assert_eq!(ChatService::rpc_record(&key, &record).unwrap().result, None);
+        let completed = ReplyBody::Done {
+            outcome: gcoms::rpc::encode_outcome::<SubmitOutcome, _>(Err(ChatError {
+                code: "rejected".into(),
+                message: "Only the channel owner can manage invitations".into(),
+            }))
+            .unwrap(),
+        };
+        record.rpc.as_mut().unwrap().result = Some(completed.clone());
+        assert_eq!(
+            ChatService::rpc_record(&key, &record).unwrap().result,
+            Some(completed)
+        );
+        record.rpc.as_mut().unwrap().result = None;
+        record.response = Some(Response::Error {
+            code: "outcome_unknown".into(),
+            message: "Completion save failed".into(),
+        });
+        assert_eq!(ChatService::rpc_record(&key, &record).unwrap().result, None);
+    }
+
+    #[test]
+    fn legacy_only_operation_keeps_its_original_retained_outcome() {
+        let (key, mut record) = saved_response(Response::Output {
+            conversation: Some("channel/fixture".into()),
+            output: gchat_api::CommandOutput::Text {
+                title: "Invitation created".into(),
+                text: "Use /invites to share or revoke it.".into(),
+            },
+        });
+        record.rpc = None;
+        assert!(matches!(
+            ChatService::rpc_record(&key, &record).unwrap().result,
+            Some(ReplyBody::Done {
+                outcome: Outcome::Ok(_)
+            })
+        ));
+        record.response = Some(Response::Error {
+            code: "outcome_unknown".into(),
+            message: "Interrupted after admission".into(),
+        });
+        assert_eq!(
+            ChatService::rpc_record(&key, &record).unwrap().result,
+            Some(ReplyBody::OutcomeUnknown)
+        );
+    }
+}
+
+#[cfg(test)]
+#[path = "rpc_liveness_tests.rs"]
+mod liveness_tests;

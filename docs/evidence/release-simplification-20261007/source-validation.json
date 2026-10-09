@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "at_utc": "2026-10-07T17:24:59.663870+00:00",
+  "scope": "release-pipeline simplification; not runtime or installed-client acceptance",
+  "passed": true,
+  "full_python": {
+    "tests": 1043,
+    "skipped": 5,
+    "seconds": 279.573,
+    "result": "passed"
+  },
+  "controller_suites": {
+    "passed": true,
+    "tests": 407,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 14.461273215943947
+  },
+  "focused": {
+    "retained_build": 46,
+    "compiler_cache": 8,
+    "native_retry": 85,
+    "gcoms_harness_and_build": 47,
+    "gcoms_windows_evidence": 15
+  },
+  "source_audit": {
+    "gchat_paths": 861,
+    "gcoms_paths": 1065,
+    "passed": true
+  },
+  "contracts": {
+    "stable_methods": 18,
+    "optional_methods": 3,
+    "api2_unchanged": true
+  },
+  "workflow_yaml_parsed": true,
+  "gcoms_commit": "de5480ef5601005d68aa73a55a5f0b8ac1101184",
+  "initial_full_run": {
+    "result": "failed",
+    "cause": "managed temporary directory symlink ancestry and Unix socket path length; rerun used short resolved SSD scratch; two new path-comparison fixtures normalized",
+    "retained": true
+  },
+  "local_evidence": {
+    "full-script-tests.log": "08d9734c1ed093e51cffb2a334eaa4c2b1f6adbdd3dce4120ad99a81d06a3e66",
+    "full-script-tests-initial.log": "6104de2a330abd72f7ded17aba781825f94ad23397a1a632b2bd3adda3d27dbd",
+    "controller-tests-final.log": "14461c1d954eb5f600e1ae5f42d2425c535305db3769770c413a4f5c469d9e77",
+    "controller-tests-final.json": "659c228ec507a61ef0b9add74e99f5fdb8e592a50776056a255a62fd56f860ac"
+  },
+  "pending": [
+    "first hosted compile/cache timings",
+    "full 64-client 30-minute campaign",
+    "signed managed activation",
+    "Android payload-contact and file-delivery confirmation"
+  ]
+}

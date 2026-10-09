@@ -49,6 +49,16 @@ def status(state, release=None, now=None):
             platforms.append({**dict(item), 'state_age_seconds': max(0, now - event[0]) if event else None})
         manifest = json.loads(candidate['manifest'])
     for item in platforms:
+        from release_publish import job
+        build = job(state, manifest, item['platform'], 'build')
+        checks = build / 'native-checks.json'
+        if checks.is_file():
+            value = json.loads(checks.read_text())
+            item['native_checks'] = value
+        retry = build / 'native-retry.json'
+        if retry.is_file():
+            value = json.loads(retry.read_text())
+            item['native_retry'] = {k: value.get(k) for k in ('state', 'from_attempt', 'observed_attempt', 'requested_at')}
         routine = state / 'routine-runs' / release / (item['platform'] + '.json')
         if routine.is_file():
             run = json.loads(routine.read_text())
@@ -126,7 +136,9 @@ def request(state, action, release=None, platform=None, *, observed=None, reason
 
 
 def deployment_config(state, manifest, config):
-    """Explicit operator retries change a rollout revision, never a manifest."""
+    """Qualified controller overlays and retries never change a manifest."""
+    from release_controller import deployment_config as controller_config
+    config = controller_config(state, manifest, config)
     path = Path(state) / 'control/deployment-retries' / (manifest['release_id'] + '.json')
     return {**config, 'operator_retry': json.loads(path.read_text())['id']} if path.is_file() else config
 
@@ -160,14 +172,41 @@ def consume(controller):
                 platforms = [value['platform']] if value.get('platform') else [
                     row[0] for row in controller.ledger.db.execute('SELECT platform FROM platforms WHERE candidate=?', (release,))]
                 resumed = []
+                native_retries = []
+                manifest = controller.ledger.manifest(release)
                 for platform in platforms:
                     item = controller.ledger.target(release, platform)
+                    load = state / 'relay-load' / release / 'status.json'
+                    load_failed = (platform == 'linux-x86_64' and load.is_file()
+                                   and json.loads(load.read_text()).get('state') == 'blocked')
+                    if ((item['state'] == 'blocked' and item.get('resume_state') == 'building') or load_failed):
+                        from release_jobs import authorize_native_retry
+                        from release_publish import job
+                        build = job(state, manifest, platform, 'build')
+                        authorization = authorize_native_retry(manifest, platform, build, build.name, value['id'])
+                        if authorization:
+                            native_retries.append(platform)
+                            if load_failed:
+                                old = load.read_bytes()
+                                previous = json.loads(old)
+                                if previous.get('release_id') != release or previous.get('sources') != manifest['sources']:
+                                    raise ValueError('relay retry status source binding changed')
+                                retained = state / 'control/relay-load-failures' / release / (hashlib.sha256(old).hexdigest() + '.json')
+                                retained.parent.mkdir(parents=True, exist_ok=True)
+                                if not retained.exists():
+                                    with retained.open('xb') as stream: stream.write(old)
+                                if retained.read_bytes() != old:
+                                    raise ValueError('retained original relay failure changed')
+                                atomic_json(load, {'schema': 1, 'release_id': release, 'sources': manifest['sources'],
+                                                  'state': 'waiting', 'observed_at': int(time.time()),
+                                                  'operator_retry': authorization['operator_request_id'],
+                                                  'previous_failure_sha256': hashlib.sha256(old).hexdigest()})
                     if item['state'] == 'blocked':
                         controller.ledger.transition(release, platform, item['resume_state'], evidence=item['evidence'])
                         resumed.append(platform)
                 if not value.get('platform'):
                     atomic_json(state / 'control/deployment-retries' / (release + '.json'), {'id': value['id']})
-                result = {'state': 'accepted', 'resumed_platforms': resumed}
+                result = {'state': 'accepted', 'resumed_platforms': resumed, 'native_retry_platforms': native_retries}
             elif value['action'] == 'qualify' and value.get('platform') in ('android', 'ios'):
                 atomic_json(state / 'control/qualifications' / (value['id'] + '.json'), value)
                 result = {'state': 'accepted', 'qualification': 'queued'}

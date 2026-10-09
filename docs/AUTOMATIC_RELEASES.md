@@ -1,4 +1,8 @@
-The Linux workflow runs GChat CI, GComs CI and the isolated 64-client relay campaign concurrently on separate runners. Both native receipts authorize signing; the source-bound load receipt separately authorizes infrastructure activation. The load job performs a two-client preflight, then one 30-minute campaign. It retains original failed evidence and never automatically restarts a campaign. Runner hardware is recorded; thresholds remain <1% refusals and recipient p95 <5 seconds, with verified DS-sized file delivery and relay restart recovery. `release.py status` reports the load gate.
+Linux releases compile each production binary once. GChat CI, GComs CI and the production relay/fixture build run concurrently. The relay campaign consumes those retained production relay bytes; packaging consumes the same relay bytes and the desktop/CLI already built by GChat CI. Signing verifies exact source, workflow, compiler, commands, dependencies and file hashes before bundling; DEB verification accounts for the pinned Tauri bundle marker and rejects all other binary changes. It does not rerun Cargo or the frontend build.
+
+Compiler caches are written by the trusted `main` workflow and restored by release branches. They contain compiler/dependency bytes, never qualification or signing authority. Exact keys include the full runner image version and dependencies. Compatible restore prefixes retain the Ubuntu OS release, pinned toolchains, compiler flags and build role, so GitHub's concurrent weekly image rollout does not force a cold build. Fallback restores still run Cargo; every candidate still runs its required tests. Warm/save and release/restore use identical cache paths. Initial v2 warming can read an exact v1 image/toolchain/dependency key only when the original compiler flags still match; all new writes use v2. This also avoids the old cache isolation between successive release branches; see [GitHub's cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
+
+The isolated load gate still uses all 64 clients, a two-client preflight and one full 30-minute campaign. Independent profile preparation and client readiness run concurrently. Admission through the shared owner uses the original round-robin order across four channels, allowing each membership update to progress before the next request. Relay restart readiness has a bounded wait while delivery measurement continues. Thresholds remain <1% refusals and recipient p95 <5 seconds, with verified DS-sized file delivery and relay restart recovery. Native receipts authorize signing; the load receipt separately authorizes infrastructure activation. The mandatory campaign means a complete release cannot finish in a few minutes, even with warm caches. First-time compilation and runner queues add time.
 
 The original 60-minute build deadline prevents new dispatches after expiry but permits collection and verification of the same provider request. Publication receives its own persistent 60-minute active budget once infrastructure is ready; infrastructure and external review waits pause that budget. Restarts do not reset either clock or create a second provider request.
 
@@ -10,7 +14,7 @@ Push source to Forgejo to start a release. The existing source mirror and Kubern
 python3 scripts/release.py status
 ```
 
-Release status, 2026-10-04: Linux 0.1.98 and all 17 infrastructure targets are active and healthy. Linux, Windows, both Mac architectures and SDK archives are published. Controller c66c230 runs the production-minutes-v1 publication path in Kubernetes. Original Android and iOS artifacts passed its publication gates. Android 1113 is uploaded, committed to Google Play and processing; iOS 1.1.13 awaits Apple encryption approval, including France. Full GUI qualification and SDK 1.0 remain separate and incomplete. Mobile publication and Apple encryption approval remain separate from full GUI qualification and SDK 1.0; original failed reports are retained.
+Historical receipt, 2026-10-04: Linux 0.1.98 and all 17 infrastructure targets were active and healthy. Use the status command above for the current release; these older version numbers are retained only as history. Linux, Windows, both Mac architectures and SDK archives are published. Controller c66c230 runs the production-minutes-v1 publication path in Kubernetes. Original Android and iOS artifacts passed its publication gates. Android 1113 is uploaded, committed to Google Play and processing; iOS 1.1.13 awaits Apple encryption approval, including France. Full GUI qualification and SDK 1.0 remain separate and incomplete. Mobile publication and Apple encryption approval remain separate from full GUI qualification and SDK 1.0; original failed reports are retained.
 
 Routine publication now verifies the native build, signatures, permissions, startup lifecycle and eight fresh matching relays. Full mobile GUI upgrade/rollback/history/file journeys run separately with `python3 scripts/release.py qualify --platform android` or `ios`; they do not gate routine upload and never become passes from a build or upload. Routine work has a persistent 60-minute active budget, one transient retry and one-minute source settlement; external review pauses its budget. Native dependencies and compiler outputs are cached, while signed artifacts and every source binding are verified.
 
@@ -25,8 +29,14 @@ helper. A lost or still-running request is reconciled instead of resubmitted;
 missing successful reports never become passes.
 
 Use `python3 scripts/release.py status` for the selected release, actual deployment
-versions and platform waiting/failure states. `resume --platform linux-x86_64`
-queues an operator retry of its original stage; `resume` also retries the selected
+versions and platform waiting/failure states. Native check details include each
+job's current or failed step and original attempt. `resume --platform linux-x86_64`
+authorizes one bounded retry of failed jobs in the existing source-bound workflow;
+successful sibling jobs and their verified artifacts are retained. The worker
+records intent before requesting the retry and reconciles an uncertain response
+without submitting it again. A second failure stays blocked. Changed source
+requires a new candidate. Original failures remain retained; neither the original
+build budget nor the full load campaign is shortened or reset. `resume` also retries the selected
 deployment. `rollback` queues restoration of recorded infrastructure versions.
 These commands use the running coordinator and never create a second ledger writer.
 Store publications cannot be rolled back by that command. Use `--json` for status
@@ -356,6 +366,25 @@ repository with `release/automation/initialize-apt`; this enables polling withou
 advertising an unqualified app. AppImage/macOS/Windows use signed Tauri updates.
 Mobile stores own mobile installation and their automatic-update preferences.
 
+For an already-running managed headless hub, opt in with
+`sudo python3 scripts/install-local-updates.py --apply --headless-user user`.
+This enables a user timer that checks the installed package every minute. It
+only activates `gchat-fleet-host.service`, first running the existing
+`gchat-hub-backup.service`. The helper defers while the package updater is busy, checks
+that dpkg fully configured the package, and verifies the new PID's actual
+`/proc/<pid>/exe` hash against `/usr/bin/gchat`. It does not start a stopped hub,
+restart GUI clients, repair profiles, or respond to routing health changes.
+The process/hash check proves executable activation, not network delivery.
+Default installations remain package-only.
+
+Each installed executable gets at most one automatic activation attempt.
+Receipts live in `${XDG_STATE_HOME:-~/.local/state}/gchat-headless-activation/<sha256>.json`;
+failed or interrupted attempts stay suppressed. Inspect the receipt and
+`journalctl --user -u gchat-headless-activate.service`, correct the cause, then
+remove only that executable's receipt to permit one manual retry with
+`systemctl --user start gchat-headless-activate.service`. Disable automatic
+activation with `systemctl --user disable --now gchat-headless-activate.timer`.
+
 ## Controller deployment and secrets
 
 `release/automation/Dockerfile`, `kubernetes.yaml`, `nginx.conf` and
@@ -391,13 +420,14 @@ review does not prevent preparing the next candidate.
 The public status document distinguishes building, verification, publication,
 processing, review, blocked and available.
 
-Linux qualification and packaging have separate 120-minute native jobs. The
-first runs both unchanged repository CI entrypoints and retains their logs,
-paired source/dependency evidence and workflow/release bindings. The signing job
-requires that successful job, fetches its exact same-run artifact by ID, checks
-the provider digest and every retained binding against its clean frozen pair,
-then prepares and rechecks the installer's dependency inputs. A packaging retry
-may reuse that run's earlier successful qualification. Qualification and failed
+Linux qualification, production/fixture compilation, load and packaging have
+separate bounded native jobs. The two qualification jobs run the existing
+repository CI entrypoints and retain logs, paired source/dependency evidence and
+workflow/release bindings. The signing job requires both successful qualifications
+and the production build, fetches their exact same-run artifacts by ID, checks
+provider digests and every retained binding against its clean frozen pair, then
+bundles the retained desktop/CLI and production service binaries. A failed-job
+retry may reuse that run's earlier successful jobs. Qualification and failed
 build archives include their attempt number; successful packages keep the
 `linux-x86_64` provider name. Neither failed CI nor another run's artifact can
 authorize signing. Application recovery deadlines and acceptance gates remain
@@ -490,3 +520,9 @@ and the working previous artifact; activation removes only those overrides after
 the new binary is verified. Rollback restores the retained overrides. Unrelated
 operator changes remain a refusal. This one-time repair does not alter the usual
 `push main` release process.
+
+### Provider waits and controller maintenance
+
+Local deployment supervision and provider polling have separate clocks: `poll_interval_seconds=10`, `github_poll_interval_seconds=120`, `store_poll_interval_seconds=900`. Quota cooldowns survive process restarts and apply across workers. `status` exposes the next provider check; `resume --platform android` reconciles the retained submission and does not create a new upload. Apple encryption review remains an external prerequisite.
+
+Reviewed controller-only source changes produce a separately qualified controller image for the current application release. Native artifacts and their original source bindings remain immutable. An Intel-only successor may nominate `deployment_baseline` only when the controller validates its test-only/runtime-unchanged provenance; this creates a separate receipt and never rewrites the baseline deployment journal or failed native results.

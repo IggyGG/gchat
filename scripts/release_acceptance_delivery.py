@@ -1,4 +1,5 @@
 """Publish encrypted acceptance transport only to a verified running worker."""
+from release_provider import github_download
 import hashlib
 import json
 from pathlib import Path
@@ -42,8 +43,7 @@ def retain_original(state, spec, target, api):
             raise ValueError('original acceptance archive is unavailable or differs')
         partial = path.with_suffix('.partial')
         with partial.open('wb') as stream:
-            subprocess.run(['gh', 'api', f'repos/IggyGG/gchat/actions/artifacts/{spec["artifact"]}/zip'],
-                           stdout=stream, stderr=subprocess.PIPE, check=True, timeout=600)
+            github_download(f'actions/artifacts/{spec["artifact"]}/zip', repo='IggyGG/gchat', stream=stream, timeout=600)
         if digest(partial) != spec['archive'] or partial.stat().st_size != artifact['size_in_bytes']:
             raise ValueError('original acceptance archive changed in transit')
         partial.replace(path)
@@ -124,9 +124,12 @@ def ready(state, intent, work, run, api, issue, *, now=None):
         raise ValueError('acceptance ready artifact identity is invalid')
     archive = work / 'ready.zip'
     if not archive.exists():
-        with archive.open('xb') as stream:
-            subprocess.run(['gh', 'api', f'repos/IggyGG/gchat/actions/artifacts/{artifact["id"]}/zip'],
-                           stdout=stream, stderr=subprocess.PIPE, check=True, timeout=120)
+        partial = work / 'ready.partial'
+        with partial.open('wb') as stream:
+            github_download(f'actions/artifacts/{artifact["id"]}/zip', repo='IggyGG/gchat', stream=stream, timeout=120)
+        if 'sha256:' + digest(partial) != artifact['digest'] or partial.stat().st_size != artifact['size_in_bytes']:
+            raise ValueError('acceptance ready artifact changed in transit')
+        partial.replace(archive)
     if 'sha256:' + digest(archive) != artifact['digest'] or archive.stat().st_size != artifact['size_in_bytes']:
         raise ValueError('acceptance ready artifact changed')
     with zipfile.ZipFile(archive) as source:

@@ -139,6 +139,46 @@ def discover(config, state, ledger):
                 'sources': upstream, 'inputs': current_inputs,
                 'artifact_inputs_unchanged': True, 'qualification_passed': False,
                 'reason': 'Qualification/controller revision; retain original artifact source bindings'})
+            if prior_inputs['controller'] != current_inputs['controller']:
+                from release_controller import queue, qualification_ref
+                observed = Path(state) / 'controller-observed.json'
+                previous = json.loads(observed.read_text()) if observed.exists() else {}
+                if previous.get('sources') != upstream:
+                    atomic_json(observed, {'sources': upstream, 'since': int(time.time())})
+                    return baseline['release_id']
+                if time.time() - previous['since'] < config.get('settle_seconds', 60):
+                    return baseline['release_id']
+                controller_baseline, controller_sources = baseline, upstream
+                controller_prior, controller_inputs = prior_inputs, current_inputs
+                if baseline.get('deployment_baseline'):
+                    # The explicit Intel successor owns its applications, while
+                    # the nominated deployed release still owns native services.
+                    if baseline.get('selected_platforms') != ['macos-x86_64']:
+                        raise ValueError('controller baseline requires an explicit Intel successor')
+                    controller_baseline = ledger.manifest(baseline['deployment_baseline'])
+                    desired = Path(state) / 'deployment/desired.json'
+                    journal = Path(state) / 'deployment' / controller_baseline['release_id'] / 'journal.json'
+                    if (not desired.exists() or json.loads(desired.read_text()).get('release_id') != controller_baseline['release_id']
+                            or not journal.exists()):
+                        return baseline['release_id']
+                    deployed = json.loads(journal.read_text())
+                    if (deployed.get('state') != 'deployed' or deployed.get('sources') != controller_baseline['sources']):
+                        return baseline['release_id']
+                    if controller_baseline['policy'] != baseline['policy']:
+                        raise ValueError('controller deployment baseline policy changed')
+                    controller_sources = dict(upstream, gcoms=controller_baseline['sources']['gcoms'])
+                    controller_prior = fingerprints(repositories, controller_baseline.get('upstream', controller_baseline['sources']))
+                    controller_inputs = fingerprints(repositories, controller_sources)
+                    if any(controller_prior[k] != controller_inputs[k] for k in ('artifacts', 'infrastructure')):
+                        raise ValueError('controller update changes deployed application or native infrastructure inputs')
+                intent = queue(state, controller_baseline, controller_sources, controller_prior, controller_inputs)
+                published = Path(state) / 'controller-updates' / intent['id'] / 'ref-published.json'
+                if not published.exists():
+                    for destination in config.get('candidate_remotes', []):
+                        subprocess.run(['git', '-C', str(root), 'push', destination,
+                            upstream['gchat']['commit'] + ':' + qualification_ref(intent)],
+                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+                    atomic_json(published, {'source': upstream['gchat'], 'ref': qualification_ref(intent)})
             return baseline['release_id']
     observed_path = Path(state) / 'observed-sources.json'
     observation = {'sources': upstream, 'policy': policy}

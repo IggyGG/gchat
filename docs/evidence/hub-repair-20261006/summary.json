@@ -1,0 +1,212 @@
+{
+  "schema": 1,
+  "scope": "live invitation, existing-Pi delivery, and desktop-safe hub repair; bulk enrollment remains separate",
+  "date": "2026-10-06",
+  "qualified_signed_release": false,
+  "sources": {
+    "gchat": "934dc62c2836876bca4063ecc624ec18ea28cd80",
+    "gcoms": "1d9c8a3206c175a20109731de5d9e7b6d55d8a75",
+    "controller_task_branch": "97b56af"
+  },
+  "hub": {
+    "binary_sha256": "0e2f2ca69b12e32817f1cb5fa90ec25e16ade8fcbd79ef53c80240e1af6809aa",
+    "same_identity_and_full_rosters": true,
+    "routing_ready": true,
+    "private_diagnostics": false,
+    "visible_desktop": true,
+    "stable_observation_seconds": 61.79,
+    "restart_count": 0,
+    "existing_supported_owner_update_guard": 0,
+    "controller_and_timers_restored": true,
+    "evidence": {
+      "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/final-hub-pin-independent-verification.json",
+      "sha256": "54198b254e4eb89434551d2b0067486c3c273679c48a6a2095809fed232e4528"
+    }
+  },
+  "catalog": {
+    "per_publisher_descriptors": 1024,
+    "per_channel_invitation_limit": 64,
+    "relay_restarts": 0,
+    "providers": 2,
+    "binary_sha256": "6260f3c06a056811e9726f17ef4fb6c7dd660a2815154332273c5e9124f663d3",
+    "evidence": {
+      "path": "/run/media/user/SSD-2/retained/gchat-catalog-quota-20261006/provider-rollout-complete.json",
+      "sha256": "459f4c739cc68beea15452afc9257aefcd8bb285b73bb2762ca89e08f297c0d1"
+    }
+  },
+  "invitation": {
+    "normal_controller_mint_seconds": 2.511148424819112,
+    "ledger_counts": [
+      45,
+      46,
+      46
+    ],
+    "exact_typed_result_survives_replay_and_reopen": true,
+    "failed_publication_recovered_without_second_record": true,
+    "original_uncertain_operation_still_unknown": true,
+    "public_history_redacted": true,
+    "new_channeladmin_grants": 0,
+    "normal_mint_evidence": {
+      "path": "/home/user/.local/state/gchat-fleet/hub-invitation-repair-20261006/normal-mint-after-quota/summary.json",
+      "sha256": "01592c94f493f4a2c5065527df99a842895b8c5d17629cf1cbd9c8a256fed85f"
+    },
+    "final_reopen_evidence": {
+      "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/desktop-pin-recovery/result.json",
+      "sha256": "4baa963c026c4aa4ee5fa84c689bb83d1cbe7de023b32e9b20216023c87e640d"
+    }
+  },
+  "delivery": {
+    "pi_lte": {
+      "authenticated_targeted_echo": true,
+      "message_timestamp_delta_seconds": 3,
+      "evidence": {
+        "path": "/home/user/.local/state/gchat-fleet/hub-invitation-repair-20261006/delivery/receipt.json",
+        "sha256": "0a131c87f7b8b0e56109b1590ef1003d13467a4f2b6b2a208e3e0a959bd0c002"
+      }
+    },
+    "pi_home": {
+      "authenticated_targeted_echo": true,
+      "message_timestamp_delta_seconds": 196,
+      "includes_recovery_and_reconnect": true,
+      "resubmitted": false,
+      "evidence": {
+        "path": "/home/user/.local/state/gchat-fleet/hub-invitation-repair-20261006/pi-home-delivery/receipt.json",
+        "sha256": "ce2594fe7e527c9191d4a187bdeb788cfd2bf20b16a7a53aa853fb9f6f264c41"
+      }
+    }
+  },
+  "desktop_recovery": {
+    "initial_packaged_desktop_takeover_retained": true,
+    "verified_interactive_owner_received_normal_sigterm": true,
+    "force_kill": false,
+    "stale_profile_restore": false,
+    "stale_unlistened_fleet_socket_removed": true,
+    "guarded_recovery": {
+      "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/desktop-pin-recovery/result.json",
+      "sha256": "4baa963c026c4aa4ee5fa84c689bb83d1cbe7de023b32e9b20216023c87e640d"
+    }
+  },
+  "pending": [
+    "Fresh C-DS full-file integrity, enrollment/join and targeted reply: latest 600-second acceptance failed; normal template remains unchanged.",
+    "Release storage capacity, qualified signed successor, and explicit retirement of exact owned hub/catalog repair overrides."
+  ],
+  "retirement": {
+    "catalog": {
+      "owned_override": "/etc/systemd/system/gchat-bootstrap.service.d/99zz-local-catalog-capacity.conf",
+      "providers": [
+        "hel",
+        "fsn"
+      ],
+      "required_source_ancestor": "1d9c8a3206c175a20109731de5d9e7b6d55d8a75",
+      "receipt_paths": [
+        "/run/media/user/SSD-2/retained/gchat-catalog-quota-20261006/hel-activation-result.private.json",
+        "/run/media/user/SSD-2/retained/gchat-catalog-quota-20261006/fsn-activation-result.private.json"
+      ],
+      "procedure": "After exact signed successor includes cap fix, guarded handoff removes only matching owned override; preserve provider state/grants and old binary/rollback. No automatic retirement is installed."
+    },
+    "hub": {
+      "owned_override": "/home/user/.config/systemd/user/gchat-fleet-host.service.d/99zzzz-local-hotfix.conf",
+      "procedure": "After both packaged desktop and hub are the same qualified signed successor containing GChat934dc62 and GComs1d9c8a3, quiesce desktop/controller producers and timers. The temporary managed-updates0 guard deliberately defers OwnerPrepare; use the verified daemon normal SIGTERM checkpoint and wait for graceful exit without force, then back up the current stopped profile. Remove only the matching owned override, start the managed signed binary, and verify current identity, full rosters, saved invitation replay and routing before restoring producers/timers. Rollback uses the retained repair binary with current state, never a stale profile backup.",
+      "current_owned_override_sha256": "f5b4dceee59a294083bc964a106a4e9d834a23bf91e15644dbc8e2a35445ba92",
+      "current_source_build": {
+        "releaseId": "4b3e45c06e59e12dd68709b5a713e12c35e90c2301b0e97ed41a910f6ab2b602",
+        "gchatCommit": "934dc62c2836876bca4063ecc624ec18ea28cd80",
+        "gcomsCommit": "1d9c8a3206c175a20109731de5d9e7b6d55d8a75",
+        "version": "0.1.0+local.update-gate.20261006"
+      },
+      "current_owner_managed_updates": "0",
+      "diagnostic_environment_removed": true
+    }
+  },
+  "local_repair_artifacts_and_private_profiles_are_not_committed": true,
+  "native_client_qualification": {
+    "passed": false,
+    "compiled_source": "e390a0b8d8e21f0372d9f15bdd80bd537253758a",
+    "evidence_task_commit": "00d71db",
+    "source_publication": "Dropship task branch; unqualified native template not promoted",
+    "template_sha256": "78f8925739956220c30ce34252a820b663095287aa2182c1515761031ff48c21",
+    "received_bytes": 396000,
+    "expected_bytes": 5235248,
+    "window_seconds": 600,
+    "new_member_count": 0,
+    "forwards": {
+      "total": 223,
+      "accepted": 217,
+      "natural_refused": 0,
+      "transport_failed": 6
+    },
+    "cleanup_complete": true,
+    "default_template_promoted": false,
+    "rust_tests_passed": 54,
+    "native_asan_ubsan_passed": true,
+    "strict_clippy_passed": false,
+    "unchanged_baseline_clippy_diagnostics": 84,
+    "remaining_investigation": "Observed stalls remain unattributed. Native request begin and pull open/close can perform blocking writes; time those calls before another behavior change or attempt.",
+    "acceptance": {
+      "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/receiver-isolated-rpc/c-ds-attempt-20261006T154213Z/acceptance-summary.json",
+      "sha256": "94a1563c9b3028977fda41539a5877233a4f6485c977e9dad7cdffe59fb1a0de"
+    }
+  },
+  "managed_successor_observation": {
+    "observed_at": "2026-10-06T15:03:00.910757+00:00",
+    "candidate": 160,
+    "release_id": "f0290d0414b013483d7bdf6f76845f2bed050c23e2f395519e0cfd29c5da0710",
+    "linux_version": "0.1.165",
+    "sources": {
+      "gchat": {
+        "commit": "aa6e577f24adb2842a7c9d15a4033a9f986d1f6d",
+        "tree": "1ebf371a0542c002e895191e3ae7e55730023f33"
+      },
+      "gcoms": {
+        "commit": "1d9c8a3206c175a20109731de5d9e7b6d55d8a75",
+        "tree": "1b931d6e36570b6b1501b291e79f8d5753deecb5"
+      }
+    },
+    "hub_fix_ancestry_verified": true,
+    "all_seven_platform_states": "blocked",
+    "reason": "release storage is below reserved headroom; export retained artifacts before retrying",
+    "free_bytes": 16768012288,
+    "required_floor_bytes": 17179869184,
+    "pvc": {
+      "name": "gchat-release-state-hel",
+      "namespace": "ghost-com",
+      "phase": "Bound",
+      "capacity": "160Gi",
+      "requested": "192Gi",
+      "condition": "Resizing",
+      "condition_transition": "2026-10-06T14:58:27Z"
+    },
+    "resize_denied_nodes": [
+      "triform-1",
+      "triform-3"
+    ],
+    "safe_useful_cleanup_found": false,
+    "free_vg_extents_found": false,
+    "eligible_replacement_replica_nodes": 0,
+    "reserve_reduced": false,
+    "replicas_reduced": false,
+    "retained_artifacts_deleted": false,
+    "receipts": {
+      "release-retention-bounded-audit-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/release-retention-bounded-audit-20261006.json",
+        "sha256": "3ed3a84a372ad6b888cdadcfd8f64d35689e5eb9ddc2158c72a120e9b38a46f1"
+      },
+      "release-volume-expansion-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/release-volume-expansion-readonly-20261006.json",
+        "sha256": "c6694fec7a194ff69daf79461dfdcf289c29339c54dc043810ac4ef9462b3857"
+      },
+      "node-image-headroom-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/node-image-headroom-readonly-20261006.json",
+        "sha256": "ee3b85f83ac72cb3932745cd1c79210fcb8a65b5b4a1736ae20fa8c108cba028"
+      },
+      "longhorn-vg-extents-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/longhorn-vg-extents-readonly-20261006.json",
+        "sha256": "4f6ce3b8911efce1003f24b3a26be17050af26ea78c109fa0992c94b1db7f075"
+      },
+      "release-replica-alternatives-readonly-20261006.json": {
+        "path": "/run/media/user/SSD-2/retained/gchat-hub-repair-20261006/release-replica-alternatives-readonly-20261006.json",
+        "sha256": "9559f6ff46aede3082d52d4fa7a247e6cdf6b5e8f235e7641d6665294d137bd7"
+      }
+    }
+  }
+}

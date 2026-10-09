@@ -169,4 +169,6 @@ def main():
     atomic_json(output,{'schema':1,'release_id':manifest['release_id'],'sources':manifest['sources'],'platform':platform,'stage':stage,
         'passed':True,'source_unchanged':True,'provider_state':result['state'],'evidence':[{'path':report.name,'sha256':digest(report)}]})
 
-if __name__=='__main__':main()
+if __name__ == '__main__':
+    from release_provider import worker_main
+    worker_main(main)

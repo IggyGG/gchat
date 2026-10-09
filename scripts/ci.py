@@ -36,6 +36,10 @@ if args.gcoms:
         'sources':inputs['sources'],'exit_code':result.returncode,
         'source_unchanged':unchanged,'inputs':inputs,
     },indent=2)+'\n')
+    if result.returncode == 0 and unchanged and sys.platform == 'linux' and os.environ.get('GCHAT_RELEASE_MANIFEST'):
+        from linux_build_artifacts import retain_desktop
+        retain_desktop(checkout, inputs, output/'provenance', dict(os.environ))
+        verify_derived_inputs(checkout,inputs)
     if args.provenance_output:
         shutil.copytree(output/'provenance',args.provenance_output.resolve())
     print('Paired native evidence:',output/'provenance',flush=True)

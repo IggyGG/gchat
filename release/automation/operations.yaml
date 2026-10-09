@@ -43,6 +43,14 @@ rules:
   - apiGroups: [batch]
     resources: [jobs]
     verbs: [get, list, create, patch]
+  # Qualification verifies the completed pod's image digest, then retains its
+  # runtime proof. kubectl logs needs pod get plus the pods/log subresource.
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: ['']
+    resources: [pods/log]
+    verbs: [get]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

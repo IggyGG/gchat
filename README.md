@@ -1,3 +1,23 @@
+Release 171 is deployed (2026-10-08): all 17 managed infrastructure targets, including eight relays, match the qualified release. Linux 0.1.176 is installed; the production hub and visible desktop run its exact packaged executables. Linux, Windows, both Macs, Android and SDK downloads are available. Controller-only correction 8eb7e28 deployed automatically after 415 actual-image checks and a full authenticated network check; its obsolete iOS queue entry was retired without rebuilding apps. The retained 64-client/30-minute campaign passed 720 authenticated deliveries, zero refusals and 1.792s p95, including the 5,235,248-byte file and relay restart. iOS awaits Apple encryption review; the separate Android worker delivery/launch journey remains unproven. See the current 171 observation in [release evidence](docs/evidence/stabilization-20261001/launch-simplification.json).
+
+File-cache reactivation, 2026-10-08: after unlock, file controls and binary reads/writes wait for the retained encrypted cache to be enabled. Chat and history remain usable during preparation. Duplicate upload commits remain idempotent. The transient readiness state is not stored in profiles and changes no public API. Focused source validation and managed release acceptance are recorded separately. Validation: the causal regression, original file-recovery integration and responsive-unlock control pass; strict core Clippy and source/contract checks pass. [Focused repair evidence](docs/evidence/file-cache-reactivation-20261008/summary.json).
+
+Candidate167 packaging correction, 2026-10-07: pinned Tauri marks DEB binaries by changing `UNK` to `DEB`. Retained-build verification now permits precisely that three-byte mutation and checks every other byte; the CLI still requires its original hash. Actual qualified167 binaries reproduce and pass the corrected comparison. The protected signed build and full relay gate remain required.
+
+Release simplification, 2026-10-07: Linux qualification, production compilation and load testing share verified retained binaries; signing bundles without compiling again. Trusted-main compiler caches serve successive release branches. Independent profile preparation and readiness run in parallel; shared-owner admissions remain ordered, and relay restart readiness no longer interrupts load observation. `release.py status` exposes native job steps; an explicit `resume --platform linux-x86_64` permits one failed-job retry while keeping successful jobs. The full 64-client/30-minute gate and signed managed activation remain required. See [automatic releases](docs/AUTOMATIC_RELEASES.md). Hosted timings and activation must be observed separately.
+
+Live hub repair, 2026-10-06: normal controller invitation creation, exact-result
+replay/reopen and authenticated replies from both existing Pis are verified.
+Both provider catalogs now accommodate the hub's invitations across channels;
+the per-channel invitation/member limit remains 64. The repaired hub and visible
+desktop are stable with the supported fleet managed-update guard. These are
+temporary source-bound repairs; full bulk bootstrap/enrollment and the next
+qualified signed release remain separate. The latest isolated native-client run
+received 396,000 of 5,235,248 bytes in 600 seconds and did not enroll a new member;
+its template remains unpromoted. The signed successor includes the hub fixes but
+is blocked by release-volume capacity. See the [live evidence and exact
+override retirement requirements](docs/evidence/hub-repair-20261006/summary.json).
+
 Release scope, 2026-10-05: desktop relay sharing is deferred; the release retains the fleet capacity repairs, with Pi access tunnels replacing desktop contribution. Desktop sharing and router mapping stay disabled, including explicit attempts to enable sharing. Existing messaging remains available.
 
 Release admission repair, 2026-10-05: old builds retained for late result collection no longer prevent the selected release from starting. Original requests remain reconcilable under existing worker limits; deployment and publication still require their normal evidence. Controller activation is a separate remaining step.
@@ -882,3 +902,20 @@ profile reopening; it does not qualify a new installer or fleet deployment.
 The standalone GComs Android agent has its own workstation deployment lane.
 Its reviewed release operations do not rebuild these application packages or
 unchanged SDK matrices; runtime and unknown inputs retain ordinary qualification.
+
+Typed chat operations now wait for their own saved RPC result before reporting
+completion. A reusable invitation returns its link while the public operation
+history keeps the redacted receipt. Repeating the same operation ID, including
+after reopening, returns the saved result without consuming another invitation
+slot. The 64-invitation limit and component permissions are unchanged.
+
+A stopped RPC worker no longer blocks a later update checkpoint when its outcome
+is unknown or its completion could not be saved. The durable admission stays
+unknown, and retrying the same operation cannot repeat its effects. Active workers
+and pending completion writes still block maintenance. The focused regressions
+exercise an effect followed by uncertainty or panic, and a failed encrypted-store
+write; see [validation](docs/evidence/update-gate-20261006/source-validation.json).
+
+## Release operations
+
+The release controller supervises active local work every 10 seconds, GitHub jobs every 2 minutes and store review status every 15 minutes. Confirmed provider quota exhaustion creates a durable shared cooldown (15 minutes to 6 hours, honoring provider reset times); ordinary permission errors remain blocked. Status includes the waiting reason and next check. Accepted submissions retain their original operation IDs. Controller-only updates use independent image qualification and the managed deployment path, preserving application versions. An explicit Intel-only test correction can reference the existing deployment only after unchanged-runtime provenance and fresh health/load evidence are verified; its own native qualification and installed acceptance remain mandatory.

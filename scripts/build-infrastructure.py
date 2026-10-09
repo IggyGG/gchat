@@ -15,6 +15,7 @@ from release_feed import digest
 from release_pair import identity, validate
 from release_coordinator import atomic_json
 from controller_runtime import qualify as qualify_controller
+from linux_build_artifacts import SERVICE_COMMAND, record as record_native, verify as verify_native
 
 BASE = 'ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3'
 BINARIES = ('gcnode', 'gcoms-catalog', 'gc-network-operator', 'gcoms-channel-service')
@@ -44,21 +45,33 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--gcoms', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--binaries-only', action='store_true', help='retain unsigned production services before testing or packaging')
+    parser.add_argument('--native-build', type=Path, help='verified retained production services; do not compile again')
     args = parser.parse_args()
     manifest = validate(json.loads(Path(os.environ['GCHAT_RELEASE_MANIFEST']).read_text()))
     root = args.gcoms.resolve(); output = args.output.resolve()
     chat = Path(__file__).resolve().parents[1]
     if identity(root) != manifest['sources']['gcoms'] or identity(chat) != manifest['sources']['gchat']:
         raise ValueError('infrastructure checkout differs from frozen candidate')
-    subprocess.run(['cargo', 'build', '--locked', '--release', '-p', 'gcoms-node',
-                    '-p', 'gcoms-catalog', '-p', 'gcoms-channel-service', '--features',
-                    'gcoms-node/experimental-gc2,gcoms-node/push-gateway,gcoms-catalog/experimental-gc2'],
-                   cwd=root, check=True)
+    if args.binaries_only and args.native_build:
+        parser.error('--binaries-only and --native-build are separate stages')
+    if args.native_build:
+        verify_native(args.native_build, manifest, 'linux_native_services')
+    else:
+        subprocess.run(SERVICE_COMMAND, cwd=root, check=True)
     output.mkdir(parents=True, exist_ok=False)
-    target = Path(os.environ.get('CARGO_TARGET_DIR', root / 'target'))
-    if not target.is_absolute(): target = root / target
-    target = target.resolve() / 'release'
+    if args.native_build:
+        target = args.native_build.resolve()
+    else:
+        target = Path(os.environ.get('CARGO_TARGET_DIR', root / 'target'))
+        if not target.is_absolute(): target = root / target
+        target = target.resolve() / 'release'
     for name in BINARIES: shutil.copy2(target / name, output / name)
+    if args.binaries_only:
+        if identity(root) != manifest['sources']['gcoms'] or identity(chat) != manifest['sources']['gchat']:
+            raise ValueError('infrastructure source changed during compilation')
+        record_native(output, manifest, 'linux_native_services', [SERVICE_COMMAND])
+        return
     shutil.copy2('/etc/ssl/certs/ca-certificates.crt', output / 'ca-certificates.crt')
     dockerfile = output / 'Dockerfile'
     dockerfile.write_text('FROM ' + BASE + '\n'

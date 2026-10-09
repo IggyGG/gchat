@@ -82,11 +82,13 @@ class InputTests(unittest.TestCase):
             commit('gchat', 'scripts/release_coordinator.py', '# new controller')
             second = fingerprints(roots, sources)
             self.assertEqual(first['artifacts'], second['artifacts'])
-            self.assertNotEqual(first['infrastructure'], second['infrastructure'])
+            self.assertEqual(first['infrastructure'], second['infrastructure'])
+            self.assertNotEqual(first['controller'], second['controller'])
             self.assertNotEqual(first['qualification'], second['qualification'])
             for path in ('release/downloads.json', 'scripts/website.py',
                          'scripts/release_inventory.py', 'scripts/release_sdk.py',
                          'scripts/release_host_install.py', 'release/automation/kubernetes.yaml',
+                         'release/automation/operations.yaml',
                          'scripts/macos-package.py', '.github/workflows/macos-package.yml',
                          'scripts/release_macos_recovery.py', 'release/automation/qualification/native-recoveries.json',
                          'scripts/copy-release-registry.py', 'release/automation/registry.yaml',
@@ -105,12 +107,16 @@ class InputTests(unittest.TestCase):
                 after = fingerprints(roots, sources)
                 self.assertEqual(before['artifacts'], after['artifacts'])
                 self.assertNotEqual(before['qualification'], after['qualification'])
+                if path == 'release/automation/operations.yaml':
+                    self.assertEqual(before['infrastructure'], after['infrastructure'])
+                    self.assertNotEqual(before['controller'], after['controller'])
             for project, path in [('gchat', 'new-unclassified-input'),
                                   ('gchat', 'marketing/play-store/retro-v1/new-input.js'),
                                   ('gchat', 'marketing/app-store/retro-v2/listing.json'),
                                   ('gchat', 'apps/client/src-tauri/icons/icon.png'),
                                   ('gchat', 'scripts/release_prepare.py'),
                                   ('gchat', 'release/publication.json'),
+                                  ('gchat', 'release/automation/unclassified-operations.yaml'),
                                   ('gchat', '.github/workflows/windows-release.yml'),
                                   ('gcoms', 'crates/node/src/lib.rs')]:
                 before = fingerprints(roots, sources)
@@ -145,9 +151,11 @@ class InputTests(unittest.TestCase):
                 self.assertNotEqual(before['qualification'],after['qualification'])
                 if project == 'gcoms' or path.startswith('docs/'):
                     self.assertEqual(before['infrastructure'],after['infrastructure'])
-                elif path in ('.github/workflows/mobile-acceptance.yml',
-                              'scripts/release_compaction.py', 'release/automation/compaction.yaml'):
+                elif path == '.github/workflows/mobile-acceptance.yml':
                     self.assertNotEqual(before['infrastructure'],after['infrastructure'])
+                elif path in ('scripts/release_compaction.py', 'release/automation/compaction.yaml'):
+                    self.assertEqual(before['infrastructure'],after['infrastructure'])
+                    self.assertNotEqual(before['controller'],after['controller'])
             for project,path in [('gchat','scripts/mobile-build-new.py'),
                                  ('gchat','.github/workflows/ios-release.yml'),
                                  ('gchat','scripts/android-build.py'),

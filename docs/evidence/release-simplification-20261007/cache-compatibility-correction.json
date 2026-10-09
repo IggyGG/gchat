@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "scope": "Compatible compiler cache restore; no qualification reuse",
+  "observed_at": "2026-10-07T20:11:55.546637+00:00",
+  "source_head_before_landing": "2d011e675b3f9b8945b7c92e3da699f56fae360d",
+  "source_sha256": {
+    "scripts/release_cache.py": "8ecade40d1d545e532361bb23adf3e9d76d9ac85ad36790676388b43e4872f22",
+    "scripts/tests/release_cache_identity_test.py": "a84a3121eb2d227ad4da79aef4a21aa4dc6bb3fc9f42c2866abacbb744915e5a",
+    "scripts/tests/release_cache_workflow_test.py": "9c3fcd4e74507a850ef5b53168e97c49b3f347e6ed39abf6eff62833fbd1805c",
+    ".github/workflows/linux-cache.yml": "b7adcfbd7db2f3cc06564be74334b3665becec826a7433e5debc89a7985abc1f",
+    ".github/workflows/linux-release.yml": "2ef095357556e305b073e3eb396bc5981d2fc828b59a8882ba831362fb3a449b"
+  },
+  "passed": true,
+  "production_cache_proof": {
+    "run_id": 37675953572,
+    "job_id": 112979380509,
+    "workflow_commit": "4d3265401c3b5bf5aeaa81dc16da4728f940f0ad",
+    "runner_image": "ubuntu24/20261004.327.1",
+    "cache_restored": "linux-compiler-v1-services-75188de7c8112abe1f65-e3891ca52a3075cd8f74733bbdfdb29e846166ed464b4e79bd4296123ed88bfb",
+    "compiled_workspace_rows": 36,
+    "compiled_external_rows": 0,
+    "production_compile_seconds": 174,
+    "fixture_compile_seconds": 447,
+    "job_completed_at": "2026-10-07T19:49:27Z",
+    "original_log_sha256": "52b4ac05e704785fdbe01fbe2d68037b8acd6a52c23ef8a58b33a63618807665",
+    "url": "https://github.com/IggyGG/gchat/actions/runs/37675953572/job/112979380509"
+  },
+  "original_warm_run": {
+    "id": 37658937510,
+    "all_three_jobs_passed": true,
+    "jobs": [
+      {
+        "scope": "gchat",
+        "id": 112921167489,
+        "image": "ubuntu24/20261004.327.1"
+      },
+      {
+        "scope": "gcoms",
+        "id": 112921166915,
+        "image": "ubuntu24/20260927.320.1"
+      },
+      {
+        "scope": "services",
+        "id": 112921167332,
+        "image": "ubuntu24/20261004.327.1"
+      }
+    ]
+  },
+  "correction": {
+    "exact_key": "Full image, compatible compiler profile and normalized dependency inventory",
+    "restore_prefix": "Ubuntu OS release, target, pinned toolchains, role and compiler/profile flags",
+    "v1_migration": "Exact original image/toolchain/role/dependency key only with original flags; writes remain v2",
+    "actual_v1_keys_matched": {
+      "gchat": "linux-compiler-v1-gchat-d987fc2207b9b159684a-e3891ca52a3075cd8f74733bbdfdb29e846166ed464b4e79bd4296123ed88bfb",
+      "gcoms": "linux-compiler-v1-gcoms-372b6e036bf3e08cff18-e3891ca52a3075cd8f74733bbdfdb29e846166ed464b4e79bd4296123ed88bfb",
+      "services": "linux-compiler-v1-services-75188de7c8112abe1f65-e3891ca52a3075cd8f74733bbdfdb29e846166ed464b4e79bd4296123ed88bfb"
+    },
+    "qualification_reused": false,
+    "restore_save_path_lists_identical": 5
+  },
+  "focused_checks": [
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests",
+        "-p",
+        "release_cache_identity_test.py"
+      ],
+      "passed": 8,
+      "failed": 0
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests",
+        "-p",
+        "release_cache_workflow_test.py"
+      ],
+      "passed": 5,
+      "failed": 0
+    }
+  ],
+  "limits": [
+    "No v2 hosted warm/release job has executed yet.",
+    "The warm matrix proves simultaneous weekly image versions; final 168 qualification logs are still pending and their specific miss cause is not asserted.",
+    "Compiler cache bytes do not authorize signing, native qualification, load acceptance or deployment."
+  ]
+}

@@ -159,7 +159,7 @@ class LinuxQualificationTests(unittest.TestCase):
     def test_packaging_depends_on_qualification_and_fetch_precedes_signing(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/linux-release.yml').read_text()
         packaging = workflow.split('\n  linux:\n', 1)[1]
-        self.assertIn('needs: [qualify, qualify-gcoms]\n', packaging)
+        self.assertIn('needs: [qualify, qualify-gcoms, native-build]\n', packaging)
         self.assertIn('${{ needs.qualify.outputs.artifact_id }}', packaging)
         self.assertIn('${{ needs.qualify.outputs.artifact_sha256 }}', packaging)
         self.assertIn('${{ needs.qualify-gcoms.outputs.artifact_id }}', packaging)
@@ -171,8 +171,8 @@ class LinuxQualificationTests(unittest.TestCase):
             self.assertIn('linux-qualification-' + scope + '-${{ github.run_attempt }}', workflow)
             self.assertIn('qualify --scope ' + scope, workflow)
             self.assertIn('CARGO_TARGET_DIR: ${{ github.workspace }}/.cache/linux-' + scope + '-target', workflow)
-        self.assertIn('actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809', workflow)
-        self.assertNotIn('restore-keys:', workflow)
+        self.assertIn('actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809', workflow)
+        self.assertNotIn('actions/cache/save@', workflow)
         self.assertIn("format('linux-build-failure-{0}', github.run_attempt)", packaging)
 
     def scope_directories(self):
