@@ -51,10 +51,10 @@ def matching_run(run, kind, commit, request, prefix):
 
 def qualification_inputs(repository, commit):
     """Retain every build, test, feature, platform and toolchain input."""
-    from release_inputs import GCOMS_STATUS_FILES
+    from release_inputs import GCOMS_STATUS_FILES, GCOMS_ANDROID_RELEASE_FILES
     # Python validators remain inputs even when application admission calls
     # them controller-only. Only reviewed prose/status can share qualification.
-    excluded = {name for name in GCOMS_STATUS_FILES
+    excluded = GCOMS_ANDROID_RELEASE_FILES | {name for name in GCOMS_STATUS_FILES
                 if name.endswith('.md') or name.startswith('docs/evidence/')}
     raw = subprocess.check_output(['git', '-C', str(repository), 'ls-tree', '-rz', '--full-tree', commit],
                                   stderr=subprocess.PIPE, timeout=30)

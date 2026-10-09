@@ -88,7 +88,17 @@ CONTROL_FILES = frozenset({
 
 # Reviewed status/validation documents do not enter GComs application code or
 # packaging. Rust, locks and unclassified evidence remain artifact inputs.
-GCOMS_STATUS_FILES = frozenset({
+# The opt-in Android agent has a separate, bounded workstation release lane.
+# These exact reviewed operations files do not enter an SDK or GChat package.
+# Their source qualification still changes; unknown files remain native inputs.
+GCOMS_ANDROID_RELEASE_FILES = frozenset({
+    'scripts/android_release.py', 'scripts/android_release_host.py',
+    'scripts/android_release_queue.py', 'scripts/android_release_push_hook.sh',
+    'scripts/android_release_setup.py', 'scripts/tests/android_release_test.py',
+    'docs/ANDROID_AGENT_RELEASE.md',
+    'docs/evidence/android-ten-minute-20261009/summary.json',
+})
+GCOMS_STATUS_FILES = GCOMS_ANDROID_RELEASE_FILES | frozenset({
     'PLAN.md', 'README.md', 'TESTPLAN.md',
     'docs/evidence/stabilization-20261001/durable-reopen.json',
     'docs/evidence/stabilization-20261001/contact-request-window.json',

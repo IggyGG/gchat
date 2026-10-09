@@ -64,6 +64,9 @@ class CacheTests(unittest.TestCase):
                ('scripts/release_evidence.py','a'*40),('crates/runtime/src/modern_files/tests.rs','a'*40)]
         baseline=key([*fixed,('README.md','a'*40)])
         self.assertEqual(baseline,key([*fixed,('README.md','b'*40)]))
+        self.assertEqual(baseline,key([*fixed,('README.md','b'*40),
+                                      ('scripts/android_release.py','b'*40),
+                                      ('scripts/android_release_host.py','b'*40)]))
         for name,_ in fixed:
             with self.subTest(name=name):
                 changed=[(n,'b'*40 if n==name else sha) for n,sha in fixed]

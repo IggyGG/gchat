@@ -878,3 +878,7 @@ the retained-state check in GComs' `gchat-turnover.py --mode smoke` journey.
 The [validated smoke record](docs/evidence/bootstrap-20261006/smoke.json) covers
 both-direction acknowledgments, file integrity and delivery after retained
 profile reopening; it does not qualify a new installer or fleet deployment.
+
+The standalone GComs Android agent has its own workstation deployment lane.
+Its reviewed release operations do not rebuild these application packages or
+unchanged SDK matrices; runtime and unknown inputs retain ordinary qualification.
