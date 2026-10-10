@@ -526,3 +526,11 @@ operator changes remain a refusal. This one-time repair does not alter the usual
 Local deployment supervision and provider polling have separate clocks: `poll_interval_seconds=10`, `github_poll_interval_seconds=120`, `store_poll_interval_seconds=900`. Quota cooldowns survive process restarts and apply across workers. `status` exposes the next provider check; `resume --platform android` reconciles the retained submission and does not create a new upload. Apple encryption review remains an external prerequisite.
 
 Reviewed controller-only source changes produce a separately qualified controller image for the current application release. Native artifacts and their original source bindings remain immutable. An Intel-only successor may nominate `deployment_baseline` only when the controller validates its test-only/runtime-unchanged provenance; this creates a separate receipt and never rewrites the baseline deployment journal or failed native results.
+
+Controller recovery in a blocked fleet (2026-10-10): a qualified controller
+image may use the normal observe/prepare/activate/check/rollback stages in a
+separate, source-bound controller journal under the shared rollout lock.
+The selected global journal must have no outstanding effects, and the controller
+target must already be deployed. Recovery validates its immutable intent and
+qualification, and never changes the failed global journal or publishes its
+application release. Unknown/native changes still fail input classification.

@@ -188,10 +188,43 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
     import fcntl  # The deployment owner runs on the POSIX coordinator.
     now = int(time.time()) if now is None else now
     targets = inventory(config)
-    root = Path(state) / 'deployment'
-    root.mkdir(parents=True, exist_ok=True)
-    with (root / 'rollout.lock').open('a') as lock:
+    shared_root = Path(state) / 'deployment'
+    shared_root.mkdir(parents=True, exist_ok=True)
+    root = shared_root
+    public = Path(state) / 'public/deployment.json'
+    recovery = config.get('controller_recovery')
+    with (shared_root / 'rollout.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if recovery:
+            from release_controller import read, sha, validate_intent
+            import re
+            ident = recovery.get('id', '')
+            if not re.fullmatch('[0-9a-f]{64}', ident):
+                raise ValueError('invalid controller recovery identity')
+            work = Path(state) / 'controller-updates' / ident
+            active = read(work / 'ready.json')
+            intent = read(work / 'intent.json')
+            journal = shared_root / manifest['release_id'] / 'journal.json'
+            report = read(journal)
+            if (validate_intent(intent) != manifest or active.get('id') != ident
+                    or active.get('release_id') != manifest['release_id']
+                    or sha(work / 'qualification.json') != active.get('qualification_sha256')
+                    or len(targets) != 1 or targets[0]['id'] != 'controller'
+                    or targets[0].get('controller_qualification_sha256') != active['qualification_sha256']):
+                raise ValueError('controller recovery differs from its qualified baseline')
+            if (sha(journal) != recovery.get('journal_sha256')
+                    or read(shared_root / 'desired.json').get('release_id') != manifest['release_id']
+                    or report.get('sources') != manifest['sources'] or report.get('state') != 'blocked'
+                    or report.get('operator_rollback')
+                    or report.get('targets', {}).get('controller', {}).get('state') != 'deployed'
+                    or any(t.get('state') in ('activating', 'rollback_pending', 'rollback_failed')
+                           for t in report.get('targets', {}).values())):
+                return False
+            if (shared_root / 'owner.json').exists() and read(shared_root / 'owner.json').get('release_id') != manifest['release_id']:
+                return False
+            root = work / 'deployment'
+            root.mkdir(exist_ok=True)
+            public = Path(state) / 'public/controller-deployment.json'
         owner = root / 'owner.json'
         journal = root / manifest['release_id'] / 'journal.json'
         if journal.is_file() and json.loads(journal.read_text()).get('state') == 'handed_off':
@@ -286,7 +319,7 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                 report.update(state='deployed', observed_at=now)
                 report.pop('reason', None)
                 owner.unlink(missing_ok=True)
-                return True
+                return not recovery  # A controller repair cannot publish the blocked application.
             target = unhealthy[0] if unhealthy else pending[0]
             item = report['targets'][target['id']]
             work = directory / target['id']
@@ -333,7 +366,7 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
         finally:
             write(journal, report)
             # Public status deliberately omits host addresses, paths and commands.
-            write(Path(state) / 'public/deployment.json', {
+            write(public, {
                 'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
                 'state': report['state'], 'reason': report.get('reason', ''), 'observed_at': now,
                 'targets': [{'id': ident, 'state': item.get('state', 'pending'),

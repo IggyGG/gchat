@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "kind": "controller-recovery-controls",
+  "tests": 31,
+  "passed": true,
+  "log_sha256": "62716e072ae604d093e5844c4cfc33dbfb4557a33fce42c97d0cdd68c85bd723",
+  "behaviour": [
+    "shared serial rollout lock",
+    "normal controller canary and rollback",
+    "failed global journal preserved",
+    "no application publication",
+    "intervening fleet effect refuses mutation"
+  ],
+  "live_activation": "pending"
+}

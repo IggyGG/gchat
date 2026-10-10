@@ -117,6 +117,53 @@ class ControllerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'qualification changed'):
                 controller.deployment_config(root, candidate(), original)
 
+    def test_blocked_controller_repair_uses_canary_and_rollback_without_rewriting_fleet(self):
+        from release_deployment import reconcile
+        for fail in (False, True):
+            with self.subTest(fail=fail), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); intent = intent_fixture(root); baseline = candidate()
+                work = root / 'controller-updates' / intent['id']
+                proof = work / 'qualification.json'; controller.save(proof, {'image': 'qualified'})
+                ready = {'id': intent['id'], 'release_id': baseline['release_id'],
+                         'qualification_sha256': controller.sha(proof)}
+                controller.save(work / 'ready.json', ready)
+                controller.save(root / 'controller-updates/active' / (baseline['release_id'] + '.json'), ready)
+                controller.save(root / 'deployment/desired.json', {'release_id': baseline['release_id']})
+                journal = root / 'deployment' / baseline['release_id'] / 'journal.json'
+                controller.save(journal, {'state': 'blocked', 'sources': baseline['sources'],
+                    'targets': {'controller': {'state': 'deployed'}, 'relay-2': {'state': 'check_failed'}}})
+                original = journal.read_bytes()
+                controller.save(root / 'public/deployment.json', {'state': 'blocked'})
+                inventory = {'targets': [{'id': 'relay-2'}, {'id': 'controller', 'workers': {
+                    stage: ['worker'] for stage in ('observe', 'prepare', 'activate', 'check', 'rollback')}}]}
+                with patch('release_kubernetes_worker.expected_image'):
+                    config = controller.deployment_config(root, baseline, inventory)
+                live = {'healthy': True, 'matches': False}; calls = []
+                def worker(target, stage, manifest, directory, previous=None):
+                    self.assertEqual(target['id'], 'controller'); calls.append(stage)
+                    if stage == 'observe': return dict(live)
+                    if stage == 'activate': live['matches'] = True
+                    if stage == 'rollback': live.update(previous)
+                    if stage == 'check' and fail: raise ValueError('failed actual canary')
+                    return {'passed': True}
+                for _ in range(3):
+                    self.assertFalse(reconcile(root, baseline, config, worker))
+                self.assertIn('check', calls)
+                self.assertEqual(calls.count('activate'), 1)
+                self.assertEqual(calls.count('rollback'), int(fail))
+                self.assertEqual(live['matches'], not fail)
+                self.assertEqual(journal.read_bytes(), original)
+                self.assertEqual(controller.read(root / 'public/deployment.json'), {'state': 'blocked'})
+                repaired = controller.read(work / 'deployment' / baseline['release_id'] / 'journal.json')
+                self.assertEqual(repaired['state'], 'blocked' if fail else 'deployed')
+                # An intervening fleet effect invalidates the frozen recovery
+                # before even observation, while preserving its durable proof.
+                controller.save(journal, {'state': 'blocked', 'sources': baseline['sources'],
+                    'targets': {'controller': {'state': 'deployed'}, 'relay-2': {'state': 'activating'}}})
+                calls.clear()
+                self.assertFalse(reconcile(root, baseline, config, worker))
+                self.assertEqual(calls, [])
+
     def test_dispatch_timeout_never_redispatches_and_retains_original_request(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); intent = intent_fixture(root)

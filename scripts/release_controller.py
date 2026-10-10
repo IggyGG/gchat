@@ -109,6 +109,12 @@ def deployment_config(state, manifest, config):
                   controller_qualification_release_id=manifest['release_id'])
     from release_kubernetes_worker import expected_image
     expected_image(target, {'release_id': manifest['release_id'], 'images': {}})
+    journal = Path(state) / 'deployment' / manifest['release_id'] / 'journal.json'
+    if journal.is_file() and read(journal).get('state') == 'blocked':
+        # Recover the qualified controller through the same rollout stages in
+        # its own journal. The failed application rollout remains authoritative.
+        result['targets'] = [target]
+        result['controller_recovery'] = {'id': value['id'], 'journal_sha256': sha(journal)}
     return result
 
 
