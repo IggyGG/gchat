@@ -11,5 +11,17 @@
     "no application publication",
     "intervening fleet effect refuses mutation"
   ],
-  "live_activation": "pending"
+  "live_activation": {
+    "state": "deployed",
+    "source": "b12c7a420c162dd362bb4fa12742fdd66aa8754b",
+    "intent_id": "c33a45488101246cfa8336341459e2ad2f12d9a8beb6a34b3a3ab2f8e3442d8c",
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:d1eab766f3826103c7c7734f58f44ca60f07abe1e1422f9cf49a14b9f1361c8a",
+    "portable_and_kubernetes_controls": 417,
+    "scoped_journal_sha256": "8a505bac2a8d75d0c090ac13bf72d2ddfed24ba4ae8d5e9da6c8b7a0d415d4b8",
+    "global_journal_state": "blocked",
+    "global_journal_sha256_at_observation": "0a8d77349aef8545bb7e9802a940c5c4139520228ac5150f7640ab86421909bf",
+    "canary_passed": true,
+    "canary_sha256": "897c3a2c8edc757115367fbe940adba5a12486c402fd0dbe34296f86b45d0876",
+    "canary_report_sha256": "9771c5becb0cf2df774fbd6a4e4bbd4370e84cc232b8b506ee83e9797064a727"
+  }
 }
