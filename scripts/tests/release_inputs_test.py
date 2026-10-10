@@ -138,6 +138,7 @@ class InputTests(unittest.TestCase):
                                  ('gcoms','scripts/android_release_pre_receive.sh'),
                                  ('gcoms','scripts/android_release_hub.py'),
                                  ('gcoms','scripts/android_release_network.py'),
+                                 ('gcoms','scripts/android_release_qualify.py'),
                                  ('gcoms','scripts/tests/android_release_test.py'),
                                  ('gcoms','docs/ANDROID_AGENT_RELEASE.md'),
                                  ('gcoms','docs/evidence/android-ten-minute-20261009/summary.json'),
