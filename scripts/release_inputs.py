@@ -18,6 +18,7 @@ CONTROL_FILES = frozenset({
     'release/automation/node-image-headroom.service', 'release/automation/node-image-headroom.timer',
     'PLAN.md', 'TESTPLAN.md', 'README.md', 'docs/AUTOMATIC_RELEASES.md',
     'docs/PRODUCTION_RELEASE.md',
+    'docs/evidence/android-ten-minute-20261009/controller-recovery.json',
     'scripts/release_inputs.py', 'scripts/release_coordinator.py',
     'scripts/release_discovery.py', 'scripts/release_config.py',
     'scripts/release_ledger.py', 'scripts/release_maintenance.py',
