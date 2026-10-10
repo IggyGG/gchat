@@ -196,6 +196,32 @@ class ControllerTests(unittest.TestCase):
             status = controller.read(root / 'controller-updates' / intent['id'] / 'status.json')
             self.assertEqual(status['state'], 'waiting_baseline')
 
+    def test_controller_recovery_observes_its_deployed_target_without_rewriting_global_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); baseline = candidate(); work = root / 'repair'
+            controller.save(root / 'deployment/desired.json', {'release_id': baseline['release_id']})
+            path = root / 'deployment' / baseline['release_id'] / 'journal.json'
+            journal = {'state': 'blocked', 'sources': baseline['sources'], 'inventory': {},
+                       'targets': {'controller': {'state': 'deployed'}, 'unrelated': {'state': 'check_failed'}}}
+            controller.save(path, journal); original = path.read_bytes()
+            with patch('release_deployment.inventory', return_value=[{'id': 'controller'}]), \
+                 patch('release_deployment.invoke', return_value={'healthy': True, 'matches': True}) as observe:
+                self.assertTrue(controller.baseline_ready(root, baseline, work))
+                self.assertEqual(observe.call_args.args[1], 'observe')
+                self.assertEqual(path.read_bytes(), original)
+                proof = controller.read(work / 'baseline-observation.json')
+                self.assertEqual(proof['global_state'], 'blocked')
+                self.assertEqual(proof['journal_sha256'], controller.sha(path))
+                observe.return_value = {'healthy': True, 'matches': False}
+                self.assertFalse(controller.baseline_ready(root, baseline, work))
+            for changed in ({'operator_rollback': True}, {'sources': {}},
+                            {'targets': {'controller': {'state': 'deployed'}, 'relay': {'state': 'activating'}}},
+                            {'targets': {'controller': {'state': 'rollback_failed'}}}):
+                controller.save(path, dict(journal, **changed))
+                with patch('release_deployment.invoke') as observe:
+                    self.assertFalse(controller.baseline_ready(root, baseline, work))
+                    observe.assert_not_called()
+
     def test_unconfigured_controller_is_noop(self):
         owner = SimpleNamespace(config={})
         controller.reconcile(owner)

@@ -130,6 +130,8 @@ GCOMS_ANDROID_RELEASE_FILES = frozenset({
     'scripts/android_release.py', 'scripts/android_release_host.py',
     'scripts/android_release_queue.py', 'scripts/android_release_push_hook.sh',
     'scripts/android_release_setup.py', 'scripts/tests/android_release_test.py',
+    'scripts/android_release_pre_receive.sh', 'scripts/android_release_hub.py',
+    'scripts/android_release_network.py',
     'docs/ANDROID_AGENT_RELEASE.md',
     'docs/evidence/android-ten-minute-20261009/summary.json',
 })

@@ -302,6 +302,54 @@ def kubernetes_qualify(intent, bundle, image, target, work):
     return proof
 
 
+def baseline_ready(state, baseline, work):
+    """Controller repair may use its deployed target in a blocked fleet.
+
+    Preserve the failed global journal. Refuse in-flight effects, recheck the
+    actual selected controller, and retain its exact source-bound observation.
+    """
+    state = Path(state)
+    selected = state / 'deployment/desired.json'
+    journal = state / 'deployment' / baseline['release_id'] / 'journal.json'
+    if (not selected.exists() or read(selected).get('release_id') != baseline['release_id']
+            or not journal.exists()): return False
+    report = read(journal)
+    if report.get('sources') != baseline['sources']: return False
+    if report.get('state') == 'deployed': return True
+    if (report.get('state') != 'blocked' or report.get('operator_rollback')
+            or report.get('targets', {}).get('controller', {}).get('state') != 'deployed'
+            or any(t.get('state') in ('activating', 'rollback_pending', 'rollback_failed')
+                   for t in report.get('targets', {}).values())): return False
+    from release_deployment import inventory, invoke
+    targets = [t for t in inventory(report['inventory']) if t['id'] == 'controller']
+    if len(targets) != 1: return False
+    observed = invoke(targets[0], 'observe', baseline, Path(work) / 'baseline-observation')
+    if observed is None or observed.get('healthy') is not True or observed.get('matches') is not True:
+        return False
+    save(Path(work) / 'baseline-observation.json', {'schema': 1, 'release_id': baseline['release_id'],
+        'sources': baseline['sources'], 'journal_sha256': sha(journal), 'global_state': report['state'],
+        'scope': 'controller target only; global deployment remains blocked', 'observation': observed})
+    return True
+
+
+def recovery_intent(state, config, source):
+    """Freeze a controller repair against the selected native source baseline."""
+    from release_ledger import Ledger
+    from release_pair import identity
+    from release_inputs import fingerprints
+    state = Path(state)
+    selected = read(state / 'deployment/desired.json')['release_id']
+    ledger = Ledger(state / 'ledger.sqlite')
+    try: baseline = ledger.manifest(selected)
+    finally: ledger.db.close()
+    repositories = {p: config['discovery'][p]['mirror'] for p in ('gchat', 'gcoms')}
+    sources = dict(baseline['sources'], gchat=identity(repositories['gchat'], source))
+    before = fingerprints(repositories, baseline.get('upstream', baseline['sources']))
+    after = fingerprints(repositories, sources)
+    # queue/validate_intent refuses any application/native input changes.
+    return queue(state, baseline, sources, before, after)
+
+
 def step(state, config, ident=None, local_bundle=None):
     state = Path(state)
     desired = state / 'controller-updates/desired.json'
@@ -311,11 +359,7 @@ def step(state, config, ident=None, local_bundle=None):
     work = state / 'controller-updates' / ident
     intent = read(work / 'intent.json')
     baseline = verify_inputs(intent, {p: config['discovery'][p]['mirror'] for p in ('gchat', 'gcoms')})
-    selected = state / 'deployment/desired.json'
-    journal = state / 'deployment' / baseline['release_id'] / 'journal.json'
-    if (not selected.exists() or read(selected).get('release_id') != baseline['release_id']
-            or not journal.exists() or read(journal).get('state') != 'deployed'
-            or read(journal).get('sources') != baseline['sources']):
+    if not baseline_ready(state, baseline, work):
         save(work / 'status.json', {'state': 'waiting_baseline', 'at': int(time.time())}); return
     active = state / 'controller-updates/active' / (baseline['release_id'] + '.json')
     if active.exists() and read(active).get('id') == ident: return
@@ -492,13 +536,27 @@ def main():
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--intent-id')
     parser.add_argument('--local-bundle', type=Path, help='Explicit controller-only bootstrap; never app qualification')
+    parser.add_argument('--recover-source', help='Exact controller commit against the selected retained native baseline')
     args = parser.parse_args()
     root = args.state / 'controller-updates'; root.mkdir(parents=True, exist_ok=True)
     from release_provider import locked, ProviderWait
     os.environ['GCHAT_RELEASE_PROVIDER_STATE'] = str(args.state / 'provider-poll')
-    ident = args.intent_id or read(root / 'desired.json')['id']
-    if not re.fullmatch('[0-9a-f]{64}', ident): raise ValueError('invalid controller intent ID')
+    ident = None if args.recover_source else (args.intent_id or read(root / 'desired.json')['id'])
+    if ident is not None and not re.fullmatch('[0-9a-f]{64}', ident): raise ValueError('invalid controller intent ID')
     with locked(root / 'worker.lock'):
+        if args.recover_source:
+            if not re.fullmatch('[0-9a-f]{40}', args.recover_source):
+                raise ValueError('controller recovery requires an exact committed source')
+            intent = recovery_intent(args.state, read(args.config), args.recover_source)
+            discovery = read(args.config)['discovery']
+            for destination in discovery.get('candidate_remotes', []):
+                subprocess.run(['git', '--shallow-file', '/dev/null', '-C', discovery['gchat']['mirror'],
+                    'push', destination, args.recover_source + ':' + qualification_ref(intent)],
+                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+            save(root / intent['id'] / 'ref-published.json',
+                 {'source': intent['sources']['gchat'], 'ref': qualification_ref(intent)})
+            print(json.dumps({'state': 'controller_recovery_queued', 'id': intent['id']}))
+            return
         try: step(args.state, read(args.config), ident, args.local_bundle)
         except ProviderWait as error:
             save(root / ident / 'status.json', {'state': 'waiting_provider', **error.value})
