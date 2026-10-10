@@ -225,16 +225,6 @@ pub fn bootstrap_values(
 /// Host a standalone chat instance until the owning service is stopped.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub async fn run(args: DaemonArgs) -> Result<(), String> {
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    if let Some(path) = std::env::var_os("GCHAT_PROTOCOL_METRICS") {
-        let path = PathBuf::from(path);
-        validate_private_parent(&path)?;
-        if path.exists() {
-            validate_private_file(&path)?;
-        }
-        gcoms::runtime::metrics::init(&path)
-            .map_err(|_| "private protocol diagnostics could not start")?;
-    }
     args.relay_sharing.apply()?;
     if let Some(path) = std::env::var_os("GCHAT_PROTOCOL_METRICS") {
         gcoms::runtime::metrics::init(Path::new(&path))
