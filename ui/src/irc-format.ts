@@ -27,6 +27,6 @@ export function ircFormat(text: string): Segment[] {
 }
 export function formatStyle(format: Format): string {
   const foreground = format.inverse ? (format.background ?? 'var(--bg)') : format.foreground;
-  const background = format.inverse ? (format.foreground ?? 'var(--text)') : format.background;
+  const background = format.inverse ? (format.foreground ?? 'var(--ink)') : format.background;
   return `${foreground ? `color:${foreground};` : ''}${background ? `background-color:${background};` : ''}`;
 }

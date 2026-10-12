@@ -24,7 +24,9 @@
   .screen-body :global(form) { display:grid; gap:10px; }
   .screen-body :global(input:not([type=checkbox])),.screen-body :global(textarea),.screen-body :global(select) { box-sizing:border-box; width:100%; max-width:100%; font:inherit; color:inherit; background:var(--bg,#1c1e22); border:1px solid var(--line,#363c44); padding:10px; min-height:44px; }
   .screen-body :global(button) { min-height:44px; }
-  .screen-body :global(.primary) { position:sticky; bottom:0; background:var(--panel,#25282e); z-index:1; }
+  .screen-body :global(.primary) { background:var(--accent,#b8d9c4); color:var(--bg,#1c1e22); border:1px solid var(--accent,#b8d9c4); border-radius:4px; font-weight:600; }
+  .screen-body :global([role=alert]) { color:var(--ghost-error,#f2a39c); }
+  .screen-body :global(:is(button,input,select,textarea,summary):focus-visible) { outline:2px solid var(--accent,#b8d9c4); outline-offset:2px; }
   @media(max-width:640px) {
     dialog { position:fixed; margin:0; inset:var(--gchat-viewport-top,0px) 0 auto; width:100%; height:var(--gchat-viewport-height,100dvh); max-height:none; border:0; border-radius:0; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
     .screen-body :global(input:not([type=checkbox])),.screen-body :global(textarea),.screen-body :global(select) { font-size:16px; }

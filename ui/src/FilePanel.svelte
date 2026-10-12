@@ -1,26 +1,28 @@
 <script lang="ts">
   import type { FileViewState, FileController } from './file-controller';
+  import { fileSize } from './timeline';
   let { view, controller, conversation, canShare, canSave, choose }: {
     view: FileViewState; controller: FileController; conversation: string;
     canShare: boolean; canSave: boolean; choose: (resumeId?: string) => void;
   } = $props();
   let showAll = $state(false), cacheGiB = $state(10), retention = $state(7);
   const snapshot = $derived(view.snapshot), busy = $derived(view.busy);
-  function bytes(value: string) { const n = Number(value); return n >= 1073741824 ? `${(n/1073741824).toFixed(1)} GiB` : n >= 1048576 ? `${(n/1048576).toFixed(1)} MiB` : `${n.toLocaleString()} bytes`; }
+  const bytes = fileSize;
 </script>
 <section class="files" aria-label="Conversation files">
 
   <label><input type="checkbox" bind:checked={showAll} /> Show all cached files</label>
   <div class="toolbar">
     {#if canSave && canShare}<button class="share" disabled={busy} onclick={() => choose()}>Share a file…</button>{:else if !canShare}<span>This conversation is read only.</span>{:else}<span>Use an app with file access to import and save files.</span>{/if}
-    <small>Accepted downloads are also shared with authorized participants while chat is unlocked.</small>
+    <details><summary>How sharing works</summary><p>Accepted downloads are shared with authorized participants while chat is unlocked. Saved files are kept separately from the cache.</p></details>
   </div>
   {#if view.uploading}<p role="status">Importing {view.uploading}</p>{/if}
   {#if view.notice}<p role="status">{view.notice}</p>{/if}
   {#if view.error}<p role="alert">{view.error}</p>{/if}
   {#each snapshot?.files.filter(f => (showAll || f.conversation === conversation) && f.state !== 'cancelled') ?? [] as file (file.id)}
     <article aria-busy={view.transfers[file.id]?.pending ?? false}>
-      <div><strong>{file.name}</strong>{#if file.conversation !== conversation}<small>Another conversation</small>{/if}<small>{bytes(file.size_bytes)} · {file.state.replaceAll('_', ' ')} · {file.sources} offering peers{#if file.state === 'complete'} · you also share this copy{/if}{#if file.completed_by} · {file.completed_by} confirmed complete{/if}</small></div>
+      <div><strong>{file.name}</strong>{#if file.conversation !== conversation}<small>Another conversation</small>{/if}<small>{bytes(file.size_bytes)} · {file.state.replaceAll('_', ' ')}</small></div>
+      <details><summary>Transfer details</summary><p>{file.sources} offering peers · {file.completed_by} confirmed complete{#if file.state === 'complete'} · You share this cached copy while unlocked{/if}</p><small>{Number(file.verified_bytes).toLocaleString()} / {Number(file.size_bytes).toLocaleString()} bytes verified</small></details>
       {#if ['downloading', 'waiting_for_peers', 'paused', 'importing'].includes(file.state)}
         <progress aria-label={`Verified progress for ${file.name}`} value={Number(file.verified_bytes)} max={Math.max(1, Number(file.size_bytes))}></progress>
         <small>{bytes(file.verified_bytes)} verified</small>

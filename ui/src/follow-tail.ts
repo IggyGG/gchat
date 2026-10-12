@@ -18,6 +18,7 @@ export function followTail(node: HTMLElement, options: { following: boolean; sco
   };
   const schedule = () => { if (!frame) frame = requestAnimationFrame(settle); };
   const intent = () => { userUntil = performance.now() + 1000; };
+  const anchorHere = () => { value = { ...value, following:false }; userUntil = 0; lastTop = node.scrollTop; remember(); };
   const key = (event: KeyboardEvent) => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key)) intent(); };
   const scrolled = () => {
     if (performance.now() < userUntil && Math.abs(node.scrollTop - lastTop) > 1) {
@@ -36,6 +37,7 @@ export function followTail(node: HTMLElement, options: { following: boolean; sco
   node.addEventListener('pointerdown', intent);
   node.addEventListener('keydown', key);
   node.addEventListener('scroll', scrolled, { passive:true });
+  node.addEventListener('gchat-anchor-here', anchorHere);
   schedule();
   return {
     update(next: typeof options) {
@@ -47,6 +49,7 @@ export function followTail(node: HTMLElement, options: { following: boolean; sco
     },
     destroy() {
       resize.disconnect(); cancelAnimationFrame(frame);
+      node.removeEventListener('gchat-anchor-here',anchorHere);
       node.removeEventListener('wheel',intent); node.removeEventListener('touchstart',intent); node.removeEventListener('touchmove',intent);
       node.removeEventListener('pointerdown',intent); node.removeEventListener('keydown',key); node.removeEventListener('scroll',scrolled);
     }

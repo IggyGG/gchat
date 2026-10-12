@@ -6,6 +6,9 @@
   import type { CommandOutput, DirectoryEntry } from './api';
   let { output, transport, changed, choose, saveInvitation, saveInvitationCard, prepareCommand, executeCommand, helpHeading = true, invitationHeading = true }: { transport?: Transport; changed?: () => void; invitationHeading?: boolean; helpHeading?: boolean; output: CommandOutput; executeCommand?: (command: string) => Promise<boolean>; prepareCommand?: (usage: string) => void; choose: (entry: DirectoryEntry) => void; saveInvitation?: (invitation: string) => Promise<string | null>; saveInvitationCard?: (bytes: Uint8Array) => Promise<string | null> } = $props();
   let feedback = $state('');
+  let helpSearch = $state('');
+  const common = new Set(['/join', '/create', '/query', '/msg', '/nick', '/find', '/help']);
+  const matchingCommands = $derived(output.kind === 'help' ? output.commands.filter(command => `${command.usage} ${command.description}`.toLocaleLowerCase().includes(helpSearch.toLocaleLowerCase().trim())) : []);
   let invitationPreset = $state('friends'), days = $state(7), admissionLimit = $state(25);
   let noExpiry = $state(false), unlimited = $state(false);
   async function run(command: string) {
@@ -74,7 +77,11 @@
   {#if output.kind === 'help'}
     <!-- Descriptions wrap naturally, without a separate block per command. -->
     {#if helpHeading}<h2>Commands</h2>{/if}
-    <ul class="commands">{#each output.commands as command}<li><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button><span>{' - '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></li>{/each}</ul>
+    <label for="command-search">Find a command</label><input id="command-search" type="search" bind:value={helpSearch} placeholder="Name or description" />
+    {#if !helpSearch}<nav class="common" aria-label="Common commands">{#each output.commands.filter(command => command.available && common.has(command.name)) as command}<button onclick={() => prepareCommand?.(command.usage)}>{command.name}</button>{/each}</nav>{/if}
+    <ul class="commands">{#each matchingCommands as command}<li><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button><span>{' — '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></li>{/each}</ul>
+    {#if !matchingCommands.length}<p>No matching commands.</p>{/if}
+    <details><summary>Keyboard shortcuts</summary><dl><dt>Enter / Shift+Enter</dt><dd>Send / new line</dd><dt>Tab</dt><dd>Complete a nickname or command; cycle suggestions</dd><dt>↑ / ↓ then Enter</dt><dd>Choose a suggestion</dd><dt>↑ at the start / ↓ at the end</dt><dd>Previous / next input; your draft is kept</dd><dt>Alt+← / Alt+→</dt><dd>Previous / next conversation</dd><dt>Ctrl/Cmd+F</dt><dd>Find in this conversation</dd><dt>Escape</dt><dd>Dismiss suggestions or return to chat</dd></dl></details>
   {:else if output.kind === 'invitation_options'}
     <h2>Invite to #{output.channel.replace(/^#/, '')}</h2>
     <p>Choose who this invitation is for. Everyone receives their own identity and membership.</p>
@@ -163,4 +170,6 @@
   textarea { width:100%; color:var(--ink); background:var(--bg); font:inherit; resize:vertical; }
   pre { white-space:pre-wrap; font:inherit; margin:0; }
   .command { display:inline; min-height:0; min-width:0; line-height:inherit; margin:0; padding:0; color:var(--accent); }.command:disabled { color:var(--muted); cursor:default; }
+  .commands li { padding:5px 0; }.common { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 16px; }.common button { background:color-mix(in srgb,var(--accent) 8%,transparent); text-decoration:none; border-radius:4px; padding:6px 10px; }
+  details { margin-top:16px; } summary { cursor:pointer; } dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:8px; } dd { margin:0; color:var(--muted); }
 </style>

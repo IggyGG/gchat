@@ -10,13 +10,14 @@
 </script>
 <div class="action-result">
   <span class="state" title={result.messageId ? `Result for message ${result.messageId}` : undefined}>{result.state}{result.stderr ? ' · stderr' : ''}</span>
-  {#if output}<pre>{output}</pre>{/if}
-  {#each result.details as detail}<p>{detail}</p>{/each}
+  {#if output || result.details.length}<details><summary>Result details</summary>{#if output}<pre>{output}</pre>{/if}
+  {#each result.details as detail}<p>{detail}</p>{/each}</details>{/if}
   {#each result.artifacts as artifact}{#if safeLink(artifact.url)}<a href={artifact.url} target="_blank" rel="noreferrer">{artifact.name}</a>{/if}{/each}
 </div>
 <style>
   .action-result { margin-top:4px; border-left:2px solid var(--line); padding:4px 10px; }
   .state { color:var(--muted); font:12px/1.5 ui-sans-serif,system-ui,sans-serif; }
+  summary { cursor:pointer; color:var(--muted); } summary:focus-visible { outline:2px solid var(--accent); }
   pre { font:inherit; white-space:pre-wrap; overflow-wrap:anywhere; margin:4px 0; }
   p { margin:4px 0; } a { display:inline-block; color:var(--accent); padding:8px; min-height:44px; }
 </style>

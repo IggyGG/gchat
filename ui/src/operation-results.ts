@@ -5,6 +5,7 @@ export type OperationResult = {
   conversation: string | null; action: string; started: number;
   checked?: number; state: 'pending' | 'complete' | 'unknown' | 'rejected';
   body?: string;
+  nickname?: string;
   output?: CommandOutput; message?: string; recordedMessage?: string;
 };
 
@@ -58,7 +59,7 @@ export class OperationResults {
       // A durable terminal snapshot can finish an interrupted original request.
       if (old?.state === 'pending' && detail.state !== 'complete' && detail.state !== 'rejected') continue;
       this.records.set(key, { key, id: detail.id, instance: detail.instance, network,
-        conversation: detail.conversation, action: detail.action, started: old?.started ?? detail.started * 1000, body: old?.body,
+        conversation: detail.conversation, action: detail.action, started: old?.started ?? detail.started * 1000, body: old?.body, nickname: old?.nickname,
         state: detail.state === 'complete' ? 'complete' : detail.state === 'rejected' ? 'rejected' : detail.state === 'pending' ? 'pending' : 'unknown',
         output: detail.output ?? undefined, message: detail.message ?? undefined,
         recordedMessage: detail.message ?? old?.recordedMessage });

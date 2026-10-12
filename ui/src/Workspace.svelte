@@ -2,7 +2,10 @@
   import FocusScreen from './FocusScreen.svelte';
   import { followTail } from './follow-tail';
   import { mentionSuggestions, insertMention } from './mentions';
-  import MessageText from './MessageText.svelte';
+  import MessageRow from './MessageRow.svelte';
+  import ActivityRow from './ActivityRow.svelte';
+  import HighlightedText from './HighlightedText.svelte';
+  import { groupActivity, operationLabel, fileSize } from './timeline';
   import Welcome from './Welcome.svelte';
   import './theme.css';
   import ResizeHandles from './ResizeHandles.svelte';
@@ -22,10 +25,9 @@
   import NetworkSetup from './NetworkSetup.svelte';
   import { FileController, emptyFiles, type FileViewState } from './file-controller';
   import { hasNetworkSetup, networkLabel, localCommand, mergeViewCommands, viewCommands, readFont, writeFont, type ChatFont } from './workspace-state';
-  import MessageResult from './MessageResult.svelte';
   import { chatError, ChatError, type Transport } from './transport';
   import { MAX_INPUT_BYTES, MAX_NETWORK_INVITATION_BYTES } from './api';
-  import { ConversationViews, commandInputLimit, inputError, shouldComplete, readNavigation, writeNavigation } from './view-state';
+  import { ConversationViews, commandInputLimit, inputError, readNavigation, writeNavigation } from './view-state';
   import { fitVisualViewport, isTouchActivation } from './viewport';
   import { PendingPicker, type PendingPickerView, type PickerTarget } from './pending-picker';
 
@@ -38,6 +40,7 @@
   let messages = $state<Message[]>([]);
   let before = $state<string | null>(null);
   let unreadMarkers = $state<Record<string, string>>({});
+  let mentionedConversations = $state(new Set<string>());
   let searchOpen = $state(false);
   let searchText = $state('');
   let searchResults = $state<Message[]>([]);
@@ -45,6 +48,8 @@
   let searchBusy = $state(false);
   let searchError = $state('');
   let searchGeneration = 0;
+  let focusedMessage = $state<string | null>(null);
+  let jumpingToMessage = $state(false);
   let draft = $state('');
   let password = $state('');
   let rememberDevice = $state(false);
@@ -68,6 +73,7 @@
     const network = conversation ? transport.networkFor(conversation) : transport.active;
     const previous = results.find(r => r.id === id && r.network === (network ?? ''));
     const value = resultStore.begin(previous?.instance ?? transport.instanceFor(network) ?? snapshot?.instance.id ?? '', network ?? '', id, conversation, text);
+    if (value.body && !value.nickname) value.nickname = snapshot?.conversations.find(c => c.id === conversation)?.members.find(m => m.isSelf)?.nickname ?? 'You';
     syncResults(); return value.key;
   }
   function showResult(id: string, conversation = selected, text?: string) {
@@ -81,8 +87,14 @@
   let connectionError = $state<ChatError>();
   let channelsOpen = $state(false);
   let panel = $state<'users' | 'files' | null>(null);
-
-  const navigationModal = $derived(channelsOpen || !!panel);
+  let wide = $state(false);
+  let channelsCollapsed = $state(false), usersCollapsed = $state(false);
+  const channelsVisible = $derived(wide ? !channelsCollapsed : channelsOpen);
+  const drawerModal = $derived(!wide && (channelsOpen || panel === 'users'));
+  const navigationModal = $derived(drawerModal || panel === 'files');
+  function saveLayout() {
+    try { localStorage.setItem('gchat.layout.channels-collapsed', String(channelsCollapsed)); localStorage.setItem('gchat.layout.users-collapsed', String(usersCollapsed)); } catch { /* Optional display preferences. */ }
+  }
   let utility = $state<'network' | 'help' | 'font' | 'info' | 'notifications' | 'update' | null>(null);
   let pushStatus = $state<MobilePushStatus>();
   let pushBusy = $state(false), pushError = $state('');
@@ -101,9 +113,11 @@
     finally { pushBusy = false; }
   }
   let pushOffered = $state(false);
+  let pushOfferChecked = false;
+  let pushSuggestion = $state(false);
   const notificationLabel = $derived(pushBusy ? 'Updating…' : pushStatus?.permission === 'denied' ? 'Permission needed' : !pushStatus?.enabled ? 'Off' : pushStatus.registered ? 'On' : pushError || pushStatus.message.toLowerCase().includes('unavailable') ? 'Unavailable' : 'Registering');
   function rememberPushOffer() {
-    pushOffered = true;
+    pushOffered = true; pushSuggestion = false;
     try { localStorage.setItem('gchat-notifications-offered', '1'); } catch { /* Memory-only in private webviews. */ }
   }
   async function openNotificationSettings() {
@@ -117,13 +131,13 @@
     return () => clearInterval(timer);
   });
   $effect(() => {
-    if (!workspaceReady || !selected || !deviceUnlock?.notifications || pushOffered || utility || dialog || panel || channelsOpen) return;
+    if (!workspaceReady || !selected || !deviceUnlock?.notifications || pushOffered || pushOfferChecked) return;
     try { if (localStorage.getItem('gchat-notifications-offered')) { pushOffered = true; return; } } catch { /* Private storage. */ }
-    rememberPushOffer();
+    pushOfferChecked = true;
     void deviceUnlock.notifications.status().then(status => {
       if (!running || locked) return;
       pushStatus = status;
-      if (!status.enabled && !utility && !dialog && !panel && !channelsOpen) utility = 'notifications';
+      if (!status.enabled) pushSuggestion = true;
     }).catch(() => {});
   });
 
@@ -181,12 +195,14 @@
   let fileStates = $state<Record<string, FileViewState>>({});
   const visibleResults = $derived(results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '')
     && !messages.some(m => m.operationId === r.id) && (r.output || r.body || r.state !== 'complete')));
-  const timeline = $derived([
-    ...messages.map(message => ({ timestamp: results.find(r => r.id === message.operationId)?.started ? results.find(r => r.id === message.operationId)!.started / 1000 : message.timestamp, id: message.id, message, activity: undefined, result: undefined, help: false, transfer: undefined })),
+  const timeline = $derived(groupActivity([
+    ...messages.map(message => ({ timestamp: results.find(r => r.id === message.operationId)?.started ? results.find(r => r.id === message.operationId)!.started / 1000 : message.timestamp, id: message.operationId ?? message.id, message, activity: undefined, result: undefined, transfer: undefined })),
     ...(snapshot?.activity ?? []).filter(a => a.conversation === selected).map(activity => ({ timestamp: activity.timestamp, id: activity.id, message: undefined, activity, result: undefined, help: false, transfer: undefined })),
-    ...visibleResults.map(result => ({ timestamp: result.started / 1000, id: result.key, message: undefined, activity: undefined, result, help: false, transfer: undefined })),
+    ...visibleResults.map(result => ({ timestamp: result.started / 1000, id: result.id, message: undefined, activity: undefined, result, transfer: undefined })),
     ...Object.values(fileState.transfers).filter(t => t.conversation === selected).map(transfer => ({ timestamp: transfer.started / 1000, id: 'file/' + transfer.id, message: undefined, activity: undefined, result: undefined, help: false, transfer }))
-  ].sort((a, b) => a.timestamp - b.timestamp));
+  ].sort((a, b) => a.timestamp - b.timestamp)));
+  const otherFailures = $derived(failures.filter(f => !visibleResults.some(r => r.id === f.request.operation_id)));
+  const otherSaved = $derived(savedOperations.filter(h => !results.some(r => r.id === h.operation.id) && !failures.some(f => f.request.operation_id === h.operation.id)));
   let fileInput = $state<HTMLInputElement>();
   let fileTarget: { conversation: string; resumeId?: string; controller: FileController } | undefined;
   let invitationInput = $state<HTMLInputElement>();
@@ -216,6 +232,8 @@
   let joinRequest = $state<Extract<Request, { kind: 'submit' }>>();
   const views = new ConversationViews();
   let completions = $state<Completion[]>([]);
+  let completionIndex = $state(0);
+  let completionRange: { start:number; end:number; prefix:string; source:string; conversation:string | null } | undefined;
   let mentionContext = $state<{ text: string; conversation: string | null; start: number; end: number; items: string[] } | null>(null);
   let mentionIndex = $state(0);
   function updateMentions() {
@@ -249,6 +267,7 @@
     if (event.currentTarget) navigationPointers.set(event.currentTarget, event.pointerType);
   }
   const active = $derived(snapshot?.conversations.find(c => c.id === selected));
+  const usersVisible = $derived(!!active && (wide ? !usersCollapsed : panel === 'users'));
   const details = $derived(snapshot?.conversations.find(c => c.id === detailsConversation));
   const locked = $derived(snapshot?.instance.locked ?? true);
   const mentions = $derived(!locked && mentionContext?.text === draft && mentionContext.conversation === selected ? mentionContext.items : []);
@@ -258,6 +277,9 @@
   const fileIdentity = $derived(workspaceReady && snapshot?.instance.capabilities.includes('files.v1') ? `${snapshot.instance.id}/${snapshot.instance.bootId}` : null);
   const fileCount = $derived(fileState.snapshot?.files.filter(f => f.conversation === selected && f.state !== 'cancelled').length ?? 0);
   const connectionLabel = $derived(networkLabel(networkStatus, offline, locked));
+  const conversationVisible = $derived(workspaceReady && !navigationModal && !utility && !dialog && !searchOpen && !resultKey);
+  const totalUnread = $derived(snapshot?.conversations.filter(c => c.id !== selected).reduce((count, c) => count + c.unread, 0) ?? 0);
+  $effect(() => { if (conversationVisible) void tick().then(markRead); });
   $effect(() => {
     if (!fileIdentity) return;
     return () => { for (const controller of fileControllers.values()) controller.stop(); fileControllers.clear(); fileStates = {}; fileController = undefined; };
@@ -352,6 +374,20 @@
     if (text) await search();
   }
   function closeSearch() { searchOpen = false; searchGeneration++; searchBusy = false; composer?.focus(); }
+  async function revealMessage(message: Message) {
+    if (jumpingToMessage) return;
+    const conversation = selected;
+    jumpingToMessage = true; searchError = ''; atBottom = false;
+    try {
+      while (selected === conversation && !messages.some(m => m.id === message.id) && before && !historyStale) await loadHistory(true);
+      if (selected !== conversation || locked) return;
+      if (!messages.some(m => m.id === message.id)) { searchError = 'This message is no longer available in the loaded history.'; return; }
+      focusedMessage = message.id; closeSearch();
+      await tick();
+      const row = [...(transcript?.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])].find(node => node.dataset.messageId === message.id);
+      row?.scrollIntoView({ block:'center' }); transcript?.dispatchEvent(new Event('gchat-anchor-here')); transcript?.focus({ preventScroll:true }); rememberPosition();
+    } finally { jumpingToMessage = false; }
+  }
   function chooseFile(resumeId?: string) {
     if (!selected || !workspaceReady || !fileAccess || active?.kind === 'archive' || fileState.busy) return;
     if (!fileController) return;
@@ -448,13 +484,17 @@
 
   onMount(() => {
     running = true; font = readFont();
+    try { channelsCollapsed = localStorage.getItem('gchat.layout.channels-collapsed') === 'true'; usersCollapsed = localStorage.getItem('gchat.layout.users-collapsed') === 'true'; } catch { /* Memory-only preference. */ }
+    const width = window.matchMedia('(min-width:1000px)');
+    const resize = () => { wide = width.matches; channelsOpen = false; if (panel === 'users') panel = null; };
+    resize(); width.addEventListener('change', resize);
     const networkTimer = setInterval(() => { void refreshNetwork(); void refreshPush(); }, 2000);
     void watch();
     const visible = () => { if (!document.hidden && (!connectionError || connectionError.retryable)) void refreshInBackground(); };
     document.addEventListener('visibilitychange', visible);
     const disconnected = () => connectionFailed(new Error('Network unavailable. Drafts and loaded history remain available.'));
     window.addEventListener('online', visible); window.addEventListener('offline', disconnected);
-    return () => { running = false; clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); picker.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
+    return () => { running = false; width.removeEventListener('change', resize); clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); picker.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
   });
   async function refreshInBackground() {
     try { await refresh(); }
@@ -463,6 +503,7 @@
   function connectionFailed(error: unknown) { offline = true; connectionError = chatError(error); }
   function clearPrivateView() {
     stagedInvitation = '';
+    mentionedConversations = new Set(); focusedMessage = null;
       invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
       generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
   }
@@ -526,7 +567,7 @@
   }
   async function select(id: string | null, activation?: MouseEvent) {
     const changingConversation = id !== selected;
-    if (id !== selected) { if (dialog) cancelPrompt(); collapseHelp(); resultKey = null; }
+    if (id !== selected) { if (dialog) cancelPrompt(); collapseHelp(); resultKey = null; focusedMessage = null; }
     // Capture before the first await: currentTarget is cleared after dispatch.
     const initiatingPointer = activation?.currentTarget ? navigationPointers.get(activation.currentTarget) : undefined;
     if (activation?.currentTarget) navigationPointers.delete(activation.currentTarget);
@@ -534,7 +575,7 @@
     const nextNetwork = id ? transport.networkFor(id) : selectedNetwork;
     if (nextNetwork !== selectedNetwork) { networkGeneration++; networkStatus = networks.find(n => n.id === nextNetwork)?.status; }
     selectedNetwork = nextNetwork; transport.select(selectedNetwork);
-    const fromDrawer = channelsOpen;
+    const fromDrawer = channelsOpen || !!activation;
     const rememberedPosition = id && snapshot ? readNavigation(snapshot.instance.id)?.positions[id] : undefined;
     rememberPosition();
     if (!id) panel = null;
@@ -599,6 +640,7 @@
         if (overlap < 0) before = response.page.before;
       }
       historyStale = false;
+      if (messages.some(m => m.highlighted && !m.mine) && (snapshot?.conversations.find(c => c.id === conversation)?.unread ?? 0) > 0) mentionedConversations = new Set([...mentionedConversations, conversation]);
       await tick();
       if (older && transcript) transcript.scrollTop = scrollTop + transcript.scrollHeight - scrollHeight;
       else if (atBottom && transcript) transcript.scrollTop = transcript.scrollHeight;
@@ -614,9 +656,9 @@
     finally { if (revision === generation) loadingHistory = false; }
   }
   async function markRead() {
-    if (!selected || !atBottom || document.hidden || !document.hasFocus() || !workspaceReady) return;
+    if (!selected || !atBottom || document.hidden || !document.hasFocus() || !conversationVisible || jumpingToMessage) return;
     const last = messages.at(-1);
-    if (last) try { await transport.request({ kind: 'mark_read', conversation: selected, message_id: last.id }); } catch { /* Read markers retry after the next successful refresh. */ }
+    if (last) try { const conversation = selected; await transport.request({ kind: 'mark_read', conversation, message_id: last.id }); mentionedConversations = new Set([...mentionedConversations].filter(id => id !== conversation)); } catch { /* Read markers retry after the next successful refresh. */ }
   }
   async function apply(response: Response, origin = selected, result?: string) {
     if (response.kind === 'error') throw new ChatError(response.code, response.message);
@@ -633,7 +675,7 @@
       }
     }
     if (response.kind === 'applied' && !locked) {
-      if (response.notice) notice = response.notice;
+      if (response.notice && !result) notice = response.notice;
       if (response.conversation && selected === origin) await select(response.conversation);
     } else if (response.kind === 'completed' && !locked) completions = response.items;
     if (response.kind === 'instance' && response.instance.locked) {
@@ -674,6 +716,7 @@
     if (!text || !workspaceReady) return;
     if (text.trim() === '/cancel') { cancelPrompt(); return; }
     if (dialog) return;
+    if (!text.startsWith('/') && active?.kind === 'archive') { notice = 'This archive is read only. Choose an active conversation to send a message.'; return; }
     if (['/join', '/create'].includes(text.trim())) { if (text === draft) draft = ''; openDialog(text.trim() === '/join' ? 'join' : 'create'); return; }
     if (/^\/join\s+gcoms:/.test(text.trim())) { incomingInvitation = text.trim().slice(6).trim(); if (text === draft) draft = ''; openDialog('join'); return; }
     if (text.trim().startsWith('gcoms:')) { incomingInvitation = text.trim(); if (text === draft) draft = ''; openDialog('join'); return; }
@@ -690,6 +733,7 @@
       return;
     }
     if (busy || sendingFull) { notice = 'The outgoing queue is full. Your draft is kept; send it when capacity becomes available.'; return; }
+    if (offline) { notice = 'Reconnecting. Your draft is kept.'; return; }
     const error = inputError(text, text.startsWith('/') ? commandInputLimit(text) : active?.inputLimitBytes ?? MAX_INPUT_BYTES);
     if (error) { notice = error; return; }
     if (!text.startsWith('/')) atBottom = true;
@@ -737,15 +781,38 @@
     await operation({ kind: 'unlock', passphrase, create: creating });
   }
   async function complete() {
-    if (locked) return;
+    if (locked || !composer || composer.selectionStart !== composer.selectionEnd) return;
     const text = draft, conversation = selected;
+    const caret = composer.selectionStart;
+    const head = text.slice(0, caret);
+    const token = /\S+$/.exec(head);
+    if (!token) return;
+    const start = caret - token[0].length;
+    const end = caret + (/^\S*/.exec(text.slice(caret))?.[0].length ?? 0);
+    completionIndex = 0;
+    completionRange = { start, end, prefix:head, source:text, conversation };
+    if (!text.startsWith('/')) {
+      completions = (active?.members ?? []).filter(m => !m.isSelf && m.nickname.toLocaleLowerCase().startsWith(token[0].toLocaleLowerCase())).slice(0,20).map(m => ({ text:m.nickname + (start === 0 ? ':' : ''), description:'Nickname' }));
+      if (completions.length === 1) await chooseCompletion(0);
+      return;
+    }
     try {
-      const response = await transport.request({ kind: 'complete', text, conversation });
+      const response = await transport.request({ kind: 'complete', text:head, conversation });
       if (draft === text && selected === conversation && response.kind === 'completed') {
-        const local = viewCommands(!!selected).filter(c => c.available && c.name.startsWith(text)).map(c => ({ text: c.name, description: c.description }));
+        const local = viewCommands(!!selected).filter(c => c.available && c.name.startsWith(head)).map(c => ({ text:c.name, description:c.description }));
+        completionRange = { start:0, end, prefix:head, source:text, conversation };
         completions = [...response.items.filter(c => !local.some(l => l.text === c.text)), ...local];
+        if (completions.length === 1) await chooseCompletion(0);
       }
     } catch (error) { notice = String(error); }
+  }
+  async function chooseCompletion(index: number) {
+    const range = completionRange, choice = completions[index];
+    if (!range || !choice || draft !== range.source || selected !== range.conversation) { completions = []; return; }
+    const suffix = draft.slice(range.end), insertion = choice.text + (/^\s/.test(suffix) ? '' : ' ');
+    draft = draft.slice(0,range.start) + insertion + suffix;
+    completions = []; completionRange = undefined;
+    await tick(); composer?.focus(); composer?.setSelectionRange(range.start + insertion.length, range.start + insertion.length);
   }
   function keydown(event: KeyboardEvent) {
     if (event.isComposing) return;
@@ -757,10 +824,20 @@
       else void chooseMention(mentions[mentionIndex]);
       return;
     }
+    if (completions.length && ['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key)) {
+      event.preventDefault();
+      if (event.key === 'Escape') { completions = []; completionRange = undefined; }
+      else if (event.key === 'Enter') void chooseCompletion(completionIndex);
+      else {
+        completionIndex = (completionIndex + (event.key === 'ArrowUp' || event.shiftKey ? completions.length - 1 : 1)) % completions.length;
+        void tick().then(() => document.getElementById('command-option-' + completionIndex)?.scrollIntoView({ block:'nearest' }));
+      }
+      return;
+    }
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); }
-    else if (shouldComplete(event, draft, completions.length > 0)) { event.preventDefault(); void complete(); }
+    else if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && draft.trim()) { event.preventDefault(); void complete(); }
     else if (event.key === 'Escape') { event.preventDefault(); cancelPrompt(); completions = []; channelsOpen = false; panel = null; }
-    else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !draft.includes('\n')) {
+    else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !draft.includes('\n') && composer?.selectionStart === composer?.selectionEnd && (historyPosition !== undefined || !draft || (event.key === 'ArrowUp' ? composer?.selectionStart === 0 : composer?.selectionStart === draft.length))) {
       const history = snapshot?.inputHistory.filter(item => item.conversation === selected).map(item => item.text) ?? [];
       if (!history.length) return;
       event.preventDefault();
@@ -796,7 +873,17 @@
     }
   }
   function closeNavigation() { const wasOpen = channelsOpen || !!panel; channelsOpen = false; panel = null; if (wasOpen) void tick().then(() => navigationOpener?.focus()); }
+  function hideNavigation(mode: 'channels' | 'users') {
+    if (wide) { if (mode === 'channels') channelsCollapsed = true; else usersCollapsed = true; saveLayout(); }
+    else closeNavigation();
+    void tick().then(() => document.querySelector<HTMLButtonElement>(`button[aria-controls="${mode === 'channels' ? 'channel-navigation' : 'user-navigation'}"]`)?.focus());
+  }
   async function openNavigation(mode: 'channels' | 'users' | 'files', opener: HTMLElement | null = document.activeElement as HTMLElement | null) {
+    if (wide && mode !== 'files') {
+      navigationOpener = opener;
+      if (mode === 'channels') channelsCollapsed = !channelsCollapsed; else usersCollapsed = !usersCollapsed;
+      saveLayout(); return;
+    }
     if ((mode === 'channels' && channelsOpen) || (mode !== 'channels' && panel === mode)) { closeNavigation(); return; }
     // Safari may not focus a clicked button. Preserve the actual opener.
     navigationOpener = opener;
@@ -872,25 +959,25 @@
         <div class="notice" role="status"><span>{locked ? 'A selected file is waiting for this profile. Reconnect to continue.' : 'A selected file is ready to continue in its original destination.'}</span>{#if !locked}<button disabled={continuingPicker || (pickerView.target.kind === 'outgoing' && !workspaceReady)} onclick={() => void continuePicker()}>Continue selected file</button>{/if}<button onclick={discardPicker}>Discard selection</button></div>
       {/if}
       {#if pickerNotice}<div class="notice" role="status"><span>{pickerNotice}</span><button aria-label="Dismiss file selection notice" onclick={() => pickerNotice = ''}>×</button></div>{/if}
-      {#if workspaceReady && (Object.keys(pending).length || joinBusy)}<div class="progress" role="status">{Object.values(pending).map(name => `${name}: waiting for instance`).join(' · ')}{joinBusy ? joinRequest?.text.startsWith('/create ') ? ' Creating channel…' : ' Joining channel…' : ''}</div>{/if}
       {#if notice && !locked}<div class="notice" role="status"><pre>{notice}</pre><button aria-label="Dismiss notice" onclick={() => notice = ''}>×</button></div>{/if}
-      {#each failures as failure (failure.request.operation_id)}
-        <div class="retry" role="status"><span>{failureTarget(failure.request.conversation)}: {failure.message} {failure.code === 'rejected' ? 'Command was not accepted.' : 'Outcome not confirmed. Checking uses the original operation.'}</span><button onclick={() => showResult(failure.request.operation_id, failure.request.conversation, failure.request.text)}>Details</button><button onclick={() => void editFailed(failure.request)}>{failure.code === 'rejected' ? 'Edit command' : 'Edit as new'}</button><button aria-label="Dismiss failed operation" onclick={() => dismissFailure(failure.request.operation_id)}>×</button></div>
-      {/each}
+      {#if otherFailures.length}<details class="retry-summary"><summary>{otherFailures.length} {otherFailures.length === 1 ? 'request needs' : 'requests need'} attention elsewhere</summary>{#each otherFailures as failure (failure.request.operation_id)}
+        <div class="retry"><span>{failureTarget(failure.request.conversation)}: {failure.message}</span><button onclick={() => showResult(failure.request.operation_id, failure.request.conversation, failure.request.text)}>Details</button><button aria-label="Dismiss failed operation" onclick={() => dismissFailure(failure.request.operation_id)}>×</button></div>
+      {/each}</details>{/if}
       {#if !locked}
-        {#each savedOperations.filter(h => !failures.some(f => f.request.operation_id === h.operation.id)) as handle (handle.operation.id)}
+        {#each otherSaved as handle (handle.operation.id)}
           <div class="retry" role="status"><span>{recoveryMessages[handle.operation.id] ?? 'Saved operation · outcome not confirmed'}</span><button onclick={() => showResult(handle.operation.id)}>Details</button><button onclick={() => forgetSaved(handle.operation.id)}>Dismiss</button></div>
         {/each}
       {/if}
 {/snippet}
 
 <svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} />
-<div class="gchat" class:mac={nativeShell?.mac} class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
+<div class="gchat" class:wide class:mac={nativeShell?.mac} class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
   <ResizeHandles shell={nativeShell} />
   <header class="titlebar" class:mac={nativeShell?.mac} inert={navigationModal}>
     {#if nativeShell}<div class="drag-region" role="presentation" onpointerdown={event => { if (event.button === 0) void nativeShell?.drag(); }} ondblclick={() => void nativeShell?.maximize()}></div>{/if}
       <button class="network-button" disabled={locked} title={`${networks.find(n => n.id === selectedNetwork)?.name ?? 'Network'} · ${connectionLabel}`} aria-label={`Network: ${connectionLabel}`} onclick={() => openUtility('network')}><span class="connection-dot" class:connected={!offline && networkStatus?.state === 'connected'} aria-hidden="true">●</span><span class="sr-only" role="status">{connectionLabel}</span></button>
     <span class="brand"><strong>GChat.</strong><GhostMark /></span>
+    {#if workspaceReady && connectionLabel !== 'Connected'}<button class="connection-label" onclick={() => openUtility('network')}>{connectionLabel}</button>{/if}
 
     <nav class="header-actions" aria-label="Chat actions">
       <button class="help-button" disabled={locked || !networkAccepted} aria-label="Help and commands" title="Help and commands" onclick={() => void showHelp()}>?</button>
@@ -903,16 +990,9 @@
     {#if deviceUnlock}<input class="file-picker" type="file" accept=".png,image/png,.txt,text/plain" aria-label="Choose an invitation file" bind:this={invitationInput} onchange={event => pickedInvitation(event, inputGeneration)} oncancel={() => cancelFilePicker('invitation', inputGeneration)} />{/if}
   {/each}
   <div class="workspace">
-    {#if workspaceReady}
-      <button class="circle edge left" class:concealed={navigationModal} aria-label="Channels" title="Show channels" aria-controls="channel-navigation" aria-expanded={false} onclick={event => void openNavigation('channels', event.currentTarget)}>#</button>
-      {#if active}<div class="edge right" class:concealed={navigationModal}>
-        <button class="circle" aria-label={`Users: ${active.members.length}`} title="Users" onclick={event => void openNavigation('users', event.currentTarget)}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m3 11v-3a6 6 0 0 0-2-4"/></svg>{#if active.members.length}<small class="edge-count">{active.members.length}</small>{/if}</button>
-        {#if fileController}<button class="circle" aria-label={`Files: ${fileCount}`} title="Files" onclick={event => void openNavigation('files', event.currentTarget)}>▤{#if fileCount}<small class="edge-count">{fileCount}</small>{/if}</button>{/if}
-      </div>{/if}
-    {/if}
-    {#if navigationModal}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
-    {#if workspaceReady}<aside id="channel-navigation" class="channels" class:open={channelsOpen} aria-label="Channels" role={channelsOpen ? 'dialog' : undefined} aria-modal={channelsOpen ? true : undefined}>
-      {#if channelsOpen}<button class="fold-left" aria-label="Hide channels" onclick={closeNavigation}>‹</button>{/if}
+    {#if drawerModal}<button class="scrim" tabindex="-1" aria-label="Close navigation" onclick={closeNavigation}></button>{/if}
+    {#if workspaceReady}<aside id="channel-navigation" class="channels" class:open={channelsVisible} class:docked={wide} aria-label="Channels" role={channelsVisible && !wide ? 'dialog' : undefined} aria-modal={channelsVisible && !wide ? true : undefined}>
+      <div class="panel-heading"><strong>Channels</strong><button aria-label="Hide channels" title="Hide channels" onclick={() => hideNavigation('channels')}>‹</button></div>
       <div class="channel-entries">
 
       {#each networks.length > 1 ? networks : [undefined] as network (network?.id ?? 'single')}
@@ -921,18 +1001,24 @@
         <button class:chosen={selected === conversation.id} aria-current={selected === conversation.id ? 'page' : undefined} class:unread={conversation.unread > 0} onpointerdown={rememberNavigationPointer} onclick={event => void select(conversation.id, event)} title={conversation.topic || conversation.name}>
           <span class="symbol">{conversation.kind === 'query' ? '↳' : conversation.kind === 'archive' ? '·' : '#'}</span>
           <span class="room-name">{conversation.name.replace(/^#/, '')}</span>
-          {#if (transport.presenceFor(selectedNetwork) ?? snapshot?.presenceEnabled) && conversation.kind === 'channel'}<small>{conversation.members.filter(m => m.recentlyActive).length} recently active</small>{/if}
           {#if conversation.unread}<span class="badge">{conversation.unread}</span>{/if}
-          {#if conversation.topic}<small>{conversation.topic}</small>{/if}
+          {#if mentionedConversations.has(conversation.id)}<span class="mention-badge" title="You were mentioned" aria-label="You were mentioned">@</span>{/if}
           {#if conversation.kind === 'archive'}<small>read only</small>{/if}
         </button>
       {/each}
       {/each}
       </div>
-      <div class="channel-actions"><button class="circle" aria-label="Join or create a channel" title="Join or create a channel" disabled={busy} onclick={() => openDialog('choose')}>+</button></div>
+      <div class="channel-actions"><button aria-label="Join or create a channel" disabled={busy} onclick={() => openDialog('choose')}>+ Add channel</button></div>
     </aside>{/if}
     <main class="conversation" inert={navigationModal}>
-      <div class="conversation-heading">    {#if workspaceReady}<button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>{#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}{#if active?.catchUp}<span class="header-topic" role="status">{active.catchUp.appliedRecords > 0 ? `Catching up · ${active.catchUp.appliedRecords} updates applied` : 'Checking channel updates…'}</span>{/if}{/if}</div>
+      <div class="conversation-heading">{#if workspaceReady}
+        <button class="panel-toggle" aria-label="Channels" title={channelsVisible ? 'Hide channels' : 'Show channels'} aria-controls="channel-navigation" aria-expanded={channelsVisible} onclick={event => void openNavigation('channels', event.currentTarget)}>#{#if totalUnread}<small class="badge">{totalUnread}</small>{/if}</button>
+        <button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>
+        {#if active}<button class="panel-toggle" aria-label={`Users: ${active.members.length}`} aria-controls="user-navigation" aria-expanded={usersVisible} title="Show or hide users" onclick={event => void openNavigation('users', event.currentTarget)}>Users <small>{active.members.length}</small></button>
+        {#if fileController}<button class="panel-toggle" aria-label={`Files: ${fileCount}`} title="Files" onclick={event => void openNavigation('files', event.currentTarget)}>▤ <small>{fileCount}</small></button>{/if}{/if}
+        {#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}
+        {#if active?.catchUp}<span class="header-topic" role="status">{active.catchUp.appliedRecords > 0 ? `Catching up · ${active.catchUp.appliedRecords} updates applied` : 'Checking channel updates…'}</span>{/if}
+      {/if}</div>
       {#if !locked && snapshot?.providerErrors?.length}
         <div class="provider-errors" role="status">
           {#each snapshot.providerErrors as error}
@@ -962,33 +1048,34 @@
           {#if selected && !messages.length}<p class="empty">{loadingHistory ? 'Loading…' : '*** Beginning of this conversation'}</p>{/if}
           {#each timeline as item, index (item.id)}
             {@const message = item.message}
-            {#if message}
-            {@const date = new Date(message.timestamp * 1000).toLocaleDateString()}
-            {@const legacyAction = message.body.startsWith('\u0001ACTION ') && message.body.endsWith('\u0001')}
-            {@const action = message.messageKind === 'action' || legacyAction}
+            {@const result = item.result}
+            {@const date = new Date(item.timestamp * 1000).toLocaleDateString()}
             {#if !index || new Date(timeline[index - 1].timestamp * 1000).toLocaleDateString() !== date}<div class="date">{date}</div>{/if}
-            {#if selected && unreadMarkers[selected] === message.id}<div class="unread-divider">New messages</div>{/if}
-            <div class="message" data-timeline-key={message.operationId ?? message.id} class:mine={message.mine} class:highlighted={message.highlighted}><time title={new Date(message.timestamp * 1000).toLocaleString()}>[{time(message.timestamp)}]</time><span class="nick">{action ? `* ${message.nickname}` : message.messageKind === 'notice' ? `-${message.nickname}-` : `<${message.nickname}>`}</span><span class="body"><MessageText text={legacyAction ? message.body.slice(8, -1) : message.body} members={active?.members ?? []} />{#if message.delivery}<small class="acceptance" title={message.delivery === 'delivered' ? 'Acknowledged by the recipients of this message; not a read receipt' : message.delivery === 'service_accepted' ? 'Stored by the ciphertext service; recipient delivery is not confirmed' : message.delivery === 'failed' ? 'This send was refused; check channel activity' : 'Accepted by this instance; recipient delivery is not confirmed'}> · {message.delivery === 'delivered' ? 'delivered' : message.delivery === 'service_accepted' ? 'stored by service' : message.delivery === 'failed' ? 'failed' : 'accepted locally'}</small>{/if}{#if message.result}<MessageResult result={message.result} />{/if}</span></div>
-            {:else if item.activity}<div class="activity"><time>[{time(item.timestamp)}]</time> {item.activity.text}</div>
+            {#if message && selected && unreadMarkers[selected] === message.id}<div class="unread-divider">New messages</div>{/if}
+            <div data-timeline-key={item.id} data-message-id={message?.id} data-operation={result?.id}>
+            {#if message || result?.body}
+              <MessageRow timestamp={item.timestamp} nickname={message?.nickname ?? result?.nickname ?? 'You'} text={message?.body ?? result?.body ?? ''} members={active?.members ?? []} mine={message?.mine ?? true} highlighted={message?.highlighted} focused={!!message && focusedMessage === message.id} kind={message?.messageKind} delivery={message?.delivery} state={message ? undefined : result?.state} checking={!!result && checkingSaved[result.id]} result={message?.result} details={result && result.state !== 'complete' ? () => showResult(result.id, result.conversation) : undefined} edit={result && ['unknown','rejected'].includes(result.state) && failures.some(f => f.request.operation_id === result.id) ? () => { const failure = failures.find(f => f.request.operation_id === result!.id); if (failure) void editFailed(failure.request); } : undefined} />
+            {:else if item.activities}<ActivityRow activities={item.activities} />
             {:else if item.result}
-              {@const result = item.result}
-              <div class="private-line" data-timeline-key={result.id} class:mine={!!result.body} data-operation={result.id}>
-                {#if result.body}<time>[{time(item.timestamp)}]</time> <strong>You</strong> <span>{result.body}</span>{:else}<small>Only you</small> · {result.action}{/if}
-                <small role="status"> · {result.state === 'pending' ? (result.action === '/join' ? 'Connecting and waiting for channel confirmation…' : result.body ? 'Sending…' : 'Working…') : result.state === 'complete' ? 'Accepted locally' : result.state === 'unknown' ? 'Checking outcome…' : 'Not sent'}</small>
-                <button onclick={() => { utility = null; cancelPrompt(); resultKey = result.key; }}>Details</button>
-                {#if result.output?.kind === 'invitation' || result.output?.kind === 'reusable_invitation'}<span>Invitation created · only you</span>{/if}
+              {@const operation = item.result}
+              <div class="private-line" class:attention={operation.state === 'unknown' || operation.state === 'rejected'}>
+                <time>[{time(item.timestamp)}]</time> <span>{operation.action}</span> <small>· Only you ·</small>
+                <span>{operationLabel(operation, checkingSaved[operation.id])}</span>
+                <button onclick={() => { utility = null; cancelPrompt(); resultKey = operation.key; }}>Details</button>
               </div>
             {:else if item.transfer}
               {@const transfer = item.transfer}
               {@const file = fileState.snapshot?.files.find(f => f.id === transfer.id)}
               <div class="private-line transfer" aria-label={`Transfer: ${transfer.name}`}><strong>{transfer.name}</strong>
-                <p role="status">{transfer.pending ? 'Starting…' : transfer.error || (file?.state === 'complete' ? 'Downloaded · shared while unlocked' : file?.state.replaceAll('_', ' ') || 'Checking transfer…')}</p>
-                <progress aria-label={`Verified progress for ${transfer.name}`} value={Number(file?.verified_bytes ?? 0)} max={Math.max(1, Number(file?.size_bytes ?? 1))}></progress>
-                <small>{Number(file?.verified_bytes ?? 0).toLocaleString()} / {Number(file?.size_bytes ?? 0).toLocaleString()} bytes verified</small>
+                <span>{transfer.pending ? 'Starting…' : transfer.error ? 'Transfer needs attention' : (file?.state === 'complete' ? 'Downloaded' : file?.state.replaceAll('_', ' ') || 'Checking transfer…')}</span>
+                {#if file?.state !== 'complete'}<progress aria-label={`Verified progress for ${transfer.name}`} value={Number(file?.verified_bytes ?? 0)} max={Math.max(1, Number(file?.size_bytes ?? 1))}></progress>{/if}
+                <small>{fileSize(file?.verified_bytes ?? '0')} / {fileSize(file?.size_bytes ?? '0')}</small>
+                <button onclick={() => void openNavigation('files')}>Details</button>
                 {#if file?.state === 'complete' && fileController && fileAccess}<button disabled={fileState.busy} onclick={() => fileController?.save(file)}>Save file…</button>{#if fileState.notice}<p role="status">{fileState.notice}</p>{/if}{#if fileState.error}<p role="alert">{fileState.error}</p>{/if}{/if}
                 {#if transfer.error && fileController}<button onclick={() => fileController?.act({ action: 'accept', id: transfer.id })}>Check and retry</button>{/if}
               </div>
             {/if}
+            </div>
           {/each}
           {@render outcomes()}
         </div></div>
@@ -997,25 +1084,26 @@
       {#if !workspaceReady}{@render outcomes()}{/if}
       {#if draftError}<p class="input-error" id="gchat-input-error">{draftError}</p>{/if}
       {#if workspaceReady}
+        {#if active?.kind === 'archive'}<p class="composer-context">Read-only archive · commands are available</p>{/if}
+        {#if pushSuggestion}<div class="notification-offer"><button onclick={() => { rememberPushOffer(); openUtility('notifications'); }}>Enable background notifications…</button><button aria-label="Dismiss notification suggestion" onclick={rememberPushOffer}>×</button></div>{/if}
         <form class="composer" onsubmit={event => { event.preventDefault(); void send(); }}>
           {#if mentions.length}<div class="completions" role="listbox" id="mention-suggestions" aria-label="Mention a member">{#each mentions as name, index}<button type="button" role="option" id={'mention-option-' + index} aria-selected={mentionIndex === index} tabindex="-1" onclick={() => void chooseMention(name)}>@{name}</button>{/each}</div>{/if}
-          {#if completions.length}<div class="completions" aria-label="Command completions">{#each completions as item}<button type="button" onclick={() => { draft = item.text + ' '; completions = []; composer?.focus(); }}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
+          {#if completions.length}<div class="completions" role="listbox" id="command-suggestions" aria-label="Command completions">{#each completions as item, index}<button type="button" role="option" tabindex="-1" id={'command-option-' + index} aria-selected={completionIndex === index} onclick={() => void chooseCompletion(index)}><strong>{item.text}</strong><span>{item.description}</span></button>{/each}</div>{/if}
           {#if !dialog && selected && fileAccess && fileController && active?.kind !== 'archive'}<button class="attach" type="button" aria-label="Share a file" title="Share a file" disabled={fileState.busy} onclick={() => chooseFile()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9a7 7 0 0 1 10 10l-9 9" /></svg></button>{/if}
-          <textarea bind:this={composer} bind:value={draft} aria-label="Message or command" aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} aria-controls={mentions.length ? 'mention-suggestions' : undefined} aria-activedescendant={mentions.length ? 'mention-option-' + mentionIndex : undefined} oninput={updateMentions} onclick={updateMentions} onkeyup={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) updateMentions(); }}></textarea>
-          <button class="send" type="submit" disabled={!draft || !!draftError || (!dialog && (busy || sendingFull) && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : 'Send'}</button>
+          <textarea bind:this={composer} bind:value={draft} aria-label="Message or command" aria-invalid={!!draftError} aria-describedby={draftError ? 'gchat-input-error' : undefined} rows="1" placeholder={active?.kind === 'archive' ? 'Read-only archive · /help for commands' : selected ? 'Message or /command' : '/join, /create or /help'} onkeydown={keydown} aria-controls={mentions.length ? 'mention-suggestions' : completions.length ? 'command-suggestions' : undefined} aria-activedescendant={mentions.length ? 'mention-option-' + mentionIndex : completions.length ? 'command-option-' + completionIndex : undefined} oninput={updateMentions} onclick={updateMentions} onkeyup={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) updateMentions(); }}></textarea>
+          <button class="send" type="submit" disabled={!draft || !!draftError || (active?.kind === 'archive' && !draft.startsWith('/')) || (!dialog && (busy || sendingFull) && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : 'Send'}</button>
         </form>
       {/if}
     </main>
-    {#if workspaceReady && active && panel === 'users'}
+    {#if workspaceReady && active && usersVisible}
       <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role (Modal drawer traps focus and restores its opener.) -->
-      <aside class="inspector open" aria-label="Conversation details" role="dialog" aria-modal="true">
-        <button class="fold-right" aria-label="Close details" onclick={closeNavigation}>›</button>
+      <aside id="user-navigation" class="inspector open" class:docked={wide} aria-label="Conversation details" role={wide ? undefined : 'dialog'} aria-modal={wide ? undefined : true}>
+        <div class="panel-heading"><strong>Users <small>{active.members.length}</small></strong><button aria-label="Close details" title="Hide users" onclick={() => hideNavigation('users')}>›</button></div>
         <div class="inspector-heading"><div role="tablist" tabindex="-1" aria-label="Conversation details" onkeydown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !fileController) return;
-          event.preventDefault(); panel = event.key === 'Home' ? 'users' : event.key === 'End' ? 'files' : panel === 'users' ? 'files' : 'users';
-          void tick().then(() => document.getElementById(`${panel}-tab`)?.focus());
-        }}><button role="tab" id="users-tab" tabindex={panel === 'users' ? 0 : -1} aria-selected={panel === 'users'} aria-controls="users-panel" onclick={() => panel = 'users'}>Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex="-1" aria-selected="false" aria-controls="files-panel" onclick={() => panel = 'files'}>Files <small>{fileCount}</small></button>{/if}</div></div>
-        {#if panel === 'users'}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => void send(`${active.policy ? '/whois' : '/query'} ${member.id}`)} title={member.isSelf ? 'Your channel identity' : active.policy ? 'Show channel member details' : 'Open private chat'}>{member.capabilities.includes('channel.owner') ? '~' : member.capabilities.includes('channel.operator') ? '@' : member.capabilities.includes('channel.voice') ? '+' : ''}{member.nickname}{#if member.presence?.state === 'away'}<small title={member.presence.reason}>Away{member.presence.reason ? `: ${member.presence.reason}` : ''}</small>{:else if member.presence?.state === 'available'}<small>Available</small>{:else if member.presence}<small>Unknown</small>{/if}{#if !member.isSelf && member.recentlyActive}<small>Recently active</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}{#if active.owner && !active.policy}<button disabled={busy} onclick={() => void send('/recover-membership')}>Channel recovery…</button>{/if}</div>
+          event.preventDefault(); if (event.key !== 'Home') void openNavigation('files', event.currentTarget.querySelector('button'));
+        }}><button role="tab" id="users-tab" tabindex="0" aria-selected="true" aria-controls="users-panel">Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex="-1" aria-selected="false" onclick={event => void openNavigation('files', event.currentTarget)}>Files <small>{fileCount}</small></button>{/if}</div></div>
+        {#if usersVisible}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => { if (!wide) closeNavigation(); void send(`${active.policy ? '/whois' : '/query'} ${member.id}`); }} title={member.presence?.state === 'away' ? `Away: ${member.presence.reason}` : member.isSelf ? 'Your channel identity' : active.policy ? 'Show channel member details' : 'Open private chat'}><bdi class="member-name">{member.capabilities.includes('channel.owner') ? '~' : member.capabilities.includes('channel.operator') ? '@' : member.capabilities.includes('channel.voice') ? '+' : ''}{member.nickname}</bdi>{#if member.presence?.state === 'away'}<small title={member.presence.reason}>Away</small>{:else if member.presence?.state === 'available'}<small>Available</small>{/if}{#if !member.isSelf && member.recentlyActive}<small title="Recently active">●</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}{#if active.owner && !active.policy}<button disabled={busy} onclick={() => { if (!wide) closeNavigation(); void send('/recover-membership'); }}>Channel recovery…</button>{/if}</div>
         {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
       </aside>
     {/if}
@@ -1112,7 +1200,7 @@
           {#if searchError}<p role="status">{searchError}</p>{/if}
           {#if searchBefore}<button disabled={searchBusy} onclick={() => void search(true)}>Search earlier messages</button>{/if}
           <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} matches`}</p>
-          {#each searchResults as message (message.id)}<p><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> &lt;{message.nickname}&gt; {message.body}</p>{/each}
+          {#each searchResults as message (message.id)}<article class="search-result"><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> <bdi>&lt;{message.nickname}&gt;</bdi><p><HighlightedText text={message.body} query={searchText} /></p><button disabled={jumpingToMessage} onclick={() => void revealMessage(message)}>Show in conversation</button></article>{/each}
         </section></FocusScreen>
       {/if}
 
@@ -1205,17 +1293,10 @@
   .transcript,.composer { font:16px/1.4 GchatFixedsys,'Lucida Console',monospace; }
   .readable .transcript,.readable .composer { font-family:ui-monospace,'SFMono-Regular',Consolas,monospace; line-height:1.5; }
   .transcript { flex:1; overflow:auto; min-height:0; padding:16px 54px; scrollbar-color:#5a6561 #242728; }
-  .activity { color:var(--muted); margin:10px 0; overflow-wrap:anywhere; }
-  .message { display:block; grid-template-columns:7ch auto 1fr; column-gap:8px; margin:3px 0; align-items:baseline; }
   time { color:var(--muted); font-size:14px; }
-  .nick { color:#a9c7e8; max-width:24ch; overflow-wrap:anywhere; }
-  .mine .nick { color:var(--self); }
-  .body { white-space:pre-wrap; overflow-wrap:anywhere; min-width:0; }
   .empty { color:var(--muted); }
   .date { margin:14px 0; color:var(--muted); text-align:center; border-bottom:1px solid var(--line); }
-  .acceptance { font:11px/1.4 ui-sans-serif,system-ui,sans-serif; }
   .older { display:block; margin:0 auto 12px; border-color:var(--line); color:var(--accent); }
-  .message.highlighted { background:color-mix(in srgb, var(--accent) 12%, transparent); border-left:2px solid var(--accent); }
   .unread-divider { color:var(--accent); border-top:1px solid var(--accent); text-align:center; margin:12px 0; }
   .jump { align-self:center; min-height:40px; color:var(--accent); }
   .operation-details dd { overflow-wrap:anywhere; }
@@ -1226,7 +1307,7 @@
   .notice button { align-self:flex-start; }
   .retry { padding:8px 0; color:#d5b58b; background:transparent; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
   .retry button { text-decoration:underline; }
-  .provider-errors,.progress { padding:6px 16px; color:var(--muted); }
+  .provider-errors { padding:6px 16px; color:var(--muted); }
   .search { padding:8px 0; }
   .search p { overflow-wrap:anywhere; white-space:pre-wrap; }.search label { margin-top:0; }
   .composer { position:relative; display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); background:#191d22; padding:10px 12px; }
@@ -1245,7 +1326,7 @@
   @media(max-width:760px) {
     .titlebar { padding:6px 8px 6px calc(var(--content-inset) + var(--native-inset)); gap:6px; }.header-actions button { padding:6px; }.titlebar button { min-height:44px; }
     .channels { display:none; position:absolute; top:0; bottom:0; left:0; z-index:4; width:min(280px,85vw); box-shadow:4px 0 20px #0006; }.channels.open { display:flex; }.channels button { min-height:44px; }
-    .transcript { padding:12px 48px; }.message { grid-template-columns:6ch 1fr; column-gap:6px; margin:7px 0; }.body { grid-column:2; }.nick { max-width:none; }time { font-size:12px; }
+    time { font-size:12px; }
     .composer { padding:8px; }.composer textarea,.send,.attach { min-height:44px; }.welcome { padding:24px calc(var(--content-inset) + var(--native-inset)); }h1 { font-size:22px; }
     .completions button { flex-wrap:wrap; gap:4px; }.completions span { width:100%; font-size:12px; }
   }
@@ -1255,30 +1336,71 @@
     input,textarea,select { font-size:16px; }
     .titlebar button { min-height:44px; }
   }
-  .circle { display:inline-flex; align-items:center; justify-content:center; flex:none; width:44px; height:44px; min-height:44px; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--bg); position:relative; }
-  .edge { position:absolute; top:50%; transform:translateY(-50%); z-index:2; }.edge.left { left:5px; }.edge.right { right:5px; display:flex; flex-direction:column; gap:14px; }
-  .edge-count { position:absolute; right:-3px; bottom:-5px; font:11px/1.4 system-ui; background:var(--bg); border-radius:8px; padding:0 3px; }
-  .channels .circle { width:44px; padding:0; flex-wrap:nowrap; }
   .channels.open { width:min(300px,calc(100% - 44px)); padding-right:0; }
   .inspector { display:flex; flex-direction:column; width:min(340px,calc(100% - 44px)); padding-left:0; overflow:visible; }
   .users-list,#files-panel { overflow:auto; min-height:0; flex:1; }.inspector-heading { flex:none; }
-  .fold-left,.fold-right { position:absolute; top:50%; transform:translateY(-50%); z-index:2; width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; font:28px/1 system-ui; }
-  .channels .fold-left { right:-44px; width:44px; padding:0; justify-content:center; }.fold-right { left:-44px; }
   .titlebar .network-button { position:absolute; left:var(--native-inset); top:50%; transform:translateY(-50%); width:var(--content-inset); height:44px; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; background:transparent; }
   .titlebar .help-button { width:44px; height:44px; padding:0; border:0; border-radius:0; background:transparent; text-align:center; }
 
   .private-line { margin:18px 0; color:var(--muted); overflow-wrap:anywhere; }.private-line button,.private-detail button { color:var(--accent); text-decoration:underline; }.private-line small { font:12px system-ui; }
   .private-detail { margin:12px 0; }.operation-details { grid-template-columns:auto minmax(0,1fr); }
-  @media(pointer:coarse) { .circle,.channels .circle { width:44px; height:44px; min-height:44px; }.edge.left { left:1px; }.edge.right { right:1px; } }
   .titlebar { position:relative; }.gchat.mac { --native-inset:72px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region):not(.network-button) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
   button { transition:background 120ms,color 120ms; }
   @media(prefers-reduced-motion:reduce) { button { transition:none; } }
-  .concealed { visibility:hidden; pointer-events:none; }
-  .message { display:block; padding:3px 0; overflow-wrap:anywhere; }
-  .message time { display:inline; margin-right:10px; }
-  .message .nick { display:inline; margin-right:8px; }
-  .message .body { display:inline; white-space:pre-wrap; }
-  .message.mine .nick, .private-line.mine strong { color:var(--self); font-weight:bold; }
   .transcript-content { min-height:100%; overflow-anchor:none; }
-  .transfer progress { width:100%; }
+  /* Conversation-first layout. Drawers become independent rails when space permits. */
+  .gchat { --content-inset:44px; --chat-leading:1.45; --nick:#a9c7e8; }
+  .workspace { min-width:0; }
+  .conversation { min-height:0; }
+  .conversation-heading { padding:4px 12px 6px; gap:0 4px; border-bottom:1px solid var(--line); }
+  .active-title { flex:1; font-size:15px; }
+  .panel-toggle { flex:none; display:flex; align-items:center; gap:4px; min-width:36px; min-height:36px; justify-content:center; padding:4px 6px; color:var(--muted); }
+  .panel-toggle[aria-expanded=true] { color:var(--accent); background:color-mix(in srgb,var(--accent) 7%,transparent); }
+  .header-topic { flex:0 0 100%; padding:0 6px; font-size:12px; line-height:1.5; }
+  .connection-label { font-size:12px; color:var(--ghost-warning); min-width:0; padding:4px; overflow-wrap:anywhere; }
+  .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; padding:4px 8px 4px 12px; min-height:44px; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
+  .panel-heading button { width:36px; min-width:36px; padding:0; text-align:center; font-size:22px; }
+  .channels { padding:0; }
+  .channels.open { width:min(300px,calc(100% - 44px)); }
+  .channels.docked.open { position:static; width:192px; flex:0 0 192px; z-index:auto; box-shadow:none; }
+  .channel-entries { flex:1; padding:6px 0; }
+  .channels .channel-entries button { flex-wrap:nowrap; padding:5px 12px; min-height:32px; }
+  .channels button small { width:auto; padding:0; white-space:nowrap; }
+  .channels .network-group { white-space:normal; overflow-wrap:anywhere; margin:8px 0 2px; }
+  .channel-actions { justify-content:stretch; border-top:1px solid var(--line); padding:6px; }
+  .channel-actions button { justify-content:flex-start; }
+  .mention-badge { color:var(--self); font-weight:700; }
+  .inspector { width:min(280px,calc(100% - 44px)); padding:0; }
+  .inspector.docked { position:static; width:176px; flex:0 0 176px; z-index:auto; box-shadow:none; }
+  .inspector-heading { padding:4px 6px; font-size:12px; }
+  .users-list { padding:6px; }
+  .users-list button { min-height:32px; align-items:baseline; padding:4px 6px; }
+  .member-name { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .users-list small { flex:none; font-size:11px; }
+  .transcript { padding:10px 16px; }
+  .private-line { margin:2px 0; padding:1px 0; line-height:var(--chat-leading); font-size:14px; }
+  .private-line time { margin-inline-end:.65em; font-size:12px; }
+  .private-line button { min-height:24px; padding:1px 5px; font:12px/1.4 var(--ghost-font); }
+  .private-line.attention,.retry-summary { color:var(--ghost-warning); }
+  .retry-summary { margin:6px 0; font-size:13px; }
+  .transfer { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; }
+  .transfer strong { font-weight:normal; min-width:0; overflow-wrap:anywhere; }
+  .transfer progress { width:80px; height:6px; flex:none; }
+  .transfer p { margin:0; }
+  .date { font:12px/1.4 var(--ghost-font); margin:12px 0 8px; padding-bottom:3px; }
+  .notice,.retry { font:13px/1.5 var(--ghost-font); margin:4px 0; padding:4px 0; min-width:0; }
+  .notice > span { min-width:0; overflow-wrap:anywhere; }
+  .notice button { flex:none; }
+  .provider-errors { padding:6px 16px; font-size:13px; background:color-mix(in srgb,var(--ghost-warning) 6%,transparent); }
+  .provider-errors p { margin:4px 0; overflow-wrap:anywhere; }
+  .composer { padding:6px 10px; gap:6px; }
+  .composer-context { margin:0; padding:5px 16px; color:var(--muted); font:12px/1.4 var(--ghost-font); }
+  .notification-offer { display:flex; align-items:center; justify-content:space-between; padding:0 10px; font-size:12px; color:var(--muted); border-top:1px solid var(--line); }
+  .notification-offer button:first-child { color:var(--accent); }
+  .input-error { margin:0; padding:6px 16px; color:var(--ghost-error); font-size:13px; }
+  .completions button { min-width:0; overflow-wrap:anywhere; }
+  .search-result { padding:12px 0; border-bottom:1px solid var(--line); }
+  .search-result p { margin:6px 0; white-space:pre-wrap; }
+  @media(max-width:999px) { .transcript { padding:8px 12px; }.conversation-heading { padding:2px 8px 5px; }.panel-toggle { min-height:44px; min-width:44px; }.panel-heading button { min-height:44px; min-width:44px; } }
+  @media(pointer:coarse) { .channels .channel-entries button,.users-list button,.private-line button { min-height:44px; }.panel-toggle { min-height:44px; min-width:44px; } }
 </style>

@@ -31,6 +31,9 @@ if (parameters.has('hosted')) {
 const commands: CommandSpec[] = ['help', 'lock', 'disconnect', 'quit', 'join', 'create', 'query'].map(name => ({ name: `/${name}`, usage: `/${name}`, description: `Fixture ${name}`, scope: 'instance', capability: null, available: true }));
 let state: NetworkState = parameters.has('fresh') ? 'invitation_required' : 'connected';
 let revision = 1;
+let activity: import('../src/api').Activity[] = [];
+let inputHistory: import('../src/api').InputHistoryEntry[] = [];
+let sendOutcome = 'ok';
 let archiveBlocked = parameters.has('archive-blocked');
 const sentMessages: import('../src/api').Message[] = [];
 let holdSends = false;
@@ -50,11 +53,19 @@ let enrollmentAttempts=1;
 const enrollment=()=>({kind:'enrollment' as const,id:'ee'.repeat(16),channel:'general',phase:enrollmentPhase,attempts:enrollmentAttempts,message:null});
 const invitations=()=>({kind:'invitations' as const,channel:'general',records:[{id:'aa'.repeat(16),expires:2000000000,limit:25,admitted:2,pending:0,revoked:inviteRevoked}]});
 const recovered: import('../src/api').OperationDetail[] = parameters.has('saved-operation') ? [{ id: 'saved-operation-001', instance: instance.id, conversation: 'channel/general', action: '/create', started: 1789910000, state: 'unknown', output: null, message: 'Interrupted after admission.' }] : [];
-const snapshot = (network = primaryNetwork): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory: [], providerErrors: !instance.locked && archiveBlocked ? [{ id: 'archive', code: 'local_storage_unavailable', message: "Couldn't finish saving received messages. Check free disk space and write access; GChat will retry automatically.", retryable: true }] : [], presenceEnabled: presence.get(network) ?? false, operations: instance.locked ? [] : recovered });
+const snapshot = (network = primaryNetwork): Snapshot => ({ instance: { ...instance }, revision: String(revision), conversations: instance.locked ? [] : conversations, commandHistory: [], inputHistory, activity: instance.locked ? [] : activity, providerErrors: !instance.locked && archiveBlocked ? [{ id: 'archive', code: 'local_storage_unavailable', message: "Couldn't finish saving received messages. Check free disk space and write access; GChat will retry automatically.", retryable: true }] : [], presenceEnabled: presence.get(network) ?? false, operations: instance.locked ? [] : recovered });
 const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', used_bytes: '4096', retention_days: 7 });
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
+  setActivity(value: typeof activity) { activity = value; revision++; },
+  setMembers(value: typeof members) { conversations[0].members = value; revision++; },
+  setTopic(value: string) { conversations[0].topic = value; revision++; },
+  setInputHistory(value: typeof inputHistory) { inputHistory = value; revision++; },
+  setSendOutcome(value: string) { sendOutcome = value; },
+  setMessages(value: typeof sentMessages) { sentMessages.splice(0,sentMessages.length,...value); revision++; },
+  setFiles(value: typeof files) { files = value; revision++; },
+  setCommands(value: typeof commands) { commands.splice(0,commands.length,...value); revision++; },
   setCatchUp(appliedRecords: number | null) { conversations[0].catchUp = appliedRecords === null ? undefined : { appliedRecords }; revision++; },
   setArchiveBlocked(value: boolean) { archiveBlocked = value; revision++; },
   updateRestarts: () => updateRestarts, setUpdate(value: Partial<typeof updateStatus>) { updateStatus = {...updateStatus,...value}; },
@@ -106,9 +117,12 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
       if (req.code !== 'GCNI1-valid-fixture') throw new Error('Invitation signature rejected');
       state = 'connecting'; revision++; return { kind: 'network_status', status: status() };
     case 'catalogue': return { kind: 'catalogue', commands };
-    case 'history': case 'search': return { kind: 'history', page: { messages: [{ id: `${req.conversation}/m1`, conversationId: req.conversation, memberId: 'peer', nickname: 'Ada', body: 'A clear space for the conversation.', timestamp: 1789910000, mine: false, delivery: null, result: null }, ...sentMessages.filter(m => m.conversationId === req.conversation)], before: null } };
+    case 'history': case 'search': {
+      const messages = [{ id: `${req.conversation}/m1`, conversationId: req.conversation, memberId: 'peer', nickname: 'Ada', body: 'A clear space for the conversation.', timestamp: 1789910000, mine: false, delivery: null, result: null }, ...sentMessages.filter(m => m.conversationId === req.conversation)];
+      return { kind: 'history', page: { messages: req.kind === 'search' ? messages.filter(m => m.body.toLocaleLowerCase().includes(req.text.toLocaleLowerCase())) : messages, before: null } };
+    }
     case 'mark_read': return { kind: 'applied', conversation: req.conversation, notice: null };
-    case 'complete': return { kind: 'completed', items: [] };
+    case 'complete': return { kind: 'completed', items: commands.filter(c => c.name.startsWith(req.text)).map(c => ({ text:c.name, description:c.description })) };
     case 'enrollment':
       if(req.action==='resume') {enrollmentPhase='waiting_owner';enrollmentAttempts++;}
       if(req.action==='cancel') enrollmentPhase='cancelled';
@@ -122,6 +136,7 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
         if(req.text==='/enrollments') return {kind:'output',conversation:null,output:{kind:'enrollments',entries:[enrollment()]}};
       }
       if (holdSends && !req.text.startsWith('/')) await new Promise<void>(resolve => heldSends.push(resolve));
+      if (!req.text.startsWith('/') && sendOutcome !== 'ok') throw new ChatError(sendOutcome, sendOutcome === 'rejected' ? 'Message refused by the channel.' : 'Reply interrupted after admission.');
       if (req.text.startsWith('/presence ')) {
         if (holdPresence) await new Promise<void>(resolve => releasePresence = resolve);
         if (presenceOutcome === 'rejected') throw new ChatError('rejected', 'Profile save failed.');
