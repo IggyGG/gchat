@@ -327,7 +327,11 @@ def baseline_ready(state, baseline, work):
             or any(t.get('state') in ('activating', 'rollback_pending', 'rollback_failed')
                    for t in report.get('targets', {}).values())): return False
     from release_deployment import inventory, invoke
-    targets = [t for t in inventory(report['inventory']) if t['id'] == 'controller']
+    # A prior independently qualified repair may already be running. Observe its
+    # release-bound, hash-verified overlay, rather than expecting the retired
+    # controller from the unchanged failed fleet journal.
+    effective = deployment_config(state, baseline, report['inventory'])
+    targets = [t for t in inventory(effective) if t['id'] == 'controller']
     if len(targets) != 1: return False
     observed = invoke(targets[0], 'observe', baseline, Path(work) / 'baseline-observation')
     if observed is None or observed.get('healthy') is not True or observed.get('matches') is not True:

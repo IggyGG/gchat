@@ -274,5 +274,35 @@ class ControllerTests(unittest.TestCase):
         controller.reconcile(owner)
         controller.close(owner)
 
+    def test_recovery_baseline_observes_the_verified_active_overlay_and_rejects_changed_proof(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); baseline = candidate(); intent = intent_fixture(root)
+            previous = root / 'controller-updates' / intent['id']
+            proof = previous / 'qualification.json'
+            controller.save(proof, {'image': 'qualified-previous-controller'})
+            controller.save(root / 'controller-updates/active' / (baseline['release_id'] + '.json'), {
+                'id': intent['id'], 'release_id': baseline['release_id'],
+                'qualification_sha256': controller.sha(proof)})
+            controller.save(root / 'deployment/desired.json', {'release_id': baseline['release_id']})
+            journal = root / 'deployment' / baseline['release_id'] / 'journal.json'
+            controller.save(journal, {'state': 'blocked', 'sources': baseline['sources'],
+                'inventory': {'targets': [{'id': 'controller', 'workers': {
+                    stage: ['owned-worker'] for stage in ('observe', 'prepare', 'activate', 'check', 'rollback')}}]},
+                'targets': {'controller': {'state': 'deployed'}, 'relay': {'state': 'check_failed'}}})
+            original = journal.read_bytes()
+            def observe(target, *args):
+                return {'healthy': True, 'matches': target.get('controller_qualification_sha256') == controller.sha(proof)}
+            with patch('release_kubernetes_worker.expected_image') as validate, \
+                    patch('release_deployment.invoke', side_effect=observe) as invoke:
+                self.assertTrue(controller.baseline_ready(root, baseline, root / 'next-repair'))
+                validate.assert_called_once()
+                self.assertEqual(invoke.call_args.args[0]['controller_qualification'], str(proof))
+                self.assertEqual(journal.read_bytes(), original)
+                proof.write_text('{}')
+                invoke.reset_mock()
+                with self.assertRaisesRegex(ValueError, 'qualification changed'):
+                    controller.baseline_ready(root, baseline, root / 'next-repair')
+                invoke.assert_not_called()
+
 
 if __name__ == '__main__': unittest.main()
