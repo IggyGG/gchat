@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "source": "7da2a3b292246639f8c5181000e6e5fe89d3b3ad",
+  "companion": "71d185b74aa141ea6b92c3eeaaa5e67077e8f80b",
+  "job": "android-hub-70cb53f755a6965f7100d674",
+  "native_controls": {
+    "command": "cargo test --offline --release --locked -p gchat-core --lib --features gc2-carrier network::tests:: -- --test-threads=1",
+    "passed": 1,
+    "seconds": 0.04
+  },
+  "native_build": "cargo build --offline --release --locked -p gchat-tui --bin gchat --features gc2-carrier succeeded",
+  "prepared_id": "34ee1299cbd1b220a8b6643041f72bcc7e8ab88694ae569fc47ed621eea5d9af",
+  "scope": "Owner-selected signed-network control and release binary; real cluster Android transport/load still pending",
+  "codematch": "unreachable"
+}
