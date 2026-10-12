@@ -1,5 +1,5 @@
-use gchat_api::{ChatClient, RequestEnvelope, ResponseEnvelope, VERSION};
-use gchat_core::chat_service::host::ensure_running;
+use gchat_api::{ChatClient, ChatError, RequestEnvelope, ResponseEnvelope, VERSION};
+use gchat_core::chat_service::host::ensure_running_checked;
 use gchat_core::chat_service::host::InstanceConfig;
 use tauri::Manager;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -8,7 +8,8 @@ use tokio::sync::Mutex;
 
 pub(super) struct Attachment {
     pub(super) client: Mutex<Option<ChatClient>>,
-    config: InstanceConfig,
+    config: Result<InstanceConfig, ChatError>,
+    instance: std::sync::OnceLock<String>,
     pub(super) updating: std::sync::atomic::AtomicBool,
 }
 
@@ -16,15 +17,26 @@ pub(super) struct Attachment {
 async fn chat_request(
     state: tauri::State<'_, Attachment>,
     envelope: RequestEnvelope,
-) -> Result<ResponseEnvelope, String> {
-    let client = attached(&state).await?;
+) -> Result<ResponseEnvelope, ChatError> {
+    let client = attached_checked(&state).await?;
     if envelope.version != VERSION
         || (!matches!(envelope.request, gchat_api::Request::Identify)
             && envelope.instance_id.as_deref() != Some(client.instance_id()))
     {
-        return Err("selected instance or version mismatch".into());
+        return Err(ChatError {
+            code: "instance".into(),
+            message: "selected instance or version mismatch".into(),
+        });
     }
-    let response = client.request(envelope.request).await?;
+    let response = match client.request_typed(envelope.request).await {
+        Ok(response) => response,
+        Err(error) => {
+            if matches!(error.code.as_str(), "transport" | "timeout" | "unavailable") {
+                *state.client.lock().await = None;
+            }
+            return Err(error);
+        }
+    };
     Ok(ResponseEnvelope {
         version: VERSION,
         instance_id: client.instance_id().into(),
@@ -33,20 +45,54 @@ async fn chat_request(
 }
 
 pub(super) async fn attached(state: &tauri::State<'_, Attachment>) -> Result<ChatClient, String> {
+    attached_checked(state).await.map_err(|e| e.to_string())
+}
+
+async fn attached_checked(state: &tauri::State<'_, Attachment>) -> Result<ChatClient, ChatError> {
     if state.updating.load(std::sync::atomic::Ordering::SeqCst) {
-        return Err("GChat is restarting to activate an update".into());
+        return Err(ChatError {
+            code: "unavailable".into(),
+            message: "GChat is restarting to activate an update".into(),
+        });
     }
     let mut client = state.client.lock().await;
     if client.is_none() {
         {
-            *client = Some(
-                ensure_running(
-                    &state.config,
-                    &std::env::current_exe().map_err(|e| e.to_string())?,
-                    false,
-                )
-                .await?,
-            );
+            let retry_config;
+            let config = match &state.config {
+                Ok(config) => config,
+                Err(_) => {
+                    retry_config =
+                        crate::startup::configuration(std::env::args_os()).map_err(|message| {
+                            ChatError {
+                                code: "host_configuration".into(),
+                                message,
+                            }
+                        })?;
+                    &retry_config
+                }
+            };
+            let connected = ensure_running_checked(
+                config,
+                &std::env::current_exe().map_err(|e| ChatError {
+                    code: "host_unavailable".into(),
+                    message: e.to_string(),
+                })?,
+                false,
+            )
+            .await?;
+            if state
+                .instance
+                .get()
+                .is_some_and(|id| id != connected.instance_id())
+            {
+                return Err(ChatError {
+                    code: "instance".into(),
+                    message: "The selected instance changed. Reopen this view explicitly.".into(),
+                });
+            }
+            let _ = state.instance.set(connected.instance_id().into());
+            *client = Some(connected);
         }
     }
     Ok(client.as_ref().expect("initialized attachment").clone())
@@ -56,23 +102,37 @@ pub(super) async fn attached(state: &tauri::State<'_, Attachment>) -> Result<Cha
 async fn chat_rpc(
     state: tauri::State<'_, Attachment>,
     request: gcoms::rpc::Request,
-) -> Result<gcoms::rpc::Reply, String> {
+) -> Result<gcoms::rpc::Reply, ChatError> {
     use gcoms::rpc::Transport;
-    let client = attached(&state).await?;
+    let client = attached_checked(&state).await?;
     if request.rpc != gcoms::rpc::WIRE_VERSION
         || request.instance != client.instance_id()
         || request.service != gchat_api::rpc::SERVICE
         || request.version != gchat_api::rpc::SERVICE_VERSION
     {
-        return Err("selected instance or service version mismatch".into());
+        return Err(ChatError {
+            code: "instance".into(),
+            message: "selected instance or service version mismatch".into(),
+        });
     }
     let transport =
         gcoms::rpc::local::LocalTransport::new(gchat_api::rpc::endpoint_for(client.endpoint()));
-    let reply = transport
-        .exchange(&request)
-        .await
-        .map_err(|e| e.to_string())?;
-    request.check_reply(&reply).map_err(|e| e.to_string())?;
+    let reply = match transport.exchange(&request).await {
+        Ok(reply) => reply,
+        Err(error) => {
+            // The next request may reattach. An uncertain mutation is never
+            // replayed here; its existing operation handle owns recovery.
+            *state.client.lock().await = None;
+            return Err(ChatError {
+                code: "transport".into(),
+                message: error.to_string(),
+            });
+        }
+    };
+    request.check_reply(&reply).map_err(|e| ChatError {
+        code: "instance".into(),
+        message: e.to_string(),
+    })?;
     Ok(reply)
 }
 
@@ -233,10 +293,14 @@ pub fn run() {
                     .filter_map(|arg| arg.into_string().ok())
                     .collect(),
             );
-            let config = crate::startup::configuration(std::env::args_os())
-                .map_err(std::io::Error::other)?;
+            let config =
+                crate::startup::configuration(std::env::args_os()).map_err(|message| ChatError {
+                    code: "host_configuration".into(),
+                    message,
+                });
             app.manage(Attachment {
                 client: Mutex::new(None),
+                instance: std::sync::OnceLock::new(),
                 updating: std::sync::atomic::AtomicBool::new(false),
                 config,
             });

@@ -1,3 +1,13 @@
+F5 / durable-host, 2026-10-12: run the causal
+`retained_fleet_reopen_recovers_without_launcher_arguments` integration test against
+baseline and repaired paired sources. Registration and startup controls must reject
+wrong identity/partition, copied or unsafe registration, conflicting launch
+configuration and mismatched running hosts; credential rotation and native paths
+must survive. Follow with actual concurrent daemon/managed-service startup,
+rendered recovery errors, all required source gates and signed installed
+messaging/file/upgrade/rollback/login/reboot acceptance. Results remain pending;
+see [the contract and completion boundary](docs/DURABLE_HOST.md).
+
 F5 isolated Android cluster network, 2026-10-12: the owner-selected signed network configuration passed its focused native regression in Kubernetes (1 test, 0.04 seconds), and the headless release binary built successfully with the current frozen GComs companion. The private path, size, signature, expiry and retained network/root checks remain enforced. Source L0 passes. Full Android lab transfer and release timing remain separate requirements. [Evidence](docs/evidence/android-cluster-20261012/network.json).
 
 F5 Android agent lane: run `release_android_agent_test` and `release_coordinator_test` in the bounded cluster control Job with their original `release_automation_test` and policy fixtures. Verify disabled behavior, nonblocking observation, one pending observer, bounded timeout cleanup, filtered public status and preserved existing release-worker state. All 55 tests pass in 1.942 seconds. Run source L0 and qualify the actual controller image before activating the configured lane; no unrelated native platform campaign is needed for this Python coordinator change.

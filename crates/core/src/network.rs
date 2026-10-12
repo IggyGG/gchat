@@ -24,7 +24,9 @@ pub(crate) fn selected_json(path: Option<&Path>) -> Result<Vec<u8>, String> {
         return Ok(installed_json());
     };
     if !path.is_absolute()
-        || path.components().any(|p| matches!(p, std::path::Component::ParentDir))
+        || path
+            .components()
+            .any(|p| matches!(p, std::path::Component::ParentDir))
     {
         return Err("network configuration must have an absolute path".into());
     }
@@ -64,7 +66,9 @@ mod tests {
         std::fs::write(&path, serde_json::to_vec(&changed).unwrap()).unwrap();
         assert!(selected_json(Some(&path)).is_err());
         std::fs::write(&path, vec![b' '; 512 * 1024 + 1]).unwrap();
-        assert!(selected_json(Some(&path)).unwrap_err().contains("size bound"));
+        assert!(selected_json(Some(&path))
+            .unwrap_err()
+            .contains("size bound"));
         assert!(selected_json(Some(Path::new("network.json"))).is_err());
         #[cfg(unix)]
         {

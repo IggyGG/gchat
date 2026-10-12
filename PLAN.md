@@ -1,3 +1,11 @@
+F5 / durable-host, 2026-10-12: implementation in progress in the contained
+`durable-host` task. Retain the launch association for component-owned identities,
+activate the registered managed host on cold launch, verify its local host binding,
+and preserve structured recovery errors. The original production launcher-only
+repair is verified; the causal regression, source/native qualification, live
+delivery, signed successor, installed migration and reboot/update acceptance are
+still required. Contract: [durable host startup](docs/DURABLE_HOST.md).
+
 F5 isolated Android cluster network, 2026-10-12: the owner-selected signed network configuration passed its focused native regression in Kubernetes (1 test, 0.04 seconds), and the headless release binary built successfully with the current frozen GComs companion. The private path, size, signature, expiry and retained network/root checks remain enforced. Source L0 passes. Full Android lab transfer and release timing remain separate requirements. [Evidence](docs/evidence/android-cluster-20261012/network.json).
 
 F5 Android agent cluster lane, 2026-10-12: optional `android_agent` configuration adds a bounded, asynchronous reconciliation command to the existing release coordinator. Its command is an administrator-owned argv array with a 30–300 second observation deadline. The cluster worker owns original push timestamps, Kubernetes Jobs and FSN1 checkpoints, so stopping the observer cannot turn an uncertain release into a new execution. Public status includes only the scoped cluster observation. This lane serves `boo.gcoms.agent`; existing `boo.gchat.app` store workers retain their own state machine. All 55 focused coordinator/lane controls pass in Kubernetes (1.942 seconds); image activation and actual Android migration gates remain pending. [Evidence](docs/evidence/android-cluster-20261012/coordinator.json).

@@ -4,6 +4,8 @@ mod extensions;
 mod files;
 mod fleet;
 pub mod host;
+mod host_registration;
+mod host_startup;
 mod host_updates;
 mod hosted;
 mod hosted_catchup;
@@ -208,6 +210,7 @@ pub struct ChatService {
     hosted_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     contact_worker: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     fleet: Mutex<Option<fleet::Transport>>,
+    host_binding: std::sync::OnceLock<String>,
     catalog_urls: std::sync::RwLock<Vec<String>>,
 }
 
@@ -334,6 +337,7 @@ impl ChatService {
             hosted_worker: std::sync::Mutex::new(None),
             contact_worker: std::sync::Mutex::new(None),
             fleet: Mutex::new(None),
+            host_binding: std::sync::OnceLock::new(),
             catalog_urls: std::sync::RwLock::new(Vec::new()),
         });
         if service.command_extension.is_some() {
@@ -468,6 +472,7 @@ impl ChatService {
                 .chain(std::iter::once(gchat_api::files::CAPABILITY.into()))
                 .chain(self.runtime.network_client().map(|_| "networks.v1".into()))
                 .chain(gchat_api::compat::capabilities())
+                .chain(self.host_binding.get().cloned())
                 .collect(),
         }
     }

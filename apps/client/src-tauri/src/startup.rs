@@ -66,11 +66,17 @@ where
     }
     args.relay_sharing.apply()?;
     let mut config = InstanceConfig::from_home(args.home.as_deref())?;
-    config.fleet_config = args.fleet_config;
+    if let Some(path) = args.fleet_config {
+        config.fleet_config = Some(path);
+    }
     // Pass one choice to the host. A retained profile mismatch remains an error;
     // changing the desktop default is not permission to rewrite its identity.
-    config.gc2_carrier = cfg!(feature = "gc2-carrier") && !args.legacy_carrier;
-    config.network_recovery = !args.no_network_bootstrap;
+    if args.gc2_carrier || args.legacy_carrier || !config.has_registered_host()? {
+        config.gc2_carrier = cfg!(feature = "gc2-carrier") && !args.legacy_carrier;
+    }
+    if args.no_network_bootstrap {
+        config.network_recovery = false;
+    }
     Ok(config)
 }
 

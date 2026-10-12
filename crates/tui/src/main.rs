@@ -339,16 +339,34 @@ async fn run_shared(args: UiArgs) -> Result<(), String> {
         }
     }
     config.listen = args.listen.unwrap_or(config.listen);
-    config.advertise = args.advertise;
-    config.network_recovery = !args.no_relay;
-    config.local_fixture = args.local_fixture;
-    config.gc2_carrier = args.gc2_carrier;
-    config.relay_file = args.inbox_relay_file.clone();
-    config.relay_urls = match relay_source(&args)? {
-        RelaySource::Bootstrap(urls) => urls,
-        _ => Vec::new(),
-    };
-    config.catalog_urls = args.catalog_urls.clone();
+    if args.advertise.is_some() {
+        config.advertise = args.advertise;
+    }
+    if args.no_relay {
+        config.network_recovery = false;
+    }
+    if args.local_fixture {
+        config.local_fixture = true;
+    }
+    if args.gc2_carrier {
+        config.gc2_carrier = true;
+    }
+    if args.inbox_relay_file.is_some() {
+        config.relay_file = args.inbox_relay_file.clone();
+    }
+    if !config.has_registered_host()?
+        || !args.relay_bootstrap_urls.is_empty()
+        || args.relay_bootstrap_config.is_some()
+        || args.no_relay
+    {
+        config.relay_urls = match relay_source(&args)? {
+            RelaySource::Bootstrap(urls) => urls,
+            _ => Vec::new(),
+        };
+    }
+    if !args.catalog_urls.is_empty() {
+        config.catalog_urls = args.catalog_urls.clone();
+    }
     if let Some(path) = args.catalog_config {
         config.catalog_urls.extend(
             std::fs::read_to_string(path)

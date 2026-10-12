@@ -36,6 +36,7 @@ let inputHistory: import('../src/api').InputHistoryEntry[] = [];
 let sendOutcome = 'ok';
 let historyWindow = 0, repeatHistoryCursor = false;
 let archiveBlocked = parameters.has('archive-blocked');
+let hostFailure = parameters.get('host-failure');
 const sentMessages: import('../src/api').Message[] = [];
 let holdSends = false;
 const heldSends: (() => void)[] = [];
@@ -71,6 +72,7 @@ Object.assign(window, { fixture: {
   setCommands(value: typeof commands) { commands.splice(0,commands.length,...value); revision++; },
   setCatchUp(appliedRecords: number | null) { conversations[0].catchUp = appliedRecords === null ? undefined : { appliedRecords }; revision++; },
   setArchiveBlocked(value: boolean) { archiveBlocked = value; revision++; },
+  restoreHost() { hostFailure = null; revision++; },
   updateRestarts: () => updateRestarts, setUpdate(value: Partial<typeof updateStatus>) { updateStatus = {...updateStatus,...value}; },
   requests, unlockChoices, finishEnrollment(){enrollmentPhase='joined';revision++;}, recoverInvitation() {
     const request = requests.filter((r): r is Extract<Request, {kind: 'submit'}> => r.kind === 'submit' && r.text === '/invite').at(-1);
@@ -110,6 +112,7 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
       throw new Error('Unknown network operation');
     }
     case 'snapshot': {
+      if (hostFailure && parameters.has('cold-host-failure')) throw {code:hostFailure,message:'This identity uses a managed host. Restore its registered configuration to reconnect.'};
       const current = snapshot(networkScope);
       if (holdSnapshots) await new Promise<void>(resolve => heldSnapshots.push(resolve));
       return { kind: 'snapshot', snapshot: current };
@@ -174,6 +177,7 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
       if (req.text === '/lock' || req.text === '/disconnect') { instance.locked = true; instance.protocolLocked = req.text === '/disconnect'; revision++; }
       return { kind: 'applied', conversation: req.conversation, notice: null };
     case 'unlock':
+      if (hostFailure) throw { code: hostFailure, message: hostFailure === 'host_configuration' ? 'This identity uses a scoped host. Restore its fleet host configuration and restart the registered service to reconnect.' : 'The running service does not match this identity\'s registered host. Restart the registered service with the matching GChat release.' };
       if (parameters.has('slow-unlock')) await delay(1200);
       if (parameters.has('reject-passphrase') && req.passphrase !== 'fixture-passphrase') throw new ChatError('rejected', 'wrong passphrase or corrupted protocol profile');
       instance.locked = false; instance.protocolLocked = false; revision++; return { kind: 'snapshot', snapshot: snapshot() };

@@ -15,11 +15,16 @@ export class ChatError extends Error {
     if (this.code === 'instance') return 'Reopen selected instance';
     if (this.code === 'locked') return 'Unlock chat';
     if (this.code === 'disconnected') return 'Reconnect this instance';
+    if (this.code === 'host_configuration') return 'Retry after configuration repair';
+    if (this.code === 'host_mismatch') return 'Retry after host restart';
+    if (this.code === 'host_unavailable') return 'Retry host connection';
     return this.retryable ? 'Reconnect' : 'Review request';
   }
 }
 export function chatError(error: unknown): ChatError {
-  return error instanceof ChatError ? error : new ChatError('transport', error instanceof Error ? error.message : String(error));
+  if (error instanceof ChatError) return error;
+  if (error && typeof error === 'object' && 'code' in error && 'message' in error && typeof error.code === 'string' && typeof error.message === 'string') return new ChatError(error.code, error.message);
+  return new ChatError('transport', error instanceof Error ? error.message : String(error));
 }
 /** An attachment never discovers another instance when its selected endpoint fails. */
 export async function attach(exchange: Exchange, expectedInstance?: string): Promise<Transport> {

@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { attach, ChatError } from './transport';
+import { attach, chatError, ChatError } from './transport';
 import type { Exchange } from './transport';
 import type { InstanceInfo, RequestEnvelope } from './api';
 import { API_VERSION } from './api';
 const instance: InstanceInfo = { id: 'selected', label: 'selected', bootId: 'boot', locked: false, protocolLocked: false, profileExists: true, archiveExists: true, safetyNumber: 'safety', capabilities: [] };
 describe('instance attachment boundary', () => {
+  it('keeps native host failures actionable without transport retry classification', () => {
+    const failure = chatError({ code: 'host_configuration', message: 'Restore the registered fleet configuration.' });
+    expect(failure).toMatchObject({ code: 'host_configuration', message: 'Restore the registered fleet configuration.', retryable: false });
+    expect(failure.action).toBe('Retry after configuration repair');
+    expect(chatError(failure)).toBe(failure);
+    expect(chatError({ code: 'host_mismatch', message: 'The running host belongs to another instance.' }).action).toBe('Retry after host restart');
+    expect(chatError({ code: 42, message: 'invalid native shape' }).code).toBe('transport');
+  });
   it('negotiates API 2 only during identify and pins mutations to that dialect', async () => {
     const received: RequestEnvelope[] = [];
     const client = await attach(async envelope => {

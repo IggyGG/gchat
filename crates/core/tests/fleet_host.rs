@@ -249,3 +249,92 @@ async fn fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_l
     drop(retained);
     restarted.flush().await.unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn retained_fleet_reopen_recovers_without_launcher_arguments() {
+    let dir = tempfile::tempdir().unwrap();
+    gcoms::sdk::private_fs::make_private(dir.path(), true).unwrap();
+    let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    config.local_fixture = true;
+    config.gc2_carrier = false;
+    config.listen = "127.0.0.1:0".parse().unwrap();
+    config.relay_urls.clear();
+    config.network_recovery = false;
+    let original = InstanceHost::new(config.clone()).unwrap();
+    let Response::Snapshot { snapshot } = request(
+        &original,
+        Request::Unlock {
+            passphrase: "retained-fleet-fixture".into(),
+            create: true,
+        },
+    )
+    .await
+    else {
+        panic!("create fixture");
+    };
+    let safety = snapshot.instance.safety_number;
+    let instance = snapshot.instance.id;
+    original.flush().await.unwrap();
+    drop(original);
+    let credentials = ComponentCredentials {
+        component_id: [2; 16],
+        token: [7; 32],
+    };
+    let fleet = FleetConfig {
+        version: 1,
+        safety_number: safety.clone(),
+        primary_component: [1; 16],
+        registry: MachineRegistry {
+            version: 1,
+            components: vec![ComponentRegistration {
+                credentials: credentials.clone(),
+                capabilities: vec![Capability::IdentityRead],
+                peers: Vec::new(),
+                files: None,
+            }],
+        },
+    };
+    let path = dir.path().join("fleet.json");
+    save(&path, &fleet);
+    config.fleet_config = Some(path);
+    let host = InstanceHost::new(config.clone()).unwrap();
+    assert!(matches!(
+        request(
+            &host,
+            Request::Unlock {
+                passphrase: "retained-fleet-fixture".into(),
+                create: false,
+            }
+        )
+        .await,
+        Response::Snapshot { .. }
+    ));
+    host.flush().await.unwrap();
+    drop(host);
+
+    // This is the user's cold-launch failure: the identity remembers its
+    // component partition, but a launcher forgot the original fleet argument.
+    config.fleet_config = None;
+    let reopened = InstanceHost::new(config.clone()).unwrap();
+    let response = request(
+        &reopened,
+        Request::Unlock {
+            passphrase: "retained-fleet-fixture".into(),
+            create: false,
+        },
+    )
+    .await;
+    let Response::Snapshot { snapshot } = response else {
+        panic!("retained fleet startup must recover its host registration: {response:?}");
+    };
+    assert_eq!(snapshot.instance.id, instance);
+    assert_eq!(snapshot.instance.safety_number, safety);
+    let client = attach(
+        &config.protocol_socket.with_extension("fleet"),
+        &credentials,
+    )
+    .await;
+    assert_eq!(client.identity().safety_number, safety);
+    drop(client);
+    reopened.flush().await.unwrap();
+}

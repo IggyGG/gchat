@@ -244,6 +244,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
     if args.create && paths.store.exists() {
         return Err("profile already exists".into());
     }
+    let managed_service = crate::managed_updates::service_for_process(std::process::id()).await?;
     let config = InstanceConfig {
         protocol_backend: match (&args.gcomsd, &args.gcoms_endpoint) {
             (Some(executable), Some(endpoint)) => gcoms::Backend::Shared {
@@ -267,6 +268,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
         )?,
         catalog_urls: args.chat_catalog_url.clone(),
         fleet_config: args.fleet_config.clone(),
+        managed_service: managed_service.clone(),
         network_config: args.network_config.clone(),
         network_recovery: !args.no_network_bootstrap,
         local_fixture: args.local_fixture,
@@ -275,6 +277,9 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
     let create_archive = !config.archive.exists();
     let endpoint = config.chat_endpoint();
     let host = InstanceHost::new(config)?;
+    if host.managed_service() != managed_service.as_deref() {
+        return Err("This identity has a registered managed host. Start its registered user service to reconnect.".into());
+    }
     if !args.interactive {
         let passphrase = if args.passphrase_stdin {
             use std::io::Read;

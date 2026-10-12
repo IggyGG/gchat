@@ -1,6 +1,6 @@
 import { BrowserHandles, MemoryHandles, RpcClient, RpcError, ServiceError, type HandleStore, type OperationHandle, type Transport as RpcTransport } from '@gcoms/rpc';
 import { createChatClient, methods, SERVICE, SERVICE_VERSION, type ChatError as DomainError } from './rpc-api';
-import { attach, ChatError, type Exchange, type Transport } from './transport';
+import { attach, chatError, ChatError, type Exchange, type Transport } from './transport';
 import type { Request, Response } from './api';
 
 export { httpTransport } from '@gcoms/rpc';
@@ -9,7 +9,7 @@ export type { Transport as RpcTransport } from '@gcoms/rpc';
 function error(failure: unknown): ChatError {
   if (failure instanceof ServiceError) { const detail = failure.detail as DomainError; return new ChatError(detail.code, detail.message); }
   if (failure instanceof RpcError) return new ChatError(failure.code === 'unauthorized' ? 'locked' : failure.code, failure.message);
-  return failure instanceof ChatError ? failure : new ChatError('transport', failure instanceof Error ? failure.message : String(failure));
+  return chatError(failure);
 }
 function browserHandles(): HandleStore {
   if (typeof window === 'undefined') return new MemoryHandles();

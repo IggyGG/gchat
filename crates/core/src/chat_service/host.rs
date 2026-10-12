@@ -32,12 +32,14 @@ pub struct InstanceConfig {
     pub gc2_carrier: bool,
     pub catalog_urls: Vec<String>,
     pub fleet_config: Option<PathBuf>,
+    /// Exact owner-registered user service, learned by its daemon at startup.
+    pub managed_service: Option<String>,
 }
 
 impl InstanceConfig {
     pub fn from_home(home: Option<&Path>) -> Result<Self, String> {
         let paths = crate::paths::resolve(home)?;
-        Ok(Self {
+        let mut config = Self {
             protocol_backend: crate::runtime::default_backend(),
             profile: paths.profile,
             archive: paths.archive,
@@ -52,10 +54,17 @@ impl InstanceConfig {
             gc2_carrier: cfg!(any(target_os = "android", target_os = "ios")),
             catalog_urls: Vec::new(),
             fleet_config: None,
-        })
+            managed_service: None,
+        };
+        super::host_registration::defaults(&mut config)?;
+        Ok(config)
     }
     pub fn chat_endpoint(&self) -> PathBuf {
         super::endpoint_for(&self.protocol_socket)
+    }
+
+    pub fn has_registered_host(&self) -> Result<bool, String> {
+        super::host_registration::registered(self)
     }
 
     pub(super) fn uses_protocol_ipc(&self) -> bool {
@@ -82,6 +91,7 @@ pub struct InstanceHost {
     pub(super) config: InstanceConfig,
     id: String,
     label: String,
+    host_binding: String,
     pub(super) boot: String,
     pub(super) running: Mutex<Option<Running>>,
     lifecycle: watch::Sender<u64>,
@@ -101,6 +111,10 @@ pub fn capabilities() -> Vec<Capability> {
 }
 
 impl InstanceHost {
+    pub fn managed_service(&self) -> Option<&str> {
+        self.config.managed_service.as_deref()
+    }
+
     /// Uses existing unlocked runtimes; notification work never opens a profile.
     #[cfg(feature = "mobile-push")]
     pub async fn push_networks(&self) -> Result<Vec<String>, String> {
@@ -200,7 +214,8 @@ impl InstanceHost {
             .await
     }
 
-    pub fn new(config: InstanceConfig) -> Result<Arc<Self>, String> {
+    pub fn new(mut config: InstanceConfig) -> Result<Arc<Self>, String> {
+        super::host_registration::resolve(&mut config)?;
         if config.fleet_config.is_some()
             && !matches!(config.protocol_backend, gcoms::Backend::Embedded)
         {
@@ -228,10 +243,12 @@ impl InstanceHost {
             );
         }
         let metadata = instance_metadata(&config.archive)?;
+        let host_binding = super::host_registration::capability(&config, &metadata.id)?;
         Ok(Arc::new(Self {
             config,
             id: metadata.id,
             label: metadata.label,
+            host_binding,
             boot: random_id(),
             running: Mutex::new(None),
             lifecycle: watch::channel(0).0,
@@ -254,6 +271,7 @@ impl InstanceHost {
                 .iter()
                 .map(|c| format!("{c:?}"))
                 .chain(gchat_api::compat::capabilities())
+                .chain(std::iter::once(self.host_binding.clone()))
                 .collect(),
         }
     }
@@ -289,7 +307,9 @@ impl InstanceHost {
             None
         };
         let builder = gcoms::Application::builder("gchat")
-            .network_config(crate::network::selected_json(self.config.network_config.as_deref())?)
+            .network_config(crate::network::selected_json(
+                self.config.network_config.as_deref(),
+            )?)
             .profile(&self.config.profile)
             .unlock_secret(passphrase.to_string())
             .create(create)
@@ -322,6 +342,14 @@ impl InstanceHost {
             .as_deref()
             .map(super::fleet::load)
             .transpose()?;
+        if super::host_registration::capability_for_fleet(
+            &self.config,
+            &self.id,
+            fleet.as_ref().map(|(config, _)| config),
+        )? != self.host_binding
+        {
+            return Err("The host configuration changed its identity or component partition. Restore its registered configuration before reconnecting.".into());
+        }
         let builder = if let Some((config, _)) = &fleet {
             builder.central_components(
                 config.policy(),
@@ -340,6 +368,12 @@ impl InstanceHost {
             builder
         };
         let runtime = ProtocolRuntime(builder.open().await?);
+        if let Err(error) =
+            super::host_registration::publish(&self.config, &self.id, &self.host_binding)
+        {
+            let _ = runtime.shutdown().await;
+            return Err(error);
+        }
         let service =
             match ChatService::new(self.config.archive.clone(), runtime.clone(), capabilities()) {
                 Ok(service) => service,
@@ -348,6 +382,10 @@ impl InstanceHost {
                     return Err(error);
                 }
             };
+        service
+            .host_binding
+            .set(self.host_binding.clone())
+            .expect("new service host binding");
         service.configure_catalogs(self.config.catalog_urls.clone());
         if let Some((config, _)) = fleet {
             let transport = super::fleet::Transport::new(
@@ -597,6 +635,9 @@ impl InstanceHost {
                     self.lifecycle.send_modify(|v| *v = v.wrapping_add(1));
                     Response::Snapshot { snapshot }
                 }
+                Err(message) if message.contains("retained component ownership") => {
+                    return error("host_configuration", "This identity uses a scoped host. Restore its fleet host configuration and restart the registered service to reconnect.".into());
+                }
                 Err(message) => return error("rejected", message),
             },
             _ => return error(
@@ -620,22 +661,26 @@ pub async fn ensure_running(
     executable: &Path,
     gchat_binary: bool,
 ) -> Result<ChatClient, String> {
-    if !config.uses_protocol_ipc() {
-        return Err(
-            "outbound instances must attach in-process instead of launching a daemon".into(),
-        );
-    }
+    ensure_running_checked(config, executable, gchat_binary)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+pub async fn ensure_running_checked(
+    config: &InstanceConfig,
+    executable: &Path,
+    gchat_binary: bool,
+) -> Result<ChatClient, gchat_api::ChatError> {
+    super::host_startup::ensure(config, executable, gchat_binary).await
+}
+
+pub(super) async fn launch_standalone(
+    config: &InstanceConfig,
+    executable: &Path,
+    gchat_binary: bool,
+) -> Result<ChatClient, String> {
     let endpoint = config.chat_endpoint();
     let metadata = instance_metadata(&config.archive)?;
-    if let Ok(client) = ChatClient::connect(&endpoint, Some(&metadata.id)).await {
-        return Ok(client);
-    }
-    if gcoms::sdk::local::connect(&LocalEndpoint::new(&config.protocol_socket))
-        .await
-        .is_ok()
-    {
-        return Err("the selected daemon has no shared chat API; restart that instance with the updated gcd".into());
-    }
     let log_path = config.archive.with_extension("service.log");
     let mut options = std::fs::OpenOptions::new();
     options.create(true).append(true);
@@ -736,7 +781,10 @@ pub async fn ensure_running(
     }
     let mut child = command.spawn().map_err(|e| e.to_string())?;
     for _ in 0..200 {
-        if let Ok(client) = ChatClient::connect(&endpoint, Some(&metadata.id)).await {
+        let host_binding = super::host_registration::capability(config, &metadata.id)?;
+        if let Ok(client) =
+            ChatClient::connect_host(&endpoint, Some(&metadata.id), Some(&host_binding)).await
+        {
             return Ok(client);
         }
         if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
@@ -865,6 +913,7 @@ mod retained_scope_tests {
             gc2_carrier: false,
             catalog_urls: Vec::new(),
             fleet_config: None,
+            managed_service: None,
         };
         let host = InstanceHost::new(config.clone()).unwrap();
         let refusal = match host.unlock(passphrase.into(), false).await {

@@ -13,6 +13,16 @@ pub struct ChatClient {
 
 impl ChatClient {
     pub async fn connect(endpoint: &Path, expected: Option<&str>) -> Result<Self, String> {
+        Self::connect_host(endpoint, expected, None).await
+    }
+
+    /// Check a registered local host before opening per-attachment operation state.
+    /// Legacy callers retain the original instance/API handshake.
+    pub async fn connect_host(
+        endpoint: &Path,
+        expected: Option<&str>,
+        host_capability: Option<&str>,
+    ) -> Result<Self, String> {
         let mut envelope = exchange(
             endpoint,
             &RequestEnvelope {
@@ -51,6 +61,9 @@ impl ChatClient {
             }
             _ => return Err("invalid chat instance handshake".into()),
         };
+        if host_capability.is_some_and(|binding| !capabilities.iter().any(|c| c == binding)) {
+            return Err("The running service does not match this identity's registered host. Close its views and restart the registered service with the matching GChat release.".into());
+        }
         let mut handle_path = endpoint.as_os_str().to_owned();
         handle_path.push(".handles");
         let handles = gcoms::rpc::file_store::FileHandles::open(Path::new(&handle_path))

@@ -2,8 +2,8 @@
   import EntryFrame from './EntryFrame.svelte';
   import { readInvitationFile } from './invitation-card';
   import { onDestroy } from 'svelte';
-  let { profileKey, known, creating, protocolLocked, busy, password = $bindable(''), rememberDevice = $bindable(false), mobile = false, companion = false, submit, receiveInvitation, error = '' }: {
-    profileKey: string; known: boolean; creating: boolean; protocolLocked: boolean; busy: boolean; password?: string; rememberDevice?: boolean; mobile?: boolean; companion?: boolean;
+  let { profileKey, known, creating, protocolLocked, busy, unavailable = false, password = $bindable(''), rememberDevice = $bindable(false), mobile = false, companion = false, submit, receiveInvitation, error = '' }: {
+    profileKey: string; known: boolean; creating: boolean; protocolLocked: boolean; busy: boolean; unavailable?: boolean; password?: string; rememberDevice?: boolean; mobile?: boolean; companion?: boolean;
     submit: (event: SubmitEvent) => void; receiveInvitation: (code: string) => void; error?: string;
   } = $props();
   let confirmation = $state(''), reveal = $state(false), localError = $state(''), invitationReady = $state(false), reading = $state(false);
@@ -25,8 +25,8 @@
   }
 </script>
 <div class="arrival" role="region" aria-label="Welcome to GChat" ondragover={event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); }} ondrop={event => { event.preventDefault(); void open(event.dataTransfer?.files[0]); }}>
-  <EntryFrame title={!known ? 'Opening your space…' : creating ? 'Make yourself at home.' : 'Welcome back.'}
-    description={!known ? 'Checking your identity and saved conversations.' : creating ? 'Create a private identity for your conversations. No email or central account.' : protocolLocked ? 'Unlock your identity to reconnect and pick up where you left off.' : 'Unlock your message history. Receiving continues while it is locked.'}>
+  <EntryFrame title={!known ? unavailable ? 'The local host needs attention.' : 'Opening your space…' : creating ? 'Make yourself at home.' : 'Welcome back.'}
+    description={!known ? unavailable ? 'Review the connection details and retry.' : 'Checking your identity and saved conversations.' : creating ? 'Create a private identity for your conversations. No email or central account.' : protocolLocked ? 'Unlock your identity to reconnect and pick up where you left off.' : 'Unlock your message history. Receiving continues while it is locked.'}>
     {#if known}
       <form onsubmit={unlock} aria-busy={busy}>
         <label for="gchat-password">{creating ? 'Choose a passphrase' : protocolLocked ? 'Identity passphrase' : 'Archive passphrase'}</label>
@@ -43,7 +43,7 @@
         <p class="hint" role="status">{invitationReady ? 'Invitation ready. After unlocking, review where it takes you before joining.' : 'Have an invitation? Open or drop the original PNG here.'}</p>
       </div>
       <details><summary>About your identity and recovery</summary><p class="hint">Your passphrase protects your identity and encrypted history. Keep it somewhere safe. To back up an existing installation, stop it first and copy its private data; keep the passphrase separately. Run gchat paths to find the data locations. <a href="https://github.com/IggyGG/gchat/blob/main/docs/INSTALL.md" target="_blank" rel="noreferrer">Installation guide</a></p></details>
-    {:else}<p class="hint" role="status">{error || 'Opening GChat…'}</p>{/if}
+    {:else if error || !unavailable}<p class="hint" role="status">{error || 'Opening GChat…'}</p>{/if}
   </EntryFrame>
 </div>
 <style>

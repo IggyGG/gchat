@@ -1,7 +1,7 @@
 //! Explicit owner opt-in to updates through a Linux user service manager.
 //! The private IPC owner still has to prepare, checkpoint and exit the daemon.
 
-fn valid_unit(unit: &str) -> bool {
+pub(crate) fn valid_unit(unit: &str) -> bool {
     unit.starts_with("gchat-")
         && unit.ends_with(".service")
         && unit.len() <= 128
@@ -67,6 +67,39 @@ pub async fn start_service(unit: &str) -> Result<(), String> {
     .map_err(|_| "Service manager is unavailable")?;
     if !result.status.success() {
         return Err("The updated service could not start; inspect its service status".into());
+    }
+    Ok(())
+}
+
+/// A successful socket connection alone does not prove the registered manager owns it.
+pub(crate) async fn require_running_service(unit: &str) -> Result<(), String> {
+    if !cfg!(target_os = "linux") || !valid_unit(unit) {
+        return Err("The registered host requires its Linux user service".into());
+    }
+    let output = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        tokio::process::Command::new("systemctl")
+            .args(["--user", "show", unit, "-p", "MainPID", "--value"])
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .map_err(|_| "Service manager identification timed out")?
+    .map_err(|_| "Service manager is unavailable")?;
+    let pid = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .parse::<u32>()
+        .ok()
+        .filter(|pid| *pid > 0);
+    if !output.status.success() || pid.is_none() {
+        return Err("The running endpoint is not owned by the registered host service".into());
+    }
+    if service_for_process(pid.expect("checked service PID"))
+        .await?
+        .as_deref()
+        != Some(unit)
+    {
+        return Err("The registered host process no longer belongs to its service".into());
     }
     Ok(())
 }
