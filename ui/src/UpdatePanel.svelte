@@ -28,11 +28,11 @@
   {#if status?.state === 'downloading'}<progress aria-label="Update download" max={status.total || 1} value={status.downloaded}></progress>{/if}
   <p>Updates download automatically and activate when GChat is idle. Drafts and current actions delay the restart. Your profile is kept. You may need to unlock it again.</p>
   <button disabled={working || status?.state === 'downloading'} onclick={() => void action()}>Check for updates</button>
-  {#if ['ready', 'deferred'].includes(status?.state ?? '')}<button disabled={working || busy} onclick={() => void action(true)}>{working ? 'Preparing restart…' : 'Restart now'}</button>{/if}
+  {#if ['ready', 'deferred'].includes(status?.state ?? '')}<button class="primary" disabled={working || busy} onclick={() => void action(true)}>{working ? 'Preparing restart…' : 'Restart now'}</button>{/if}
   {#if busy}<p>Finish or save your draft and wait for current actions before restarting.</p>{/if}
   {#if status?.running}<details><summary>Running build</summary><p>{status.running.version}</p><code>{status.running.releaseId}</code></details>{/if}
 {:else}
   <p>This device uses its app store or installation provider for updates. Enable automatic updates there.</p>
 {/if}
 {#if error}<p role="alert">{error}</p>{/if}
-<style>progress { width:100%; } code { overflow-wrap:anywhere; } button { margin:0 8px 8px 0; }</style>
+<style>progress { width:100%; } code { overflow-wrap:anywhere; } button { margin:0 8px 8px 0; font:inherit; color:var(--ink); background:transparent; border:1px solid var(--line); border-radius:4px; padding:6px 10px; min-height:44px; cursor:pointer; } button:disabled { opacity:.55; cursor:default; }</style>

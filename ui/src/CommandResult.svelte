@@ -83,7 +83,7 @@
     {#if !matchingCommands.length}<p>No matching commands.</p>{/if}
     <details><summary>Keyboard shortcuts</summary><dl><dt>Enter / Shift+Enter</dt><dd>Send / new line</dd><dt>Tab</dt><dd>Complete a nickname or command; cycle suggestions</dd><dt>↑ / ↓ then Enter</dt><dd>Choose a suggestion</dd><dt>↑ at the start / ↓ at the end</dt><dd>Previous / next input; your draft is kept</dd><dt>Alt+← / Alt+→</dt><dd>Previous / next conversation</dd><dt>Ctrl/Cmd+F</dt><dd>Find in this conversation</dd><dt>Escape</dt><dd>Dismiss suggestions or return to chat</dd></dl></details>
   {:else if output.kind === 'invitation_options'}
-    <h2>Invite to #{output.channel.replace(/^#/, '')}</h2>
+    {#if invitationHeading}<h2>Invite to #{output.channel.replace(/^#/, '')}</h2>{/if}
     <p>Choose who this invitation is for. Everyone receives their own identity and membership.</p>
     <label>Invitation for <select bind:value={invitationPreset} disabled={busy}><option value="person">One person · 1 hour · 1 join</option><option value="friends">Friends · 7 days · 25 joins</option><option value="devices">Devices · 90 days · 100 joins</option><option value="custom">Custom…</option></select></label>
     {#if invitationPreset === 'custom'}
@@ -93,7 +93,7 @@
       {#if !unlimited}<label>Maximum joins <input type="number" min="1" max="5000000" bind:value={admissionLimit} disabled={busy} /></label>{/if}
     {/if}
     <p>The owner must be online to admit people. Anyone with the invitation can join until its limit or expiry. You can revoke it at any time. Device invitations do not grant permission to run commands.</p>
-    <button disabled={busy || !executeCommand} onclick={() => void run(invitationPreset === 'custom' ? `/invite custom ${noExpiry ? 'never' : days} ${unlimited ? 'unlimited' : admissionLimit}` : `/invite ${invitationPreset}`)}>{busy ? 'Creating…' : 'Create invitation'}</button>
+    <button class="primary" disabled={busy || !executeCommand} onclick={() => void run(invitationPreset === 'custom' ? `/invite custom ${noExpiry ? 'never' : days} ${unlimited ? 'unlimited' : admissionLimit}` : `/invite ${invitationPreset}`)}>{busy ? 'Creating…' : 'Create invitation'}</button>
     <button disabled={busy || !executeCommand} onclick={() => void run('/invites')}>Manage invitations</button>
     {#if feedback}<p role="status">{feedback}</p>{/if}
   {:else if output.kind === 'invitations'}
@@ -140,10 +140,10 @@
     <p>{output.kind === 'invitation' ? 'Single use' : output.limit === null ? 'No total admission limit' : `${output.limit} distinct joins`} · {output.expires === null ? 'No expiry' : `Expires ${new Date(output.expires * 1000).toLocaleString()}`}</p>
     {#if output.localOnly}<p>This invitation is reachable only on this computer. Configure a relay before sharing with another computer.</p>{/if}
     {#if output.expires !== null && output.expires * 1000 <= Date.now()}<p role="status">This invitation has expired. Create a new invitation to share.</p>{:else}
-    <InvitationCard link={output.link} channel={output.channel} expires={output.expires} saveCard={saveInvitationCard} />
-    <button disabled={busy} onclick={() => void copy(appLink ?? output.link)}>Copy invitation</button>
+    <button class="primary" disabled={busy} onclick={() => void copy(appLink ?? output.link)}>Copy invitation</button>
     {#if typeof navigator !== 'undefined' && typeof navigator.share === 'function'}<button disabled={busy} onclick={() => void share(output.link, output.channel)}>Share invitation file…</button>{/if}
     <button disabled={busy} onclick={() => void save(output.link)}>{saveInvitation ? 'Save as…' : 'Download file'}</button>
+    <InvitationCard link={output.link} channel={output.channel} expires={output.expires} saveCard={saveInvitationCard} />
     {#if !appLink}<p>This invitation is too large for an app link. Share the complete code or file.</p>{/if}
     <details><summary>Complete invitation</summary><button onclick={() => void copy(output.link)}>Copy raw code</button><textarea aria-label="Complete invitation" readonly value={output.link} rows="3"></textarea></details>
     {/if}

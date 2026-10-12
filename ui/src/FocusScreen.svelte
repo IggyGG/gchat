@@ -16,15 +16,17 @@
 <style>
   dialog { box-sizing:border-box; color:var(--ink,#e4e7eb); background:var(--panel,#25282e); border:1px solid var(--line,#363c44); padding:0; width:min(640px,calc(var(--gchat-viewport-width,100vw) - 48px)); max-width:none; max-height:calc(var(--gchat-viewport-height,100dvh) - 48px); overflow:auto; border-radius:8px; }
   dialog::backdrop { background:#000a; }
-  header { display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:2; background:var(--panel,#25282e); padding:12px 16px; border-bottom:1px solid var(--line,#363c44); }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:4px 16px; position:sticky; top:0; z-index:2; background:var(--panel,#25282e); padding:12px 16px; border-bottom:1px solid var(--line,#363c44); }
   h2 { margin:0; font:600 18px/1.4 system-ui; overflow-wrap:anywhere; }
-  button { font:inherit; color:inherit; background:transparent; border:0; min-height:44px; min-width:44px; padding:8px; cursor:pointer; }
+  button { font:inherit; color:inherit; background:transparent; border:0; min-height:44px; min-width:44px; padding:8px; cursor:pointer; white-space:nowrap; }
   button:focus-visible { outline:2px solid var(--accent,#b7cbe4); }
   .screen-body { padding:20px; overflow-wrap:anywhere; }
   .screen-body :global(form) { display:grid; gap:10px; }
   .screen-body :global(input:not([type=checkbox])),.screen-body :global(textarea),.screen-body :global(select) { box-sizing:border-box; width:100%; max-width:100%; font:inherit; color:inherit; background:var(--bg,#1c1e22); border:1px solid var(--line,#363c44); padding:10px; min-height:44px; }
   .screen-body :global(button:not(.command)) { min-height:44px; }
   .screen-body :global(.primary) { background:var(--accent,#b8d9c4); color:var(--bg,#1c1e22); border:1px solid var(--accent,#b8d9c4); border-radius:4px; font-weight:600; }
+  .screen-body :global(button:disabled) { opacity:.55; cursor:default; }
+  .screen-body :global(button.primary:disabled) { color:var(--bg,#1c1e22); }
   .screen-body :global([role=alert]) { color:var(--ghost-error,#f2a39c); }
   .screen-body :global(:is(button,input,select,textarea,summary):focus-visible) { outline:2px solid var(--accent,#b8d9c4); outline-offset:2px; }
   @media(max-width:640px) {

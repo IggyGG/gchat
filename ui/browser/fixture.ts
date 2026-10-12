@@ -34,6 +34,7 @@ let revision = 1;
 let activity: import('../src/api').Activity[] = [];
 let inputHistory: import('../src/api').InputHistoryEntry[] = [];
 let sendOutcome = 'ok';
+let historyWindow = 0, repeatHistoryCursor = false;
 let archiveBlocked = parameters.has('archive-blocked');
 const sentMessages: import('../src/api').Message[] = [];
 let holdSends = false;
@@ -58,6 +59,7 @@ const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', use
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
+  setHistoryWindow(size: number, repeat = false) { historyWindow = size; repeatHistoryCursor = repeat; revision++; },
   setUnread(id: string, unread: number, lastMessageId: string) { const conversation = conversations.find(c => c.id === id); if (conversation) { conversation.unread = unread; conversation.lastMessageId = lastMessageId; revision++; } },
   setActivity(value: typeof activity) { activity = value; revision++; },
   setMembers(value: typeof members) { conversations[0].members = value; revision++; },
@@ -120,6 +122,11 @@ async function request(req: Request, networkScope = primaryNetwork): Promise<Res
     case 'catalogue': return { kind: 'catalogue', commands };
     case 'history': case 'search': {
       const messages = [{ id: `${req.conversation}/m1`, conversationId: req.conversation, memberId: 'peer', nickname: 'Ada', body: 'A clear space for the conversation.', timestamp: 1789910000, mine: false, delivery: null, result: null }, ...sentMessages.filter(m => m.conversationId === req.conversation)];
+      if (req.kind === 'history' && historyWindow) {
+        const end = req.before ? Number(req.before) : messages.length;
+        const start = Math.max(0,end-historyWindow);
+        return {kind:'history',page:{messages:repeatHistoryCursor && req.before ? messages.slice(end,end+historyWindow) : messages.slice(start,end), before:repeatHistoryCursor && req.before ? req.before : start ? String(start) : null}};
+      }
       return { kind: 'history', page: { messages: req.kind === 'search' ? messages.filter(m => m.body.toLocaleLowerCase().includes(req.text.toLocaleLowerCase())) : messages, before: null } };
     }
     case 'mark_read': return { kind: 'applied', conversation: req.conversation, notice: null };

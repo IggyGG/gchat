@@ -212,6 +212,8 @@ independently. Messages retain their layout while sending; routine channel activ
 is grouped and operation details stay compact. Tab completion, searchable `/help`,
 `/find` with context navigation, unread/mention indicators and both chat fonts are
 available. Notifications are an optional inline choice after unlock.
+The optional native visual harness requires PyGObject with GTK3, WebKit2 4.1,
+Cairo and Xvfb; its commands and evidence scope are in [TESTING.md](TESTING.md).
 
 MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
 Current downloads cover Linux x86_64 and Android through Google Play.

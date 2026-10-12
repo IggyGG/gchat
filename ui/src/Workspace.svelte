@@ -383,11 +383,15 @@
   function closeSearch() { searchOpen = false; searchGeneration++; searchBusy = false; composer?.focus(); }
   async function revealMessage(message: Message) {
     if (jumpingToMessage) return;
-    const conversation = selected;
+    const conversation = selected, searchRevision = searchGeneration;
+    const cursors = new Set<string>();
     jumpingToMessage = true; searchError = ''; atBottom = false;
     try {
-      while (selected === conversation && !messages.some(m => m.id === message.id) && before && !historyStale) await loadHistory(true);
-      if (selected !== conversation || locked) return;
+      while (searchOpen && searchRevision === searchGeneration && selected === conversation && !messages.some(m => m.id === message.id) && before && !historyStale) {
+        if (cursors.has(before)) { searchError = 'Earlier history did not advance. Try the search again.'; return; }
+        cursors.add(before); await loadHistory(true);
+      }
+      if (!searchOpen || searchRevision !== searchGeneration || selected !== conversation || locked) return;
       if (!messages.some(m => m.id === message.id)) { searchError = 'This message is no longer available in the loaded history.'; return; }
       focusedMessage = message.id; closeSearch();
       await tick();
@@ -640,7 +644,7 @@
         if (first) unreadMarkers = { ...unreadMarkers, [conversation]: first.id };
       }
       // A newer snapshot can refresh the tail without erasing already loaded scrollback.
-      if (older) { messages = [...response.page.messages, ...messages]; before = response.page.before; }
+      if (older) { const existing = new Set(messages.map(message => message.id)); messages = [...response.page.messages.filter(message => !existing.has(message.id)), ...messages]; before = response.page.before; }
       else {
         const incoming = new Set(response.page.messages.map(m => m.id));
         const overlap = messages.findIndex(m => incoming.has(m.id));
@@ -1023,7 +1027,7 @@
     <main class="conversation" inert={navigationModal}>
       <div class="conversation-heading">{#if workspaceReady}
         <button class="panel-toggle" aria-label="Channels" title={channelsVisible ? 'Hide channels' : 'Show channels'} aria-controls="channel-navigation" aria-expanded={channelsVisible} onclick={event => void openNavigation('channels', event.currentTarget)}>#{#if totalUnread}<small class="badge">{totalUnread}</small>{/if}</button>
-        <button class="active-title" title={active?.topic || title} onclick={() => openUtility('info')}><span>{title}</span></button>
+        <button class="active-title" disabled={!active} title={active?.topic || title} onclick={() => openUtility('info')}><span>{active ? title : 'Your conversations'}</span></button>
         {#if active}<button class="panel-toggle" aria-label={`Users: ${active.members.length}`} aria-controls="user-navigation" aria-expanded={usersVisible} title="Show or hide users" onclick={event => void openNavigation('users', event.currentTarget)}>Users <small>{active.members.length}</small></button>
         {#if fileController}<button class="panel-toggle" aria-label={`Files: ${fileCount}`} title="Files" onclick={event => void openNavigation('files', event.currentTarget)}>▤ <small>{fileCount}</small></button>{/if}{/if}
         {#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}
@@ -1139,7 +1143,7 @@
         {#if networks.length > 1}<label for="network-detail-selection">Network</label><select id="network-detail-selection" bind:value={selectedNetwork} onchange={() => { transport.select(selectedNetwork); networkGeneration++; networkStatus = networks.find(n => n.id === selectedNetwork)?.status; }}>{#each networks as network}<option value={network.id}>{network.name}</option>{/each}</select>{/if}
         <p role="status">{networkStatus?.message || networkError || connectionLabel}</p>
         {#if networkError}<p role="alert">{networkError}</p>{/if}
-        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button class="primary" onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
+        {#if !networkAccepted || replacingInvitation || networkStatus?.state === 'invitation_expired'}<NetworkSetup {transport} initialInvitation={incomingInvitation} status={networkStatus} {imported} combined={snapshot?.instance.capabilities.includes('networks.v1') ?? false} joined={invitationJoined} {performJoin} chooseFile={deviceUnlock ? () => chooseInvitation('network') : undefined} selectedFile={invitationSelection?.context === 'network' ? invitationSelection : undefined} fileConsumed={invitationConsumed} />{:else if networkStatus?.state !== 'local_only'}<button onclick={() => replacingInvitation = true}>Replace network invitation…</button>{/if}
         {#if connectionError}<details><summary>Connection details</summary><p>{connectionError.message}</p></details>{/if}
         <button onclick={() => { utility = null; void send('/status --details'); }}>Connection details</button>
         <section class="activity-settings" aria-label="Activity sharing">
@@ -1215,10 +1219,10 @@
       {#if searchOpen && selected && !locked}
         <FocusScreen title={`Find in ${title}`} close={closeSearch}><section class="search">
 
-          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><input id="gchat-search" bind:value={searchText} required /><button disabled={searchBusy}>Find</button><button type="button" onclick={closeSearch}>Close search</button></form>
+          <form onsubmit={event => { event.preventDefault(); void search(); }}><label for="gchat-search">Find in {title}</label><div class="search-controls"><input id="gchat-search" bind:value={searchText} required /><button class="primary" disabled={searchBusy || !searchText.trim()}>Find</button></div></form>
           {#if searchError}<p role="status">{searchError}</p>{/if}
           {#if searchBefore}<button disabled={searchBusy} onclick={() => void search(true)}>Search earlier messages</button>{/if}
-          <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} matches`}</p>
+          <p role="status">{searchBusy ? 'Searching…' : `${searchResults.length} ${searchResults.length === 1 ? 'match' : 'matches'}`}</p>
           {#each searchResults as message (message.id)}<article class="search-result"><time>{new Date(message.timestamp * 1000).toLocaleString()}</time> <bdi>&lt;{message.nickname}&gt;</bdi><p><HighlightedText text={message.body} query={searchText} /></p><button disabled={jumpingToMessage} onclick={() => void revealMessage(message)}>Show in conversation</button></article>{/each}
         </section></FocusScreen>
       {/if}
@@ -1226,10 +1230,10 @@
   {#if resultDetails && !locked}
     <FocusScreen title={resultDetails.output && ['invitation', 'reusable_invitation', 'invitation_options'].includes(resultDetails.output.kind) && 'channel' in resultDetails.output ? `Invite to #${resultDetails.output.channel.replace(/^#/, '')}` : resultDetails.output?.kind === 'text' && resultDetails.output.title === 'Reconnect this channel' ? 'Reconnect this channel' : `${resultDetails.action} · Details`} close={() => resultKey = null}><section class="private-detail" aria-label="Operation details">
 
-      <p class="muted">Only you · Closing these details does not cancel or repeat the request.</p>
+      <p class="muted">Only you</p>
       {#if resultDetails.output}<CommandResult invitationHeading={false} transport={transport.forNetwork(resultDetails.network || undefined)} changed={() => void refreshInBackground()} output={resultDetails.output} executeCommand={text => operation({ kind: 'submit', operation_id: crypto.randomUUID(), conversation: resultDetails!.conversation, text })} choose={chooseChannel} {prepareCommand} saveInvitation={fileAccess?.saveInvitation} saveInvitationCard={fileAccess?.saveInvitationCard} />{/if}
-      <details><summary>Request details</summary><dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl></details>
-      <p role="status">{resultDetails.message ?? 'Waiting for a confirmed result.'}</p>
+      <details><summary>Request details</summary><p>Closing these details does not cancel or repeat the request.</p><dl class="operation-details"><dt>Conversation</dt><dd>{failureTarget(resultDetails.conversation)}</dd><dt>Operation</dt><dd>{resultDetails.id}</dd><dt>State</dt><dd>{resultDetails.state === 'unknown' ? 'Outcome not confirmed — this is not proof of failure.' : resultDetails.state}</dd><dt>First observed</dt><dd>{new Date(resultDetails.started).toLocaleString()}</dd><dt>Last checked</dt><dd>{resultDetails.checked ? new Date(resultDetails.checked).toLocaleString() : 'Not yet checked'}</dd></dl></details>
+      {#if resultDetails.state !== 'complete' || (resultDetails.message && resultDetails.message !== 'Completed.')}<p role="status">{resultDetails.message ?? (resultDetails.state === 'unknown' ? 'Outcome unconfirmed.' : 'Waiting for a confirmed result.')}</p>{/if}
       {#if resultDetails.recordedMessage && resultDetails.recordedMessage !== resultDetails.message}<p>Last recorded result: {resultDetails.recordedMessage}</p>{/if}
 
       {#if resultDetails.state !== 'complete'}<button class="primary" disabled={checkingSaved[resultDetails.id]} onclick={() => void checkSaved(resultDetails.id, resultDetails.key)}>{checkingSaved[resultDetails.id] ? 'Checking…' : 'Refresh status'}</button><p class="muted">Checks the original request. It will not submit it again. Older requests may not have retained details.</p>{/if}
@@ -1361,7 +1365,7 @@
   .titlebar .network-button { position:absolute; left:var(--native-inset); top:50%; transform:translateY(-50%); width:var(--content-inset); height:44px; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; background:transparent; }
   .titlebar .help-button { width:44px; height:44px; padding:0; border:0; border-radius:0; background:transparent; text-align:center; }
 
-  .private-line { margin:18px 0; color:var(--muted); overflow-wrap:anywhere; }.private-line button,.private-detail button { color:var(--accent); text-decoration:underline; }.private-line small { font:12px system-ui; }
+  .private-line { margin:18px 0; color:var(--muted); overflow-wrap:anywhere; }.private-line button,.private-detail button:not(.primary) { color:var(--accent); text-decoration:underline; }.private-line small { font:12px system-ui; }
   .private-detail { margin:12px 0; }.operation-details { grid-template-columns:auto minmax(0,1fr); }
   .titlebar { position:relative; }.gchat.mac { --native-inset:72px; }.drag-region { position:absolute; inset:0; }.titlebar > :not(.drag-region):not(.network-button) { position:relative; }.window-controls { display:flex; }.window-controls button { width:36px; padding:0; text-align:center; }
   button { transition:background 120ms,color 120ms; }
@@ -1422,6 +1426,7 @@
   .completions button { min-width:0; overflow-wrap:anywhere; }
   .search-result { padding:12px 0; border-bottom:1px solid var(--line); }
   .search-result p { margin:6px 0; white-space:pre-wrap; }
+  .search-controls { display:flex; gap:8px; }.search-controls input { min-width:0; flex:1; }.search-controls .primary { margin:0; flex:none; }
   @media(max-width:999px) { .transcript { padding:8px 12px; }.conversation-heading { padding:2px 8px 5px; }.panel-toggle { min-height:44px; min-width:44px; }.panel-heading button { min-height:44px; min-width:44px; } }
   @media(pointer:coarse) { .channels .channel-entries button,.users-list button,.private-line button { min-height:44px; }.panel-toggle { min-height:44px; min-width:44px; }.inspector-heading .hide-users { min-width:44px; width:44px; } }
 </style>

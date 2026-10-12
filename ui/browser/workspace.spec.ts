@@ -171,7 +171,7 @@ test('view commands, help, find, font persistence and existing lifecycle command
   await ready(page);
   await command(page, '/font readable'); await expect(page.locator('.gchat')).toHaveClass(/readable/);
   await command(page, '/find clear space'); await expect(page.getByRole('textbox', { name: 'Find in #general', exact: true })).toHaveValue('clear space');
-  await expect(page.locator('.search')).toContainText('1 matches'); await page.keyboard.press('Escape');
+   await expect(page.locator('.search')).toContainText('1 match'); await page.keyboard.press('Escape');
   await expect(page.locator('.search')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeFocused();
   await page.getByRole('button', { name: 'Help and commands', exact: true }).click();

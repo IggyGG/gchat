@@ -128,7 +128,17 @@ def scroll():
       window.fixture.receive('Incoming while reading'); return true;
     """, lambda _: after_render(lambda: check('incoming messages preserve scrollback',
         "Math.abs(document.querySelector('.transcript').scrollTop-window.nativeTop)<3",
-        lambda: capture('scrollback', lambda: finish()))))
+        lambda: capture('scrollback', zoom_dialog))))
+
+
+def zoom_dialog():
+    evaluate("document.documentElement.style.zoom='2'; return true;", lambda _: after_render(
+        lambda: check('text zoom keeps the composer on screen',
+            "document.querySelector('.composer').getBoundingClientRect().bottom<=innerHeight",
+            lambda: evaluate("document.querySelector('[aria-label=\"Help and commands\"]').click(); return true;",
+                lambda _: after_render(lambda: check('zoomed dialog back control is reachable',
+                    "(() => { const r=document.querySelector('dialog[open] [data-screen-back]').getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight && r.left>=0 && r.right<=innerWidth; })()",
+                    lambda: capture('zoomed-help', lambda: finish())))))))
 
 
 def initial():

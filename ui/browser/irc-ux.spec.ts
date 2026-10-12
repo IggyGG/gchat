@@ -139,6 +139,26 @@ test('notification invitation stays quiet and read-only input cannot be sent', a
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r:any)=>r.kind==='submit' && r.text==='keep this unsent'))).toBe(false);
 });
 
+test('search context loads earlier pages and stops a non-advancing history cursor', async ({page})=>{
+  await ready(page);
+  await page.evaluate(()=>{(window as any).fixture.seedMessages(80);(window as any).fixture.setHistoryWindow(20);});
+  await expect(page.getByRole('log')).toContainText('Earlier message 79');
+  await expect(page.getByRole('log')).not.toContainText('Earlier message 0');
+  await command(page,'/find Earlier message 0');
+  await page.getByRole('button',{name:'Show in conversation'}).click();
+  await expect(page.locator('.message.focused')).toContainText('Earlier message 0');
+  await page.reload();
+  await expect(page.locator('.active-title')).toHaveText('#general');
+  await page.evaluate(()=>{(window as any).fixture.seedMessages(80);(window as any).fixture.setHistoryWindow(20,true);});
+  await expect(page.getByRole('log')).toContainText('Earlier message 79');
+  await command(page,'/find Earlier message 0');
+  const before=await page.evaluate(()=>(window as any).fixture.requests.filter((r:any)=>r.kind==='history' && r.before).length);
+  await page.getByRole('button',{name:'Show in conversation'}).click();
+  await expect(page.getByRole('dialog')).toContainText('Earlier history did not advance');
+  const after=await page.evaluate(()=>(window as any).fixture.requests.filter((r:any)=>r.kind==='history' && r.before).length);
+  expect(after-before).toBe(1);
+});
+
 for (const width of [320,390,768,1100,1440]) test(`long Unicode content and both fonts fit ${width}px and short windows`, async ({ page }) => {
   await page.setViewportSize({ width,height:720 }); await ready(page);
   await page.evaluate(() => {

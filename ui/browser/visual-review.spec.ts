@@ -97,3 +97,26 @@ test('all IRC color pairs, inverse mentions and invalid-foreground resets remain
   expect(await mention.evaluate(el=>getComputedStyle(el).color)).toBe(await mention.evaluate(el=>getComputedStyle(el.parentElement!).color));
   await page.screenshot({path:info.outputPath('irc-colors.png')});
 });
+
+for (const width of [390,1100]) test(`invitation action is visible before the card and has one heading at ${width}px`, async ({page},info)=>{
+  await page.setViewportSize({width,height:800}); await page.goto('/?reusable');
+  const input=page.getByRole('textbox',{name:'Message or command'});
+  await input.fill('/invite'); await input.press('Enter');
+  const screen=page.getByRole('dialog',{name:'Invite to #general',exact:true});
+  await expect(screen.getByRole('heading',{name:'Invite to #general',exact:true})).toHaveCount(1);
+  await screen.getByRole('button',{name:'Create invitation',exact:true}).click();
+  await expect(screen.getByRole('button',{name:'Copy invitation',exact:true})).toBeInViewport({ratio:1});
+  await expect(screen.getByRole('status').filter({hasText:/^Completed\.$/})).toHaveCount(0);
+  await page.screenshot({path:info.outputPath('invitation-actions.png')});
+});
+
+test('primary operation action has contrasting text rather than inheriting link ink',async({page},info)=>{
+  await page.goto('/?saved-operation');
+  await page.locator('.private-line button').first().click();
+  const action=page.getByRole('button',{name:'Refresh status',exact:true});
+  await expect(action).toBeEnabled();
+  const styles=await action.evaluate(el=>({color:getComputedStyle(el).color,background:getComputedStyle(el).backgroundColor}));
+  expect(styles.color).not.toBe(styles.background);
+  expect(styles.color).toBe('rgb(28, 30, 34)');
+  await page.screenshot({path:info.outputPath('operation-action.png')});
+});
