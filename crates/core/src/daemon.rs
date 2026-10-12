@@ -52,6 +52,9 @@ pub struct DaemonArgs {
     /// Private component registrations for an optional local fleet controller.
     #[arg(long, env = "GCHAT_FLEET_CONFIG")]
     pub fleet_config: Option<PathBuf>,
+    /// Owner-only signed configuration for a separately operated network.
+    #[arg(long, env = "GCHAT_NETWORK_CONFIG", conflicts_with = "local_fixture")]
+    pub network_config: Option<PathBuf>,
     /// Owner-only request file used by Windows per-user task shutdown.
     #[cfg(windows)]
     #[arg(long)]
@@ -264,6 +267,7 @@ pub async fn run(args: DaemonArgs) -> Result<(), String> {
         )?,
         catalog_urls: args.chat_catalog_url.clone(),
         fleet_config: args.fleet_config.clone(),
+        network_config: args.network_config.clone(),
         network_recovery: !args.no_network_bootstrap,
         local_fixture: args.local_fixture,
         gc2_carrier: args.gc2_carrier,

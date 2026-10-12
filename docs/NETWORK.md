@@ -1,9 +1,14 @@
 # Default network and recovery
 
-GChat uses the public signing root and signed network defaults bundled by
-`gcoms-runtime` in `crates/runtime/assets/gchat-network.json`. The `gcoms`
-application facade selects these defaults unless an application supplies its own
-signed configuration through `Application::builder(...).network_config(...)`.
+GChat supplies its application-owned public signing root and signed defaults
+from `crates/core/assets/gchat-network.json` to the GComs application facade.
+A separately operated headless instance may select `gchat daemon --network-config
+/absolute/private/network.json` (or `GCHAT_NETWORK_CONFIG`). The file and its
+parent must be owner-only; documents over 512 KiB, invalid signatures and expired
+defaults are refused before startup. The selected file is passed to a spawned
+daemon and revalidated at unlock. The SDK keeps its normal retained-profile
+network/root binding, public-address policy and TLS verification. This option
+does not enable local fixtures.
 The configuration contains no invitation credential. Both new and retained
 profiles preserve monotonic network state.
 

@@ -24,6 +24,7 @@ pub struct InstanceConfig {
     pub advertise: Option<SocketAddr>,
     pub relay_file: Option<PathBuf>,
     pub relay_urls: Vec<String>,
+    pub network_config: Option<PathBuf>,
     pub network_recovery: bool,
     /// Explicit disposable loopback fixtures only; never inferred from an address.
     pub local_fixture: bool,
@@ -45,6 +46,7 @@ impl InstanceConfig {
             advertise: None,
             relay_file: None,
             relay_urls: crate::bootstrap::default_provider_urls(),
+            network_config: None,
             network_recovery: true,
             local_fixture: false,
             gc2_carrier: cfg!(any(target_os = "android", target_os = "ios")),
@@ -210,6 +212,7 @@ impl InstanceHost {
         if let Some(path) = &config.fleet_config {
             super::fleet::load(path)?;
         }
+        crate::network::selected_json(config.network_config.as_deref())?;
         #[cfg(any(target_os = "android", target_os = "ios"))]
         if config.uses_protocol_ipc() || !config.gc2_carrier {
             return Err("mobile instances require the outbound GC/2 network client".into());
@@ -286,7 +289,7 @@ impl InstanceHost {
             None
         };
         let builder = gcoms::Application::builder("gchat")
-            .network_config(crate::network::installed_json())
+            .network_config(crate::network::selected_json(self.config.network_config.as_deref())?)
             .profile(&self.config.profile)
             .unlock_secret(passphrase.to_string())
             .create(create)
@@ -695,6 +698,9 @@ pub async fn ensure_running(
     for url in &config.relay_urls {
         command.arg("--relay-bootstrap-url").arg(url);
     }
+    if let Some(path) = &config.network_config {
+        command.arg("--network-config").arg(path);
+    }
     if config.local_fixture {
         command.arg("--local-fixture");
     }
@@ -853,6 +859,7 @@ mod retained_scope_tests {
             advertise: None,
             relay_file: None,
             relay_urls: Vec::new(),
+            network_config: None,
             network_recovery: false,
             local_fixture: true,
             gc2_carrier: false,
