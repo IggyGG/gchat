@@ -2,6 +2,15 @@
 
 ## IRC conversation workspace
 
+Installed delivery additionally requires the signed Linux release gates, APT
+package signature/source/hash verification, actual installed and running
+executable identity, and a launch/relaunch through the user's existing desktop
+entry with retained identity/history. The localhost fixture cannot qualify that
+delivery. `release_minutes_test.py` includes the native-gate scheduling deadlock
+and controls for retained effects, owned rollouts, legacy policy and pending gates.
+The native signed-feed prerequisite is `minisign`; missing-tool skips must be
+executed after provisioning it before a signed-delivery claim.
+
 2026-10-12 source `cc3e89b`: 77 unit tests, 114 Chromium tests, 114 WebKit tests
 and 18 native Linux WebKitGTK checks pass; both type-check workspaces report zero
 errors/warnings, production frontend build and source audit pass. See the

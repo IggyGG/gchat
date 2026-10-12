@@ -18,6 +18,24 @@ Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrast
 
 ## GCHAT-UX — conversation-first IRC workspace
 
+2026-10-12 installed-delivery follow-up: the icon still launches signed0.1.176;
+source/fixture qualification did not establish local installation. A new explicit
+goal requires the signed package, installed/running hash, existing launcher,
+retained data and actual native UI/relaunch proof. The scheduler deadlock is
+reproduced causally: verified Android waits behind a blocked required Linux native
+gate and holds the global flight. Repair `c9fd37d` preserves every old failure,
+effect and rollout owner. The release Python suite ran494 tests with four missing-
+minisign skips; after installing the prerequisite, all five signed-feed tests pass.
+The first isolated controller backport `a4c8121` retained the native baseline but
+exposed a second causal defect: baseline observation compared an already-qualified
+running repair against the original fleet bundle. Fix `8bf59ac` applies the
+existing verified active overlay; changed proof remains rejected and the fleet
+journal remains byte-identical. All 14 controller tests pass. The combined
+controller-only source `46c5a37` is queued through normal independent qualification
+as intent `140bc04f1805b3d90bc390a90ea25d0b5e5b671e0951170c1ed54c97604da014`.
+Controller activation, actual signed release and local icon verification remain
+pending. Detailed retained state: `test-evidence/irc-ux/installed-followup/`.
+
 2026-10-12 (OC): **implemented and qualified** in the `irc-ux` task.
 The user selected persistent, independently collapsible desktop channel/user
 lists and responsive drawers. Shared message rows preserve pending/confirmed
