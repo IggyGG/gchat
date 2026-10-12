@@ -779,12 +779,22 @@ pub(super) async fn launch_standalone(
         use windows_sys::Win32::System::Threading::{CREATE_NEW_PROCESS_GROUP, DETACHED_PROCESS};
         command.creation_flags(CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS);
     }
+    let host_binding = super::host_registration::capability(config, &metadata.id)?;
     let mut child = command.spawn().map_err(|e| e.to_string())?;
     for _ in 0..200 {
-        let host_binding = super::host_registration::capability(config, &metadata.id)?;
-        if let Ok(client) =
-            ChatClient::connect_host(&endpoint, Some(&metadata.id), Some(&host_binding)).await
-        {
+        #[cfg(unix)]
+        let connected = ChatClient::connect_owned_host(
+            &endpoint,
+            Some(&metadata.id),
+            Some(&host_binding),
+            rustix::process::getuid().as_raw(),
+            Some(child.id()),
+        )
+        .await;
+        #[cfg(not(unix))]
+        let connected =
+            ChatClient::connect_host(&endpoint, Some(&metadata.id), Some(&host_binding)).await;
+        if let Ok(client) = connected {
             return Ok(client);
         }
         if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {

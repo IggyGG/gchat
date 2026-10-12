@@ -23,13 +23,41 @@ impl ChatClient {
         expected: Option<&str>,
         host_capability: Option<&str>,
     ) -> Result<Self, String> {
-        let mut envelope = exchange(
+        Self::connect_bound(endpoint, expected, host_capability, None).await
+    }
+
+    /// A registered Unix host also binds the kernel owner and optional managed PID.
+    #[cfg(unix)]
+    pub async fn connect_owned_host(
+        endpoint: &Path,
+        expected: Option<&str>,
+        host_capability: Option<&str>,
+        owner_uid: u32,
+        process_id: Option<u32>,
+    ) -> Result<Self, String> {
+        Self::connect_bound(
+            endpoint,
+            expected,
+            host_capability,
+            Some((owner_uid, process_id)),
+        )
+        .await
+    }
+
+    async fn connect_bound(
+        endpoint: &Path,
+        expected: Option<&str>,
+        host_capability: Option<&str>,
+        peer: Option<(u32, Option<u32>)>,
+    ) -> Result<Self, String> {
+        let mut envelope = exchange_bound(
             endpoint,
             &RequestEnvelope {
                 version: VERSION,
                 instance_id: None,
                 request: Request::Identify,
             },
+            peer,
         )
         .await?;
         let mut api_version = VERSION;
@@ -38,13 +66,14 @@ impl ChatClient {
         {
             let original = envelope.instance_id.clone();
             api_version = crate::compat::LEGACY_VERSION;
-            envelope = exchange(
+            envelope = exchange_bound(
                 endpoint,
                 &RequestEnvelope {
                     version: api_version,
                     instance_id: None,
                     request: Request::Identify,
                 },
+                peer,
             )
             .await?;
             if envelope.instance_id != original {
@@ -189,10 +218,38 @@ impl ChatClient {
 }
 
 async fn exchange(endpoint: &Path, request: &RequestEnvelope) -> Result<ResponseEnvelope, String> {
+    exchange_bound(endpoint, request, None).await
+}
+
+async fn exchange_bound(
+    endpoint: &Path,
+    request: &RequestEnvelope,
+    peer: Option<(u32, Option<u32>)>,
+) -> Result<ResponseEnvelope, String> {
     tokio::time::timeout(std::time::Duration::from_secs(150), async {
         let mut stream = gcoms::sdk::local::connect(&gcoms::sdk::LocalEndpoint::new(endpoint))
             .await
             .map_err(|e| e.to_string())?;
+        if let Some((uid, pid)) = peer {
+            #[cfg(unix)]
+            {
+                let actual = stream.peer_cred().map_err(|e| e.to_string())?;
+                if actual.uid() != uid
+                    || pid.is_some_and(|pid| {
+                        actual.pid().and_then(|p| u32::try_from(p).ok()) != Some(pid)
+                    })
+                {
+                    return Err(
+                        "The local endpoint is not owned by the registered host process".into(),
+                    );
+                }
+            }
+            #[cfg(not(unix))]
+            {
+                let _ = (uid, pid);
+                return Err("Unix host credentials are unavailable on this platform".into());
+            }
+        }
         let encoded = serde_json::to_vec(request).map_err(|e| e.to_string())?;
         gcoms::sdk::local_rpc::write(&mut stream, &encoded, MAX_FRAME_BYTES)
             .await

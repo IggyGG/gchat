@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-test('cold host failure is actionable before identity entry and retries explicitly', async ({ page }, info) => {
+for (const width of [390, 1100]) test(`cold host failure is actionable before identity entry at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({width,height:720});
   await page.goto('/?host-failure=host_configuration&cold-host-failure');
   await expect(page.getByRole('heading', { name: 'The local host needs attention.' })).toBeVisible();
   await expect(page.getByText('This identity uses a managed host. Restore its registered configuration to reconnect.', { exact: true })).toHaveCount(1);
   await expect(page.getByLabel('Identity passphrase', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Create identity', exact: true })).toHaveCount(0);
   await page.screenshot({path:info.outputPath('cold-host-error.png'),fullPage:true});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => (window as any).fixture.restoreHost());
   await page.getByRole('button', { name: 'Retry after configuration repair', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Message or command' })).toBeVisible();

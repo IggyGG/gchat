@@ -1043,7 +1043,7 @@
           {/if}
         </div>
       {/if}
-      {#if connectionError && !connectionError.retryable}<div class="notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
+      {#if connectionError && !connectionError.retryable}<div class="notice connection-notice" role="status"><span>{connectionError.message}</span><button onclick={() => { if (['instance', 'version', 'authentication'].includes(connectionError?.code ?? '')) location.reload(); else void refreshInBackground(); }}>{connectionError.action}</button></div>{/if}
       {#if (pendingInvitation || stagedInvitation) && !locked}<div class="notice" role="status"><span>An invitation was opened. Review its network and channel before joining.</span><button onclick={() => { incomingInvitation = pendingInvitation || stagedInvitation; if (workspaceReady) openDialog('join'); else { replacingInvitation = true; utility = 'network'; } consumeInvitation?.(); stagedInvitation = ''; }}>Review invitation</button><button onclick={() => { consumeInvitation?.(); stagedInvitation = ''; }}>Dismiss</button></div>{/if}
       {#if locked}
         <Welcome profileKey={`${snapshot?.instance.id ?? ''}:${snapshot?.instance.bootId ?? ''}`} known={!!snapshot} unavailable={!snapshot && !!connectionError} {creating} protocolLocked={snapshot?.instance.protocolLocked ?? false} {busy} bind:password bind:rememberDevice mobile={!!deviceUnlock} companion={!!tools} submit={unlock} error={notice || (!snapshot && connectionError && !connectionError.retryable ? '' : connectionError?.message) || ''} receiveInvitation={code => stagedInvitation = code} />
@@ -1416,6 +1416,7 @@
   .notice,.retry { font:13px/1.5 var(--ghost-font); margin:4px 0; padding:4px 0; min-width:0; }
   .notice > span { min-width:0; overflow-wrap:anywhere; }
   .notice button { flex:none; }
+  .connection-notice { padding:12px 16px; margin:0; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--ghost-line); }
   .provider-errors { padding:6px 16px; font-size:13px; background:color-mix(in srgb,var(--ghost-warning) 6%,transparent); }
   .provider-errors p { margin:4px 0; overflow-wrap:anywhere; }
   .composer { padding:6px 10px; gap:6px; }

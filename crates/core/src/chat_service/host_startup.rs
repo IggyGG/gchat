@@ -35,27 +35,46 @@ async fn probe(config: &InstanceConfig, instance: &str) -> Result<Option<ChatCli
             .map_err(|e| error("host_configuration", e))?;
     let binding = host_registration::capability(config, instance)
         .map_err(|e| error("host_configuration", e))?;
-    let client = tokio::time::timeout(
-        Duration::from_secs(2),
-        ChatClient::connect_host(
-            &endpoint,
-            Some(instance),
-            strict.then_some(binding.as_str()),
+    let process_id = match &config.managed_service {
+        Some(unit) => Some(
+            crate::managed_updates::running_service_pid(unit)
+                .await
+                .map_err(|e| error("host_mismatch", e))?,
         ),
-    )
-    .await
-    .map_err(|_| {
-        error(
-            "host_unavailable",
-            "The selected local host handshake timed out.",
-        )
-    })?
-    .map_err(|e| error("host_mismatch", e))?;
-    if let Some(unit) = &config.managed_service {
-        crate::managed_updates::require_running_service(unit)
+        None => None,
+    };
+    let connect = async {
+        #[cfg(unix)]
+        {
+            ChatClient::connect_owned_host(
+                &endpoint,
+                Some(instance),
+                strict.then_some(binding.as_str()),
+                rustix::process::getuid().as_raw(),
+                process_id,
+            )
             .await
-            .map_err(|e| error("host_mismatch", e))?;
-    }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = process_id;
+            ChatClient::connect_host(
+                &endpoint,
+                Some(instance),
+                strict.then_some(binding.as_str()),
+            )
+            .await
+        }
+    };
+    let client = tokio::time::timeout(Duration::from_secs(2), connect)
+        .await
+        .map_err(|_| {
+            error(
+                "host_unavailable",
+                "The selected local host handshake timed out.",
+            )
+        })?
+        .map_err(|e| error("host_mismatch", e))?;
     Ok(Some(client))
 }
 

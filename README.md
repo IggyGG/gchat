@@ -167,7 +167,12 @@ script. Public manifests use versioned registry dependencies; no private Ghost
 checkout or sibling layout is required by the released project.
 
 Run `gchat paths` to inspect the existing platform profile/archive locations.
-The desktop app launches its own local service worker. `gchat daemon --interactive`
+The desktop starts or attaches to the selected local host. Scoped installations
+retain an owner-private startup association after successful unlock; subsequent
+desktop and terminal launches recover the fleet configuration and start the exact
+registered Linux user service when needed. Conflicting host configuration is
+reported before attachment. See [durable host startup](docs/DURABLE_HOST.md) for
+the contract and qualification status. `gchat daemon --interactive`
 starts a locked standalone service; attach a UI to unlock the selected instance.
 Headless deployments may use an owner-only passphrase file or private stdin pipe.
 Never put passphrases on a command line. An existing archive with a separate

@@ -66,13 +66,13 @@ pub async fn start_service(unit: &str) -> Result<(), String> {
     .map_err(|_| "Service activation timed out")?
     .map_err(|_| "Service manager is unavailable")?;
     if !result.status.success() {
-        return Err("The updated service could not start; inspect its service status".into());
+        return Err("The registered service could not start; inspect its service status".into());
     }
     Ok(())
 }
 
 /// A successful socket connection alone does not prove the registered manager owns it.
-pub(crate) async fn require_running_service(unit: &str) -> Result<(), String> {
+pub(crate) async fn running_service_pid(unit: &str) -> Result<u32, String> {
     if !cfg!(target_os = "linux") || !valid_unit(unit) {
         return Err("The registered host requires its Linux user service".into());
     }
@@ -101,7 +101,7 @@ pub(crate) async fn require_running_service(unit: &str) -> Result<(), String> {
     {
         return Err("The registered host process no longer belongs to its service".into());
     }
-    Ok(())
+    Ok(pid.expect("checked service PID"))
 }
 
 #[cfg(test)]

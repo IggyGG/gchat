@@ -107,6 +107,32 @@ async fn concurrent_views_attach_to_the_same_registered_locked_host() {
 }
 
 #[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn managed_handshake_refuses_another_process_before_creating_handles() {
+    let dir = tempfile::tempdir().unwrap();
+    private_fs::make_private(dir.path(), true).unwrap();
+    let config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    let host = InstanceHost::new(config.clone()).unwrap();
+    let instance = host.instance_id().to_owned();
+    let (stop, server) = serve(host, config.chat_endpoint()).await;
+    let result = ChatClient::connect_owned_host(
+        &config.chat_endpoint(),
+        Some(&instance),
+        None,
+        rustix::process::getuid().as_raw(),
+        Some(std::process::id() + 1),
+    )
+    .await;
+    assert!(result.unwrap_err().contains("registered host process"));
+    assert!(!config
+        .protocol_socket
+        .with_extension("chat.handles")
+        .exists());
+    stop.send_replace(true);
+    server.await.unwrap().unwrap();
+}
+
+#[cfg(unix)]
 #[test]
 fn launch_lock_does_not_follow_a_symlink() {
     let dir = tempfile::tempdir().unwrap();
