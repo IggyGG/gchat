@@ -30,7 +30,10 @@ export function operationLabel(result: OperationResult, checking = false): strin
   if (result.state === 'unknown') return 'Outcome unconfirmed';
   if (result.state === 'rejected') return 'Not completed';
   const output = result.output;
-  if (!output) return result.message && result.message !== 'Completed.' ? result.message : 'Done';
+  if (!output) {
+    const summary = result.message && result.message !== 'Completed.' ? result.message.split('\n', 1)[0] : 'Done';
+    return summary.length > 120 ? summary.slice(0, 117) + '…' : summary;
+  }
   if (output.kind === 'invitation' || output.kind === 'reusable_invitation') return 'Invitation created';
   if (output.kind === 'invitation_options') return 'Invitation options';
   if (output.kind === 'text') return output.title;

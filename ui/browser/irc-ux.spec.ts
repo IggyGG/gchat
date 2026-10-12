@@ -139,6 +139,69 @@ test('notification invitation stays quiet and read-only input cannot be sent', a
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r:any)=>r.kind==='submit' && r.text==='keep this unsent'))).toBe(false);
 });
 
+test('successful command feedback is retained once beside its request', async ({page})=>{
+  await ready(page);
+  await command(page,'/topic Planning together');
+  await expect(page.locator('.header-topic')).toHaveText('Planning together');
+  await expect(page.locator('.private-line')).toContainText('Topic saved.');
+  await expect(page.getByText('Topic saved.',{exact:true})).toHaveCount(1);
+  await expect(page.locator('.notice')).toHaveCount(0);
+  await page.locator('.private-line button').click();
+  await expect(page.getByRole('dialog')).toContainText('Topic saved.');
+});
+
+for (const width of [390,1100]) test(`concurrent transfers and repeated uncertain sends keep one row each at ${width}px`,async({page},info)=>{
+  await page.setViewportSize({width,height:720}); await ready(page);
+  await page.evaluate(()=>{
+    const f=(window as any).fixture;
+    f.setFiles(Array.from({length:4},(_,i)=>({id:'batch-file-'+i,conversation:'channel/general',name:`file-${i}.txt`,size_bytes:'1048576',verified_bytes:String(i*100000),state:'downloading',sources:2,verified_sources:1,completed_by:0,error:null})));
+    f.holdSends();
+  });
+  for(let i=0;i<4;i++) await command(page,'Pending text '+i);
+  await expect(page.locator('.message.mine')).toHaveCount(4);
+  await expect(page.locator('.message.mine .acceptance').filter({hasText:'Sending…'})).toHaveCount(4);
+  await expect(page.locator('.transfer')).toHaveCount(4);
+  await page.evaluate(()=>{(window as any).fixture.setSendOutcome('outcome_unknown');(window as any).fixture.releaseSends();});
+  await expect(page.locator('.message.mine .acceptance').filter({hasText:'Outcome unconfirmed'})).toHaveCount(4);
+  await expect(page.locator('.retry')).toHaveCount(0);
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('.message.mine')).toHaveCount(4);
+  await expect(page.locator('.transfer')).toHaveCount(4);
+  await expect(page.getByRole('button',{name:'Send',exact:true})).toBeInViewport({ratio:1});
+  await noOverflow(page);
+  await page.screenshot({path:info.outputPath('concurrent-attention.png')});
+});
+
+test('font changes, resizing and expanding activity preserve the scrollback anchor',async({page})=>{
+  await ready(page);
+  await page.evaluate(()=>{
+    const now=Math.floor(Date.now()/1000),f=(window as any).fixture;
+    f.setMessages(Array.from({length:70},(_,i)=>({id:'anchored-'+i,conversationId:'channel/general',memberId:'peer',nickname:'Ada',body:'Reading line '+i+' with enough content to wrap at a narrower width.',timestamp:now-140+i*2,mine:false,delivery:null,result:null})));
+    f.setActivity(Array.from({length:10},(_,i)=>({id:'before-anchor-'+i,conversation:'channel/general',kind:'join',text:'Guest '+i+' joined',timestamp:now-120+i/10})));
+  });
+  await expect(page.getByRole('log')).toContainText('Reading line 69');
+  await page.getByRole('log').hover(); await page.mouse.wheel(0,-700);
+  await expect(page.getByRole('button',{name:'Jump to latest'})).toBeVisible();
+  const anchor=await page.getByRole('log').evaluate(log=>{
+    const top=log.getBoundingClientRect().top;
+    const row=[...log.querySelectorAll<HTMLElement>('[data-timeline-key]')].find(el=>el.getBoundingClientRect().bottom>top)!;
+    return {key:row.dataset.timelineKey,offset:row.getBoundingClientRect().top-top};
+  });
+  const offset=()=>page.getByRole('log').evaluate((log,key)=>{
+    const row=[...log.querySelectorAll<HTMLElement>('[data-timeline-key]')].find(el=>el.dataset.timelineKey===key)!;
+    return row.getBoundingClientRect().top-log.getBoundingClientRect().top;
+  },anchor.key);
+  await command(page,'/font readable');
+  await expect.poll(offset).toBeCloseTo(anchor.offset,0);
+  await page.setViewportSize({width:768,height:600});
+  await expect.poll(offset).toBeCloseTo(anchor.offset,0);
+  await page.locator('.activity details').evaluate((details:HTMLDetailsElement)=>details.open=true);
+  await expect.poll(offset).toBeCloseTo(anchor.offset,0);
+  await page.evaluate(()=>(window as any).fixture.receive('New text while reading'));
+  await expect(page.getByRole('log')).toContainText('New text while reading');
+  await expect.poll(offset).toBeCloseTo(anchor.offset,0);
+});
+
 test('search context loads earlier pages and stops a non-advancing history cursor', async ({page})=>{
   await ready(page);
   await page.evaluate(()=>{(window as any).fixture.seedMessages(80);(window as any).fixture.setHistoryWindow(20);});

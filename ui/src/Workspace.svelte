@@ -197,7 +197,7 @@
   const fileControllers = new Map<string, FileController>();
   let fileStates = $state<Record<string, FileViewState>>({});
   const visibleResults = $derived(results.filter(r => r.conversation === selected && r.network === (transport.networkFor(selected) ?? transport.active ?? '')
-    && !messages.some(m => m.operationId === r.id) && (r.output || r.body || r.state !== 'complete')));
+    && !messages.some(m => m.operationId === r.id) && (r.output || r.body || r.state !== 'complete' || (r.message && r.message !== 'Completed.'))));
   const timeline = $derived(groupActivity([
     ...messages.map(message => ({ timestamp: results.find(r => r.id === message.operationId)?.started ? results.find(r => r.id === message.operationId)!.started / 1000 : message.timestamp, id: message.operationId ?? message.id, message, activity: undefined, result: undefined, transfer: undefined })),
     ...(snapshot?.activity ?? []).filter(a => a.conversation === selected).map(activity => ({ timestamp: activity.timestamp, id: activity.id, message: undefined, activity, result: undefined, help: false, transfer: undefined })),

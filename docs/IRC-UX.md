@@ -75,3 +75,13 @@ The unread queue comparison found
 (2025 snapshot, cosine 0.6519, rerank 0.8439). It is not a matching implementation;
 the useful shared idiom is single-owner draining with cleanup. GChat's read-only
 scanner additionally rejects superseded profile/unread tokens and repeated cursors.
+
+The final search-context comparison found
+`RocketChat/Rocket.Chat:apps/meteor/client/lib/utils/legacyJumpToMessage.ts`
+(2025 snapshot, cosine 0.7210, rerank 0.9149) and
+`CherryHQ/cherry-studio-hmos-desktop:src/renderer/src/pages/history/components/SearchMessage.tsx`
+(cosine 0.7508, rerank 0.9325). Both expose message-context navigation. GChat
+preserves its conversation/search generation, deduplicates overlapping history,
+stops repeated cursors and finds literal DOM data IDs rather than interpolating
+message IDs into selectors. A browser regression exercises the paginated path
+and a non-advancing provider response.
