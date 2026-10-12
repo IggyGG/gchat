@@ -16,6 +16,23 @@ F5 release simplification, 2026-10-07: implemented shared production relay/fixtu
 
 Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrastructure targets; Linux, Windows, ARM Mac and SDK 0.1.167 are published. Controller-only qualification, persistent provider polling/cooldowns and explicit Intel-only unchanged-runtime deployment provenance are under validation. Android 1182 observation resumes its accepted submission; iOS 1.1.82 still requires Apple encryption approval. Intel cold-member recovery now uses the final durable checkpoint, with a separate native diagnostic. No new chat API or wire version is introduced. Source implementation does not itself claim activation or store availability.
 
+## GCHAT-UX — conversation-first IRC workspace
+
+2026-10-12 (OC): implementation and visual refinement in the `irc-ux` task.
+The user selected persistent, independently collapsible desktop channel/user
+lists and responsive drawers. Shared message rows preserve pending/confirmed
+text; routine activity and private outcomes are compact; completion, history,
+search/context navigation, unread highlights, notifications and forms are refined.
+Actual visual review found and repaired inverse/low-contrast IRC colors, Help
+spacing and clipped dialog/composer bounds under CSS text zoom. Sources
+`d0a7999` and `f259d2b` are published checkpoints. Both browser engines passed
+105 checks at `f259d2b`, and native Linux WebKitGTK passed 12 source-bound checks.
+Final zoom-refinement qualification and publication are in progress.
+Behavior and comparison provenance: [docs/IRC-UX.md](docs/IRC-UX.md).
+Retained screenshots and original failures: `test-evidence/irc-ux/`.
+
+## Earlier release checkpoints
+
 Scope reduction, 2026-10-05: the owner deferred desktop sharing and chose Pi access tunnels instead. Keep its implementation dormant: GChat forces sharing and router mapping off and refuses enable requests. Keep the SDK/provider work and capacity budgets intact; do not remove R1 repairs. The desktop-only child configuration hook is excluded on Android/iOS, correcting Android151 compilation. Desktop contribution publication/acceptance is no longer part of this release; earlier R2 entries are historical. Pi access and actual fleet delivery remain separate acceptance work. Six focused Rust regressions pass, including the corrected invitation fixture; original setup/fixture failures are retained. See [validation evidence](docs/evidence/relay-capacity-20261005/desktop-sharing-deferral.json). Native mobile qualification remains pending.
 
 Selected-flight admission, 2026-10-05: candidate150 was selected but queued behind 76 retained building/verifying rows from candidates53–85. Scope both initial and untouched storage-recovery admission to the selected single-flight release, retaining legacy coalescing for other candidates/configurations. Preserve old request identities, late collection, worker bounds and all qualification gates. Qualify and activate the corrected controller through its existing path; do not repair this by editing the production ledger.

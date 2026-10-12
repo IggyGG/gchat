@@ -204,6 +204,15 @@ See [TESTING.md](TESTING.md), [integration](docs/INTEGRATION.md),
 [network operation](docs/NETWORK.md) and [SECURITY.md](SECURITY.md).
 GComs provides transport and typed services; GChat owns chat behavior and UI.
 
+### Conversation workspace
+
+The [IRC-style workspace](docs/IRC-UX.md) keeps compact channel and user lists
+visible on desktop and uses drawers on narrow screens. Each list can be collapsed
+independently. Messages retain their layout while sending; routine channel activity
+is grouped and operation details stay compact. Tab completion, searchable `/help`,
+`/find` with context navigation, unread/mention indicators and both chat fonts are
+available. Notifications are an optional inline choice after unlock.
+
 MIT OR Apache-2.0, with [separate third-party notices](NOTICE.md).
 Current downloads cover Linux x86_64 and Android through Google Play.
 Mac and Windows current-network updates are being qualified; iOS publication

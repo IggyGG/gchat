@@ -79,7 +79,7 @@
     {#if helpHeading}<h2>Commands</h2>{/if}
     <label for="command-search">Find a command</label><input id="command-search" type="search" bind:value={helpSearch} placeholder="Name or description" />
     {#if !helpSearch}<nav class="common" aria-label="Common commands">{#each output.commands.filter(command => command.available && common.has(command.name)) as command}<button aria-label={`Prepare ${command.name}`} onclick={() => prepareCommand?.(command.usage)}>{command.name}</button>{/each}</nav>{/if}
-    <ul class="commands">{#each matchingCommands as command}<li><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button><span>{' — '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></li>{/each}</ul>
+    <ul class="commands">{#each matchingCommands as command}<li><button class="command" aria-label={command.usage} disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}><strong>{command.usage}</strong><span>{' — '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></button></li>{/each}</ul>
     {#if !matchingCommands.length}<p>No matching commands.</p>{/if}
     <details><summary>Keyboard shortcuts</summary><dl><dt>Enter / Shift+Enter</dt><dd>Send / new line</dd><dt>Tab</dt><dd>Complete a nickname or command; cycle suggestions</dd><dt>↑ / ↓ then Enter</dt><dd>Choose a suggestion</dd><dt>↑ at the start / ↓ at the end</dt><dd>Previous / next input; your draft is kept</dd><dt>Alt+← / Alt+→</dt><dd>Previous / next conversation</dd><dt>Ctrl/Cmd+F</dt><dd>Find in this conversation</dd><dt>Escape</dt><dd>Dismiss suggestions or return to chat</dd></dl></details>
   {:else if output.kind === 'invitation_options'}
@@ -169,7 +169,8 @@
   .commands { list-style:none; padding:0; margin:0; font:inherit; }.commands li { margin:0; padding:0; line-height:inherit; }.commands span { color:var(--muted); }
   textarea { width:100%; color:var(--ink); background:var(--bg); font:inherit; resize:vertical; }
   pre { white-space:pre-wrap; font:inherit; margin:0; }
-  .command { display:inline; min-height:0; min-width:0; line-height:inherit; margin:0; padding:0; color:var(--accent); }.command:disabled { color:var(--muted); cursor:default; }
-  .commands li { padding:5px 0; }.common { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 16px; }.common button { background:color-mix(in srgb,var(--accent) 8%,transparent); text-decoration:none; border-radius:4px; padding:6px 10px; }
+  .command { display:block; width:100%; text-align:left; text-decoration:none; min-height:32px; min-width:0; line-height:1.5; margin:0; padding:5px 0; color:var(--accent); }.command > strong { font-weight:normal; text-decoration:underline; }.command:disabled { color:var(--muted); cursor:default; }
+  .commands li { padding:0; }.common { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 12px; }.common button { background:color-mix(in srgb,var(--accent) 8%,transparent); text-decoration:none; border-radius:4px; padding:6px 10px; }
+  @media(pointer:coarse) { .command { min-height:44px; } }
   details { margin-top:16px; } summary { cursor:pointer; } dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:8px; } dd { margin:0; color:var(--muted); }
 </style>

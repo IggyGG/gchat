@@ -4,9 +4,10 @@ import { fitVisualViewport, isTouchActivation } from './viewport';
 afterEach(() => vi.unstubAllGlobals());
 
 function setup(coarse = true) {
-  const viewport = Object.assign(new EventTarget(), { height: 844, offsetTop: 0, scale: 1 });
+  const viewport = Object.assign(new EventTarget(), { width:390, height: 844, offsetTop: 0, scale: 1 });
   const pointer = Object.assign(new EventTarget(), { matches: coarse });
-  const host = Object.assign(new EventTarget(), { visualViewport: viewport, matchMedia: () => pointer });
+  let zoom = '1', changed: (() => void) | undefined;
+  const host = Object.assign(new EventTarget(), { visualViewport: viewport, matchMedia: () => pointer, getComputedStyle: () => ({ zoom }) });
   const values = new Map<string, string>();
   const node = { style: {
     getPropertyValue: (name: string) => values.get(name) ?? '',
@@ -14,7 +15,9 @@ function setup(coarse = true) {
     removeProperty: (name: string) => { values.delete(name); },
   } } as unknown as HTMLElement;
   vi.stubGlobal('window', host);
-  return { viewport, pointer, host, node, values };
+  vi.stubGlobal('document', {documentElement:{}});
+  vi.stubGlobal('MutationObserver', class { constructor(callback: () => void) { changed = callback; } observe() {} disconnect() { changed = undefined; } });
+  return { viewport, pointer, host, node, values, zoom: (value: string) => { zoom = value; changed?.(); } };
 }
 
 describe('touch keyboard viewport', () => {
@@ -73,5 +76,18 @@ describe('touch keyboard viewport', () => {
   it('uses normal CSS when the browser has no visual viewport API', () => {
     vi.stubGlobal('window', { visualViewport: null });
     expect(fitVisualViewport({} as HTMLElement)).toBeUndefined();
+  });
+
+  it('fits CSS text zoom on desktop without treating pinch zoom as text zoom', () => {
+    const { node, values, zoom, viewport } = setup(false);
+    const action = fitVisualViewport(node);
+    zoom('2');
+    expect(values.get('--gchat-viewport-height')).toBe('422px');
+    expect(values.get('--gchat-viewport-width')).toBe('195px');
+    expect(values.get('--gchat-viewport-position')).toBe('relative');
+    Object.assign(viewport,{scale:2,height:200}); viewport.dispatchEvent(new Event('resize'));
+    expect(values.get('--gchat-viewport-height')).toBe('422px');
+    zoom('1'); expect(values.size).toBe(0);
+    action?.destroy();
   });
 });

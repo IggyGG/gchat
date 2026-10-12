@@ -1,5 +1,36 @@
 # Validation
 
+## IRC conversation workspace
+
+Run `npm run check`, `npm test`, `npm run build`,
+`npm run test:browser -w @gchat/ui` and
+`npm run test:browser -w @gchat/ui -- --browser=webkit` with the paired npm inputs.
+Run `python3 scripts/check-source.py` before publication.
+
+The existing lifecycle, invitation, picker, recovery and update tests remain
+required. `irc-ux.spec.ts` and `visual-review.spec.ts` exercise persistent/mobile
+navigation, pending-to-confirmed text, actual contrast, keyboard completion,
+covered-chat read markers, search context, noisy events, notifications and
+read-only history. The matrix includes 320/390/768/1100/1440 CSS pixels,
+short viewports, 200% zoom and missing web fonts. Inspect the resulting images;
+DOM assertions alone do not establish visual quality.
+
+For native Linux WebKitGTK (GTK3, WebKit2 4.1, PyGObject with Cairo), start the
+isolated UI fixture with `GCHAT_UI_PORT=1438 node ui/browser/server.mjs`, then run:
+
+```sh
+dbus-run-session xvfb-run -a python3 ui/browser/native-webkit.py \
+  --source "$(git rev-parse HEAD)" --width 1100 \
+  --output test-evidence/irc-ux/native-1100
+```
+
+Repeat at 320 and 390 pixels. Keep separate output paths per source/run. The
+harness uses ephemeral web contexts and reports screenshots plus assertions for
+layout, pending/confirmed multiline messages and scrollback. This qualifies the
+shared UI in the native engine; installer/network acceptance has its own gates.
+Use the workstation's background/build-storage runner for these commands when
+required by its local policy, and declare custom build output directories.
+
 Current release work covers GComs/GChat source, signed installers, and GChat's
 website/onboarding. Validate secure connections on Linux, the native MSVC Windows
 VM, and GitHub-hosted macOS Apple Silicon/Intel runners. The local Mac remains

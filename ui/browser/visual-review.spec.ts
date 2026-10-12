@@ -54,11 +54,27 @@ test('font fallback and 200 percent zoom retain usable navigation and composer',
   await page.setViewportSize({width:768,height:800}); await page.goto('/'); await populate(page);
   await page.evaluate(()=>document.documentElement.style.zoom='2');
   await expect(page.getByRole('textbox',{name:'Message or command'})).toBeVisible();
+  await expect.poll(()=>page.locator('.composer').evaluate(el=>el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(800);
   await page.getByRole('button',{name:'Help and commands'}).click();
   await expect(page.getByLabel('Find a command')).toBeVisible();
+  const back = page.getByRole('button',{name:'Close dialog',exact:true});
+  await expect(back).toBeInViewport({ratio:1});
+  await expect(page.getByLabel('Find a command')).toBeInViewport({ratio:1});
   await page.screenshot({path:info.outputPath('fallback-zoom.png')});
   await page.keyboard.press('Escape');
   await expect(page.getByRole('log')).toContainText('a little Unicode');
+});
+
+test('text zoom collapses wide rails and keeps both composer and dialog header on screen', async ({page})=>{
+  await page.setViewportSize({width:1100,height:800}); await page.goto('/');
+  await expect(page.locator('#channel-navigation')).toBeVisible();
+  await page.evaluate(()=>document.documentElement.style.zoom='2');
+  await expect(page.locator('#channel-navigation')).toBeHidden();
+  await expect.poll(()=>page.locator('.composer').evaluate(el=>el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(800);
+  await page.getByRole('button',{name:'Help and commands'}).click();
+  await expect(page.getByRole('button',{name:'Close dialog'})).toBeInViewport({ratio:1});
+  await page.getByLabel('Find a command').fill('font');
+  await expect(page.locator('.commands li')).toHaveCount(1);
 });
 
 test('all IRC color pairs, inverse mentions and invalid-foreground resets remain readable', async ({page},info)=>{

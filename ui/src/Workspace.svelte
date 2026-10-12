@@ -90,6 +90,7 @@
   let channelsOpen = $state(false);
   let panel = $state<'users' | 'files' | null>(null);
   let wide = $state(false);
+  let workspaceElement = $state<HTMLDivElement>();
   let channelsCollapsed = $state(false), usersCollapsed = $state(false);
   const channelsVisible = $derived(wide ? !channelsCollapsed : channelsOpen);
   const drawerModal = $derived(!wide && (channelsOpen || panel === 'users'));
@@ -491,16 +492,16 @@
   onMount(() => {
     running = true; font = readFont();
     try { channelsCollapsed = localStorage.getItem('gchat.layout.channels-collapsed') === 'true'; usersCollapsed = localStorage.getItem('gchat.layout.users-collapsed') === 'true'; } catch { /* Memory-only preference. */ }
-    const width = window.matchMedia('(min-width:1000px)');
-    const resize = () => { wide = width.matches; channelsOpen = false; if (panel === 'users') panel = null; };
-    resize(); width.addEventListener('change', resize);
+    const resize = () => { const next = (workspaceElement?.clientWidth ?? window.innerWidth) >= 1000; if (next === wide) return; wide = next; channelsOpen = false; if (panel === 'users') panel = null; };
+    const width = new ResizeObserver(resize);
+    resize(); if (workspaceElement) width.observe(workspaceElement);
     const networkTimer = setInterval(() => { void refreshNetwork(); void refreshPush(); }, 2000);
     void watch();
     const visible = () => { if (!document.hidden && (!connectionError || connectionError.retryable)) void refreshInBackground(); };
     document.addEventListener('visibilitychange', visible);
     const disconnected = () => connectionFailed(new Error('Network unavailable. Drafts and loaded history remain available.'));
     window.addEventListener('online', visible); window.addEventListener('offline', disconnected);
-    return () => { running = false; attention.clear(); width.removeEventListener('change', resize); clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); picker.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
+    return () => { running = false; attention.clear(); width.disconnect(); clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); picker.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
   });
   async function refreshInBackground() {
     try { await refresh(); }
@@ -980,7 +981,7 @@
 {/snippet}
 
 <svelte:window onkeydown={cycle} onfocus={() => { void markRead(); void refreshNetwork(); void fileController?.refresh(); }} />
-<div class="gchat" class:wide class:mac={nativeShell?.mac} class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
+<div class="gchat" bind:this={workspaceElement} class:wide class:mac={nativeShell?.mac} class:unavailable={offline} class:readable={font === 'readable'} use:fitVisualViewport>
   <ResizeHandles shell={nativeShell} />
   <header class="titlebar" class:mac={nativeShell?.mac} inert={navigationModal}>
     {#if nativeShell}<div class="drag-region" role="presentation" onpointerdown={event => { if (event.button === 0) void nativeShell?.drag(); }} ondblclick={() => void nativeShell?.maximize()}></div>{/if}
@@ -1111,7 +1112,17 @@
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !fileController) return;
           event.preventDefault(); if (event.key !== 'Home') void openNavigation('files', event.currentTarget.querySelector('button'));
         }}><button role="tab" id="users-tab" tabindex="0" aria-selected="true" aria-controls="users-panel">Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex="-1" aria-selected="false" onclick={event => void openNavigation('files', event.currentTarget)}>Files <small>{fileCount}</small></button>{/if}</div><button class="hide-users" aria-label="Close details" title="Hide users" onclick={() => hideNavigation('users')}>›</button></div>
-        {#if usersVisible}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => { if (!wide) closeNavigation(); void send(`${active.policy ? '/whois' : '/query'} ${member.id}`); }} title={member.presence?.state === 'away' ? `Away: ${member.presence.reason}` : member.isSelf ? 'Your channel identity' : active.policy ? 'Show channel member details' : 'Open private chat'}><bdi class="member-name">{member.capabilities.includes('channel.owner') ? '~' : member.capabilities.includes('channel.operator') ? '@' : member.capabilities.includes('channel.voice') ? '+' : ''}{member.nickname}</bdi>{#if member.presence?.state === 'away'}<small title={member.presence.reason}>Away</small>{:else if member.presence?.state === 'available'}<small>Available</small>{/if}{#if !member.isSelf && member.recentlyActive}<small title="Recently active">●</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}{#if active.owner && !active.policy}<button disabled={busy} onclick={() => { if (!wide) closeNavigation(); void send('/recover-membership'); }}>Channel recovery…</button>{/if}</div>
+        {#if usersVisible}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">
+          {#each active.members as member (member.id)}
+            <button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => { if (!wide) closeNavigation(); void send(`${active.policy ? '/whois' : '/query'} ${member.id}`); }} title={member.presence?.state === 'away' ? `Away: ${member.presence.reason}` : member.isSelf ? 'Your channel identity' : active.policy ? 'Show channel member details' : 'Open private chat'}>
+              <bdi class="member-name">{member.capabilities.includes('channel.owner') ? '~' : member.capabilities.includes('channel.operator') ? '@' : member.capabilities.includes('channel.voice') ? '+' : ''}{member.nickname}</bdi>
+              {#if member.presence?.state === 'away'}<small title={member.presence.reason}>Away</small>{:else if member.presence?.state === 'available'}<small>Available</small>{/if}
+              {#if !member.isSelf && member.recentlyActive}<small title="Recently active">●</small>{/if}{#if member.isSelf}<small>you</small>{/if}
+            </button>
+          {/each}
+          {#if !active.members.length}<p>No users to display.</p>{/if}
+          {#if active.owner && !active.policy}<button class="roster-action" disabled={busy} onclick={() => { if (!wide) closeNavigation(); void send('/recover-membership'); }}>Channel recovery…</button>{/if}
+        </div>
         {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
       </aside>
     {/if}
@@ -1386,6 +1397,7 @@
   .users-list button { min-height:32px; align-items:baseline; padding:4px 6px; }
   .member-name { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
   .users-list small { flex:none; font-size:11px; }
+  .users-list .roster-action { color:var(--muted); font-size:12px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
   .transcript { padding:10px 16px; }
   .private-line { margin:2px 0; padding:1px 0; line-height:var(--chat-leading); font-size:14px; }
   .private-line time { margin-inline-end:.65em; font-size:12px; }

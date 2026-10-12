@@ -26,7 +26,7 @@
   .nick { color:var(--nick,#a9c7e8); margin-inline-end:.5em; }
   .mine .nick { color:var(--self); font-weight:bold; }
   .body { white-space:pre-wrap; overflow-wrap:anywhere; unicode-bidi:plaintext; }
-  .acceptance { color:var(--muted); font:12px/1.4 var(--ghost-font); }
+  .acceptance { color:var(--muted); font:12px/1.4 var(--ghost-font); margin-inline-start:.35em; }
   .attention .acceptance { color:var(--ghost-warning); }
   .highlighted,.focused { background:color-mix(in srgb,var(--accent) 12%,transparent); box-shadow:inset 2px 0 var(--accent); }
   .message-action { font:12px/1.4 var(--ghost-font); color:var(--accent); border:0; background:transparent; padding:2px 6px; min-height:24px; cursor:pointer; text-decoration:underline; }

@@ -1,9 +1,12 @@
 # Conversation workspace
 
-Channels, users and files open as overlays from the circular edge controls. The
-channel drawer's `+` starts Join/Create. Drawers do not resize messages; Escape,
-the inward arrow or the backdrop closes them and restores focus. The network dot
-is next to the brand, with the instance identity under **Your identity**.
+Channels and users stay visible as independently collapsible lists on wide
+desktop windows. Narrow windows use overlays opened from the conversation header;
+Escape, the close control or backdrop restores focus. Add channel starts
+Join/Create. Files opens its focused view. Unread counts remain visible when the
+channel list is closed; mentions/highlights have an `@` indicator. The network dot
+is next to the brand, with a readable label when attention is needed and the
+instance identity under **Your identity**. See [IRC UX](IRC-UX.md).
 
 There is no permanent Status conversation. Unlock restores the last available
 conversation in this view; an obsolete Status selection chooses the first one.
@@ -11,11 +14,12 @@ With no conversations, Join/Create is shown. `/status` remains a private command
 result. A missing activity signal is not an identity or delivery failure. Self is
 marked `you`; peers only show a recent activity label when one exists.
 
-`?` and `/help` render private terminal output. Clicking a command prepares it in
-the composer without sending it. Invitations, find results and operation details
+`?` and `/help` open searchable private command help with common actions and
+keyboard shortcuts. Clicking a command prepares it in the composer or opens its
+form without sending it. Invitations, find results and operation details
 also remain private. Checking an uncertain operation queries its original ID;
 it never resubmits. The result store deduplicates recovered and live responses.
-Create asks for name, visibility and nickname in private-answer mode and requires
+Create asks for name, visibility and nickname in a focused form and requires
 confirmation. Escape or `/cancel` restores the conversation draft. Join retains
 an explicit signed-network preview and confirmation. Settings, unlock and native
 file pickers remain separate controls.
