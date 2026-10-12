@@ -16,11 +16,11 @@ from release_pair import canonical
 import release_controller as controller
 
 
-def intent_fixture(state):
+def intent_fixture(state, baseline=None):
     before = {key: str(i) * 64 for i, key in enumerate(
         ('artifacts', 'infrastructure', 'controller', 'qualification'), 1)}
     after = dict(before, controller='5' * 64, qualification='6' * 64)
-    baseline = candidate()
+    baseline = candidate() if baseline is None else baseline
     sources = copy.deepcopy(baseline['sources'])
     sources['gchat'] = {'commit': 'd' * 40, 'tree': 'e' * 40}
     return controller.queue(state, baseline, sources, before, after)
@@ -120,6 +120,33 @@ class ControllerTests(unittest.TestCase):
             with patch('release_inputs.fingerprints', return_value=intent['baseline_inputs']):
                 with self.assertRaisesRegex(ValueError, 'committed input'):
                     controller.verify_inputs(intent, {})
+
+    def test_pending_native_baseline_cannot_preempt_the_selected_controller_repair(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller.save(root / 'deployment/desired.json', {'release_id': candidate()['release_id']})
+            current = intent_fixture(root)
+            pending = intent_fixture(root, candidate(2))
+            desired = root / 'controller-updates/desired.json'
+            self.assertEqual(controller.read(desired)['id'], current['id'])
+            self.assertEqual(intent_fixture(root, candidate(2)), pending)
+            self.assertEqual(controller.read(desired)['id'], current['id'])
+            self.assertEqual(controller.read(root / 'controller-updates' / pending['id'] / 'intent.json'), pending)
+            # This fixture models a subsequently qualified native deployment;
+            # admission never changes either candidate's receipts or versions.
+            controller.save(root / 'deployment/desired.json', {'release_id': candidate(2)['release_id']})
+            intent_fixture(root, candidate(2))
+            self.assertEqual(controller.read(desired)['id'], pending['id'])
+
+    def test_controller_selection_rejects_a_malformed_saved_intent_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller.save(root / 'deployment/desired.json', {'release_id': candidate()['release_id']})
+            desired = root / 'controller-updates/desired.json'
+            controller.save(desired, {'id': '../foreign'})
+            with self.assertRaisesRegex(ValueError, 'controller desired'):
+                intent_fixture(root, candidate(2))
+            self.assertEqual(controller.read(desired), {'id': '../foreign'})
 
     def test_overlay_is_release_bound_and_uses_existing_image_validator(self):
         with tempfile.TemporaryDirectory() as temporary:
