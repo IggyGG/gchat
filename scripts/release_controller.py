@@ -84,7 +84,25 @@ def queue(state, baseline, sources, before, after):
     if path.exists() and read(path) != value:
         raise ValueError('retained controller intent changed')
     if not path.exists(): save(path, value)
-    save(Path(state) / 'controller-updates/desired.json', {'id': value['id']})
+    from release_provider import locked
+    desired = Path(state) / 'controller-updates/desired.json'
+    with locked(desired.parent / 'selection.lock'):
+        selected_path = Path(state) / 'deployment/desired.json'
+        if desired.exists() and selected_path.exists():
+            selected = read(selected_path).get('release_id')
+            current_id = read(desired).get('id', '')
+            if not isinstance(current_id, str) or not re.fullmatch('[0-9a-f]{64}', current_id):
+                raise ValueError('invalid controller desired ID')
+            current = read(desired.parent / current_id / 'intent.json')
+            current_baseline = validate_intent(current)
+            # Discovery of a controller for an uninstalled native release must
+            # not continually replace a repair for the selected deployment.
+            # Retain the new intent; it becomes selectable when its native
+            # baseline is actually selected through the ordinary release gates.
+            if (current_baseline['release_id'] == selected
+                    and baseline['release_id'] != selected):
+                return value
+        save(desired, {'id': value['id']})
     return value
 
 
