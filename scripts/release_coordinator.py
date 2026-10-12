@@ -124,11 +124,14 @@ class Coordinator:
         self.running_workers = {}
         from release_deployment_runner import DeploymentRunner
         self.deployment_runner = DeploymentRunner(self.state, deployment_timeout)
+        from release_android_agent import AndroidAgent
+        self.android_agent = AndroidAgent(self.state, config.get('android_agent'))
 
     def close_workers(self):
         from release_controller import close as close_controller
         close_controller(self)
         self.deployment_runner.close()
+        self.android_agent.close()
         for item in list(self.running_workers.values()):
             process = item['process']
             try:
@@ -659,6 +662,11 @@ class Coordinator:
 
     def tick(self):
         self.collect_finished_workers()
+        try:
+            self.android_agent.tick()
+        except (ValueError, OSError, subprocess.SubprocessError) as error:
+            atomic_json(self.state / 'android-agent-observation-blocked.json',
+                        {'reason': type(error).__name__, 'at': int(time.time())})
         from release_control import consume
         consume(self)
         if self.config.get('discovery'):
@@ -726,6 +734,8 @@ class Coordinator:
         public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')}
                                     for item in self.running_workers.values() if item['process'].poll() is None]
         public['deployment_worker'] = self.deployment_runner.progress()
+        if self.android_agent.progress() is not None:
+            public['android_agent'] = self.android_agent.progress()
         atomic_json(self.state / 'public/status.json', public)
         os.chmod(self.state / 'public/status.json', 0o644)
 
