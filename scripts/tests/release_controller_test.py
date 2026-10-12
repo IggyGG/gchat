@@ -4,7 +4,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -25,6 +27,29 @@ def intent_fixture(state):
 
 
 class ControllerTests(unittest.TestCase):
+    def test_finished_worker_records_do_not_own_activation_but_live_processes_and_readers_do(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            process = subprocess.Popen([sys.executable, '-c', 'raise SystemExit(1)'])
+            self.assertEqual(process.wait(timeout=10), 1)
+            retained = {'process': process, 'request_id': 'original-failed-request'}
+            owner = SimpleNamespace(state=root, running_workers={'failed': retained},
+                                    deployment_runner=SimpleNamespace(pending=None))
+            self.assertTrue(controller.quiescent(owner))
+            self.assertIs(owner.running_workers['failed'], retained)
+            self.assertEqual(retained['request_id'], 'original-failed-request')
+            live = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'], stdin=subprocess.PIPE)
+            try:
+                owner.running_workers['live'] = {'process': live}
+                self.assertFalse(controller.quiescent(owner))
+            finally:
+                live.communicate(timeout=10)
+            self.assertTrue(controller.quiescent(owner))
+            work = root / 'jobs' / ('a' * 64)
+            controller.save(work / 'acceptance-intent.json', {'cleaned': False, 'delivery_protocol': 'sealed'})
+            controller.save(work / 'sealed-delivery.json', {'expires_at': int(time.time()) + 600})
+            self.assertFalse(controller.quiescent(owner))
+
     def test_quiescence_skips_artifact_trees_but_checks_all_followup_branches(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -206,7 +231,7 @@ class ControllerTests(unittest.TestCase):
                 self.assertFalse(controller.quiescent(owner))
             controller.save(intent, {'cleaned': True})
             self.assertTrue(controller.quiescent(owner))
-            owner.running_workers['worker'] = object()
+            owner.running_workers['worker'] = {'process': SimpleNamespace(poll=lambda: None)}
             self.assertFalse(controller.quiescent(owner))
 
     def test_cleaned_parent_cannot_hide_live_nested_followup_reader(self):

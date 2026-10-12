@@ -469,7 +469,11 @@ def acceptance_intents(jobs):
 
 
 def quiescent(controller):
-    if controller.running_workers or getattr(controller.deployment_runner, 'pending', None): return False
+    # Failed or unconfirmed effects retain finished worker records so their
+    # original results can be reconciled. Only an actual live process owns
+    # execution liveness; do not discard those durable/diagnostic records.
+    if (any(item['process'].poll() is None for item in controller.running_workers.values())
+            or getattr(controller.deployment_runner, 'pending', None)): return False
     # A remote reader may have no local subprocess. Wait for all native/mobile
     # acceptance grants to finish their ordinary cleanup before replacing nginx's
     # colocated coordinator pod and its sole Service endpoint.
