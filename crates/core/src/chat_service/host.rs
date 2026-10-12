@@ -289,7 +289,9 @@ impl InstanceHost {
             None
         };
         let builder = gcoms::Application::builder("gchat")
-            .network_config(crate::network::selected_json(self.config.network_config.as_deref())?)
+            .network_config(crate::network::selected_json(
+                self.config.network_config.as_deref(),
+            )?)
             .profile(&self.config.profile)
             .unlock_secret(passphrase.to_string())
             .create(create)

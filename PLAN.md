@@ -18,6 +18,17 @@ Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrast
 
 ## GCHAT-UX — conversation-first IRC workspace
 
+2026-10-13 delivery follow-up: controller-only source `dd42ee0` is active as image
+`2041607201ee`, after 425 image and 425 Kubernetes controls, exact source binding
+and the normal full authenticated-delivery canary. Its deployment journal is
+deployed and the original failed fleet journal is retained. The advanced Linux
+0.1.192 candidate failed both native gates on formatting in recent signed-network
+and archive-identity code. The failures reproduce locally; formatting-only
+corrections pass both pinned rustfmt gates and source L0. A successor still needs
+complete native qualification, signing, publication, installation and actual
+desktop-icon UX/relaunch acceptance. Installed version remains 0.1.176.
+[Frozen failure and correction hashes](docs/evidence/irc-ux-native-format-20261013/summary.json).
+
 2026-10-12 installed-delivery follow-up: the icon still launches signed0.1.176;
 source/fixture qualification did not establish local installation. A new explicit
 goal requires the signed package, installed/running hash, existing launcher,

@@ -46,6 +46,15 @@ Routine publication now verifies the native build, signatures, permissions, star
 
 ## Retained earlier checkpoints
 
+IRC UX delivery, 2026-10-13: controller source `dd42ee0` passes 425 actual-image
+and 425 Kubernetes controls plus the ordinary authenticated-delivery canary;
+its deployment journal is deployed. Frozen Linux 0.1.192 then fails both paired
+native formatting gates. Original logs and locally reproduced failures are
+retained; the formatting-only corrections pass pinned `cargo fmt --all -- --check`
+and both source audits. Continue through all successor native/signing/installation
+gates and actual desktop-icon UI/relaunch checks before claiming installed UX.
+[Evidence](docs/evidence/irc-ux-native-format-20261013/summary.json).
+
 Native fixture simplification, 2026-10-04: retained Android da7073b passes initial enrollment/export and both upgrade and baseline rollback phases with unchanged identity/history/encrypted cache and authenticated acknowledgments, then exhausts the original compatibility deadline during final-restoration history observation. Fresh hierarchy removal, capture and read now share one ADB round trip. Each replacement checks authenticated messages before its OS export; an immediate next replacement performs only its required unlock, while subsequent messaging still reconnects normally. Android partial-transfer observation now requires an exact rendered filename, its adjacent transfer status, exact total and bounded verified counter. iOS empty-prefix handling accepts its actual accessibility placeholder without admitting existing input. All 71 focused controls pass in 2.956 seconds; native qualification is still required and all original deadlines and failed reports remain retained.
 
 
