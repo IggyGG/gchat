@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "task": "GCHAT-UX",
+  "date": "2026-10-12",
+  "implementation_source": "cc3e89b78ad3726afc652a91131c3700615212d9",
+  "ui_source_tree": "a93c9cf7fcf705a24d725585eef083c8676cb286",
+  "gcoms_npm_source": "c129d394515723212e56f5f1d3aa30afa2b90e43",
+  "gates": {
+    "svelte_errors": 0,
+    "svelte_warnings": 0,
+    "unit_passed": 77,
+    "chromium_passed": 114,
+    "webkit_passed": 114,
+    "browser_skipped": 0,
+    "native_linux_passed": 18,
+    "production_build": "pass",
+    "source_audit": "pass"
+  },
+  "native_linux": [
+    {
+      "width": 320,
+      "engine": "2.52.6",
+      "checks_passed": 6,
+      "summary": "test-evidence/irc-ux/final/native-320/summary.json",
+      "sha256": "8863e226ec314a3e90ac71807468c1b153a8af6dd7f64fdb4b5ad1c73e57e5ce"
+    },
+    {
+      "width": 390,
+      "engine": "2.52.6",
+      "checks_passed": 6,
+      "summary": "test-evidence/irc-ux/final/native-390/summary.json",
+      "sha256": "758bd76a691183da4273e316438fc802af1faab848d406ef65097342e65c35ff"
+    },
+    {
+      "width": 1100,
+      "engine": "2.52.6",
+      "checks_passed": 6,
+      "summary": "test-evidence/irc-ux/final/native-1100/summary.json",
+      "sha256": "0c5d21c3b92a0df18e0b9782ad3a3267e22359c7e2b052ff163d401384f683f1"
+    }
+  ],
+  "visual_review": {
+    "method": "Direct inspection of actual browser and native webview screenshots, followed by rendering and interaction corrections; geometry and contrast checks complement image review.",
+    "widths": [
+      320,
+      390,
+      768,
+      1100,
+      1440
+    ],
+    "cases": [
+      "conversation and persistent/collapsed navigation",
+      "long nickname/topic/URL",
+      "multiline, Unicode, emoji, IRC inverse and 256 color pairs",
+      "Fixedsys/readable/fallback fonts, short windows, 200% zoom",
+      "join bursts, repeated uncertainty, four simultaneous transfers",
+      "scrollback through fonts, resize, activity expansion and incoming messages",
+      "welcome, unlock, invitations, channel details, Help, Find, Files, network, updates",
+      "read-only, empty, reconnecting and unknown outcomes"
+    ],
+    "finding_fixes": [
+      "invisible IRC inverse text and low-contrast colors",
+      "pending/confirmed text layout mismatch",
+      "duplicate operation feedback",
+      "hidden desktop navigation and mobile transcript gutters",
+      "search-field Escape consuming dialog closure",
+      "CSS text-zoom clipping composer and dialog Back control",
+      "oversized Help rows and duplicate Files padding",
+      "invitation Copy action below large QR card",
+      "primary action inheriting unreadable link ink",
+      "meaningful successful command notice disappearing"
+    ],
+    "screenshots": [
+      {
+        "path": "desktop.png",
+        "sha256": "13d7abcbc730549e09c7d1ea9beb2a28645cd0a10b4292c4383d78d3cae2a838",
+        "source": "cc3e89b78ad3726afc652a91131c3700615212d9"
+      },
+      {
+        "path": "mobile.png",
+        "sha256": "443697d26ae95a120a51ce0a7b3b00b2888b1142eafa8c1ead0eb7ac76d2c36a",
+        "source": "cc3e89b78ad3726afc652a91131c3700615212d9"
+      },
+      {
+        "path": "zoom.png",
+        "sha256": "b8a39518c4fd8643d5b3daa845d7b502cc2b1500e917013042042263f7f636fb",
+        "source": "cc3e89b78ad3726afc652a91131c3700615212d9"
+      },
+      {
+        "path": "busy-mobile.png",
+        "sha256": "3c0564c4ab858538ff956ce186f80b29c7cb0d0737a0e646fc9dc408548c22cf",
+        "source": "cc3e89b78ad3726afc652a91131c3700615212d9"
+      },
+      {
+        "path": "native-linux.png",
+        "sha256": "bc46a12bd4da2c1a917b2652afd8306f1e8629f6102a51dca46a7ba56f3bc85b",
+        "source": "cc3e89b78ad3726afc652a91131c3700615212d9"
+      }
+    ]
+  },
+  "logs": [
+    {
+      "path": "test-evidence/irc-ux/final/build.log",
+      "sha256": "94711f9496c9880c6e01219d4d3de2b6f6aa1e9dceddc540c9477e80829f2812"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/check.log",
+      "sha256": "ec4ccec8fbe15d62b76d60054de31e2ae98d37ac3b7e03f3a0d8b888f59f0eaf"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/chromium-first-attempt.log",
+      "sha256": "c935bd0eff74a65d4d329017ce6cfd5db524e120c40ac62f145fc89f8ed26455"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/chromium.log",
+      "sha256": "2fa15f4e29d082cb0f637669fe3699d07e077efd05e947c57478d7da21b3402a"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/native-1100.log",
+      "sha256": "661ca64c4806eced542b57547085aeff95be0fa9e7998eabb59eb1b7ac669a4c"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/native-320.log",
+      "sha256": "922eafcd883fc5c73496ab0934af6676b704fd4d8131ea432ca82cce1c7ccbf0"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/native-390.log",
+      "sha256": "d2816088f324b1d5920444531ac7625d3c340dfac81d78d499807add914efbfb"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/png-diagnostic.log",
+      "sha256": "c7f2e90a303e8dc3f3e91650a24b5627986fdba53a4df92b4709fdf9eab36770"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/source-audit.log",
+      "sha256": "1cc2f7897b1f9e65c49b300d9e3bcb81fb07a0597d7be9cb9bcaee03276f3bb0"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/unit.log",
+      "sha256": "c41a34cba2251db4df8eec92a44e6279ca2b44cc28949260ea6473f6ad5f9f12"
+    },
+    {
+      "path": "test-evidence/irc-ux/final/webkit.log",
+      "sha256": "f55ccc4bae2ad2a18171909fcd89b5842adcad086ddbc860326edef7734eb6dc"
+    }
+  ],
+  "production_assets": [
+    {
+      "path": "apps/client/dist/assets/index-BQq6odDw.css",
+      "sha256": "e60cd9dbee7c3a6bdfa2b1b7319fbb734bca6b4dfa36d5903bf1d55fdd962773",
+      "bytes": 35583
+    },
+    {
+      "path": "apps/client/dist/assets/index-DGeLiBGP.js",
+      "sha256": "03c72354153911c134beda3122c4d4149c26ad38c3795de903dcbb06b40efc12",
+      "bytes": 1495103
+    },
+    {
+      "path": "apps/client/dist/favicon.svg",
+      "sha256": "c50915a6ef136386f8f18cbfae40c5cdc4fb168da8d4c238341d17396bd38171",
+      "bytes": 8448
+    },
+    {
+      "path": "apps/client/dist/fonts/LICENSE-CC0",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "bytes": 7048
+    },
+    {
+      "path": "apps/client/dist/fonts/README.md",
+      "sha256": "07ab77bfbc5de3ed5486e45be50176641192122d6f9759296f8a366e2bb2d96a",
+      "bytes": 982
+    },
+    {
+      "path": "apps/client/dist/fonts/fixedsys-excelsior.ttf",
+      "sha256": "842f8fbf80f57d867aeb1d2988140d3ea8b4718e5f687035b0a3b66756df3899",
+      "bytes": 580724
+    },
+    {
+      "path": "apps/client/dist/index.html",
+      "sha256": "17a36b0337f81e10704bd29ee734e0f2a251739c8e0e99549aa973f497c2f77a",
+      "bytes": 445
+    }
+  ],
+  "npm_archives": [
+    {
+      "file": "gcoms-rpc-0.1.0.tgz",
+      "sha256": "a435de913d4808d750245a263a32886f123ae5bb8e1c530eee32a30d98472749"
+    },
+    {
+      "file": "gcoms-rpc-codegen-0.1.0.tgz",
+      "sha256": "92e82a8d6823a3d1fade7116833358a78c164b863e01f0a4ccd376fcd939e1a8"
+    }
+  ],
+  "derived_package_lock_sha256": "f2db286d2c6784758548eaded8c8138ba25bc7ef888b971114db44a960a0df87",
+  "retained_failure": {
+    "path": "test-evidence/irc-ux/final/chromium-first-attempt.log",
+    "observation": "One PNG download.saveAs exceeded the original 30-second test deadline after a blob download event. The unchanged-source isolated case passed in 2.6 seconds, followed by the full passing suites. No timeout or gate was relaxed.",
+    "diagnostic": "test-evidence/irc-ux/final/png-diagnostic.log"
+  },
+  "scope": "Shared UI and native Linux WebKit rendering with isolated fixture data. Signed installer, live network and other OS release acceptance remain their normal independent gates.",
+  "retained_evidence": "test-evidence/irc-ux/",
+  "publication": "Task branch checkpoints are published to Forgejo. Trunk publication follows this qualification with the same verified UI source tree; final remote main verification is retained separately."
+}

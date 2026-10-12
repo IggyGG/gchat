@@ -41,15 +41,25 @@ Files show compact progress in chat, with exact details in Files.
 
 ## Qualification
 
-Implementation sources: `d0a7999`, `f259d2b`. The latter passes 76 UI unit tests,
-105 Chromium browser checks and zero-error/zero-warning Svelte checks. Native
-Linux WebKitGTK 2.52.6 passes all four rendering/interaction checks at each of
-320, 390 and 1100 pixels. The visual matrix additionally covers 768/1440 pixels,
-short windows, 200% zoom, font fallback, Unicode, all 256 IRC color pairs,
-grouped activity, uncertain operations and secondary screens.
+Implemented and qualified on 2026-10-12. Final UI source `cc3e89b` passes:
 
-Final visual refinement and WebKit browser qualification are in progress. Retained
-screenshots, original failed attempts and source-bound summaries live under
+| Gate | Result |
+| --- | --- |
+| Svelte/TypeScript, both workspaces | 0 errors, 0 warnings |
+| UI unit tests | 77 passed |
+| Chromium browser suite | 114 passed, no skips |
+| WebKit browser suite | 114 passed, no skips |
+| Native Linux WebKitGTK 2.52.6 | 18 checks passed (six each at 320/390/1100px) |
+| Production frontend build and source audit | Passed |
+
+The visual matrix also covers 768/1440px, short windows, 200% zoom, font fallback,
+Unicode, all 256 IRC color pairs, grouped activity, repeated uncertain operations,
+concurrent transfers and secondary screens. The first frozen-source Chromium run
+had one PNG download timeout; the unchanged-source isolated case and both full
+suites subsequently passed with the original deadlines. Its evidence is retained.
+
+[Source-bound receipt and screenshots](evidence/irc-ux/README.md) accompany this
+change. Full screenshots, original attempts and logs live under
 `test-evidence/irc-ux/`. Reproduction commands are in [TESTING.md](../TESTING.md).
 Native webview evidence uses isolated fixture data; signed package, live network
 and other OS installer qualification use their normal release gates.
@@ -85,3 +95,9 @@ preserves its conversation/search generation, deduplicates overlapping history,
 stops repeated cursors and finds literal DOM data IDs rather than interpolating
 message IDs into selectors. A browser regression exercises the paginated path
 and a non-advancing provider response.
+
+The compact outcome formatter also matches the state-to-label idiom in
+`itchio/itch:src/common/format/operation.ts` (2025 snapshot, cosine 0.7055,
+rerank 0.7982). GChat retains the full diagnostic separately and bounds only its
+timeline summary; explicit pending/unknown/checking states prevent a success
+label from implying recipient delivery.

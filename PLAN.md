@@ -18,16 +18,19 @@ Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrast
 
 ## GCHAT-UX — conversation-first IRC workspace
 
-2026-10-12 (OC): implementation and visual refinement in the `irc-ux` task.
+2026-10-12 (OC): **implemented and qualified** in the `irc-ux` task.
 The user selected persistent, independently collapsible desktop channel/user
 lists and responsive drawers. Shared message rows preserve pending/confirmed
 text; routine activity and private outcomes are compact; completion, history,
 search/context navigation, unread highlights, notifications and forms are refined.
 Actual visual review found and repaired inverse/low-contrast IRC colors, Help
-spacing and clipped dialog/composer bounds under CSS text zoom. Sources
-`d0a7999` and `f259d2b` are published checkpoints. Both browser engines passed
-105 checks at `f259d2b`, and native Linux WebKitGTK passed 12 source-bound checks.
-Final zoom-refinement qualification and publication are in progress.
+spacing, clipped dialog/composer bounds under CSS text zoom, obscured invitation
+actions and operation-button contrast. Final source `cc3e89b` passes 77 UI tests,
+114 Chromium checks, 114 WebKit checks, 18 source-bound native Linux checks,
+zero-error/zero-warning types, production frontend build and source audit.
+Original failed attempts remain retained; no required browser cases are skipped.
+The [receipt and screenshots](docs/evidence/irc-ux/README.md) bind exact sources
+and artifacts. Native installer/live network acceptance remains its release gate.
 Behavior and comparison provenance: [docs/IRC-UX.md](docs/IRC-UX.md).
 Retained screenshots and original failures: `test-evidence/irc-ux/`.
 

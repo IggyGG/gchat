@@ -2,6 +2,13 @@
 
 ## IRC conversation workspace
 
+2026-10-12 source `cc3e89b`: 77 unit tests, 114 Chromium tests, 114 WebKit tests
+and 18 native Linux WebKitGTK checks pass; both type-check workspaces report zero
+errors/warnings, production frontend build and source audit pass. See the
+[source-bound receipt](docs/evidence/irc-ux/summary.json) and
+[reviewed screenshots](docs/evidence/irc-ux/README.md). Original failed attempts,
+including one unchanged-source PNG download timeout, remain in retained evidence.
+
 Run `npm run check`, `npm test`, `npm run build`,
 `npm run test:browser -w @gchat/ui` and
 `npm run test:browser -w @gchat/ui -- --browser=webkit` with the paired npm inputs.
@@ -25,8 +32,9 @@ dbus-run-session xvfb-run -a python3 ui/browser/native-webkit.py \
 ```
 
 Repeat at 320 and 390 pixels. Keep separate output paths per source/run. The
-harness uses ephemeral web contexts and reports screenshots plus assertions for
-layout, pending/confirmed multiline messages and scrollback. This qualifies the
+harness uses ephemeral web contexts and reports screenshots plus six assertions
+per width for layout, pending/confirmed multiline messages, scrollback, zoom and
+reachable dialog controls. This qualifies the
 shared UI in the native engine; installer/network acceptance has its own gates.
 Use the workstation's background/build-storage runner for these commands when
 required by its local policy, and declare custom build output directories.
