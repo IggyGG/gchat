@@ -134,6 +134,52 @@ class MinutesTests(unittest.TestCase):
             'state': 'blocked', 'release_id': first, 'sources': self.manifest['sources']})
         self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
 
+    def native_failure_flight(self, *, deployment_required=True, resume_state='building'):
+        from release_pair import canonical
+        manifest = candidate(2)
+        manifest['policy']['deployment_required'] = deployment_required
+        manifest['release_id'] = hashlib.sha256(canonical({k: v for k, v in manifest.items() if k != 'release_id'})).hexdigest()
+        first = self.controller.ledger.add(manifest)
+        second = self.controller.ledger.add(candidate(3))
+        self.controller.ledger.db.execute("UPDATE platforms SET state='blocked' WHERE candidate=?", (first,))
+        self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=? AND platform='android'", (first,))
+        self.controller.ledger.db.execute("UPDATE platforms SET resume_state=? WHERE candidate=? AND platform='linux-x86_64'", (resume_state, first))
+        atomic_json(self.root / 'release-flight.json', {'schema': 1, 'active': first, 'pending': second})
+        return first, second
+
+    def test_failed_native_infrastructure_gate_releases_waiting_verified_platforms_without_relabeling(self):
+        first, second = self.native_failure_flight()
+        effect = self.controller.ledger.effect(first, 'linux-x86_64', 'build')
+        atomic_json(self.root / 'jobs' / effect['id'] / 'attempted.json', {'request_id': effect['id']})
+        before = [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM platforms WHERE candidate=?', (first,))]
+        effects = [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM effects WHERE candidate=?', (first,))]
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], second)
+        self.assertEqual(before, [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM platforms WHERE candidate=?', (first,))])
+        self.assertEqual(effects, [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM effects WHERE candidate=?', (first,))])
+        self.controller.config['single_flight'] = True
+        self.assertTrue(can_execute(self.controller, first, 'linux-x86_64', 'build', 'build'))
+
+    def test_native_failure_cannot_release_an_owned_rollout_or_an_unrelated_publication_failure(self):
+        first, second = self.native_failure_flight()
+        atomic_json(self.root / 'deployment/owner.json', {'release_id': first})
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+        (self.root / 'deployment/owner.json').unlink()
+        for stage in ('verified', 'submitting', 'publishing', None):
+            self.controller.ledger.db.execute("UPDATE platforms SET resume_state=? WHERE candidate=? AND platform='linux-x86_64'", (stage, first))
+            self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+
+    def test_native_gate_escape_requires_the_explicit_deployment_policy_and_minutes_mode(self):
+        first, second = self.native_failure_flight(deployment_required=False)
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+        # The older release policy continues retaining blocked flights.
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=False)['active'], first)
+
+    def test_pending_native_gate_does_not_release_verified_platforms(self):
+        first, second = self.native_failure_flight()
+        for state in ('queued', 'building', 'verifying', 'verified'):
+            self.controller.ledger.db.execute("UPDATE platforms SET state=? WHERE candidate=? AND platform='linux-x86_64'", (state, first))
+            self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+
     def test_separate_qualification_failure_does_not_change_publication_state(self):
         from release_control import request, consume, qualifications
         queued = request(self.root, 'qualify', self.manifest['release_id'], 'android')

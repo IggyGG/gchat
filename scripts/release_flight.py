@@ -122,6 +122,17 @@ def select(state, ledger, minutes=False):
                 and load.get('sources') == ledger.manifest(active)['sources']
                 and owner.get('release_id') != active):
             terminal = True
+        # Linux native qualification produces the required infrastructure bundle.
+        # A failed build/verify gate makes verified siblings wait indefinitely for
+        # a deployment that cannot start. Release only scheduling ownership; all
+        # original failures, effects, retry budgets and artifacts stay intact.
+        native = ledger.db.execute('''SELECT state,resume_state FROM platforms
+            WHERE candidate=? AND platform='linux-x86_64' ''', (active,)).fetchone()
+        if (native is not None and native['state'] == 'blocked'
+                and native['resume_state'] in ('building', 'verifying')
+                and ledger.manifest(active)['policy'].get('deployment_required') is True
+                and owner.get('release_id') != active):
+            terminal = True
     if active is None or terminal or internal_complete(ledger, active, state):
         active = waiting[0] if waiting else active
         waiting = [release for release in waiting if release != active]
