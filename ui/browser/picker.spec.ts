@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { showChannels } from './navigation';
 
 async function unlock(page: Page) {
   await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
@@ -19,7 +20,7 @@ test('outgoing selection waits for same-profile unlock and keeps its original ch
   expect(await page.evaluate(() => (window as any).fixture.getFiles())).toEqual([]);
   await unlock(page);
   await expect(page.getByRole('button', { name: 'Continue selected file', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await page.locator('.channels').getByRole('button', { name: /design/ }).click();
   await page.getByRole('button', { name: 'Continue selected file', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fixture.getFiles()[0]?.state)).toBe('complete');

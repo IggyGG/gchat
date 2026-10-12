@@ -9,7 +9,10 @@ describe('classic IRC formatting', () => {
   });
   it('bounds colour codes and preserves literal HTML as text', () => {
     const parts = ircFormat('\x0304,02<script>x</script>\x0399out\x03,comma');
-    expect(formatStyle(parts[0].format)).toBe('color:#ff0000;background-color:#00007f;');
+    // The original red/blue pair is retained in the parsed record, but its
+    // low-contrast text is rendered legibly against the authored background.
+    expect(parts[0].format.foreground).toBe('#ff0000');
+    expect(formatStyle(parts[0].format)).toBe('color:#ffffff;background-color:#00007f;');
     expect(parts[0].text).toBe('<script>x</script>');
     expect(parts[1].format.foreground).toBeUndefined();
     expect(parts[2].text).toBe(',comma');

@@ -5,6 +5,7 @@
   import { chatError, type Transport } from './transport';
   let { transport, status, imported, combined = false, joined, performJoin, chooseFile, selectedFile, fileConsumed, initialInvitation = '' }: { transport: Transport; initialInvitation?: string; status?: NetworkStatus; imported: (status: NetworkStatus) => void; combined?: boolean; joined?: (response: Response) => void; performJoin?: (request: Extract<Request, { kind: 'networks' }>) => Promise<Response>; chooseFile?: () => void; selectedFile?: { id: number; file: File }; fileConsumed?: (id: number) => void } = $props();
   let invitation = $state(''), error = $state(''), busy = $state(false);
+  const fieldId = $props.id();
   let preview = $state<InvitationPreview>(), nickname = $state('');
   let pendingCode = '', operationId = '';
   let joiningAt = $state(0), elapsed = $state(0);
@@ -85,23 +86,23 @@
   <form onsubmit={accept}>
     <p>{preview.channel ? `Join #${preview.channel.replace(/^#/, '')} on ${preview.network.name}` : `Connect to ${preview.network.name}`}</p>
     {#if preview.newNetwork}<p>This adds a new network. Your existing networks stay connected.</p><details><summary>Network identity</summary><code>{preview.network.fingerprint}</code></details>{/if}
-    {#if preview.channel}<label for="invitation-nickname">Your nickname in this channel</label><input id="invitation-nickname" bind:value={nickname} required maxlength="256" autocomplete="nickname" disabled={busy} />{/if}
+    {#if preview.channel}<label for={`${fieldId}-nickname`}>Your nickname in this channel</label><input id={`${fieldId}-nickname`} bind:value={nickname} required maxlength="256" autocomplete="nickname" disabled={busy} />{/if}
     <p>{preview.expires === null ? 'No expiry · the owner can revoke this invitation' : `Expires ${new Date(preview.expires * 1000).toLocaleString()}`}</p>
     <div><button class="primary" type="submit" disabled={busy || (!!preview.channel && !nickname.trim())}>{busy ? 'Joining…' : preview.channel ? 'Join' : 'Connect'}</button><button type="button" disabled={busy} onclick={() => { preview = undefined; pendingCode = ''; error = ''; }}>Cancel</button></div>
   </form>
   {:else}
   <p>{combined ? 'Paste an invitation to connect to its network and join its channel.' : 'Enter a network invitation from the person inviting you.'}</p>
   <form onsubmit={connect}>
-    <label for="network-invitation">{combined ? 'Invitation' : 'Network invitation'}</label>
-    <textarea id="network-invitation" bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} placeholder={combined ? 'Paste an invitation' : 'GCNI1-…'}></textarea>
+    <label for={`${fieldId}-invitation`}>{combined ? 'Invitation' : 'Network invitation'}</label>
+    <textarea id={`${fieldId}-invitation`} bind:value={invitation} rows="3" maxlength={MAX_NETWORK_INVITATION_BYTES} autocomplete="off" spellcheck="false" disabled={busy} aria-invalid={!!error} aria-describedby={error ? `${fieldId}-error` : undefined} placeholder={combined ? 'Paste an invitation' : 'GCNI1-…'}></textarea>
     {#if chooseFile}<button type="button" disabled={busy} onclick={chooseFile}>Or choose an invitation file</button>
-    {:else}<label for="network-invitation-file">Or choose an invitation file</label>
-    <input id="network-invitation-file" type="file" accept=".png,image/png,.txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />{/if}
+    {:else}<label for={`${fieldId}-file`}>Or choose an invitation file</label>
+    <input id={`${fieldId}-file`} type="file" accept=".png,image/png,.txt,text/plain" onchange={event => void readFile(event)} disabled={busy} />{/if}
     <button class="primary" type="submit" disabled={busy || !invitation.trim()}>{busy ? 'Validating…' : combined ? 'Continue' : 'Connect'}</button>
   </form>
   {/if}
   {#if busy && joiningAt}<p role="status">Connecting and waiting for channel confirmation · {elapsed}s. You can continue using other conversations. Your saved join retries safely while GChat is running.</p>{/if}
-  {#if error}<p role="alert">{error}</p>{/if}
+  {#if error}<p id={`${fieldId}-error`} role="alert">{error}</p>{/if}
 </section>
 <style>
   p { color:var(--muted); margin:0 0 16px; line-height:1.5; }

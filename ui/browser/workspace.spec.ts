@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { showChannels, showUsers } from './navigation';
 test('archive storage failure explains automatic recovery without suggesting a network reconnect', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 720 });
   await page.goto('/?archive-blocked');
@@ -34,23 +35,26 @@ test('native remember choice defaults off and requires explicit consent', async 
   await expect.poll(() => page.evaluate(() => (window as any).fixture.unlockChoices)).toEqual([false]);
   await expect(page.locator('.active-title > span:first-child')).toHaveText('#general');
 });
-for (const width of [320, 760, 1100, 1440]) test(`channel drawer has visible open and close controls after unlock at ${width}px`, async ({ page }) => {
+for (const width of [320, 760, 1100, 1440]) test(`channel navigation has visible open and close controls after unlock at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 720 });
   await page.goto('/?device-unlock');
   await page.getByLabel('Identity passphrase', { exact: true }).fill('fixture-passphrase');
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   const toggle = page.getByRole('button', { name: 'Channels', exact: true });
   await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveText('#');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('#channel-navigation')).toBeHidden();
+  await expect(toggle).toContainText('#');
+  await expect(toggle).toContainText('2');
+  await expect(toggle).toHaveAttribute('aria-expanded', width >= 1000 ? 'true' : 'false');
+  if (width >= 1000) await expect(page.locator('#channel-navigation')).toBeVisible();
+  else await expect(page.locator('#channel-navigation')).toBeHidden();
   const bounds = (await toggle.boundingBox())!;
   expect(bounds.width).toBeGreaterThanOrEqual(44);
   expect(bounds.height).toBeGreaterThanOrEqual(44);
   expect(bounds.x).toBeGreaterThanOrEqual(0);
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
-  await toggle.click();
-  await expect(page.getByRole('dialog', { name: 'Channels', exact: true })).toBeVisible();
+  await showChannels(page);
+  if (width < 1000) await expect(page.getByRole('dialog', { name: 'Channels', exact: true })).toBeVisible();
+  else await expect(page.locator('#channel-navigation')).not.toHaveAttribute('role','dialog');
   await page.setViewportSize({ width, height: 700 });
   const close = page.getByRole('button', { name: 'Hide channels', exact: true });
   await expect(close).toBeVisible();
@@ -58,7 +62,8 @@ for (const width of [320, 760, 1100, 1440]) test(`channel drawer has visible ope
   await expect(page.locator('#channel-navigation')).toBeHidden();
   await expect(toggle).toBeFocused();
   await toggle.click();
-  await page.keyboard.press('Escape');
+  if (width < 1000) await page.keyboard.press('Escape');
+  else await close.click();
   await expect(page.locator('#channel-navigation')).toBeHidden();
   await expect(toggle).toBeFocused();
 });
@@ -105,7 +110,7 @@ test('members get a real leave request without owner controls', async ({ page })
 
 test('one invitation previews the other network and channel before joining', async ({ page }) => {
   await ready(page, '?networks');
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await page.getByRole('button', { name: 'Join or create a channel', exact: true }).click();
   await page.getByRole('button', { name: 'Join with an invitation', exact: true }).click();
   await page.getByLabel('Invitation', { exact: true }).fill('GCI1-valid-fixture');
@@ -127,17 +132,17 @@ test('one header, quiet default workspace, counters and keyboard-accessible tabs
   await expect(page.getByText('gchat-production')).toHaveCount(0);
   await expect(page.getByText('WINDOWS', { exact: true })).toHaveCount(0);
   await expect(page.getByText('NICKS', { exact: true })).toHaveCount(0);
-  await expect(page.locator('.inspector')).toHaveCount(0);
+  await expect(page.locator('.inspector')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Replace network invitation…' })).toHaveCount(0);
-  await expect(page.locator('.channels')).toBeHidden();
+  await expect(page.locator('.channels')).toBeVisible();
   await expect(page.locator('.header-topic')).toHaveText('A little more room to talk.');
-  await page.getByRole('button', { name: 'Users: 2', exact: true }).click();
+  await showUsers(page);
   await expect(page.getByRole('tab', { name: 'Users 2' })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('tab', { name: 'Users 2' }).press('ArrowRight');
   await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toBeVisible();
   await expect(page.getByText('notes.txt', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close dialog' }).click();
-  await expect(page.getByRole('button', { name: 'Users: 2', exact: true })).toBeFocused();
+  await expect(page.getByRole('tab', { name: 'Users 2' })).toBeFocused();
   await page.screenshot({ path: '../target/ui-layout-desktop.png' });
 });
 test('mandatory setup uses service validation and keeps established offline history', async ({ page }) => {
@@ -190,28 +195,30 @@ test('paperclip works with zero files; closing and changing panels cannot cancel
   await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toContainText('Importing sample.bin');
   await page.getByRole('button', { name: 'Close dialog' }).click();
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await page.locator('.channels').getByRole('button', { name: /design/ }).click();
   await page.evaluate(() => (window as any).fixture.releaseUpload());
   await expect.poll(() => page.evaluate(() => (window as any).fixture.getFiles()[0]?.state)).toBe('complete');
   const record = await page.evaluate(() => (window as any).fixture.getFiles()[0]);
   expect(record.conversation).toBe('channel/general');
   await expect(page.getByRole('button', { name: 'Files: 0', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await page.locator('.channels').getByRole('button', { name: /general/ }).click();
   await page.getByRole('button', { name: 'Files: 1', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Files', exact: true })).toContainText('sample.bin');
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await page.locator('.channels').getByRole('button', { name: /archive/ }).click();
   await expect(page.getByRole('button', { name: 'Share a file', exact: true })).toHaveCount(0);
 });
 for (const width of [320, 760, 1100, 1440]) test(`responsive layout ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 720 }); await ready(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Users: 2', exact: true }).click();
+    await showUsers(page);
   await expect(page.getByRole('tab', { name: 'Users 2' })).toBeVisible();
-  await page.keyboard.press('Escape'); await expect(page.locator('.inspector')).toHaveCount(0);
+    if (width < 1000) await page.keyboard.press('Escape');
+    else await page.getByRole('button',{name:'Close details',exact:true}).click();
+    await expect(page.locator('.inspector')).toHaveCount(0);
   if (width <= 760) { await page.getByRole('button', { name: 'Channels', exact: true }).click(); await expect(page.getByRole('button', { name: 'Join or create a channel', exact: true })).toBeVisible(); await page.keyboard.press('Escape'); }
   await page.screenshot({ path: `../target/ui-layout-${width}.png` });
 });
@@ -370,7 +377,7 @@ test('cancelling invitation Save as is neutral and keeps a closable result', asy
 test('focused forms preserve the chat draft and never send field answers', async ({ page }) => {
   await ready(page); const input = page.getByRole('textbox', { name: 'Message or command' });
   await input.fill('my unsent draft');
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await page.getByRole('button', { name: 'Join or create a channel' }).click();
   await page.getByRole('button', { name: 'Create a channel', exact: true }).click();
   await page.getByLabel('Channel name', { exact: true }).fill('private field never sent');
@@ -379,9 +386,10 @@ test('focused forms preserve the chat draft and never send field answers', async
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.kind === 'submit'))).toEqual([]);
 });
 test('missing activity is omitted and panels overlay without changing message width', async ({ page }) => {
+  await page.setViewportSize({width:760,height:720});
   await ready(page);
   const before = await page.locator('.conversation').boundingBox();
-  await page.getByRole('button', { name: 'Users: 2' }).click();
+  await showUsers(page);
   await expect(page.getByText('Unknown', { exact: true })).toHaveCount(0);
   await expect(page.locator('.users-list')).toContainText('you');
   expect((await page.locator('.conversation').boundingBox())!.width).toBe(before!.width);
@@ -392,7 +400,7 @@ test('old Status selection falls back to a conversation and last conversation su
     if (!sessionStorage.getItem('gchat.navigation.ui-test-instance')) sessionStorage.setItem('gchat.navigation.ui-test-instance', JSON.stringify({ selected: null, positions: {} }));
   });
   await ready(page);
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await page.locator('.channels').getByRole('button', { name: /design/ }).click();
   await page.reload();
   await expect(page.locator('.active-title > span:first-child')).toHaveText('#design');
@@ -450,17 +458,17 @@ test('bare header controls retain their alignment beside the centered welcome', 
   expect(Math.abs(dot.y + dot.height / 2 - ghost.y - ghost.height / 2)).toBeLessThanOrEqual(2);
 });
 
-for (const width of [320,1100]) test(`drawer rows fill the panel and carets stay outside content at ${width}px`, async ({ page }) => {
+for (const width of [320,1100]) test(`navigation rows fill the panel and close controls stay in their headings at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 720 }); await ready(page);
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   const drawer = (await page.locator('.channels.open').boundingBox())!, row = (await page.locator('.channels .chosen').boundingBox())!;
   expect(drawer.x + drawer.width - row.x - row.width).toBeLessThanOrEqual(2);
   const caret = (await page.getByRole('button', { name: 'Hide channels', exact: true }).boundingBox())!;
-  expect(caret.x).toBeGreaterThanOrEqual(drawer.x + drawer.width - 2); expect(caret.x + caret.width).toBeLessThanOrEqual(width);
+  expect(caret.x).toBeGreaterThanOrEqual(drawer.x); expect(caret.x + caret.width).toBeLessThanOrEqual(drawer.x + drawer.width);
   await page.getByRole('button', { name: 'Hide channels', exact: true }).click();
-  await page.getByRole('button', { name: 'Users: 2', exact: true }).click();
+  await showUsers(page);
   const inspector = (await page.locator('.inspector').boundingBox())!, close = (await page.getByRole('button', { name: 'Close details', exact: true }).boundingBox())!;
-  expect(close.x).toBeGreaterThanOrEqual(0); expect(close.x + close.width).toBeLessThanOrEqual(inspector.x + 2);
+  expect(close.x).toBeGreaterThanOrEqual(inspector.x); expect(close.x + close.width).toBeLessThanOrEqual(inspector.x + inspector.width);
   expect(await page.locator('.inspector').evaluate(el => getComputedStyle(el).paddingLeft)).toBe('0px');
 });
 
@@ -611,7 +619,7 @@ for (const width of [390, 1100]) test(`chat follows optimistic sends and resizin
 for (const width of [320,390,1100]) test(`focused forms fit ${width}px and never reuse the chat input`, async ({ page }) => {
   await page.setViewportSize({width,height:720}); await ready(page,'?networks');
   const input=page.getByRole('textbox',{name:'Message or command'}); await input.fill('keep my draft');
-  await page.getByRole('button',{name:'Channels',exact:true}).click();
+  await showChannels(page);
   await page.getByRole('button',{name:'Join or create a channel'}).click();
   await page.getByRole('button',{name:'Join with an invitation',exact:true}).click();
   const screen=page.getByRole('dialog',{name:'Join a channel',exact:true});
@@ -629,6 +637,8 @@ test('notification setup is explicit, distinguishes registration and offers devi
   await page.goto('/?device-unlock&notifications');
   await page.getByLabel('Identity passphrase',{exact:true}).fill('fixture-passphrase'); await page.getByRole('button',{name:'Reconnect',exact:true}).click();
   const screen=page.getByRole('dialog',{name:'Notifications',exact:true});
+  await expect(screen).toHaveCount(0);
+  await page.getByRole('button',{name:'Enable background notifications…'}).click();
   await expect(screen).toBeVisible();
   expect(await page.evaluate(()=>(window as any).fixture.pushRequests)).toEqual([]);
   await screen.getByRole('button',{name:'Enable notifications',exact:true}).click();

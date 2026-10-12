@@ -78,7 +78,7 @@
     <!-- Descriptions wrap naturally, without a separate block per command. -->
     {#if helpHeading}<h2>Commands</h2>{/if}
     <label for="command-search">Find a command</label><input id="command-search" type="search" bind:value={helpSearch} placeholder="Name or description" />
-    {#if !helpSearch}<nav class="common" aria-label="Common commands">{#each output.commands.filter(command => command.available && common.has(command.name)) as command}<button onclick={() => prepareCommand?.(command.usage)}>{command.name}</button>{/each}</nav>{/if}
+    {#if !helpSearch}<nav class="common" aria-label="Common commands">{#each output.commands.filter(command => command.available && common.has(command.name)) as command}<button aria-label={`Prepare ${command.name}`} onclick={() => prepareCommand?.(command.usage)}>{command.name}</button>{/each}</nav>{/if}
     <ul class="commands">{#each matchingCommands as command}<li><button class="command" disabled={!command.available || !prepareCommand} onclick={() => prepareCommand?.(command.usage)}>{command.usage}</button><span>{' — '}{command.description}{#if !command.available} <strong>Unavailable</strong>{/if}</span></li>{/each}</ul>
     {#if !matchingCommands.length}<p>No matching commands.</p>{/if}
     <details><summary>Keyboard shortcuts</summary><dl><dt>Enter / Shift+Enter</dt><dd>Send / new line</dd><dt>Tab</dt><dd>Complete a nickname or command; cycle suggestions</dd><dt>↑ / ↓ then Enter</dt><dd>Choose a suggestion</dd><dt>↑ at the start / ↓ at the end</dt><dd>Previous / next input; your draft is kept</dd><dt>Alt+← / Alt+→</dt><dd>Previous / next conversation</dd><dt>Ctrl/Cmd+F</dt><dd>Find in this conversation</dd><dt>Escape</dt><dd>Dismiss suggestions or return to chat</dd></dl></details>

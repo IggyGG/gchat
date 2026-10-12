@@ -9,7 +9,7 @@
     return { destroy() { if (opener?.isConnected) opener.focus({ preventScroll: true }); } };
   }
 </script>
-<dialog use:present aria-label={title} oncancel={event => { event.preventDefault(); close(); }}>
+<dialog use:present aria-label={title} oncancel={event => { event.preventDefault(); close(); }} onkeydown={event => { if (event.key === 'Escape' && !event.isComposing) { event.preventDefault(); event.stopPropagation(); close(); } }}>
   <header><button data-screen-back aria-label="Close dialog" onclick={close}>‹ Back</button><h2>{title}</h2></header>
   <div class="screen-body">{@render children()}</div>
 </dialog>

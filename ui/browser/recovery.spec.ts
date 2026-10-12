@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { showUsers } from './navigation';
 for (const width of [390, 1100]) test(`owner recovery confirms explicit selection at ${width}px`, async ({ page }) => {
   await page.setViewportSize({width,height:720});
   await page.goto('/');
-  await page.getByRole('button', {name: /Users/}).first().click();
+  await showUsers(page);
   await page.getByRole('button', {name:'Channel recovery…'}).click();
   await expect(page.getByRole('heading', {name:'Channel recovery · general'})).toBeVisible();
   await expect(page.getByText('Removing a member does not mark their messages delivered.', {exact:false})).toBeVisible();
@@ -20,13 +21,13 @@ for (const width of [390, 1100]) test(`owner recovery confirms explicit selectio
 });
 test('members do not see the owner recovery action', async ({page}) => {
   await page.goto('/?member');
-  await page.getByRole('button', {name:/Users/}).first().click();
+  await showUsers(page);
   await expect(page.getByRole('button', {name:'Channel recovery…'})).toHaveCount(0);
 });
 
 test('stale recovery is visible and never reported as successful removal', async ({page}) => {
   await page.goto('/?recovery-stale');
-  await page.getByRole('button', {name:/Users/}).first().click();
+  await showUsers(page);
   await page.getByRole('button', {name:'Channel recovery…'}).click();
   await page.getByRole('checkbox').check();
   await page.getByRole('button', {name:'Remove selected members…'}).click();

@@ -1,4 +1,5 @@
 /** Classic IRC presentation codes, rendered as text and bounded styles, never HTML. */
+import { chatBackground, chatInk, readableColor } from './irc-colors';
 export interface Format { bold: boolean; italic: boolean; underline: boolean; inverse: boolean; foreground?: string; background?: string }
 export interface Segment { text: string; format: Format }
 const palette = ['#ffffff','#000000','#00007f','#009300','#ff0000','#7f0000','#9c009c','#fc7f00','#ffff00','#00fc00','#009393','#00ffff','#0000fc','#ff00ff','#7f7f7f','#d2d2d2'];
@@ -26,7 +27,13 @@ export function ircFormat(text: string): Segment[] {
   flush(); return result;
 }
 export function formatStyle(format: Format): string {
-  const foreground = format.inverse ? (format.background ?? 'var(--bg)') : format.foreground;
+  let foreground = format.inverse ? (format.background ?? 'var(--bg)') : format.foreground;
   const background = format.inverse ? (format.foreground ?? 'var(--ink)') : format.background;
+  if (!foreground && background) foreground = readableColor(chatInk, background === 'var(--ink)' ? chatInk : background);
+  if (foreground) {
+    const resolved = foreground === 'var(--bg)' ? chatBackground : foreground;
+    const readable = readableColor(resolved, background === 'var(--ink)' ? chatInk : background ?? chatBackground);
+    if (readable !== resolved) foreground = readable;
+  }
   return `${foreground ? `color:${foreground};` : ''}${background ? `background-color:${background};` : ''}`;
 }

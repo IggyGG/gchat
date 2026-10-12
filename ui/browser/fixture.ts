@@ -58,6 +58,7 @@ const fileSnapshot = () => ({ files: [...files], quota_bytes: '10737418240', use
 const status = () => ({ state, message: state === 'connected' ? 'Connected to the GChat network.' : state === 'invitation_required' ? 'Enter a network invitation.' : state === 'reconnecting' ? 'Reconnecting; history is preserved.' : state });
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 Object.assign(window, { fixture: {
+  setUnread(id: string, unread: number, lastMessageId: string) { const conversation = conversations.find(c => c.id === id); if (conversation) { conversation.unread = unread; conversation.lastMessageId = lastMessageId; revision++; } },
   setActivity(value: typeof activity) { activity = value; revision++; },
   setMembers(value: typeof members) { conversations[0].members = value; revision++; },
   setTopic(value: string) { conversations[0].topic = value; revision++; },

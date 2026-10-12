@@ -6,6 +6,7 @@
   import ActivityRow from './ActivityRow.svelte';
   import HighlightedText from './HighlightedText.svelte';
   import { groupActivity, operationLabel, fileSize } from './timeline';
+  import { UnreadHighlights, callsAttention } from './unread-highlights';
   import Welcome from './Welcome.svelte';
   import './theme.css';
   import ResizeHandles from './ResizeHandles.svelte';
@@ -41,6 +42,7 @@
   let before = $state<string | null>(null);
   let unreadMarkers = $state<Record<string, string>>({});
   let mentionedConversations = $state(new Set<string>());
+  const attention = new UnreadHighlights(ids => mentionedConversations = ids);
   let searchOpen = $state(false);
   let searchText = $state('');
   let searchResults = $state<Message[]>([]);
@@ -253,6 +255,10 @@
   let savedDraft = $state('');
   let transcript = $state<HTMLDivElement>();
   let composer = $state<HTMLTextAreaElement>();
+  $effect(() => {
+    draft; font;
+    void tick().then(() => { if (composer) { composer.style.height = 'auto'; composer.style.height = Math.min(160, composer.scrollHeight) + 'px'; } });
+  });
   let running = true;
   let generation = 0;
   let snapshotGeneration = 0;
@@ -494,7 +500,7 @@
     document.addEventListener('visibilitychange', visible);
     const disconnected = () => connectionFailed(new Error('Network unavailable. Drafts and loaded history remain available.'));
     window.addEventListener('online', visible); window.addEventListener('offline', disconnected);
-    return () => { running = false; width.removeEventListener('change', resize); clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); picker.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
+    return () => { running = false; attention.clear(); width.removeEventListener('change', resize); clearInterval(networkTimer); networkGeneration++; generation++; password = ''; views.clear(); picker.clear(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', visible); window.removeEventListener('offline', disconnected); };
   });
   async function refreshInBackground() {
     try { await refresh(); }
@@ -503,7 +509,7 @@
   function connectionFailed(error: unknown) { offline = true; connectionError = chatError(error); }
   function clearPrivateView() {
     stagedInvitation = '';
-    mentionedConversations = new Set(); focusedMessage = null;
+    attention.clear(); focusedMessage = null;
       invitationSelection = undefined; // Keep only the opaque, bounded pending handle.
       generation++; searchGeneration++; views.clear(); helpVisible = false; collapseHelp(); presenceActions = {}; promptDraft = ''; incomingInvitation = ''; resultStore.clear(); checkedSaved.clear(); results = []; resultKey = null; unreadMarkers = {}; messages = []; before = null; password = ''; draft = ''; savedDraft = ''; notice = ''; failures = []; completions = []; historyPosition = undefined; pending = {}; directory = undefined; destination = ''; nickname = ''; joinRequest = undefined; joinError = ''; dialog = null; searchOpen = false; searchText = ''; searchResults = []; searchBefore = null; hidden = []; restoredSelection = false; networkAccepted = false; networkStatus = undefined; networkGeneration++; networkError = ''; panel = null; channelsOpen = false; utility = null; fileTarget = undefined;
   }
@@ -545,6 +551,7 @@
     }
     if (selected && !next.conversations.some(c => c.id === selected)) await select(next.conversations.find(c => !hidden.includes(c.id))?.id ?? null);
     views.retain(next.conversations.map(c => c.id));
+    if (workspaceReady) attention.update(next, transport);
     if ((changed || historyStale || offline) && selected && workspaceReady) await loadHistory(false, true);
     offline = false;
     connectionError = undefined;
@@ -640,7 +647,6 @@
         if (overlap < 0) before = response.page.before;
       }
       historyStale = false;
-      if (messages.some(m => m.highlighted && !m.mine) && (snapshot?.conversations.find(c => c.id === conversation)?.unread ?? 0) > 0) mentionedConversations = new Set([...mentionedConversations, conversation]);
       await tick();
       if (older && transcript) transcript.scrollTop = scrollTop + transcript.scrollHeight - scrollHeight;
       else if (atBottom && transcript) transcript.scrollTop = transcript.scrollHeight;
@@ -817,10 +823,13 @@
   function keydown(event: KeyboardEvent) {
     if (event.isComposing) return;
     if (dialog && !['Enter', 'Escape'].includes(event.key)) return;
-    if (mentions.length && ['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key) && !event.shiftKey) {
+    if (mentions.length && ['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key) && !(event.key === 'Enter' && event.shiftKey)) {
       event.preventDefault();
       if (event.key === 'Escape') mentionContext = null;
-      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') mentionIndex = (mentionIndex + (event.key === 'ArrowDown' ? 1 : mentions.length - 1)) % mentions.length;
+      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || (event.key === 'Tab' && mentions.length > 1)) {
+        mentionIndex = (mentionIndex + (event.key === 'ArrowUp' || event.shiftKey ? mentions.length - 1 : 1)) % mentions.length;
+        void tick().then(() => document.getElementById('mention-option-' + mentionIndex)?.scrollIntoView({block:'nearest'}));
+      }
       else void chooseMention(mentions[mentionIndex]);
       return;
     }
@@ -1002,7 +1011,7 @@
           <span class="symbol">{conversation.kind === 'query' ? '↳' : conversation.kind === 'archive' ? '·' : '#'}</span>
           <span class="room-name">{conversation.name.replace(/^#/, '')}</span>
           {#if conversation.unread}<span class="badge">{conversation.unread}</span>{/if}
-          {#if mentionedConversations.has(conversation.id)}<span class="mention-badge" title="You were mentioned" aria-label="You were mentioned">@</span>{/if}
+          {#if mentionedConversations.has(conversation.id)}<span class="mention-badge" title="Unread mention or highlight" aria-label="Unread mention or highlight">@</span>{/if}
           {#if conversation.kind === 'archive'}<small>read only</small>{/if}
         </button>
       {/each}
@@ -1054,7 +1063,7 @@
             {#if message && selected && unreadMarkers[selected] === message.id}<div class="unread-divider">New messages</div>{/if}
             <div data-timeline-key={item.id} data-message-id={message?.id} data-operation={result?.id}>
             {#if message || result?.body}
-              <MessageRow timestamp={item.timestamp} nickname={message?.nickname ?? result?.nickname ?? 'You'} text={message?.body ?? result?.body ?? ''} members={active?.members ?? []} mine={message?.mine ?? true} highlighted={message?.highlighted} focused={!!message && focusedMessage === message.id} kind={message?.messageKind} delivery={message?.delivery} state={message ? undefined : result?.state} checking={!!result && checkingSaved[result.id]} result={message?.result} details={result && result.state !== 'complete' ? () => showResult(result.id, result.conversation) : undefined} edit={result && ['unknown','rejected'].includes(result.state) && failures.some(f => f.request.operation_id === result.id) ? () => { const failure = failures.find(f => f.request.operation_id === result!.id); if (failure) void editFailed(failure.request); } : undefined} />
+              <MessageRow timestamp={item.timestamp} nickname={message?.nickname ?? result?.nickname ?? 'You'} text={message?.body ?? result?.body ?? ''} members={active?.members ?? []} mine={message?.mine ?? true} highlighted={!!message && !!active && callsAttention(message, active)} focused={!!message && focusedMessage === message.id} kind={message?.messageKind} delivery={message?.delivery} state={message ? undefined : result?.state} checking={!!result && checkingSaved[result.id]} result={message?.result} details={result && ['unknown','rejected'].includes(result.state) ? () => showResult(result.id, result.conversation) : undefined} edit={result && ['unknown','rejected'].includes(result.state) && failures.some(f => f.request.operation_id === result.id) ? () => { const failure = failures.find(f => f.request.operation_id === result!.id); if (failure) void editFailed(failure.request); } : undefined} />
             {:else if item.activities}<ActivityRow activities={item.activities} />
             {:else if item.result}
               {@const operation = item.result}
@@ -1098,11 +1107,10 @@
     {#if workspaceReady && active && usersVisible}
       <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role (Modal drawer traps focus and restores its opener.) -->
       <aside id="user-navigation" class="inspector open" class:docked={wide} aria-label="Conversation details" role={wide ? undefined : 'dialog'} aria-modal={wide ? undefined : true}>
-        <div class="panel-heading"><strong>Users <small>{active.members.length}</small></strong><button aria-label="Close details" title="Hide users" onclick={() => hideNavigation('users')}>›</button></div>
         <div class="inspector-heading"><div role="tablist" tabindex="-1" aria-label="Conversation details" onkeydown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !fileController) return;
           event.preventDefault(); if (event.key !== 'Home') void openNavigation('files', event.currentTarget.querySelector('button'));
-        }}><button role="tab" id="users-tab" tabindex="0" aria-selected="true" aria-controls="users-panel">Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex="-1" aria-selected="false" onclick={event => void openNavigation('files', event.currentTarget)}>Files <small>{fileCount}</small></button>{/if}</div></div>
+        }}><button role="tab" id="users-tab" tabindex="0" aria-selected="true" aria-controls="users-panel">Users <small>{active.members.length}</small></button>{#if fileController}<button role="tab" id="files-tab" tabindex="-1" aria-selected="false" onclick={event => void openNavigation('files', event.currentTarget)}>Files <small>{fileCount}</small></button>{/if}</div><button class="hide-users" aria-label="Close details" title="Hide users" onclick={() => hideNavigation('users')}>›</button></div>
         {#if usersVisible}<div id="users-panel" role="tabpanel" tabindex="0" aria-labelledby="users-tab" class="users-list">{#each active.members as member (member.id)}<button class:self={member.isSelf} disabled={member.isSelf || busy} onclick={() => { if (!wide) closeNavigation(); void send(`${active.policy ? '/whois' : '/query'} ${member.id}`); }} title={member.presence?.state === 'away' ? `Away: ${member.presence.reason}` : member.isSelf ? 'Your channel identity' : active.policy ? 'Show channel member details' : 'Open private chat'}><bdi class="member-name">{member.capabilities.includes('channel.owner') ? '~' : member.capabilities.includes('channel.operator') ? '@' : member.capabilities.includes('channel.voice') ? '+' : ''}{member.nickname}</bdi>{#if member.presence?.state === 'away'}<small title={member.presence.reason}>Away</small>{:else if member.presence?.state === 'available'}<small>Available</small>{/if}{#if !member.isSelf && member.recentlyActive}<small title="Recently active">●</small>{/if}{#if member.isSelf}<small>you</small>{/if}</button>{/each}{#if !active.members.length}<p>No users to display.</p>{/if}{#if active.owner && !active.policy}<button disabled={busy} onclick={() => { if (!wide) closeNavigation(); void send('/recover-membership'); }}>Channel recovery…</button>{/if}</div>
         {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
       </aside>
@@ -1354,10 +1362,10 @@
   .conversation { min-height:0; }
   .conversation-heading { padding:4px 12px 6px; gap:0 4px; border-bottom:1px solid var(--line); }
   .active-title { flex:1; font-size:15px; }
-  .panel-toggle { flex:none; display:flex; align-items:center; gap:4px; min-width:36px; min-height:36px; justify-content:center; padding:4px 6px; color:var(--muted); }
+  .panel-toggle { flex:none; display:flex; align-items:center; gap:4px; min-width:44px; min-height:44px; justify-content:center; padding:4px 6px; color:var(--muted); }
   .panel-toggle[aria-expanded=true] { color:var(--accent); background:color-mix(in srgb,var(--accent) 7%,transparent); }
   .header-topic { flex:0 0 100%; padding:0 6px; font-size:12px; line-height:1.5; }
-  .connection-label { font-size:12px; color:var(--ghost-warning); min-width:0; padding:4px; overflow-wrap:anywhere; }
+  .connection-label { flex:0 1 auto; font-size:12px; color:var(--ghost-warning); min-width:0; padding:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; padding:4px 8px 4px 12px; min-height:44px; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
   .panel-heading button { width:36px; min-width:36px; padding:0; text-align:center; font-size:22px; }
   .channels { padding:0; }
@@ -1373,6 +1381,7 @@
   .inspector { width:min(280px,calc(100% - 44px)); padding:0; }
   .inspector.docked { position:static; width:176px; flex:0 0 176px; z-index:auto; box-shadow:none; }
   .inspector-heading { padding:4px 6px; font-size:12px; }
+  .inspector-heading button { padding:4px 6px; min-height:44px; }.inspector-heading .hide-users { padding:0; width:28px; min-width:28px; flex:none; font-size:22px; }
   .users-list { padding:6px; }
   .users-list button { min-height:32px; align-items:baseline; padding:4px 6px; }
   .member-name { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -1402,5 +1411,5 @@
   .search-result { padding:12px 0; border-bottom:1px solid var(--line); }
   .search-result p { margin:6px 0; white-space:pre-wrap; }
   @media(max-width:999px) { .transcript { padding:8px 12px; }.conversation-heading { padding:2px 8px 5px; }.panel-toggle { min-height:44px; min-width:44px; }.panel-heading button { min-height:44px; min-width:44px; } }
-  @media(pointer:coarse) { .channels .channel-entries button,.users-list button,.private-line button { min-height:44px; }.panel-toggle { min-height:44px; min-width:44px; } }
+  @media(pointer:coarse) { .channels .channel-entries button,.users-list button,.private-line button { min-height:44px; }.panel-toggle { min-height:44px; min-width:44px; }.inspector-heading .hide-users { min-width:44px; width:44px; } }
 </style>

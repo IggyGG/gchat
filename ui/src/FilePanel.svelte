@@ -7,6 +7,12 @@
   } = $props();
   let showAll = $state(false), cacheGiB = $state(10), retention = $state(7);
   const snapshot = $derived(view.snapshot), busy = $derived(view.busy);
+  let settingsKey = '';
+  $effect(() => {
+    if (!snapshot) return;
+    const key = `${snapshot.quota_bytes}/${snapshot.retention_days}`;
+    if (key !== settingsKey) { settingsKey = key; cacheGiB = Number(snapshot.quota_bytes) / 1073741824; retention = snapshot.retention_days; }
+  });
   const bytes = fileSize;
 </script>
 <section class="files" aria-label="Conversation files">
@@ -19,6 +25,7 @@
   {#if view.uploading}<p role="status">Importing {view.uploading}</p>{/if}
   {#if view.notice}<p role="status">{view.notice}</p>{/if}
   {#if view.error}<p role="alert">{view.error}</p>{/if}
+  {#if snapshot && !snapshot.files.some(f => (showAll || f.conversation === conversation) && f.state !== 'cancelled')}<p class="empty">No files shared {showAll ? 'in this cache' : 'in this conversation'}.</p>{/if}
   {#each snapshot?.files.filter(f => (showAll || f.conversation === conversation) && f.state !== 'cancelled') ?? [] as file (file.id)}
     <article aria-busy={view.transfers[file.id]?.pending ?? false}>
       <div><strong>{file.name}</strong>{#if file.conversation !== conversation}<small>Another conversation</small>{/if}<small>{bytes(file.size_bytes)} · {file.state.replaceAll('_', ' ')}</small></div>

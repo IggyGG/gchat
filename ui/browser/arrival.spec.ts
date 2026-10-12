@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { showChannels } from './navigation';
 import { readFile } from 'node:fs/promises';
 import { readInvitationCard, embedInvitationCard } from '../src/invitation-card';
 
@@ -54,13 +55,13 @@ test('exported PNG retains the invitation and stages before unlock without joini
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
   await page.getByLabel('Your nickname in this channel', { exact: true }).fill('Card guest');
   await page.getByRole('button', { name: 'Join', exact: true }).click();
-  await page.getByRole('button', { name: 'Channels', exact: true }).click();
+  await showChannels(page);
   await expect(page.locator('.network-group')).toHaveCount(2);
 });
 
 test('a PNG is only a container: invalid authority is refused by the service', async ({ page }) => {
   await page.goto('/?networks&fresh');
-  await page.locator('#network-invitation-file').setInputFiles({ name: 'invitation.png', mimeType: 'image/png', buffer: Buffer.from(embedInvitationCard(pixel, 'GCI1-forged-fixture')) });
+  await page.getByLabel('Or choose an invitation file',{exact:true}).setInputFiles({ name: 'invitation.png', mimeType: 'image/png', buffer: Buffer.from(embedInvitationCard(pixel, 'GCI1-forged-fixture')) });
   await expect(page.getByRole('alert')).toContainText('Invitation signature rejected');
   expect(await page.evaluate(() => (window as any).fixture.requests.some((r: any) => r.kind === 'networks' && r.request.kind === 'join'))).toBe(false);
 });
