@@ -3,9 +3,12 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import socket
+import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -31,6 +34,10 @@ class ActivationTests(unittest.TestCase):
         self.process = self.enterContext(patch.object(helper, 'process', return_value=self.before))
         self.installed = self.enterContext(patch.object(helper, 'installed', return_value=self.package))
         self.action = self.enterContext(patch.object(helper, 'action'))
+        self.maintenance = self.enterContext(patch.object(helper, 'Maintenance'))
+        self.lease = self.maintenance.return_value
+        self.lease.record.return_value = {'view': 'd' * 32, 'instance': 'e' * 64, 'endpoint': '/owner/gcd.chat'}
+        self.lease.prepare.return_value = {'state': 'ready', 'process_id': self.before['pid']}
         self.enterContext(patch.object(helper.time, 'sleep'))
 
     def activate(self):
@@ -66,6 +73,42 @@ class ActivationTests(unittest.TestCase):
         self.assertEqual([call.args for call in self.action.call_args_list],
                          [('start', helper.BACKUP, 180), ('try-restart', helper.HUB, 90)])
         self.assertEqual(json.loads(self.marker.read_text()), result)
+        self.lease.prepare.assert_called_once()
+        self.lease.release.assert_called_once()
+
+    def test_attached_view_or_active_work_defers_restart_without_spending_activation(self):
+        self.lease.prepare.side_effect = [
+            {'state': 'busy', 'reason': 'Another GChat window is attached.'},
+            {'state': 'ready', 'process_id': self.before['pid']},
+        ]
+        self.process.side_effect = [self.before, self.before, self.before, self.before, self.after, self.after]
+        self.assertEqual(self.activate()['state'], 'deferred')
+        self.assertNotIn('restart_requested_at', json.loads(self.marker.read_text()))
+        self.assertEqual([call.args[:2] for call in self.action.call_args_list], [('start', helper.BACKUP)])
+        self.assertEqual(self.activate()['state'], 'activated')
+        self.assertEqual(sum(call.args[0] == 'try-restart' for call in self.action.call_args_list), 1)
+
+    def test_lost_prepare_response_is_not_a_restart_permission(self):
+        self.lease.prepare.side_effect = OSError('interrupted')
+        self.assertEqual(self.activate()['state'], 'failed')
+        self.assertEqual(self.activate()['state'], 'suppressed')
+        self.action.assert_called_once_with('start', helper.BACKUP, 180)
+        self.assertGreaterEqual(self.lease.release.call_count, 1)
+
+    def test_suppressed_attempt_releases_its_own_lease_without_restarting(self):
+        self.state.mkdir()
+        receipt = {'state': 'intent', 'before': self.before, 'maintenance': self.lease.record.return_value}
+        self.marker.write_text(json.dumps(receipt))
+        self.assertEqual(self.activate()['state'], 'suppressed')
+        self.lease.release.assert_called_once()
+        self.lease.prepare.assert_not_called()
+        self.action.assert_not_called()
+
+    def test_deferred_record_with_restart_intent_remains_suppressed(self):
+        self.state.mkdir()
+        self.marker.write_text(json.dumps({'state': 'deferred', 'restart_requested_at': 1}))
+        self.assertEqual(self.activate()['state'], 'suppressed')
+        self.action.assert_not_called()
 
     def test_failed_backup_is_not_followed_by_restart_or_automatic_retry(self):
         self.action.side_effect = subprocess.CalledProcessError(1, ['systemctl'])
@@ -172,6 +215,107 @@ class ExecutableTests(unittest.TestCase):
              patch.object(helper.time, 'sleep'):
             self.assertEqual(helper.wait_running(package, 1), new)
         self.assertEqual(process.call_count, 6)
+
+
+@unittest.skipUnless(sys.platform == 'linux', 'Linux kernel-owned maintenance socket')
+class MaintenanceBoundaryTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.endpoint = self.root / 'chat'
+        self.lease = helper.Maintenance.__new__(helper.Maintenance)
+        self.lease.before = {'pid': os.getpid()}
+        self.lease.instance = 'e' * 64
+        self.lease.endpoint = self.endpoint
+        self.received = []
+
+    def serve(self, response):
+        listener = socket.socket(socket.AF_UNIX)
+        listener.settimeout(2)
+        listener.bind(str(self.endpoint)); listener.listen(1)
+        self.addCleanup(listener.close)
+        def receive(connection, count):
+            data = b''
+            while len(data) < count:
+                piece = connection.recv(count - len(data))
+                if not piece: return data
+                data += piece
+            return data
+        def worker():
+            with listener.accept()[0] as connection:
+                connection.settimeout(2)
+                header = receive(connection, 4)
+                if not header: return
+                count = struct.unpack('!I', header)[0]
+                self.received.append(json.loads(receive(connection, count)))
+                try:
+                    for byte in response:
+                        connection.sendall(bytes([byte]))
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 3)
+
+    def frame(self, **changes):
+        value = {'version': 3, 'instance_id': self.lease.instance,
+                 'response': {'kind': 'instance', 'instance': {'id': self.lease.instance}}}
+        value.update(changes)
+        raw = json.dumps(value).encode()
+        return struct.pack('!I', len(raw)) + raw
+
+    def test_fragmented_owned_reply_is_bound_to_the_selected_instance(self):
+        self.serve(self.frame())
+        self.assertEqual(self.lease.exchange({'kind': 'identify'})['kind'], 'instance')
+        self.assertEqual(self.received[0]['instance_id'], self.lease.instance)
+
+    def test_wrong_kernel_process_receives_no_request(self):
+        self.lease.before['pid'] += 1
+        self.serve(self.frame())
+        with self.assertRaisesRegex(ValueError, 'process owner'):
+            self.lease.exchange({'kind': 'identify'})
+        self.assertEqual(self.received, [])
+
+    def test_changed_instance_is_not_readiness(self):
+        self.serve(self.frame(instance_id='f' * 64))
+        with self.assertRaisesRegex(ValueError, 'changed instance'):
+            self.lease.exchange({'kind': 'identify'})
+
+    def test_noninteger_api_version_is_not_an_identification(self):
+        self.serve(self.frame(version=3.0))
+        with self.assertRaisesRegex(ValueError, 'API'):
+            self.lease.exchange({'kind': 'identify'})
+
+    def test_oversized_frame_is_refused_before_body_allocation(self):
+        self.serve(struct.pack('!I', helper.MAX_FRAME + 1))
+        with self.assertRaisesRegex(ValueError, 'frame bound'):
+            self.lease.exchange({'kind': 'identify'})
+
+    def test_truncated_frame_is_not_a_successful_reply(self):
+        self.serve(struct.pack('!I', 100) + b'{}')
+        with self.assertRaisesRegex(ValueError, 'interrupted'):
+            self.lease.exchange({'kind': 'identify'})
+
+    def test_registration_rejects_duplicate_fields_size_and_shared_access(self):
+        path = self.root / 'host.json'
+        for body, mode, error in [
+            (b'{"version":1,"version":1}', 0o600, 'duplicate'),
+            (b' ' * 32769, 0o600, 'size limit'),
+            (b'{}', 0o644, 'owner-private'),
+        ]:
+            with self.subTest(error=error):
+                path.write_bytes(body); path.chmod(mode)
+                with self.assertRaisesRegex(ValueError, error): helper.private_json(path)
+
+    def test_native_paths_are_lossless_and_traversal_is_refused(self):
+        self.assertEqual(os.fsencode(helper.local_path({'unix': list(b'/private/\xff')})), b'/private/\xff')
+        for value in ('relative', '/private/../other', '/private/\0', {'unix': [47, True]}, {'unix': [47, 0]}):
+            with self.subTest(value=value), self.assertRaises(ValueError): helper.local_path(value)
+
+    def test_deeply_nested_json_is_a_bounded_validation_error(self):
+        with self.assertRaisesRegex(ValueError, 'nesting'):
+            helper.decode_json('[' * 2000 + '0' + ']' * 2000)
 
 
 if __name__ == '__main__':

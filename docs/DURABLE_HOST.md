@@ -47,6 +47,13 @@ Native startup errors preserve `host_configuration`, `host_mismatch` and
 desktop attachment for a subsequent reconnect; an uncertain mutation is not
 replayed by the native adapter. Existing operation handles own its reconciliation.
 
+Unix attachments verify the kernel peer UID; managed attachments additionally
+require the user service's actual MainPID. Headless activation uses the same
+registration and the existing owner maintenance lease, deferring while a window
+or admitted operation remains active. Unknown activation outcomes retain their
+one-attempt receipt. Only that receipt's abandoned lease may be released later;
+an uncertain restart is never repeated automatically.
+
 ## Validation and deployment requirements
 
 The causal regression creates a real disposable identity, registers fleet scope,

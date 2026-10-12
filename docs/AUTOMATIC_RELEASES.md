@@ -378,6 +378,18 @@ The process/hash check proves executable activation, not network delivery.
 Default installations remain package-only.
 
 Each installed executable gets at most one automatic activation attempt.
+The helper requires the instance's owner-private host registration and checks its
+application handshake against the exact kernel PID/UID and saved host binding.
+After backup it acquires the existing maintenance lease immediately before the
+graceful restart. Attached windows and active work defer activation; a definitively
+busy result can be checked again without spending the one restart attempt.
+Preparation/restart failures and unknown outcomes remain suppressed. A later
+observation may release that same attempt's abandoned maintenance lease, but it
+cannot repeat the restart. Initial legacy installations require the controlled
+registered-host migration before this activation path is available. The existing
+daily backup remains a best-effort live copy; installation migration and rollback
+qualification use a separately verified consistent stopped backup.
+
 Receipts live in `${XDG_STATE_HOME:-~/.local/state}/gchat-headless-activation/<sha256>.json`;
 failed or interrupted attempts stay suppressed. Inspect the receipt and
 `journalctl --user -u gchat-headless-activate.service`, correct the cause, then

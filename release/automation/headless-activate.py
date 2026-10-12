@@ -4,7 +4,10 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import secrets
+import socket
 import stat
+import struct
 import subprocess
 import time
 
@@ -12,6 +15,183 @@ BINARY = Path('/usr/bin/gchat')
 HUB = 'gchat-fleet-host.service'
 BACKUP = 'gchat-hub-backup.service'
 PACKAGE_LOCK = Path('/run/lock/gchat-package-update.lock')
+MAX_FRAME = 64 * 1024
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('duplicate host configuration field')
+        result[key] = value
+    return result
+
+
+def decode_json(raw):
+    try:
+        value = json.loads(raw, object_pairs_hook=unique_object)
+    except RecursionError as error:
+        raise ValueError('host JSON nesting exceeds its limit') from error
+    pending = [(value, 0)]
+    while pending:
+        current, depth = pending.pop()
+        if depth > 32:
+            raise ValueError('host JSON nesting exceeds its limit')
+        if isinstance(current, dict):
+            pending.extend((item, depth + 1) for item in current.values())
+        elif isinstance(current, list):
+            pending.extend((item, depth + 1) for item in current)
+    return value
+
+
+def private_json(path, limit=32768):
+    path = Path(path)
+    for selected, directory in ((path.parent, True), (path, False)):
+        info = selected.lstat()
+        valid = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+        if not valid or info.st_uid != os.getuid() or info.st_mode & 0o077:
+            raise ValueError('host registration must be owner-private')
+    with path.open('rb') as stream:
+        raw = stream.read(limit + 1)
+    if len(raw) > limit:
+        raise ValueError('host registration exceeds size limit')
+    return decode_json(raw)
+
+
+def local_path(value):
+    if isinstance(value, str):
+        path = Path(value)
+    elif (isinstance(value, dict) and set(value) == {'unix'} and isinstance(value['unix'], list)
+          and all(type(n) is int and 0 < n <= 255 for n in value['unix'])):
+        path = Path(os.fsdecode(bytes(value['unix'])))
+    else:
+        raise ValueError('unsupported registered host path')
+    if not path.is_absolute() or '..' in path.parts or '\0' in str(path):
+        raise ValueError('invalid registered host path')
+    return path
+
+
+def registration_for_pid(pid):
+    with (Path('/proc') / str(pid) / 'cmdline').open('rb') as stream:
+        raw = stream.read(65537)
+    if len(raw) > 65536:
+        raise ValueError('host process arguments exceed bound')
+    arguments = [os.fsdecode(arg) for arg in raw.split(b'\0') if arg]
+    def selected(flag):
+        values = [arguments[i + 1] for i, arg in enumerate(arguments[:-1]) if arg == flag]
+        values.extend(arg[len(flag) + 1:] for arg in arguments if arg.startswith(flag + '='))
+        if len(values) > 1:
+            raise ValueError('ambiguous registered host arguments')
+        return values[0] if values else None
+    archive, home = selected('--chat-archive'), selected('--home')
+    if archive is None and home is None:
+        raise ValueError('managed activation requires an explicitly selected registered instance')
+    path = local_path(archive) if archive is not None else local_path(home) / 'chat.gcarchive'
+    registration = private_json(path.with_suffix('.host.json'))
+    if (not isinstance(registration, dict) or type(registration.get('version')) is not int
+            or registration['version'] != 1 or registration.get('service') != HUB):
+        raise ValueError('host registration does not select this managed service')
+    if local_path(registration.get('archive')) != path:
+        raise ValueError('registered archive does not match the running process')
+    return registration
+
+
+class Maintenance:
+    """The existing owner-only update lease, pinned to the observed process."""
+    def __init__(self, before, release, view=None):
+        registration = registration_for_pid(before['pid'])
+        self.before, self.release_id = before, release
+        self.view = view or secrets.token_hex(16)
+        self.instance = registration.get('instance')
+        if not isinstance(self.instance, str) or len(self.instance) != 64 or any(c not in '0123456789abcdef' for c in self.instance):
+            raise ValueError('invalid registered instance identity')
+        self.endpoint = local_path(registration.get('protocolSocket')).with_suffix('.chat')
+        # Rust's registration writer defines this canonical field order. A
+        # modified/reordered recipe must not silently change activation authority.
+        encoded = json.dumps(registration, ensure_ascii=False, separators=(',', ':')).encode()
+        self.binding = 'gchat.host.v1:' + hashlib.sha256(encoded).hexdigest()
+
+    def record(self):
+        return {'view': self.view, 'instance': self.instance, 'endpoint': str(self.endpoint)}
+
+    def exchange(self, request):
+        body = json.dumps({'version': 3, 'instance_id': self.instance, 'request': request}, separators=(',', ':')).encode()
+        if not 0 < len(body) <= MAX_FRAME:
+            raise ValueError('maintenance request exceeds frame bound')
+        with socket.socket(socket.AF_UNIX) as connection:
+            deadline = time.monotonic() + 30
+            connection.settimeout(30)
+            connection.connect(str(self.endpoint))
+            pid, uid, _ = struct.unpack('3i', connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
+            if pid != self.before['pid'] or uid != os.getuid():
+                raise ValueError('maintenance endpoint changed process owner')
+            connection.sendall(struct.pack('!I', len(body)) + body)
+            def exact(size):
+                data = bytearray()
+                while len(data) < size:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise ValueError('maintenance response timed out')
+                    connection.settimeout(remaining)
+                    part = connection.recv(size - len(data))
+                    if not part:
+                        raise ValueError('maintenance response was interrupted')
+                    data.extend(part)
+                return data
+            size = struct.unpack('!I', exact(4))[0]
+            if not 0 < size <= MAX_FRAME:
+                raise ValueError('maintenance response exceeds frame bound')
+            value = decode_json(exact(size))
+        if (not isinstance(value, dict) or type(value.get('version')) is not int
+                or value['version'] != 3 or value.get('instance_id') != self.instance):
+            raise ValueError('maintenance response changed instance or API')
+        response = value.get('response')
+        if not isinstance(response, dict) or response.get('kind') == 'error':
+            raise ValueError('registered host refused maintenance')
+        return response
+
+    def update(self, action):
+        request = {'action': action, 'view': self.view}
+        if action in ('prepare', 'abort'):
+            request['release'] = self.release_id
+        response = self.exchange({'kind': 'update', 'request': request})
+        if response.get('kind') != 'update' or not isinstance(response.get('result'), dict):
+            raise ValueError('invalid host maintenance result')
+        return response['result']
+
+    def prepare(self):
+        identity = self.exchange({'kind': 'identify'})
+        info = identity.get('instance')
+        capabilities = info.get('capabilities') if isinstance(info, dict) else None
+        if (identity.get('kind') != 'instance' or not isinstance(capabilities, list)
+                or not all(isinstance(value, str) for value in capabilities) or self.binding not in capabilities):
+            raise ValueError('running host does not match its registered configuration')
+        attached = self.update('heartbeat')
+        if attached.get('state') == 'busy':
+            return attached
+        if attached.get('state') != 'attached':
+            raise ValueError('host refused the maintenance view')
+        result = self.update('prepare')
+        if result.get('state') not in ('ready', 'busy'):
+            raise ValueError('host returned an invalid readiness result')
+        if result['state'] == 'ready' and result.get('process_id') != self.before['pid']:
+            raise ValueError('maintenance readiness changed process identity')
+        return result
+
+    def release(self):
+        self.update('abort')
+        self.update('detach')
+
+
+def release_abandoned(before, package, receipt):
+    """Release only this old attempt's lease; never repeat an uncertain restart."""
+    previous = receipt.get('maintenance')
+    if not isinstance(previous, dict) or receipt.get('before') != before:
+        return
+    lease = Maintenance(before, package['sha256'], previous.get('view'))
+    if lease.record() != previous:
+        raise ValueError('retained maintenance owner changed')
+    lease.release()
 
 
 def digest(path):
@@ -111,10 +291,14 @@ def activate(state, package_lock=PACKAGE_LOCK):
             marker = state / (package['sha256'] + '.json')
             if marker.exists():
                 old = json.loads(marker.read_text())
-                return {'state': 'suppressed', 'reason': 'this executable already had an activation attempt; inspect its receipt before a manual reset',
-                        'sha256': package['sha256'], 'previous_state': old.get('state')}
+                try: release_abandoned(before, package, old)
+                except (ValueError, OSError): pass
+                if old.get('state') != 'deferred' or 'restart_requested_at' in old:
+                    return {'state': 'suppressed', 'reason': 'this executable already had an activation attempt; inspect its receipt before a manual reset',
+                            'sha256': package['sha256'], 'previous_state': old.get('state')}
+            lease = Maintenance(before, package['sha256'])
             receipt = {'schema': 1, 'state': 'intent', 'package': package, 'before': before,
-                       'started_at': int(time.time())}
+                       'maintenance': lease.record(), 'started_at': int(time.time())}
             save(marker, receipt)  # An interrupted/unknown outcome never authorizes another restart.
             try:
                 action('start', BACKUP, 180)
@@ -122,15 +306,26 @@ def activate(state, package_lock=PACKAGE_LOCK):
                     raise ValueError('installed package changed during backup')
                 if process() != before:
                     raise ValueError('running hub changed during backup')
-                action('try-restart', HUB, 90)
-                after = wait_running(package, before['pid'])
-                if installed() != package:
-                    raise ValueError('installed package changed during activation')
-                receipt.update(state='activated', after=after, completed_at=int(time.time()),
-                               network_delivery_verified=False)
+                ready = lease.prepare()
+                if ready['state'] == 'busy':
+                    receipt.update(state='deferred', reason=ready.get('reason', 'host is busy'))
+                else:
+                    # The short lease begins after backup and immediately guards
+                    # the ordinary graceful restart. No request is replayed.
+                    receipt['restart_requested_at'] = int(time.time())
+                    save(marker, receipt)
+                    action('try-restart', HUB, 90)
+                    after = wait_running(package, before['pid'])
+                    if installed() != package:
+                        raise ValueError('installed package changed during activation')
+                    receipt.update(state='activated', after=after, completed_at=int(time.time()),
+                                   network_delivery_verified=False)
             except (ValueError, OSError, subprocess.SubprocessError) as error:
                 receipt.update(state='failed', completed_at=int(time.time()),
-                               reason=str(error) if isinstance(error, ValueError) else type(error).__name__)
+                                reason=str(error) if isinstance(error, ValueError) else type(error).__name__)
+            finally:
+                try: lease.release()
+                except (ValueError, OSError): pass  # Restart may already have retired the pinned process.
             save(marker, receipt)
             return receipt
 
