@@ -56,6 +56,14 @@ identity and keep being reconciled. Once all internal stages finish, mobile
 processing/review may continue while the next release starts. A pending iOS encryption declaration may also release the global flight after the unchanged IPA and installed compatibility gates pass. It requires fresh IN_REVIEW evidence including France and matching native receipt hashes. The original iOS submit request continues reconciliation in its own lane; the wait never marks an upload, submission or availability as passed. This prerequisite handling is active in the qualified 2b2478e controller. The scheduler never
 selects an older pending candidate after a newer one completes. Completed stages and
 provider request IDs survive retries. A failed or unknown operation remains explicit.
+Under `production-minutes-v1`, a release requiring infrastructure also releases
+its scheduling slot when its Linux native build or verification is blocked and
+it owns no rollout. Verified sibling artifacts cannot otherwise progress toward
+deployment and must not stall every newer candidate. This changes admission only:
+the original platform failures, effect/request IDs, artifacts and retry budgets
+remain retained and reconcilable. Pending/running native gates, unrelated package
+publication failures, owned rollouts and the legacy scheduling policy keep their
+existing admission rules.
 The operator inventory can select `network_check_policy: boundaries-v1`: full
 covered messaging/interrupted-file checks run at the first and final targets;
 intermediate targets run covered bidirectional messaging within 300 seconds plus
@@ -77,6 +85,12 @@ the original paired-source bundle. Matching boundary images still receive their
 full network check. Failure of such a check does not restart an unchanged target.
 Each canary starts its two isolated clients concurrently under the same deadline
 and waits for both owned startup workers before cleanup.
+
+When a qualified controller repair is already active, the next independent repair
+observes that release-bound, hash-verified overlay. The original failed fleet
+journal remains unchanged and continues describing the original bundle. A changed
+qualification proof is rejected before observation; a healthy controller running
+different, unqualified bytes still cannot satisfy the baseline check.
 
 Canaries receive expiring bootstrap and invitation-publication scope, zero name
 quota and no server authority. Legacy bootstrap-only grants remain revocable.

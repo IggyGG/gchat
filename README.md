@@ -42,6 +42,13 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 # GChat
 
+IRC UX delivery, 2026-10-13: the release-controller repair is active after its
+425-check image/Kubernetes qualification and authenticated-delivery canary.
+The subsequent Linux 0.1.192 native run exposed formatting failures in the paired
+sources; formatting-only corrections pass locally. The installed package remains
+0.1.176 pending the successor's normal qualification and signed update path.
+See [the IRC UX acceptance](docs/IRC-UX.md) and current scope in `PLAN.md`.
+
 Desktop relay contribution is preserved as dormant work for a future release.
 `/network relay status` reports sharing off; `/network relay auto` reports that
 the feature is unavailable in this release. Saved preferences, environment

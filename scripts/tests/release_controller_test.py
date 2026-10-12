@@ -4,7 +4,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -14,17 +16,40 @@ from release_pair import canonical
 import release_controller as controller
 
 
-def intent_fixture(state):
+def intent_fixture(state, baseline=None):
     before = {key: str(i) * 64 for i, key in enumerate(
         ('artifacts', 'infrastructure', 'controller', 'qualification'), 1)}
     after = dict(before, controller='5' * 64, qualification='6' * 64)
-    baseline = candidate()
+    baseline = candidate() if baseline is None else baseline
     sources = copy.deepcopy(baseline['sources'])
     sources['gchat'] = {'commit': 'd' * 40, 'tree': 'e' * 40}
     return controller.queue(state, baseline, sources, before, after)
 
 
 class ControllerTests(unittest.TestCase):
+    def test_finished_worker_records_do_not_own_activation_but_live_processes_and_readers_do(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            process = subprocess.Popen([sys.executable, '-c', 'raise SystemExit(1)'])
+            self.assertEqual(process.wait(timeout=10), 1)
+            retained = {'process': process, 'request_id': 'original-failed-request'}
+            owner = SimpleNamespace(state=root, running_workers={'failed': retained},
+                                    deployment_runner=SimpleNamespace(pending=None))
+            self.assertTrue(controller.quiescent(owner))
+            self.assertIs(owner.running_workers['failed'], retained)
+            self.assertEqual(retained['request_id'], 'original-failed-request')
+            live = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'], stdin=subprocess.PIPE)
+            try:
+                owner.running_workers['live'] = {'process': live}
+                self.assertFalse(controller.quiescent(owner))
+            finally:
+                live.communicate(timeout=10)
+            self.assertTrue(controller.quiescent(owner))
+            work = root / 'jobs' / ('a' * 64)
+            controller.save(work / 'acceptance-intent.json', {'cleaned': False, 'delivery_protocol': 'sealed'})
+            controller.save(work / 'sealed-delivery.json', {'expires_at': int(time.time()) + 600})
+            self.assertFalse(controller.quiescent(owner))
+
     def test_quiescence_skips_artifact_trees_but_checks_all_followup_branches(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -95,6 +120,33 @@ class ControllerTests(unittest.TestCase):
             with patch('release_inputs.fingerprints', return_value=intent['baseline_inputs']):
                 with self.assertRaisesRegex(ValueError, 'committed input'):
                     controller.verify_inputs(intent, {})
+
+    def test_pending_native_baseline_cannot_preempt_the_selected_controller_repair(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller.save(root / 'deployment/desired.json', {'release_id': candidate()['release_id']})
+            current = intent_fixture(root)
+            pending = intent_fixture(root, candidate(2))
+            desired = root / 'controller-updates/desired.json'
+            self.assertEqual(controller.read(desired)['id'], current['id'])
+            self.assertEqual(intent_fixture(root, candidate(2)), pending)
+            self.assertEqual(controller.read(desired)['id'], current['id'])
+            self.assertEqual(controller.read(root / 'controller-updates' / pending['id'] / 'intent.json'), pending)
+            # This fixture models a subsequently qualified native deployment;
+            # admission never changes either candidate's receipts or versions.
+            controller.save(root / 'deployment/desired.json', {'release_id': candidate(2)['release_id']})
+            intent_fixture(root, candidate(2))
+            self.assertEqual(controller.read(desired)['id'], pending['id'])
+
+    def test_controller_selection_rejects_a_malformed_saved_intent_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller.save(root / 'deployment/desired.json', {'release_id': candidate()['release_id']})
+            desired = root / 'controller-updates/desired.json'
+            controller.save(desired, {'id': '../foreign'})
+            with self.assertRaisesRegex(ValueError, 'controller desired'):
+                intent_fixture(root, candidate(2))
+            self.assertEqual(controller.read(desired), {'id': '../foreign'})
 
     def test_overlay_is_release_bound_and_uses_existing_image_validator(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -206,7 +258,7 @@ class ControllerTests(unittest.TestCase):
                 self.assertFalse(controller.quiescent(owner))
             controller.save(intent, {'cleaned': True})
             self.assertTrue(controller.quiescent(owner))
-            owner.running_workers['worker'] = object()
+            owner.running_workers['worker'] = {'process': SimpleNamespace(poll=lambda: None)}
             self.assertFalse(controller.quiescent(owner))
 
     def test_cleaned_parent_cannot_hide_live_nested_followup_reader(self):
@@ -273,6 +325,36 @@ class ControllerTests(unittest.TestCase):
         owner = SimpleNamespace(config={})
         controller.reconcile(owner)
         controller.close(owner)
+
+    def test_recovery_baseline_observes_the_verified_active_overlay_and_rejects_changed_proof(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); baseline = candidate(); intent = intent_fixture(root)
+            previous = root / 'controller-updates' / intent['id']
+            proof = previous / 'qualification.json'
+            controller.save(proof, {'image': 'qualified-previous-controller'})
+            controller.save(root / 'controller-updates/active' / (baseline['release_id'] + '.json'), {
+                'id': intent['id'], 'release_id': baseline['release_id'],
+                'qualification_sha256': controller.sha(proof)})
+            controller.save(root / 'deployment/desired.json', {'release_id': baseline['release_id']})
+            journal = root / 'deployment' / baseline['release_id'] / 'journal.json'
+            controller.save(journal, {'state': 'blocked', 'sources': baseline['sources'],
+                'inventory': {'targets': [{'id': 'controller', 'workers': {
+                    stage: ['owned-worker'] for stage in ('observe', 'prepare', 'activate', 'check', 'rollback')}}]},
+                'targets': {'controller': {'state': 'deployed'}, 'relay': {'state': 'check_failed'}}})
+            original = journal.read_bytes()
+            def observe(target, *args):
+                return {'healthy': True, 'matches': target.get('controller_qualification_sha256') == controller.sha(proof)}
+            with patch('release_kubernetes_worker.expected_image') as validate, \
+                    patch('release_deployment.invoke', side_effect=observe) as invoke:
+                self.assertTrue(controller.baseline_ready(root, baseline, root / 'next-repair'))
+                validate.assert_called_once()
+                self.assertEqual(invoke.call_args.args[0]['controller_qualification'], str(proof))
+                self.assertEqual(journal.read_bytes(), original)
+                proof.write_text('{}')
+                invoke.reset_mock()
+                with self.assertRaisesRegex(ValueError, 'qualification changed'):
+                    controller.baseline_ready(root, baseline, root / 'next-repair')
+                invoke.assert_not_called()
 
 
 if __name__ == '__main__': unittest.main()

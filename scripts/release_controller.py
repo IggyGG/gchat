@@ -84,7 +84,25 @@ def queue(state, baseline, sources, before, after):
     if path.exists() and read(path) != value:
         raise ValueError('retained controller intent changed')
     if not path.exists(): save(path, value)
-    save(Path(state) / 'controller-updates/desired.json', {'id': value['id']})
+    from release_provider import locked
+    desired = Path(state) / 'controller-updates/desired.json'
+    with locked(desired.parent / 'selection.lock'):
+        selected_path = Path(state) / 'deployment/desired.json'
+        if desired.exists() and selected_path.exists():
+            selected = read(selected_path).get('release_id')
+            current_id = read(desired).get('id', '')
+            if not isinstance(current_id, str) or not re.fullmatch('[0-9a-f]{64}', current_id):
+                raise ValueError('invalid controller desired ID')
+            current = read(desired.parent / current_id / 'intent.json')
+            current_baseline = validate_intent(current)
+            # Discovery of a controller for an uninstalled native release must
+            # not continually replace a repair for the selected deployment.
+            # Retain the new intent; it becomes selectable when its native
+            # baseline is actually selected through the ordinary release gates.
+            if (current_baseline['release_id'] == selected
+                    and baseline['release_id'] != selected):
+                return value
+        save(desired, {'id': value['id']})
     return value
 
 
@@ -327,7 +345,11 @@ def baseline_ready(state, baseline, work):
             or any(t.get('state') in ('activating', 'rollback_pending', 'rollback_failed')
                    for t in report.get('targets', {}).values())): return False
     from release_deployment import inventory, invoke
-    targets = [t for t in inventory(report['inventory']) if t['id'] == 'controller']
+    # A prior independently qualified repair may already be running. Observe its
+    # release-bound, hash-verified overlay, rather than expecting the retired
+    # controller from the unchanged failed fleet journal.
+    effective = deployment_config(state, baseline, report['inventory'])
+    targets = [t for t in inventory(effective) if t['id'] == 'controller']
     if len(targets) != 1: return False
     observed = invoke(targets[0], 'observe', baseline, Path(work) / 'baseline-observation')
     if observed is None or observed.get('healthy') is not True or observed.get('matches') is not True:
@@ -465,7 +487,11 @@ def acceptance_intents(jobs):
 
 
 def quiescent(controller):
-    if controller.running_workers or getattr(controller.deployment_runner, 'pending', None): return False
+    # Failed or unconfirmed effects retain finished worker records so their
+    # original results can be reconciled. Only an actual live process owns
+    # execution liveness; do not discard those durable/diagnostic records.
+    if (any(item['process'].poll() is None for item in controller.running_workers.values())
+            or getattr(controller.deployment_runner, 'pending', None)): return False
     # A remote reader may have no local subprocess. Wait for all native/mobile
     # acceptance grants to finish their ordinary cleanup before replacing nginx's
     # colocated coordinator pod and its sole Service endpoint.
