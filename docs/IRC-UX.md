@@ -48,13 +48,26 @@ Files show compact progress in chat, with exact details in Files.
 
 ## Qualification
 
+**Installed delivery, 2026-10-13:** signed Linux **0.1.214** now contains the shared
+rows. The normal APT updater installed the publicly verified package. The existing
+GNOME favorite launched its exact executable; normal close and desktop-entry
+relaunch retained the same qualified build and production data. The actual window
+has common header/footer dividers across all three columns, with and without a
+topic. Native controls confirm independent panel toggles, both font choices and
+the displayed version. All 11 original conversations, 200 sampled message IDs and
+content hashes, identity and retained file survive. A stopped-state backup precedes
+the qualified background-host activation; both regular update timers are healthy.
+The [installed receipt](evidence/irc-ux-alignment-20261013/installed.json) records
+sources, package/runtime hashes, storage recovery and the precise scope of live
+versus fixture checks. Private screenshots and original attempts remain local.
+
 The 2026-10-13 shared-row follow-up (`5137d81`) passes 78 unit tests, all 122 cases
 in each of Chromium and WebKit, 18 native Linux WebKitGTK checks, both type checks
 with zero errors/warnings, the frontend build and source audit. Actual screenshots
 were reviewed for matching dividers, both fonts, topics, multiline drafts, zoom
 and narrow windows. The [alignment receipt](evidence/irc-ux-alignment-20261013/summary.json)
 retains source/artifact hashes and original failed attempts. Signed installation
-and icon-launched acceptance remain a separate delivery gate.
+and icon-launched acceptance are verified separately in the installed receipt.
 
 Implemented and qualified on 2026-10-12. Final UI source `cc3e89b` passes:
 

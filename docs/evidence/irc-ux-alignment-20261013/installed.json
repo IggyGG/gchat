@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "status": "installed_and_relaunched",
+  "date": "2026-10-13",
+  "platform": "linux-x86_64",
+  "version": "0.1.214",
+  "release_id": "5cd20d425e49b9f474486384adf689d562783ace699d54f62ed41374257daa88",
+  "sources": {
+    "implementation": "5137d81f0f9321627cf6c7d11d9616bde03f176b",
+    "published_upstream": "e18156d18dd7480e51308a1ffca4e62623faa83e",
+    "gchat": "0c2399fe86ab0fa964e0cecdd750f58de8b44ff0",
+    "gcoms": "c84f0a7d460939d7b9729e8f5c07767d03cef552",
+    "ui_src_tree": "7030c811495613edcab98acc1ddb8701aa9861b8"
+  },
+  "qualification": {
+    "workflow": 38400755456,
+    "native_build": "passed",
+    "gchat_native_gate": "passed",
+    "gcoms_native_gate": "passed",
+    "full_relay_load": "passed",
+    "signed_packaging": "passed",
+    "artifact_verification": "passed",
+    "installed_package_acceptance": "passed",
+    "compatibility": "passed",
+    "original_receipts_and_artifact_hashes_independently_verified": true
+  },
+  "package": {
+    "bytes": 40616134,
+    "sha256": "bbbd9d12d462aff4c9aa46428c28e05f9f1031067e3e44c23d29a55dead4ea80",
+    "public_url": "https://gchat.boo/updates/apt/pool/5cd20d425e49b9f474486384adf689d562783ace699d54f62ed41374257daa88/g-chat_0.1.214_amd64.deb",
+    "public_bytes_match_qualified_artifact": true,
+    "package_and_apt_signatures_verified_with_existing_key": true,
+    "installed_by": "gchat-package-update.service"
+  },
+  "runtime": {
+    "desktop_sha256": "0ccee20faf37dc69d680c974b5733beb84e192ce131b52500160cd1d77744dc4",
+    "host_sha256": "923085a0e4cfdca280a89d44b108d23f1ad26acc11588d0516cc0571d4ec58bd",
+    "installed_and_running_hashes_match": true,
+    "existing_desktop_entry": "GChat.desktop",
+    "existing_entry_unchanged": true,
+    "actual_gnome_favorite_clicked": true,
+    "normal_gui_close_and_same_desktop_entry_relaunch_verified": true,
+    "network": "connected"
+  },
+  "native_interface": {
+    "window_size": [1100, 720],
+    "common_divider_rows_without_topic": [56, 109, 667],
+    "common_divider_rows_with_topic": [56, 127, 667],
+    "private_capture_sha256": {
+      "first_icon_launch": "ed3ca331792b195bd4ee7085277686682726fd9a73c9b2d7027e36fc18ccefae",
+      "topic_header": "923741f0d9a22e6e485a118483e4b1594331a3efd16a032ee518ac639586eb07",
+      "final_desktop": "5505708652f08273303f6ae2efb9c98778973315d485c9efbb9226ccab09d082"
+    },
+    "recovery_action_in_user_footer": true,
+    "independent_channel_and_user_collapse_restore": true,
+    "help_and_update_panel": true,
+    "displayed_version": "0.1.214",
+    "font_switch_verified_by_native_text_attributes": ["ui-monospace", "GchatFixedsys"],
+    "fixedsys_and_desktop_panels_restored": true,
+    "final_channel": "#linux",
+    "all_11_conversation_drafts_checked_empty_before_final_close": true
+  },
+  "preservation": {
+    "identity_unchanged": true,
+    "original_conversations": 11,
+    "original_message_samples": 200,
+    "all_original_sample_ids_and_content_hashes_retained": true,
+    "retained_file_metadata_unchanged": true,
+    "retained_files": 1,
+    "consistent_stopped_backup_retained": true,
+    "backup_files": 199,
+    "backup_bytes": 134829191,
+    "only_qualified_temporary_host_override_retired": true,
+    "required_gcoms_hotfix_ancestry_verified": true
+  },
+  "updater": {
+    "apt_timer_active": true,
+    "registered_host_activation_timer_active": true,
+    "activation_service_result": "success",
+    "installed_helper_matches_qualified_source": true,
+    "helper_sha256": "12f2bcf4bd80b5468537940e8226d86ff3552c37105a55082d7af9484c459d97"
+  },
+  "release_storage": {
+    "existing_cluster_capacity_used": true,
+    "node_unused_docker_cache_recovery_approximate_bytes": 87000000000,
+    "old_unused_published_images_verified_in_registry_before_cleanup": 29,
+    "running_docker_containers_preserved": 10,
+    "pvc_capacity_gib": 256,
+    "original_expansion_completed": true,
+    "release_and_longhorn_reserves_retained": true,
+    "qualified_maintenance_image": "sha256:df634887756efc9d2f78f0a98cd4dd1483df92a94814eaa1bc516c4f659fa4d7",
+    "hourly_compaction_updated_and_actual_job_passed": true,
+    "passed_canaries_checked": 99,
+    "additional_canary_bytes_shared": 920567808
+  },
+  "verification_scope_notes": [
+    "Multiline drafts, zoom and narrow layouts passed the source-bound Chromium, WebKit and native-engine fixture gates recorded in summary.json.",
+    "Additional installed-app keyboard checks were interrupted by shared desktop focus; global typing was stopped. Those captures are retained and are not counted as passes.",
+    "The accessibility resize adapter did not change the native window as requested; its attempt is retained and its hints were cleared by a normal relaunch.",
+    "Final installed-app checks used app-scoped accessibility controls, actual GNOME captures, owner-only read-only data checks and executable hashes."
+  ],
+  "retained_private_evidence": "test-evidence/irc-ux/alignment/",
+  "comparison_notes": "../../IRC-UX.md#code-comparison"
+}

@@ -3,6 +3,17 @@
 Status: source and isolated lifecycle qualification passed; signed release and
 installed acceptance remain in progress (F5 / durable-host).
 
+Installed follow-up, 2026-10-13: the signed 0.1.214 successor is now installed.
+Its production host was activated after a consistent stopped backup and verified
+hotfix ancestry; only the superseded temporary override was retired. The host
+publishes its service-bound registration, runs the exact packaged executable and
+is connected with the retained identity, conversations and file. The actual desktop
+entry launches and relaunches the matching GUI. Both update timers are active and
+the installed activation helper matches the qualified source. The
+[alignment delivery receipt](evidence/irc-ux-alignment-20261013/installed.json)
+records this cutover; the broader lifecycle requirements below retain their own
+acceptance scope.
+
 An instance with retained component ownership must reopen through its configured
 host. A desktop launch previously depended entirely on `--fleet-config`; when its
 managed daemon was stopped and the shortcut omitted that argument, a personal

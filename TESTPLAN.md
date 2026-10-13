@@ -71,6 +71,16 @@ draft growth and shrinkage, independent collapsed rails and roster scrolling,
 qualification does not establish delivery; verify the signed installed package
 and real icon-launched window after normal release publication.
 
+Installed alignment acceptance now passes for signed Linux 0.1.214: independently
+verified native, load, signing, artifact and installed-package receipts; public
+package readback; supported APT installation; actual favorite launch and normal
+desktop-entry relaunch; native shared dividers, independent panels, font switching
+and running-version display; original identity/history/file retention; and healthy
+regular update timers. Source-bound browser/native-engine fixtures provide the
+multiline/zoom/narrow matrix. Shared-desktop typing and unsupported accessibility
+resize attempts remain retained and are not substituted for successful live tests.
+[Installed scope and hashes](docs/evidence/irc-ux-alignment-20261013/installed.json).
+
 Canary storage, 2026-10-13: the original maintenance entry point must fail the
 duplicate-package inode assertion; the corrected entry point must share identical
 qualified bytes while retaining every path, mode and report. Cover failed/live/

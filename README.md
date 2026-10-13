@@ -42,6 +42,17 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 # GChat
 
+**IRC workspace delivery, 2026-10-13:** signed Linux **0.1.214** is installed and
+verified through the existing desktop entry, including normal relaunch. Channels,
+chat and users now share aligned header/content/footer rows; topics and multiline
+drafts size those rows together, and Channel recovery sits in the bottom strip.
+Native controls and retained identity/history/files are verified. The normal
+updater and registered background service are active. See the
+[installed receipt](docs/evidence/irc-ux-alignment-20261013/installed.json) for exact
+sources, hashes, test scope and retained limitations.
+
+### Earlier IRC UX delivery checkpoints
+
 IRC UX delivery, 2026-10-13: the release-controller repair is active after its
 425-check image/Kubernetes qualification and authenticated-delivery canary.
 After correcting paired formatting failures, Linux 0.1.193 passes GChat's complete

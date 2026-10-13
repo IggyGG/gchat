@@ -34,6 +34,18 @@ Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrast
 
 ## GCHAT-UX — conversation-first IRC workspace
 
+2026-10-13 delivery complete (OC): signed Linux **0.1.214** is installed and running
+through the existing desktop entry. All native/release/installed-package gates pass
+for frozen sources `0c2399f` / `c84f0a7`. Public package and installed/running hashes
+match. Actual native captures confirm shared header/footer boundaries; panel and
+font controls, displayed version, normal relaunch and retained production data are
+verified. Eleven conversations, 200 original sampled messages, identity and the
+retained file survive the stopped-backup/registered-host activation. Existing-node
+Docker cache recovery enabled the pending 256 GiB expansion; qualified hourly
+compaction and both local update timers are active. Original failures and GUI
+automation limitations are retained with their exact scope.
+[Installed evidence](docs/evidence/irc-ux-alignment-20261013/installed.json).
+
 2026-10-13 row-alignment refinement (OC): shared intrinsic header/content/footer
 tracks are qualified in source `5137d81`; Channel recovery is docked in the user
 footer. All 122 Chromium and 122 WebKit cases pass, along with 78 unit tests,

@@ -41,5 +41,5 @@
     "conclusion": "Comparable conversation structure, no close shared-row implementation. Intrinsic CSS sizing and browser/native geometry checks establish behavior."
   },
   "retained_evidence": "test-evidence/irc-ux/alignment/",
-  "installed_delivery": "pending normal signed release and existing-icon acceptance"
+  "installed_delivery": "verified signed Linux 0.1.214; see installed.json for source, package, runtime and retained-data evidence"
 }
