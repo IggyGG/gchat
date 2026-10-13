@@ -42,6 +42,17 @@
     "log_sha256": "74133e0ad6539de78d16b6806c523c1b482c6df422e1c2071dfe8d4755dca7ce",
     "provenance_sha256": "50180b41374c5c970702447c6359b9b62e2624ba03c826d2cb1e777531f2e107"
   },
+  "current_companion_integration": {
+    "gchat": "18e68867c949a95c3d19ef640410740dfd124a0f",
+    "gcoms": "d2f9632f24346a0c9051c9d3f381d17ecfe7a8cc",
+    "gchat_snapshot_sha256": "19a82ead7771e07e78e6d9a075b06da45540e9596f6c908bd061fe458a1008d2",
+    "gcoms_snapshot_sha256": "455f8c0c08f55c1047ccb6b39f1bc2cd17ae50ea656c014d80af35ed11d2eb49",
+    "fleet_tests_passed": 4,
+    "exit_code": 0,
+    "log_sha256": "4a306952108de4d6d15712e4e2a6c471b7ddcfedc99c24629b491d4cb48dbd37",
+    "upstream_native_repair_receipt": "../irc-ux-release-repairs-20261013/summary.json",
+    "scope": "Focused consumer integration after adopting already qualified upstream ordering/metrics repairs; original full CI remains bound to its earlier pair"
+  },
   "final_ui": {
     "implementation": "e20883fedaa2c7de04969081b4754a9f4754530e",
     "unit_passed": 78,
