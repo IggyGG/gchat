@@ -31,6 +31,11 @@ read-only history. The matrix includes 320/390/768/1100/1440 CSS pixels,
 short viewports, 200% zoom and missing web fonts. Inspect the resulting images;
 DOM assertions alone do not establish visual quality.
 
+`alignment.spec.ts` checks common desktop header/body/footer bounds, dynamic topics
+and drafts, independent roster scrolling, collapsed columns, both fonts and zoom.
+Its screenshots include ordinary and multiline desktop drafts, a scrolled roster
+and the read-only archive. Compare these with the actual installed native window.
+
 For native Linux WebKitGTK (GTK3, WebKit2 4.1, PyGObject with Cairo), start the
 isolated UI fixture with `GCHAT_UI_PORT=1438 node ui/browser/server.mjs`, then run:
 

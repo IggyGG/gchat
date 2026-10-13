@@ -9,6 +9,13 @@ closure and focus restoration. Channel unread counts remain visible in the
 conversation header when navigation is closed. An `@` badge indicates an unread
 mention or configured highlight; read-only history inspection never marks it read.
 
+Docked columns share three content-sized grid rows: header, scrollable content and
+bottom actions. Topics and catch-up text grow the shared header; long topics stay
+on one quiet line with their full text available in channel details. Multiline
+drafts and input context grow the shared footer. Add channel, the composer and
+Channel recovery stay at the bottom, while each list scrolls independently.
+Empty user footers remain quiet. Mobile drawers retain full-size touch targets.
+
 Messages keep one renderer, nickname, whitespace and timeline identity through
 pending, local acceptance and recipient acknowledgement. Delivery is distinct from
 reading. Unconfirmed outcomes say so; “Checking” appears only during a real check.
@@ -41,6 +48,14 @@ Files show compact progress in chat, with exact details in Files.
 
 ## Qualification
 
+The 2026-10-13 shared-row follow-up (`5137d81`) passes 78 unit tests, all 122 cases
+in each of Chromium and WebKit, 18 native Linux WebKitGTK checks, both type checks
+with zero errors/warnings, the frontend build and source audit. Actual screenshots
+were reviewed for matching dividers, both fonts, topics, multiline drafts, zoom
+and narrow windows. The [alignment receipt](evidence/irc-ux-alignment-20261013/summary.json)
+retains source/artifact hashes and original failed attempts. Signed installation
+and icon-launched acceptance remain a separate delivery gate.
+
 Implemented and qualified on 2026-10-12. Final UI source `cc3e89b` passes:
 
 | Gate | Result |
@@ -65,6 +80,16 @@ Native webview evidence uses isolated fixture data; signed package, live network
 and other OS installer qualification use their normal release gates.
 
 ## Code comparison
+
+The 2026-10-13 shared-row follow-up compared the new grid against the corpus.
+`Fchat-Horizon/Horizon:chat/ConversationView.vue` (2025 snapshot, cosine 0.6752,
+rerank 0.9099) uses a comparable conversation/scroll area, but is not a shared-row
+implementation. `farzadasgari/CodeSkillz:main/static/front/js/sidebar/sidebar.js`
+(cosine 0.6916, rerank 0.9149) provides generic responsive-sidebar prior art.
+GChat uses CSS subgrid for intrinsic row sizing, preserves semantic panel/main
+elements and independent scrolling, and verifies actual divider geometry with
+topics, catch-up, drafts, collapsed rails, both fonts and zoom. No dependency or
+new HTML injection path is introduced.
 
 The pre-change `followTail` comparison found
 `mozilla-frontend-infra/react-lazylog:src/components/ScrollFollow/index.jsx`

@@ -62,6 +62,15 @@ Routine publication now verifies the native build, signatures, permissions, star
 
 ## Retained earlier checkpoints
 
+IRC row alignment, 2026-10-13: `ui/browser/alignment.spec.ts` measures the shared
+header/content/footer boundaries across all visible columns (one-pixel tolerance).
+Cover both fonts, 1000/1100/1440px widths, absent/long topics, catch-up, multiline
+draft growth and shrinkage, independent collapsed rails and roster scrolling,
+200% desktop zoom, read-only context and an empty user footer. Retain the existing
+44px touch-target checks and native Linux screenshots at 320/390/1100px. Source
+qualification does not establish delivery; verify the signed installed package
+and real icon-launched window after normal release publication.
+
 Canary storage, 2026-10-13: the original maintenance entry point must fail the
 duplicate-package inode assertion; the corrected entry point must share identical
 qualified bytes while retaining every path, mode and report. Cover failed/live/

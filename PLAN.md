@@ -34,6 +34,15 @@ Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrast
 
 ## GCHAT-UX — conversation-first IRC workspace
 
+2026-10-13 row-alignment refinement (OC): shared intrinsic header/content/footer
+tracks are qualified in source `5137d81`; Channel recovery is docked in the user
+footer. All 122 Chromium and 122 WebKit cases pass, along with 78 unit tests,
+18 native WebKitGTK 2.52.6 checks, zero-error/warning types and the frontend build.
+Both fonts, topics, multiline drafts, scrolling, collapsed rails, zoom and mobile
+touch targets are covered. Original failed attempts are retained. The new signed
+installed/icon-launched release remains pending.
+[Source-bound evidence](docs/evidence/irc-ux-alignment-20261013/summary.json).
+
 2026-10-13 installed acceptance: signedLinux0.1.200 is published and installed by
 the normal APT service. Two real launches through the existing GNOME favorite use
 the exact packaged desktophash59c14037…7952f. Fourteen native visual/interaction

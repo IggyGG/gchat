@@ -67,6 +67,12 @@ scheduled-maintenance activation remain tracked in
 [storage evidence](docs/evidence/irc-ux-canary-storage-20261013/summary.json).
 See [the IRC UX acceptance](docs/IRC-UX.md) and current scope in `PLAN.md`.
 
+The desktop workspace now aligns the channel list, conversation and user list on
+shared header/content/footer rows. Topics and multiline drafts resize those rows
+together; Channel recovery remains reachable in the user-column footer. Narrow
+windows use the existing drawers. Source and installed-release validation are
+tracked separately in the [IRC UX notes](docs/IRC-UX.md).
+
 Desktop relay contribution is preserved as dormant work for a future release.
 `/network relay status` reports sharing off; `/network relay auto` reports that
 the feature is unavailable in this release. Saved preferences, environment

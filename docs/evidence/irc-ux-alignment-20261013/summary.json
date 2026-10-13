@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "scope": "Shared desktop header/content/footer rows and responsive regression",
+  "source": "5137d81f0f9321627cf6c7d11d9616bde03f176b",
+  "ui_src_tree": "7030c811495613edcab98acc1ddb8701aa9861b8",
+  "workspace_sha256": "09492d3e7a87c85524c0234c92b8ca20cb1eca3aed443715d2bcc383d6bd3abf",
+  "alignment_spec_sha256": "2c20433b6dcb8beb215d4245b83d5196998f861a21f6c1702605066bfed8e170",
+  "checks": {
+    "svelte_types": {"workspaces": 2, "errors": 0, "warnings": 0},
+    "unit": {"passed": 78},
+    "chromium": {"passed": 122, "skipped": 0, "log_sha256": "ca0d6bcff3b87f0a7002d002edb62cef159cc7c1c2397ecf1875417529da9d7c"},
+    "webkit": {"passed": 122, "skipped": 0, "log_sha256": "02301621ccd9083622c6e0824a176059f0a654a6f2fe3ddc1a38352691af19fc"},
+    "native_webkitgtk": {"version": "2.52.6", "passed": 18, "widths": [320,390,1100]},
+    "frontend_build": {"passed": true, "css_sha256": "dee68759f96bf0da4297c29387849dbd14fdc0f3393c342360f2cf28a4a6c8ec", "javascript_sha256": "fc33747e12e0672a217453f6e0540627ebb54a39de030e5f9631eba9e61f70c7"},
+    "source_audit": {"passed": true, "paths_before_receipt": 912}
+  },
+  "visual_review": [
+    "Common horizontal dividers and primary heading controls",
+    "Absent and long topics; separate catch-up line",
+    "Fixedsys and readable font; single and multiline drafts",
+    "Independent collapsed columns and scrolling; docked recovery action",
+    "Read-only archive context and quiet empty user footer at 200 percent zoom",
+    "Native narrow workspace and reachable zoomed dialog controls"
+  ],
+  "geometry_tolerance_css_pixels": 1,
+  "native_summary_sha256": {
+    "320": "0987272dfb82fb8b0b0f376d892cb65cf5b3426beeeb1e51ff7ef293611d1340",
+    "390": "8f8380fd9deb851323b9369f2cff75343f1417add7cc33f7f86d96719d95d1f6",
+    "1100": "f7731936ebb2d32c6bcf05dc97dc85554e7e8dfb6eedee989756424cd7ea7479"
+  },
+  "native_workspace_png_sha256": "a875e70d45285ee459cbaa3cefd1240c94988a712fb10c92b60e840e1837fca0",
+  "retained_initial_failures": [
+    "Initial focused test expected the wrong recovery dialog title; corrected to the existing exact heading",
+    "Initial Chromium run found two mobile controls reduced to 40px; fixed by restricting compact sizing to fine-pointer desktop",
+    "Initial WebKit run passed assertions but one picker context teardown timed out; full unchanged-source rerun passed all 122 cases under the original deadlines"
+  ],
+  "comparison": {
+    "provenance": "Fchat-Horizon/Horizon:chat/ConversationView.vue",
+    "cosine": 0.6752,
+    "rerank": 0.9099,
+    "conclusion": "Comparable conversation structure, no close shared-row implementation. Intrinsic CSS sizing and browser/native geometry checks establish behavior."
+  },
+  "retained_evidence": "test-evidence/irc-ux/alignment/",
+  "installed_delivery": "pending normal signed release and existing-icon acceptance"
+}
