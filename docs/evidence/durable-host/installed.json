@@ -1,10 +1,42 @@
 {
   "schema": 1,
-  "status": "pending",
+  "status": "blocked_release_storage",
   "scope": "Qualified signed successor and actual installed production instance",
-  "release_id": null,
+  "release_id": "0ecb82e3c3e60d808bbe10a32170dfcdb8229149b831f080adea0b5a15f81304",
+  "candidate": {
+    "sequence": 207,
+    "linux_version": "0.1.212",
+    "upstream_gchat": "3dad7546c99b995a927a4351352353b547e05222",
+    "gchat": "fd787c2cc5c0e6d07621e92dd8b254c16a8cf3c9",
+    "gcoms": "c84f0a7d460939d7b9729e8f5c07767d03cef552",
+    "native_qualification": "not_dispatched_storage_blocked"
+  },
+  "observed_at": 1791891087,
+  "storage": {
+    "free_bytes_observed": 14893989888,
+    "required_headroom_bytes": 17179869184,
+    "release_volume_capacity_gib": 224,
+    "requested_capacity_gib": 256,
+    "expansion": "pending_underlying_disk_headroom",
+    "completed_canary_copies_already_shared": 92,
+    "additional_duplicate_controller_rollback_layers_found": 0
+  },
+  "current_installation": {
+    "desktop_package_version": "0.1.200",
+    "host_version": "0.1.178",
+    "host_sha256": "90c7aedeac9e2560e69036eb04765e18363c1fb214c522f910c01ce9035c20cc",
+    "host_running": true,
+    "identity_and_fleet_partition_preserved": true,
+    "all_original_conversations_and_message_ids_retained": true,
+    "original_conversations": 9,
+    "current_conversations": 11,
+    "current_messages": 200,
+    "cache_files": 165,
+    "production_cutover_approved_when_qualified": true
+  },
   "installed_acceptance_passed": false,
   "remaining": [
+    "restore release-storage headroom while retaining archives and evidence",
     "signed source-paired native qualification and publication",
     "authenticated live delivery and interrupted file recovery",
     "qualified production host/desktop migration",
