@@ -56,6 +56,14 @@ an uncertain restart is never repeated automatically.
 
 ## Validation and deployment requirements
 
+Full WebKit qualification also exposed an existing scroll-anchor failure. The
+reader now chooses the nearest representable scroll position when an engine
+quantizes `scrollTop`, and viewport resize clears an earlier gesture's intent
+window so layout-generated scrolling cannot replace the saved anchor. The
+original font/resize/activity/incoming-message regression and its half-pixel
+assertion are retained. Baseline failed three repetitions; the combined repair
+passes all three. Full browser qualification remains separately recorded.
+
 The causal regression creates a real disposable identity, registers fleet scope,
 checkpoints, removes the original fleet launch argument and reopens the same
 identity with the original component credentials. Negative controls cover copied

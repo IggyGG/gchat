@@ -12,11 +12,20 @@ export function followTail(node: HTMLElement, options: { following: boolean; sco
     if (value.following) node.scrollTop = node.scrollHeight;
     else if (anchor) {
       const item = [...node.querySelectorAll<HTMLElement>('[data-timeline-key]')].find(el => el.dataset.timelineKey === anchor!.key);
-      if (item) node.scrollTop += item.getBoundingClientRect().top - node.getBoundingClientRect().top - anchor.offset;
+      if (item) {
+        const wanted = node.scrollTop + item.getBoundingClientRect().top - node.getBoundingClientRect().top - anchor.offset;
+        node.scrollTop = wanted;
+        // Some engines quantize scrollTop. Pick the nearest representable pixel
+        // instead of accumulating their downward rounding after a font change.
+        if (Math.abs(node.scrollTop - wanted) > 0.5) node.scrollTop = Math.round(wanted);
+      }
     }
     lastTop = node.scrollTop;
   };
   const schedule = () => { if (!frame) frame = requestAnimationFrame(settle); };
+  // A viewport adjustment can emit scroll events inside an earlier wheel's
+  // grace period. Those layout events must not replace the reader's anchor.
+  const resized = () => { userUntil = 0; schedule(); };
   const intent = () => { userUntil = performance.now() + 1000; };
   const anchorHere = () => { value = { ...value, following:false }; userUntil = 0; lastTop = node.scrollTop; remember(); };
   const key = (event: KeyboardEvent) => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key)) intent(); };
@@ -28,6 +37,7 @@ export function followTail(node: HTMLElement, options: { following: boolean; sco
     }
     lastTop = node.scrollTop;
   };
+  window.addEventListener('resize', resized);
   const resize = new ResizeObserver(schedule);
   resize.observe(node);
   if (node.firstElementChild) resize.observe(node.firstElementChild);
@@ -48,6 +58,7 @@ export function followTail(node: HTMLElement, options: { following: boolean; sco
       schedule();
     },
     destroy() {
+      window.removeEventListener('resize', resized);
       resize.disconnect(); cancelAnimationFrame(frame);
       node.removeEventListener('gchat-anchor-here',anchorHere);
       node.removeEventListener('wheel',intent); node.removeEventListener('touchstart',intent); node.removeEventListener('touchmove',intent);
