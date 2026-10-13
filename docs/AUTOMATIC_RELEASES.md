@@ -170,6 +170,15 @@ remain safe to retry; no image is removed or relabelled as newly qualified.
 Receipts under `maintenance/compaction/` retain the archive and build proof hashes.
 An uncertain run can be retried; already shared files are unchanged. Compaction
 never removes archives, profiles, unpublished work, signatures or evidence.
+The same entry point now covers up to128 recently completed native canaries.
+It shares only their qualified package/executable copies after source and input
+hashes, successful child/profile cleanup, revoked authority and every artifact
+byte are verified. Active, failed and incomplete journeys retain independent
+storage. File ownership and modes must agree; metadata changes and symlinks refuse
+replacement. Every original path and report remains available. The source repair
+passes505 release controls, and a bounded live operation recovered4,419,035,136
+bytes across92 passed canaries. Image activation of this addition is tracked
+separately in [storage evidence](evidence/irc-ux-canary-storage-20261013/summary.json).
 The independent hourly `release/automation/compaction.yaml` uses a qualified,
 immutable controller image and the release PVC, without signing keys or network
 access. Install that image only after its source and native compaction controls

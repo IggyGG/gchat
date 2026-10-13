@@ -57,6 +57,14 @@ reconciler; its failed release record remains intact. Automatic owner cleanup
 passes499 regressions and follows normal controller qualification. Actual signed
 feed publication, local installation and icon-launched acceptance remain in
 progress. [Ownership recovery](docs/evidence/irc-ux-terminal-owner-20261013/summary.json).
+
+Installed Linux acceptance now verifies0.1.200 through the existing desktop icon,
+including relaunch, retained identity/history/files and fourteen real native
+visual/interaction groups. Final release maintenance is being completed: verified
+sharing of successful canary artifact copies reclaimed4.419GB with all evidence
+and paths retained. The causal repair passes505 release controls; controller and
+scheduled-maintenance activation remain tracked in
+[storage evidence](docs/evidence/irc-ux-canary-storage-20261013/summary.json).
 See [the IRC UX acceptance](docs/IRC-UX.md) and current scope in `PLAN.md`.
 
 Desktop relay contribution is preserved as dormant work for a future release.
