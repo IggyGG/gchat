@@ -18,6 +18,17 @@ Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrast
 
 ## GCHAT-UX — conversation-first IRC workspace
 
+2026-10-13 native follow-up: Linux0.1.193 passes the full GChat native gate,
+including77 UI and114Chromium cases, and its64-client load gate passes720/720
+authenticated commands, zero refusals and1.496s recipientp95. The paired GComs gate
+exposed a deferred-message ordering race. That repair and a separately observed
+JSONL restart-write repair pass causal controls,74 GC/2 checks, four metrics and
+four native TLS controls, ten order repeats, strict Clippy and legacy compilation.
+The native receiver fixture also requires its current authenticated archive format.
+[Source-bound repair evidence](docs/evidence/irc-ux-release-repairs-20261013/summary.json).
+A new immutable candidate must still complete signing, publication, local package
+installation and real existing-icon visual/relaunch acceptance. Installed0.1.176.
+
 2026-10-13 delivery follow-up: controller-only source `dd42ee0` is active as image
 `2041607201ee`, after 425 image and 425 Kubernetes controls, exact source binding
 and the normal full authenticated-delivery canary. Its deployment journal is

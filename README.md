@@ -44,9 +44,12 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 IRC UX delivery, 2026-10-13: the release-controller repair is active after its
 425-check image/Kubernetes qualification and authenticated-delivery canary.
-The subsequent Linux 0.1.192 native run exposed formatting failures in the paired
-sources; formatting-only corrections pass locally. The installed package remains
-0.1.176 pending the successor's normal qualification and signed update path.
+After correcting paired formatting failures, Linux 0.1.193 passes GChat's complete
+native gate and the64-client load campaign. The paired GComs gate exposed an
+ordering race; it and a relay metrics-write repair now pass scoped native controls.
+The installed package remains0.1.176 pending the successor's complete signed
+release and actual desktop-icon acceptance.
+See [release-repair evidence](docs/evidence/irc-ux-release-repairs-20261013/summary.json).
 See [the IRC UX acceptance](docs/IRC-UX.md) and current scope in `PLAN.md`.
 
 Desktop relay contribution is preserved as dormant work for a future release.
