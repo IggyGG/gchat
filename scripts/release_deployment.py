@@ -319,6 +319,14 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                 report.update(state='deployed', observed_at=now)
                 report.pop('reason', None)
                 owner.unlink(missing_ok=True)
+                if recovery:
+                    # The failed fleet journal stays authoritative, but its old
+                    # owner must not pin selection after this qualified repair
+                    # completes. The shared rollout lock and recovery guards
+                    # above fence mutations, rollback and a different owner.
+                    shared_owner = shared_root / 'owner.json'
+                    if shared_owner.is_file() and read(shared_owner).get('release_id') == manifest['release_id']:
+                        shared_owner.unlink()
                 return not recovery  # A controller repair cannot publish the blocked application.
             target = unhealthy[0] if unhealthy else pending[0]
             item = report['targets'][target['id']]

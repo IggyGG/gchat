@@ -185,6 +185,8 @@ class ControllerTests(unittest.TestCase):
                 controller.save(journal, {'state': 'blocked', 'sources': baseline['sources'],
                     'targets': {'controller': {'state': 'deployed'}, 'relay-2': {'state': 'check_failed'}}})
                 original = journal.read_bytes()
+                global_owner = root / 'deployment/owner.json'
+                controller.save(global_owner, {'release_id': baseline['release_id']})
                 controller.save(root / 'public/deployment.json', {'state': 'blocked'})
                 inventory = {'targets': [{'id': 'relay-2'}, {'id': 'controller', 'workers': {
                     stage: ['worker'] for stage in ('observe', 'prepare', 'activate', 'check', 'rollback')}}]}
@@ -198,8 +200,10 @@ class ControllerTests(unittest.TestCase):
                     if stage == 'rollback': live.update(previous)
                     if stage == 'check' and fail: raise ValueError('failed actual canary')
                     return {'passed': True}
-                for _ in range(3):
+                for step in range(3):
                     self.assertFalse(reconcile(root, baseline, config, worker))
+                    if step == 0 or fail:
+                        self.assertTrue(global_owner.exists(), 'unfinished recovery must retain fleet ownership')
                 self.assertIn('check', calls)
                 self.assertEqual(calls.count('activate'), 1)
                 self.assertEqual(calls.count('rollback'), int(fail))
@@ -208,6 +212,14 @@ class ControllerTests(unittest.TestCase):
                 self.assertEqual(controller.read(root / 'public/deployment.json'), {'state': 'blocked'})
                 repaired = controller.read(work / 'deployment' / baseline['release_id'] / 'journal.json')
                 self.assertEqual(repaired['state'], 'blocked' if fail else 'deployed')
+                self.assertEqual(global_owner.exists(), fail, 'deployed recovery must retire the stale fleet owner')
+                if not fail:
+                    controller.save(global_owner, {'release_id': 'f' * 64})
+                    calls.clear()
+                    self.assertFalse(reconcile(root, baseline, config, worker))
+                    self.assertEqual(controller.read(global_owner), {'release_id': 'f' * 64})
+                    self.assertEqual(calls, [])
+                    controller.save(global_owner, {'release_id': baseline['release_id']})
                 # An intervening fleet effect invalidates the frozen recovery
                 # before even observation, while preserving its durable proof.
                 controller.save(journal, {'state': 'blocked', 'sources': baseline['sources'],
@@ -215,6 +227,7 @@ class ControllerTests(unittest.TestCase):
                 calls.clear()
                 self.assertFalse(reconcile(root, baseline, config, worker))
                 self.assertEqual(calls, [])
+                self.assertTrue(global_owner.exists())
 
     def test_dispatch_timeout_never_redispatches_and_retains_original_request(self):
         with tempfile.TemporaryDirectory() as temporary:
