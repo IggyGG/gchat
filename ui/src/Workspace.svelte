@@ -1421,7 +1421,7 @@
   .wide .conversation-content { grid-row:2; }
   .wide .conversation-footer { grid-row:3; display:flex; flex-direction:column; justify-content:flex-end; }
   .wide .conversation-footer:empty { display:none; }
-  .composer textarea,.composer .attach,.composer .send,.channel-actions button,.inspector-actions button { min-height:40px; }
+  @media(min-width:761px) and (pointer:fine) { .composer textarea,.composer .attach,.composer .send,.channel-actions button,.inspector-actions button { min-height:40px; } }
   .transcript { padding:10px 16px; }
   .private-line { margin:2px 0; padding:1px 0; line-height:var(--chat-leading); font-size:14px; }
   .private-line time { margin-inline-end:.65em; font-size:12px; }
