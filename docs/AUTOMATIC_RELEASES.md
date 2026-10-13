@@ -92,6 +92,15 @@ journal remains unchanged and continues describing the original bundle. A change
 qualification proof is rejected before observation; a healthy controller running
 different, unqualified bytes still cannot satisfy the baseline check.
 
+A completed controller-only recovery also retires the same terminal fleet
+owner under the shared rollout lock. Its failed fleet journal remains unchanged;
+it cannot qualify the old application release. Failed or unfinished recovery,
+rollback, an intervening fleet mutation and a different owner remain protected.
+This prevents the old ownership pointer from indefinitely pinning selection after
+the separately qualified controller is healthy. The causal control and499 release
+regressions pass; [source and live recovery evidence](evidence/irc-ux-terminal-owner-20261013/summary.json)
+distinguish existing-function state recovery from automatic-fix image activation.
+
 Canaries receive expiring bootstrap and invitation-publication scope, zero name
 quota and no server authority. Legacy bootstrap-only grants remain revocable.
 Catalog preparation with `canary_operator: true` installs the qualified companion

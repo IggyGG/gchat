@@ -18,6 +18,16 @@ Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrast
 
 ## GCHAT-UX — conversation-first IRC workspace
 
+2026-10-13 package and rollout follow-up: immutable Linux0.1.200 passes both
+complete native gates, production compilation, full relay load, signed packaging
+and verification. The old failed171 fleet owner then pinned deployment selection
+after its controller-only recovery had completed. The defect is causal and its
+automatic cleanup passes499 release regressions. The installed reconciler's
+existing terminal-failure cleanup retired that owner with no worker calls or
+ledger writes and a byte-identical failed journal. Normal200 deployment and
+installed/icon/relaunch acceptance continue. Automatic-fix image activation is
+separate. [Exact evidence](docs/evidence/irc-ux-terminal-owner-20261013/summary.json).
+
 2026-10-13 native follow-up: Linux0.1.193 passes the full GChat native gate,
 including77 UI and114Chromium cases, and its64-client load gate passes720/720
 authenticated commands, zero refusals and1.496s recipientp95. The paired GComs gate

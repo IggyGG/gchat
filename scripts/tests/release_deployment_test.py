@@ -98,6 +98,19 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(count, len(self.calls))
         self.assertNotIn(('relay-2', 'activate'), self.calls)
 
+    def test_retained_terminal_owner_cleanup_preserves_failure_without_worker_calls(self):
+        self.fail = ('canary', 'check')
+        self.assertFalse(self.tick())
+        journal = self.root / 'deployment' / self.manifest['release_id'] / 'journal.json'
+        original = journal.read_bytes()
+        owner = self.root / 'deployment/owner.json'
+        write(owner, {'release_id': self.manifest['release_id']})
+        self.calls.clear()
+        self.assertFalse(self.tick())
+        self.assertEqual(self.calls, [])
+        self.assertEqual(journal.read_bytes(), original)
+        self.assertFalse(owner.exists())
+
     def test_two_unhealthy_targets_do_not_trigger_mutation(self):
         for item in self.live.values(): item['healthy'] = False
         self.assertFalse(self.tick())

@@ -46,6 +46,15 @@ Routine publication now verifies the native build, signatures, permissions, star
 
 ## Retained earlier checkpoints
 
+IRC UX terminal owner, 2026-10-13: run the causal controller-recovery test with a
+retained global owner. Require it to remain during activation, failure/rollback
+and foreign ownership, then disappear only after qualified recovery completes.
+Keep the global failed journal byte-identical and returnFalse for application
+deployment. Exercise the installed terminal-cleanup branch with zero worker calls.
+All499 release regressions pass without skips; actual image activation of the
+automatic fix remains distinct from the recorded live existing-function recovery.
+[Evidence](docs/evidence/irc-ux-terminal-owner-20261013/summary.json).
+
 IRC UX delivery, 2026-10-13: controller source `dd42ee0` passes 425 actual-image
 and 425 Kubernetes controls plus the ordinary authenticated-delivery canary;
 its deployment journal is deployed. Frozen Linux 0.1.192 then fails both paired

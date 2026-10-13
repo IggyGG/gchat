@@ -50,6 +50,13 @@ ordering race; it and a relay metrics-write repair now pass scoped native contro
 The installed package remains0.1.176 pending the successor's complete signed
 release and actual desktop-icon acceptance.
 See [release-repair evidence](docs/evidence/irc-ux-release-repairs-20261013/summary.json).
+
+Linux0.1.200 now passes its complete native, load, signing and package-verification
+gates. A stale terminal fleet owner was recovered through the installed
+reconciler; its failed release record remains intact. Automatic owner cleanup
+passes499 regressions and follows normal controller qualification. Actual signed
+feed publication, local installation and icon-launched acceptance remain in
+progress. [Ownership recovery](docs/evidence/irc-ux-terminal-owner-20261013/summary.json).
 See [the IRC UX acceptance](docs/IRC-UX.md) and current scope in `PLAN.md`.
 
 Desktop relay contribution is preserved as dormant work for a future release.
