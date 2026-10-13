@@ -96,7 +96,10 @@ class InputTests(unittest.TestCase):
                          '.github/workflows/release-tools-check.yml',
                          'scripts/acceptance_delivery.py', 'scripts/release_acceptance_delivery.py',
                          'release/automation/requirements.txt',
-                         'docs/evidence/stabilization-20261001/node-image-headroom.json',
+                          'docs/evidence/stabilization-20261001/node-image-headroom.json',
+                          'docs/DURABLE_HOST.md',
+                          'docs/evidence/durable-host/source.json',
+                          'docs/evidence/durable-host/installed.json',
                          'marketing/play-store/retro-v1/listing.md',
                          'marketing/play-store/retro-v1/exports/feature.png',
                          'marketing/app-store/retro-v1/listing.json',
@@ -116,7 +119,10 @@ class InputTests(unittest.TestCase):
                                   ('gchat', 'apps/client/src-tauri/icons/icon.png'),
                                   ('gchat', 'scripts/release_prepare.py'),
                                   ('gchat', 'release/publication.json'),
-                                  ('gchat', 'release/automation/unclassified-operations.yaml'),
+                                   ('gchat', 'release/automation/unclassified-operations.yaml'),
+                                   ('gchat', 'release/automation/headless-activate.py'),
+                                   ('gchat', 'crates/core/src/chat_service/host_registration.rs'),
+                                   ('gchat', 'docs/evidence/durable-host/unreviewed.json'),
                                   ('gchat', '.github/workflows/windows-release.yml'),
                                   ('gcoms', 'crates/node/src/lib.rs')]:
                 before = fingerprints(roots, sources)

@@ -1,6 +1,7 @@
 # Durable per-instance host startup
 
-Status: implementation and qualification in progress (F5 / durable-host).
+Status: source and isolated lifecycle qualification passed; signed release and
+installed acceptance remain in progress (F5 / durable-host).
 
 An instance with retained component ownership must reopen through its configured
 host. A desktop launch previously depended entirely on `--fleet-config`; when its
@@ -79,12 +80,39 @@ host hotfix must remain until a signed successor contains its required fixes and
 passes installed acceptance. Inventory and retire only the exact qualified
 temporary overrides; retain rollback copies and a consistent stopped backup.
 
-The task is not complete until the normal icon, cold service start, invitation
+The [source receipt](evidence/durable-host/source.json) records the complete Linux
+CI, browser matrices, real user-service controls, isolated network checks and
+current-state rollback. It preserves each original failed attempt. The task is
+not complete until the normal icon, cold service start, invitation
 arrival, lock/unlock, restart, login/reboot, messaging, files, fleet attachment,
 and canonical installed update cycle have real receipts. Qualification progress
 and failure dispositions will be recorded in `docs/evidence/durable-host/`.
 
-## Initial implementation comparison
+## Implementation comparison
+
+After-write peer-binding comparison:
+`vercel/turborepo:crates/turborepo-daemon/src/endpoint.rs` (cosine0.6484,
+rerank0.8081) checks `peer_cred().uid()` against the current UID. GChat also binds
+managed connections to the observed MainPID and validates the instance/host recipe
+before opening operation-handle state. The owned IPC and actual-service tests
+exercise refusals as well as successful attachment.
+
+The JSON comparison `bitnom/schwab-py-remote:schwab/contrib/util.py`
+(0.7334,0.9241) retries after modifying escaped input. GChat instead rejects
+invalid/duplicate fields and explicitly limits nesting to32 levels. The registry
+TOCTOU comparison returned generic check/use shapes in
+`ZoneMinder/zoneminder:src/zm_fifo.cpp` (0.5878,0.4688) and
+`ruby/ruby:lib/fileutils.rb` (0.4957,0.4688). Host metadata remains owner-private;
+first publication and launch-lock creation are exclusive, and connection authority
+comes from kernel credentials and the bound handshake rather than path presence.
+
+Scroll anchoring discovery found
+`openwrt/luci:themes/luci-theme-footstrap/htdocs/luci-static/resources/fs-fit.js`
+(0.6836,0.9196), which measures residual engine anchoring and distinguishes scrolling
+from layout correction. GChat retains its existing keyed anchor and adds the
+small quantization/viewport-intent correction proven by its unchanged regression.
+These comparisons guide implementation review; they do not establish live findings
+in indexed projects.
 
 Code-index startup results were generic single-instance implementations:
 `khulnasoft/EditSync:crates/editsync/src/editsync/mac_only_instance.rs`

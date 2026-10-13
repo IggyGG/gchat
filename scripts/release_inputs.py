@@ -18,6 +18,11 @@ CONTROL_FILES = frozenset({
     'release/automation/node-image-headroom.service', 'release/automation/node-image-headroom.timer',
     'PLAN.md', 'TESTPLAN.md', 'README.md', 'docs/AUTOMATIC_RELEASES.md',
     'docs/PRODUCTION_RELEASE.md',
+    # Startup contract and receipts are documentation, never runtime inputs.
+    # Keep registration/activation code and unreviewed evidence conservative.
+    'docs/DURABLE_HOST.md',
+    'docs/evidence/durable-host/source.json',
+    'docs/evidence/durable-host/installed.json',
     'docs/evidence/android-ten-minute-20261009/controller-recovery.json',
     'scripts/release_inputs.py', 'scripts/release_coordinator.py',
     'scripts/release_discovery.py', 'scripts/release_config.py',

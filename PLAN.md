@@ -1,10 +1,18 @@
-F5 / durable-host, 2026-10-12: implementation in progress in the contained
-`durable-host` task. Retain the launch association for component-owned identities,
-activate the registered managed host on cold launch, verify its local host binding,
-and preserve structured recovery errors. The original production launcher-only
-repair is verified; the causal regression, source/native qualification, live
-delivery, signed successor, installed migration and reboot/update acceptance are
-still required. Contract: [durable host startup](docs/DURABLE_HOST.md).
+F5 / durable-host, 2026-10-13: source repair qualified; signed deployment and
+installed acceptance remain in progress. Owner-private host registration, bounded
+managed cold start, kernel PID/UID plus instance/configuration binding, and
+coordinated headless updates preserve retained component scope. The actual paired
+Linux CI runs1115 Python cases (one existing platform skip) and passes250 Rust cases,
+strict Clippy, generated contracts,
+desktop build/tests and both audits. Final UI passes78 units and118 cases each in
+Chromium/WebKit; the latter includes the causal scroll-anchor repair. Two separately
+invoked namespace checks, ten actual managed-service controls and current-state
+baseline→candidate→baseline→candidate recovery pass with the original identity and
+history. Live admission succeeds, but the retained production runtime's delivery
+ACK deadline remains a recorded failure under diagnosis. Keep its hotfix until a
+qualified signed successor passes actual installed acceptance. [Source evidence](docs/evidence/durable-host/source.json),
+[deployment status](docs/evidence/durable-host/installed.json),
+[contract](docs/DURABLE_HOST.md).
 
 F5 isolated Android cluster network, 2026-10-12: the owner-selected signed network configuration passed its focused native regression in Kubernetes (1 test, 0.04 seconds), and the headless release binary built successfully with the current frozen GComs companion. The private path, size, signature, expiry and retained network/root checks remain enforced. Source L0 passes. Full Android lab transfer and release timing remain separate requirements. [Evidence](docs/evidence/android-cluster-20261012/network.json).
 

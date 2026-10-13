@@ -1,12 +1,18 @@
-F5 / durable-host, 2026-10-12: run the causal
+F5 / durable-host, 2026-10-13: run the causal
 `retained_fleet_reopen_recovers_without_launcher_arguments` integration test against
 baseline and repaired paired sources. Registration and startup controls must reject
 wrong identity/partition, copied or unsafe registration, conflicting launch
 configuration and mismatched running hosts; credential rotation and native paths
 must survive. Follow with actual concurrent daemon/managed-service startup,
 rendered recovery errors, all required source gates and signed installed
-messaging/file/upgrade/rollback/login/reboot acceptance. Results remain pending;
-see [the contract and completion boundary](docs/DURABLE_HOST.md).
+messaging/file/upgrade/rollback/login/reboot acceptance. The old source causally
+fails; repaired fleet controls, ten real managed-service controls,32 headless
+activation/input checks, both isolated network cases and optimized current-state
+rollback pass. Full paired Linux CI and final118-case Chromium/WebKit suites pass.
+Keep the original scratch-path, debug-build performance and live ACK failures at
+their original scope. Signed release/installed acceptance remain required; see
+[source evidence](docs/evidence/durable-host/source.json) and
+[the contract and completion boundary](docs/DURABLE_HOST.md).
 
 F5 isolated Android cluster network, 2026-10-12: the owner-selected signed network configuration passed its focused native regression in Kubernetes (1 test, 0.04 seconds), and the headless release binary built successfully with the current frozen GComs companion. The private path, size, signature, expiry and retained network/root checks remain enforced. Source L0 passes. Full Android lab transfer and release timing remain separate requirements. [Evidence](docs/evidence/android-cluster-20261012/network.json).
 

@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "date": "2026-10-13",
+  "scope": "Durable scoped-host source and isolated lifecycle qualification",
+  "release_qualified": false,
+  "installed_acceptance_passed": false,
+  "implementation_commits": [
+    "11f7549e70c252bc193ddec150179dab346574f1",
+    "c0888029ab08b384454129caa3557f55b4970f32",
+    "87c45a206d035329e438e92c8a47217201551f96",
+    "e20883fedaa2c7de04969081b4754a9f4754530e"
+  ],
+  "causal_regression": {
+    "test": "retained_fleet_reopen_recovers_without_launcher_arguments",
+    "baseline": "56b03d925ba708a5339c0e0c392a8b54cc5004e9",
+    "baseline_snapshot_sha256": "27b5a4fedc272bcc5755b0238f9f2c2301925db4dc2102c311f732e6f0261437",
+    "baseline_exit_code": 101,
+    "baseline_failure": "retained component ownership requires its scoped host",
+    "baseline_log_sha256": "2200e52afe5c86887666b7502b54033866e73581a4a72f392aafc5ef3ea08cdd",
+    "repaired_development_snapshot_sha256": "87f9db52fec3106df3d3d44e1cee1121a19aab47b0db503a1b8dc4a705c2f1ad",
+    "repaired_fleet_tests_passed": 4,
+    "repaired_log_sha256": "24e45d04d1bb10714c73bdc5123de9f5f116b6767900de97d0fc09f9cfc2e0c8"
+  },
+  "native_linux_ci": {
+    "entrypoint": "python3 scripts/ci.py --gcoms ../gcoms",
+    "sources": {
+      "gchat": "ebb2dcf1a659cb8a9bc6bb3959e7edadd01077ce",
+      "gcoms": "bd7edd44baf58d188b1d0e0beaa5ac234ad1e08b"
+    },
+    "source_unchanged": true,
+    "exit_code": 0,
+    "seconds": 3346.815666226,
+    "python_cases": 1115,
+    "python_existing_skips": 1,
+    "rust_passed": 250,
+    "rust_existing_ignored": 3,
+    "empty_harnesses_excluded_from_count": true,
+    "strict_clippy": true,
+    "generated_contracts": true,
+    "desktop_check_tests_and_optimized_build": true,
+    "workspace_and_desktop_dependency_audits": true,
+    "log_sha256": "74133e0ad6539de78d16b6806c523c1b482c6df422e1c2071dfe8d4755dca7ce",
+    "provenance_sha256": "50180b41374c5c970702447c6359b9b62e2624ba03c826d2cb1e777531f2e107"
+  },
+  "final_ui": {
+    "implementation": "e20883fedaa2c7de04969081b4754a9f4754530e",
+    "unit_passed": 78,
+    "chromium_passed": 118,
+    "webkit_passed": 118,
+    "svelte_errors": 0,
+    "svelte_warnings": 0,
+    "production_build": true,
+    "inputs_sha256": "f687713bfc56fedcd8baa3bc0752a7008ee8aa4e83d1232d27565570e9142040",
+    "result_sha256": "fff90fa0605a8398253fcaf0102ed35da4e86139338b99628e82f01fc2fdf2e3",
+    "original_webkit_failure_retained": true,
+    "anchor_assertion_tolerance_changed": false
+  },
+  "managed_service_lifecycle": {
+    "checks_passed": 10,
+    "seconds": 76.41339538502507,
+    "actual_user_service": true,
+    "concurrent_cold_launch_one_owner": true,
+    "same_identity_history_and_component_scope": true,
+    "actual_maintenance_busy_and_ready": true,
+    "crash_recovery": true,
+    "missing_configuration_and_unit_refused": true,
+    "old_unscoped_worker_refused": true,
+    "cleanup_complete": true,
+    "receipt_sha256": "5767693de90bfea894fdf6ea45acf0f1d241f3ba574a5adc6433ff5f77bfac44"
+  },
+  "headless_activation_controls": {
+    "passed": 32,
+    "receipt_sha256": "d231b8d99e86c46d571bd3a4c310b4a40f9392dc3f889f224820f14abb7680bf",
+    "scope": "busy/deferred/uncertain activation, owned IPC, framing, identity and private-input validation"
+  },
+  "separate_namespace_checks": {
+    "binary_sha256": "16563d40286ee8c217481973e2f3d4c75d53bae59c8763ea2a91ed9c6fe6b675",
+    "registry_isolation_and_reopen": { "passed": true, "seconds": 73.18580199000007 },
+    "combined_invitation_chat_file_and_reopen": { "passed": true, "seconds": 214.94515452199994 },
+    "host_namespace_and_interfaces_unchanged": true,
+    "idle_cpu_measurement": "existing separate measurement; not claimed by the functional gate"
+  },
+  "offline_retained_state_rollback": {
+    "network_isolated": true,
+    "passed": true,
+    "phases": ["baseline", "upgrade", "rollback-current-state", "forward-current-state"],
+    "same_instance_and_identity_each_phase": true,
+    "conversations_each_phase": 9,
+    "verified_message_ids_each_phase": 196,
+    "fleet_socket_each_phase": true,
+    "old_backup_restored_during_rollback": false,
+    "original_binary_sha256": "90c7aedeac9e2560e69036eb04765e18363c1fb214c522f910c01ce9035c20cc",
+    "candidate_binary_sha256": "511609afc274cb2b737e9e54aa5fa3b431fd0439b44fadbb9de3bff8438f4ac7",
+    "receipt_sha256": "e5024be7df8001c4fb0fc2f68177cd2342666ffa36931c451e7bc9012c6e5999",
+    "candidate_is_unsigned_local_qualification_build": true
+  },
+  "retained_failures": [
+    "original missing fleet-configuration regression",
+    "initial test-runner permissions and scratch-path failures",
+    "shared build-slice managed-service readiness and misapplied short probe timeout",
+    "first full Linux CI scratch-path and filesystem timing failures",
+    "WebKit font rounding and resize scroll-anchor failures",
+    "debug-profile large-state startup timeout; optimized build passes unchanged deadline",
+    "live recipient acknowledgment deadline on retained production runtime"
+  ],
+  "remaining": "See installed.json; source and isolated proofs do not qualify signed release, live delivery, installed migration or final operational acceptance."
+}

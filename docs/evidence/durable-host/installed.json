@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "status": "pending",
+  "scope": "Qualified signed successor and actual installed production instance",
+  "release_id": null,
+  "installed_acceptance_passed": false,
+  "remaining": [
+    "signed source-paired native qualification and publication",
+    "authenticated live delivery and interrupted file recovery",
+    "qualified production host/desktop migration",
+    "installed lifecycle, current-state rollback and normal update activation",
+    "final login/reboot acceptance and owned-fixture cleanup"
+  ]
+}
