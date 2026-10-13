@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "date": "2026-10-13",
+  "scope": "Completed controller-recovery ownership cleanup; does not qualify the old application deployment or establish installed Linux UX",
+  "source_base": "6d15de6feb164c56350b980a676eeb9a6ad749c4",
+  "source_sha256": {
+    "scripts/release_deployment.py": "14ca49dd603e4bb9dbd5c0a98590dfb6cff1bef2496178ec2171a219f9412bf2",
+    "scripts/tests/release_controller_test.py": "dab54973bb2ba2cbf26298b4648cca97a8c6d3483b1a260698e8b59b630b4d86",
+    "scripts/tests/release_deployment_test.py": "bead89c552894fb0d624e2687ca706f0f50b2067a9af832485022342d3c8acbc"
+  },
+  "validation": {
+    "causal_original": "failed stale-owner assertion as required",
+    "release_regressions_passed": 499,
+    "skipped": 0,
+    "job_uid": "631c14ec-6ba4-4c01-8037-fb5b3641427b",
+    "elapsed_seconds": 158.71627228148282
+  },
+  "live_cleanup": {
+    "after_owner": null,
+    "application_deployment_passed": false,
+    "before_inventory_revision": "69363338f1f722a947e048b0cde3030bcbc15d2872770656c1a6e26b80e14a37",
+    "before_owner": {
+      "release_id": "cafb4646f7bbf8040a2a2f9d9e848a53a9fb8ce66addd67d97246739a6af85e5"
+    },
+    "completed_at": 1791860538,
+    "journal_sha256": "0a8d77349aef8545bb7e9802a940c5c4139520228ac5150f7640ab86421909bf",
+    "ledger_written": false,
+    "method": "installed release_deployment.reconcile, original terminal inventory",
+    "old_owner_retired": true,
+    "original_failed_journal_unchanged": true,
+    "qualification_sha256": "99772967d0d4dbc852297966330826bfad881a9332e4483033737c37f5969494",
+    "receipt_path": "/state/backups/irc-ux-controller-20261012/terminal-owner-1791860538349544162.json",
+    "release_id": "cafb4646f7bbf8040a2a2f9d9e848a53a9fb8ce66addd67d97246739a6af85e5",
+    "schema": 1,
+    "started_at": 1791860538,
+    "worker_calls": []
+  },
+  "guards": [
+    "completed qualified controller recovery and fresh healthy matching observation",
+    "shared rollout lock",
+    "unchanged failed fleet sources and journal",
+    "no operator rollback, activation or pending/failed rollback",
+    "only the same release owner; foreign owners retained",
+    "failed or unfinished recovery retains ownership",
+    "global failure never becomes a deployment pass"
+  ],
+  "comparison": {
+    "repo_path": "hyperledger/iroha:crates/sorafs_node/src/lib.rs",
+    "cosine": 0.6082,
+    "rerank": 0.7311,
+    "outcome": "Loose repair-completion shape, no close state-machine implementation. Exact-owner and terminal-state guards are exercised by the causal and boundary controls."
+  },
+  "evidence": {
+    "irc-ux-owner-4185d1f79fe5-report.json": "e748594f87d0678e606b71e052628eda2024bded68e75da05a98932ae4de85fd",
+    "irc-ux-owner-4185d1f79fe5.log": "d31c55461d02fdda346637707eb8371ed073958835cdbfd2718e39d1a87b994d",
+    "irc-ux-owner-4185d1f79fe5-final-job.json": "16b7b6eed828ac47d3813d115752fcc9757fa118736799181a28dc785758d213",
+    "irc-ux-owner-4185d1f79fe5-final-pods.json": "4dba1b636c97d10e9660a539079daa83d3172b2fa59928a9a5c8a020f475e79e",
+    "terminal-cleanup-receipt.json": "221aaa2b2c89be3faa913be830aa1a93edaffefc40c424655edb8fef82c00f10"
+  },
+  "activation": "Live state recovered via the already-installed reconciler terminal-cleanup branch, with no worker calls or ledger writes. Automatic cleanup source fix still needs normal controller qualification/activation."
+}

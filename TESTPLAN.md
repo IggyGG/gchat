@@ -62,6 +62,25 @@ Routine publication now verifies the native build, signatures, permissions, star
 
 ## Retained earlier checkpoints
 
+Canary storage, 2026-10-13: the original maintenance entry point must fail the
+duplicate-package inode assertion; the corrected entry point must share identical
+qualified bytes while retaining every path, mode and report. Cover failed/live/
+unclean journeys, unrevoked grants, tampered artifacts/source bindings, bounded
+recent selection, differing permissions, symlinks and metadata replacement races.
+All505 release controls pass without skips. The live bounded helper verifies92
+passed canaries and reclaims4.419GB. Scheduled activation requires the actual
+qualified image and Kubernetes proof; the original16GiB headroom gate remains.
+[Evidence](docs/evidence/irc-ux-canary-storage-20261013/summary.json).
+
+IRC UX terminal owner, 2026-10-13: run the causal controller-recovery test with a
+retained global owner. Require it to remain during activation, failure/rollback
+and foreign ownership, then disappear only after qualified recovery completes.
+Keep the global failed journal byte-identical and returnFalse for application
+deployment. Exercise the installed terminal-cleanup branch with zero worker calls.
+All499 release regressions pass without skips; actual image activation of the
+automatic fix remains distinct from the recorded live existing-function recovery.
+[Evidence](docs/evidence/irc-ux-terminal-owner-20261013/summary.json).
+
 IRC UX delivery, 2026-10-13: controller source `dd42ee0` passes 425 actual-image
 and 425 Kubernetes controls plus the ordinary authenticated-delivery canary;
 its deployment journal is deployed. Frozen Linux 0.1.192 then fails both paired

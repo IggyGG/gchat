@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "date": "2026-10-13",
+  "scope": "Verified immutable-copy compaction for successful cleaned native canaries; source qualification and bounded live recovery",
+  "source_base": "d52ad3af9df26c8de59dd4cd739abb6d51d0dd1e",
+  "source_sha256": {
+    "scripts/release_compaction.py": "0f2cdc620c805d048d5792397d0b776eaf348ffccedf949cbf2c019ab55ff473",
+    "scripts/tests/release_compaction_test.py": "159bea115d77e91f271dfef3fc48b294b6c5d781a27f1513877d234357adf9c6"
+  },
+  "validation": {
+    "causal_original": "scheduled maintenance left completed canary package copies duplicated",
+    "release_regressions_passed": 505,
+    "skipped": 0,
+    "cluster_job_uid": "30e82a98-046e-4f29-9777-b23d744891a4",
+    "elapsed_seconds": 53.83766142744571
+  },
+  "live_recovery": {
+    "job_uid": "ac392b8d-6b08-4013-9881-efff3a6bba42",
+    "canaries": 92,
+    "changed_links": 102,
+    "reclaimed_bytes": 4419035136,
+    "before_free_bytes": 14364815360,
+    "after_free_bytes": 18782580736,
+    "all_paths_retained": true,
+    "all_qualified_inputs_verified": true,
+    "headroom_threshold_unchanged_bytes": 17179869184
+  },
+  "preserved": [
+    "original archives and signatures",
+    "passed and failed journey evidence",
+    "private profiles and live or unrevoked canaries",
+    "source identities and metadata bindings",
+    "file bytes, paths, uid, gid and modes",
+    "original release and provider deadlines"
+  ],
+  "comparison": {
+    "repo_path": "GoogleCloudPlatform/cluster-toolkit:tools/duplicate-diff.py",
+    "cosine": 0.5949,
+    "rerank": 0.9047,
+    "outcome": "Generic duplicate comparison; no near-identical canary compactor. New provenance/closure checks feed the existing race-checked hardlink primitive and are covered by positive, negative, permission and race controls."
+  },
+  "evidence": {
+    "irc-ux-canary-compact-c154c0d155f7-report.json": "fe68e33e59189d3c3847ae0aa2500d87b36ccb8f0837e5c8f12a944ea213e198",
+    "irc-ux-canary-compact-c154c0d155f7.log": "07f56e050aa292ab18c6a915730ef5af0cc9543d828a5cc0b2f39f89d49d1416",
+    "canary-reclaim-summary.json": "c994d0b22e4cd41314dd39223a4393a8c9f81047864a0be7721a22cd41b0ec08",
+    "canary-reclaim-full-receipt.json": "aab5ce43b532ca81ca880cc70c99de643e0d7fd8fb35245b8594e76067ac43e9"
+  },
+  "remaining": "Activate the combined qualified controller and update the hourly compaction image through its normal image/Kubernetes qualification; bounded helper recovery alone is not durable activation."
+}

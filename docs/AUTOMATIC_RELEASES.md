@@ -92,6 +92,15 @@ journal remains unchanged and continues describing the original bundle. A change
 qualification proof is rejected before observation; a healthy controller running
 different, unqualified bytes still cannot satisfy the baseline check.
 
+A completed controller-only recovery also retires the same terminal fleet
+owner under the shared rollout lock. Its failed fleet journal remains unchanged;
+it cannot qualify the old application release. Failed or unfinished recovery,
+rollback, an intervening fleet mutation and a different owner remain protected.
+This prevents the old ownership pointer from indefinitely pinning selection after
+the separately qualified controller is healthy. The causal control and499 release
+regressions pass; [source and live recovery evidence](evidence/irc-ux-terminal-owner-20261013/summary.json)
+distinguish existing-function state recovery from automatic-fix image activation.
+
 Canaries receive expiring bootstrap and invitation-publication scope, zero name
 quota and no server authority. Legacy bootstrap-only grants remain revocable.
 Catalog preparation with `canary_operator: true` installs the qualified companion
@@ -161,6 +170,15 @@ remain safe to retry; no image is removed or relabelled as newly qualified.
 Receipts under `maintenance/compaction/` retain the archive and build proof hashes.
 An uncertain run can be retried; already shared files are unchanged. Compaction
 never removes archives, profiles, unpublished work, signatures or evidence.
+The same entry point now covers up to128 recently completed native canaries.
+It shares only their qualified package/executable copies after source and input
+hashes, successful child/profile cleanup, revoked authority and every artifact
+byte are verified. Active, failed and incomplete journeys retain independent
+storage. File ownership and modes must agree; metadata changes and symlinks refuse
+replacement. Every original path and report remains available. The source repair
+passes505 release controls, and a bounded live operation recovered4,419,035,136
+bytes across92 passed canaries. Image activation of this addition is tracked
+separately in [storage evidence](evidence/irc-ux-canary-storage-20261013/summary.json).
 The independent hourly `release/automation/compaction.yaml` uses a qualified,
 immutable controller image and the release PVC, without signing keys or network
 access. Install that image only after its source and native compaction controls

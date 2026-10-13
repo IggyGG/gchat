@@ -7,10 +7,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
+import contextlib
+import io
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_compaction import compact_build, compact_rollback_images, compact_public_sdk, checked_metadata
 from release_pair import canonical
+import release_compaction as compactor
 
 
 @unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
@@ -363,6 +366,137 @@ class PublicSdkCompactionTests(unittest.TestCase):
         with patch('release_compaction.os.link', side_effect=authority_race), self.assertRaisesRegex(ValueError, 'original SDK archive changed'):
             self.compact()
         self.assertFalse(list(self.state.rglob('.compact-*')))
+
+
+@unittest.skipUnless(os.name == 'posix', 'canary compaction uses POSIX links')
+class CanaryCompactionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        (self.root / 'jobs').mkdir()
+        self.sources = {'gchat': {'commit': 'a' * 40, 'tree': 'b' * 40},
+                        'gcoms': {'commit': 'c' * 40, 'tree': 'd' * 40}}
+
+    def workspace(self, index, package=b'qualified package' * 100):
+        work = self.root / 'tmp' / f'nc-{index:08d}'
+        (work / 'journey').mkdir(parents=True)
+        (work / 'package/usr/bin').mkdir(parents=True)
+        (work / 'package.deb').write_bytes(package)
+        (work / 'package.deb').chmod(0o600)
+        executables = []
+        for name in ('gchat', 'gchat-desktop'):
+            value = (name.encode() + b' qualified executable') * 100
+            path = work / 'package/usr/bin' / name
+            path.write_bytes(value); path.chmod(0o755)
+            executables.append({'name': name, 'size': len(value), 'sha256': hashlib.sha256(value).hexdigest()})
+        native = {'sources': self.sources, 'exit_code': 0, 'source_unchanged': True}
+        (work / 'native-ci.json').write_bytes(canonical(native))
+        native_sha = hashlib.sha256((work / 'native-ci.json').read_bytes()).hexdigest()
+        build = {'target': 'linux-x86_64', 'sources': {k: v['commit'] for k, v in self.sources.items()},
+                 'native_ci': {'report_sha256': native_sha}, 'executables': executables,
+                 'files': [{'format': 'deb', 'signing_verified': True,
+                            'sha256': hashlib.sha256(package).hexdigest()}]}
+        (work / 'build.json').write_bytes(canonical(build))
+        cli = next(v['sha256'] for v in executables if v['name'] == 'gchat')
+        report = {k: True for k in ('passed', 'children_stopped', 'temporary_profile_removed',
+                                   'inputs_unchanged', 'binary_unchanged')}
+        report.update(binary_sha256=cli, inputs={'sources': self.sources,
+            'binary': {'path': str(work / 'package/usr/bin/gchat'), 'sha256': cli},
+            'build_manifest': {'path': str(work / 'build.json'),
+                               'sha256': hashlib.sha256((work / 'build.json').read_bytes()).hexdigest()},
+            'native_receipt': {'path': str(work / 'native-ci.json'), 'sha256': native_sha}})
+        (work / 'journey/report.json').write_bytes(canonical(report))
+        os.utime(work / 'journey/report.json', (1000 + index, 1000 + index))
+        return work
+
+    def compact(self, **kwargs):
+        return compactor.compact_canaries(self.root, minimum_bytes=1, **kwargs)
+
+    def test_scheduled_maintenance_compacts_closed_canary_packages(self):
+        first = self.workspace(1, b'p' * (16 * 1024**2))
+        second = self.workspace(2, b'p' * (16 * 1024**2))
+        with patch.object(sys, 'argv', ['release_compaction.py', '--state', str(self.root)]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            compactor.main()
+        self.assertEqual((first / 'package.deb').stat().st_ino, (second / 'package.deb').stat().st_ino,
+                         'scheduled maintenance left completed canary package copies duplicated')
+
+    def test_all_paths_bytes_modes_and_evidence_survive_idempotent_sharing(self):
+        first, second = self.workspace(1), self.workspace(2)
+        originals = {p: (p.read_bytes(), p.stat().st_mode) for work in (first, second)
+                     for p in work.rglob('*') if p.is_file()}
+        result = self.compact()
+        self.assertEqual(len(result['changes']), 3)
+        self.assertTrue(result['all_paths_retained'])
+        self.assertTrue(result['all_qualified_inputs_verified'])
+        for path, (contents, mode) in originals.items():
+            self.assertEqual(path.read_bytes(), contents)
+            self.assertEqual(path.stat().st_mode, mode)
+        for path in ('package.deb', 'package/usr/bin/gchat', 'package/usr/bin/gchat-desktop'):
+            self.assertEqual((first / path).stat().st_ino, (second / path).stat().st_ino)
+        self.assertEqual(self.compact()['changes'], [])
+
+    def test_active_failed_and_unclean_canaries_are_not_shared(self):
+        first = self.workspace(1)
+        for index, field in ((2, 'passed'), (3, 'children_stopped'), (4, 'temporary_profile_removed')):
+            work = self.workspace(index)
+            path = work / 'journey/report.json'; value = json.loads(path.read_text()); value[field] = False
+            path.write_bytes(canonical(value))
+        active = self.workspace(5)
+        owners = self.root / 'canaries'; owners.mkdir()
+        (owners / ('a' * 64 + '.json')).write_bytes(canonical({'work': str(active), 'revoked': False, 'passed': True}))
+        (self.root / 'tmp/nc-00000006').mkdir()
+        self.assertEqual(self.compact()['changes'], [])
+        self.assertNotEqual((first / 'package.deb').stat().st_ino, (active / 'package.deb').stat().st_ino)
+
+    def test_changed_artifact_or_source_binding_prevents_every_link(self):
+        first, second = self.workspace(1), self.workspace(2)
+        original = (second / 'package.deb').read_bytes()
+        (second / 'package.deb').write_bytes(b'x' * len(original))
+        with self.assertRaisesRegex(ValueError, 'qualified input'):
+            self.compact()
+        self.assertNotEqual((first / 'package/usr/bin/gchat').stat().st_ino,
+                            (second / 'package/usr/bin/gchat').stat().st_ino)
+        (second / 'package.deb').write_bytes(original)
+        path = second / 'journey/report.json'; report = json.loads(path.read_text())
+        report['inputs']['sources']['gcoms']['commit'] = 'e' * 40
+        path.write_bytes(canonical(report))
+        with self.assertRaisesRegex(ValueError, 'binding changed'):
+            self.compact()
+        self.assertNotEqual((first / 'package.deb').stat().st_ino, (second / 'package.deb').stat().st_ino)
+
+    def test_permission_boundary_and_recent_bounded_selection(self):
+        old, first, second = self.workspace(1), self.workspace(2), self.workspace(3)
+        (first / 'package.deb').chmod(0o640)
+        result = self.compact(maximum_canaries=2)
+        self.assertEqual(len(result['canaries']), 2)
+        self.assertNotEqual((first / 'package.deb').stat().st_ino, (second / 'package.deb').stat().st_ino)
+        self.assertEqual((first / 'package/usr/bin/gchat').stat().st_ino,
+                         (second / 'package/usr/bin/gchat').stat().st_ino)
+        self.assertNotEqual((old / 'package/usr/bin/gchat').stat().st_ino,
+                            (second / 'package/usr/bin/gchat').stat().st_ino)
+
+    def test_symlink_and_control_replacement_are_refused(self):
+        first, second = self.workspace(1), self.workspace(2)
+        victim = second / 'package/usr/bin/gchat'
+        original = victim.read_bytes(); victim.unlink(); victim.symlink_to(first / 'package/usr/bin/gchat')
+        with self.assertRaisesRegex(ValueError, 'unsafe canary artifact'):
+            self.compact()
+        victim.unlink(); victim.write_bytes(original); victim.chmod(0o755)
+        real_digest = compactor.file_digest
+        changed = False
+        def race(path):
+            nonlocal changed
+            result = real_digest(path)
+            if not changed and path.name == 'package.deb':
+                changed = True
+                (second / 'journey/report.json').write_text('{}')
+            return result
+        with patch('release_compaction.file_digest', side_effect=race):
+            with self.assertRaisesRegex(ValueError, 'control evidence changed'):
+                self.compact()
+        self.assertNotEqual((first / 'package.deb').stat().st_ino, (second / 'package.deb').stat().st_ino)
 
 
 if __name__ == '__main__':
