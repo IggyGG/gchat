@@ -211,6 +211,114 @@ def compact_rollback_images(state, maximum_images=32, minimum_bytes=16 * 1024**2
         return report
 
 
+def compact_canaries(state, maximum_canaries=128, minimum_bytes=16 * 1024**2):
+    """Share immutable copies from successful, cleaned-up native canaries."""
+    import fcntl
+    if type(maximum_canaries) is not int or not 1 <= maximum_canaries <= 1024:
+        raise ValueError('canary compaction limit must be between 1 and 1024')
+    state = Path(state).resolve()
+    root = state / 'tmp'
+    if not root.exists():
+        return None
+    if root.is_symlink():
+        raise ValueError('canary temporary root cannot be a symlink')
+    if (state / 'canaries').is_symlink():
+        raise ValueError('canary owner directory cannot be a symlink')
+    retained = state / 'maintenance/compaction'
+    retained.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (retained / 'lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        active, controls = set(), []
+        for path in (state / 'canaries').glob('*.json'):
+            intent, binding = checked_metadata(path, 65536)
+            controls.append((path, binding))
+            work = intent.get('work')
+            if not isinstance(work, str) or not Path(work).is_absolute():
+                raise ValueError('canary intent has no bound work directory')
+            if intent.get('revoked') is not True or intent.get('passed') is not True:
+                active.add(Path(work).resolve())
+        candidates = []
+        for work in root.glob('nc-*'):
+            if not re.fullmatch(r'nc-[a-z0-9_]{8}', work.name):
+                continue
+            if work.is_symlink() or not work.is_dir():
+                raise ValueError('canary work directory changed')
+            report = work / 'journey/report.json'
+            if work in active or not report.exists():
+                continue
+            candidates.append((report.lstat().st_mtime_ns, work))
+        # Completed report timestamps do not change when files are shared, so
+        # recurring bounded passes continue covering newly completed canaries.
+        candidates.sort(reverse=True)
+        duplicates, canaries = {}, []
+        for _, work in candidates:
+            if len(canaries) >= maximum_canaries:
+                break
+            paths = [work / name for name in ('journey/report.json', 'build.json', 'native-ci.json')]
+            if any(not path.resolve().is_relative_to(work) for path in paths):
+                raise ValueError('canary metadata escapes its work directory')
+            report, report_binding = checked_metadata(paths[0], 2 * 1024**2)
+            if not all(report.get(key) is True for key in
+                       ('passed', 'children_stopped', 'temporary_profile_removed',
+                        'inputs_unchanged', 'binary_unchanged')):
+                continue  # Failed, incomplete and live journeys retain independent evidence.
+            build, build_binding = checked_metadata(paths[1], 2 * 1024**2)
+            native, native_binding = checked_metadata(paths[2], 2 * 1024**2)
+            inputs = report.get('inputs', {})
+            sources = inputs.get('sources', {})
+            if (not isinstance(sources, dict) or set(sources) != {'gchat', 'gcoms'}
+                    or any(not isinstance(value, dict) for value in sources.values())
+                    or build.get('target') != 'linux-x86_64'
+                    or build.get('sources') != {key: value.get('commit') for key, value in sources.items()}
+                    or native.get('sources') != sources or type(native.get('exit_code')) is not int
+                    or native.get('exit_code') != 0
+                    or native.get('source_unchanged') is not True
+                    or inputs.get('build_manifest', {}).get('path') != str(paths[1])
+                    or inputs.get('build_manifest', {}).get('sha256') != build_binding[0]
+                    or inputs.get('native_receipt', {}).get('path') != str(paths[2])
+                    or inputs.get('native_receipt', {}).get('sha256') != native_binding[0]
+                    or build.get('native_ci', {}).get('report_sha256') != native_binding[0]):
+                raise ValueError('canary source or input binding changed')
+            packages = [item for item in build.get('files', []) if item.get('format') == 'deb']
+            executables = build.get('executables', [])
+            if (len(packages) != 1 or packages[0].get('signing_verified') is not True
+                    or not isinstance(executables, list)
+                    or len({item.get('name') for item in executables}) != len(executables)
+                    or any(item.get('name') not in ('gchat', 'gchat-desktop') for item in executables)):
+                raise ValueError('canary artifact inventory changed')
+            artifacts = [(work / 'package.deb', packages[0].get('sha256'))]
+            artifacts += [(work / 'package/usr/bin' / item['name'], item.get('sha256')) for item in executables]
+            cli = work / 'package/usr/bin/gchat'
+            if (inputs.get('binary', {}).get('path') != str(cli)
+                    or inputs.get('binary', {}).get('sha256') != report.get('binary_sha256')
+                    or (cli, report.get('binary_sha256')) not in artifacts):
+                raise ValueError('canary executable binding changed')
+            for path, expected in artifacts:
+                if (not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected)
+                        or path.is_symlink() or not path.resolve().is_relative_to(work)):
+                    raise ValueError('unsafe canary artifact')
+                if path.stat().st_size < minimum_bytes:
+                    continue
+                actual, before = file_digest(path)
+                if actual != expected:
+                    raise ValueError('canary artifact differs from its qualified input')
+                key = (before.st_dev, before.st_size, stat.S_IMODE(before.st_mode),
+                       before.st_uid, before.st_gid, expected)
+                duplicates.setdefault(key, []).append((path, before))
+            controls.extend(zip(paths, (report_binding, build_binding, native_binding)))
+            canaries.append({'work': work.relative_to(state).as_posix(),
+                             'report_sha256': report_binding[0], 'sources': sources})
+        for path, (expected, before) in controls:
+            if path.is_symlink() or identity(path.stat()) != identity(before) or file_digest(path)[0] != expected:
+                raise ValueError('canary control evidence changed during compaction')
+        changes, reclaimed = share_files(duplicates, state)
+        report = {'schema': 1, 'canaries': canaries, 'all_paths_retained': True,
+                  'all_qualified_inputs_verified': True, 'estimated_reclaimed_bytes': reclaimed,
+                  'changes': changes, 'completed_at': int(time.time())}
+        atomic_json(retained / ('canaries-' + str(time.time_ns()) + '.json'), report)
+        return report
+
+
 def compact_build(work, minimum_bytes=16 * 1024**2, verified_work=None):
     work = Path(work).resolve()
     receipt = work / 'receipt.json'
@@ -490,6 +598,7 @@ def main():
     if not 1 <= args.maximum_builds <= 256:
         parser.error('maximum builds must be between 1 and 256')
     print(json.dumps({'completed': compact(args.state, args.maximum_builds),
+                      'canaries': compact_canaries(args.state),
                       'rollback_images': compact_rollback_images(args.state),
                       'public_sdk': compact_public_sdk(args.state)}), flush=True)
 
