@@ -1033,6 +1033,7 @@
         {#if active?.topic}<span class="header-topic" title={active.topic}>{active.topic}</span>{/if}
         {#if active?.catchUp}<span class="header-topic" role="status">{active.catchUp.appliedRecords > 0 ? `Catching up · ${active.catchUp.appliedRecords} updates applied` : 'Checking channel updates…'}</span>{/if}
       {/if}</div>
+      <div class="conversation-content">
       {#if !locked && snapshot?.providerErrors?.length}
         <div class="provider-errors" role="status">
           {#each snapshot.providerErrors as error}
@@ -1096,6 +1097,8 @@
         {#if !atBottom}<button class="jump" onclick={() => { atBottom = true; if (transcript) transcript.scrollTop = transcript.scrollHeight; void markRead(); }}>Jump to latest</button>{/if}
       {/if}
       {#if !workspaceReady}{@render outcomes()}{/if}
+      </div>
+      <div class="conversation-footer">
       {#if draftError}<p class="input-error" id="gchat-input-error">{draftError}</p>{/if}
       {#if workspaceReady}
         {#if active?.kind === 'archive'}<p class="composer-context">Read-only archive · commands are available</p>{/if}
@@ -1108,6 +1111,7 @@
           <button class="send" type="submit" disabled={!draft || !!draftError || (active?.kind === 'archive' && !draft.startsWith('/')) || (!dialog && (busy || sendingFull) && !localCommand(draft)) || (!dialog && offline && !localCommand(draft))}>{busy ? '…' : 'Send'}</button>
         </form>
       {/if}
+      </div>
     </main>
     {#if workspaceReady && active && usersVisible}
       <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role (Modal drawer traps focus and restores its opener.) -->
@@ -1125,9 +1129,9 @@
             </button>
           {/each}
           {#if !active.members.length}<p>No users to display.</p>{/if}
-          {#if active.owner && !active.policy}<button class="roster-action" disabled={busy} onclick={() => { if (!wide) closeNavigation(); void send('/recover-membership'); }}>Channel recovery…</button>{/if}
         </div>
         {:else if fileController && selected}<div id="files-panel" role="tabpanel" tabindex="0" aria-labelledby="files-tab"><FilePanel view={fileState} controller={fileController} conversation={selected} canShare={active.kind !== 'archive'} canSave={!!fileAccess} choose={chooseFile} /></div>{/if}
+        <div class="inspector-actions">{#if active.owner && !active.policy}<button class="roster-action" disabled={busy} onclick={() => { if (!wide) closeNavigation(); void send('/recover-membership'); }}>Channel recovery…</button>{/if}</div>
       </aside>
     {/if}
   </div>
@@ -1301,6 +1305,9 @@
   .channel-actions { display:flex; flex-shrink:0; justify-content:center; padding:8px; }
   .channel-actions button { justify-content:center; padding:8px; }
   .conversation { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .conversation-content { flex:1; min-height:0; min-width:0; display:flex; flex-direction:column; }
+  .conversation-footer { flex:none; min-width:0; border-top:1px solid var(--line); background:#191d22; }
+  .conversation-footer:empty { display:none; }
   .welcome { flex:1; min-height:0; overflow:auto; padding:clamp(20px,4vw,48px) calc(var(--content-inset) + var(--native-inset)); }
   h1 { font-size:24px; font-weight:normal; color:var(--accent); margin:16px 0; }
   p { margin:12px 0; }
@@ -1333,7 +1340,7 @@
   .provider-errors { padding:6px 16px; color:var(--muted); }
   .search { padding:8px 0; }
   .search p { overflow-wrap:anywhere; white-space:pre-wrap; }.search label { margin-top:0; }
-  .composer { position:relative; display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); background:#191d22; padding:10px 12px; }
+  .composer { position:relative; display:flex; gap:8px; align-items:flex-end; padding:10px 12px; }
   textarea { resize:none; flex:1; width:0; min-height:36px; max-height:160px; padding:8px 3px; border:0; background:transparent; field-sizing:content; }
   .attach { display:flex; align-items:center; justify-content:center; color:var(--muted); padding:8px; }
   .send { color:var(--accent); border-color:#566476; }
@@ -1375,14 +1382,15 @@
   .gchat { --content-inset:44px; --chat-leading:1.45; --nick:#a9c7e8; }
   .workspace { min-width:0; }
   .conversation { min-height:0; }
-  .conversation-heading { padding:4px 12px 6px; gap:0 4px; border-bottom:1px solid var(--line); }
+  .conversation-heading { padding:4px 12px; gap:0 4px; align-content:start; border-bottom:1px solid var(--line); }
   .active-title { flex:1; font-size:15px; }
   .panel-toggle { flex:none; display:flex; align-items:center; gap:4px; min-width:44px; min-height:44px; justify-content:center; padding:4px 6px; color:var(--muted); }
   .panel-toggle[aria-expanded=true] { color:var(--accent); background:color-mix(in srgb,var(--accent) 7%,transparent); }
   .header-topic { flex:0 0 100%; padding:0 6px; font-size:12px; line-height:1.5; }
   .connection-label { flex:0 1 auto; font-size:12px; color:var(--ghost-warning); min-width:0; padding:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; padding:4px 8px 4px 12px; min-height:44px; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
-  .panel-heading button { width:36px; min-width:36px; padding:0; text-align:center; font-size:22px; }
+  .panel-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; flex:none; padding:4px 8px 4px 12px; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
+  .panel-heading strong { display:flex; align-items:center; min-height:44px; }
+  .panel-heading button { width:36px; min-width:36px; min-height:44px; padding:0; text-align:center; font-size:22px; }
   .channels { padding:0; }
   .channels.open { width:min(300px,calc(100% - 44px)); }
   .channels.docked.open { position:static; width:192px; flex:0 0 192px; z-index:auto; box-shadow:none; }
@@ -1390,18 +1398,30 @@
   .channels .channel-entries button { flex-wrap:nowrap; padding:5px 12px; min-height:32px; }
   .channels button small { width:auto; padding:0; white-space:nowrap; }
   .channels .network-group { white-space:normal; overflow-wrap:anywhere; margin:8px 0 2px; }
-  .channel-actions { justify-content:stretch; border-top:1px solid var(--line); padding:6px; }
+  .channel-actions,.inspector-actions { display:flex; flex:none; align-items:flex-end; justify-content:stretch; border-top:1px solid var(--line); padding:6px; }
   .channel-actions button { justify-content:flex-start; }
   .mention-badge { color:var(--self); font-weight:700; }
   .inspector { width:min(280px,calc(100% - 44px)); padding:0; }
   .inspector.docked { position:static; width:176px; flex:0 0 176px; z-index:auto; box-shadow:none; }
-  .inspector-heading { padding:4px 6px; font-size:12px; }
+  .inspector-heading { align-items:flex-start; padding:4px 6px; font-size:12px; }
   .inspector-heading button { padding:4px 6px; min-height:44px; }.inspector-heading .hide-users { padding:0; width:28px; min-width:28px; flex:none; font-size:22px; }
   .users-list { padding:6px; }
   .users-list button { min-height:32px; align-items:baseline; padding:4px 6px; }
   .member-name { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
   .users-list small { flex:none; font-size:11px; }
-  .users-list .roster-action { color:var(--muted); font-size:12px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
+  .roster-action { width:100%; color:var(--muted); font-size:12px; }
+  /* All docked columns share content-sized header/footer tracks, including
+     topic, catch-up and multiline input. Drawers keep their own flex layout. */
+  .wide .workspace { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-rows:auto minmax(0,1fr) auto; }
+  .wide .conversation,.channels.docked.open,.inspector.docked { display:grid; grid-row:1 / -1; grid-template-rows:subgrid; min-height:0; }
+  .wide .conversation { grid-column:2; }
+  .channels.docked.open { grid-column:1; }
+  .inspector.docked { grid-column:3; }
+  .wide .conversation-heading { grid-row:1; }
+  .wide .conversation-content { grid-row:2; }
+  .wide .conversation-footer { grid-row:3; display:flex; flex-direction:column; justify-content:flex-end; }
+  .wide .conversation-footer:empty { display:none; }
+  .composer textarea,.composer .attach,.composer .send,.channel-actions button,.inspector-actions button { min-height:40px; }
   .transcript { padding:10px 16px; }
   .private-line { margin:2px 0; padding:1px 0; line-height:var(--chat-leading); font-size:14px; }
   .private-line time { margin-inline-end:.65em; font-size:12px; }
