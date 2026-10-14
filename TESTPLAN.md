@@ -8,6 +8,10 @@ in-flight directories remain usable; the independent watchdog follows the frozen
 activation's directory. The complete Python suite passes 1,178 tests (one existing
 Windows-only DACL skip), with 418.6 MiB actual peak under the 4 GiB hard limit.
 Source tests do not establish production activation.
+The final watchdog-entry compatibility control uses the actual receipt-validated
+invocation path from the legacy target directory to the frozen generation; all64
+focused deployment/runner/watchdog/controller/Kubernetes controls pass. The
+watchdog entry source itself remains unchanged and conservatively classified.
 
 F5 / archive-required snapshots, 2026-10-14: run `release_maintenance_test.py`.
 Require every older snapshot to survive until verified archival, daily rotation

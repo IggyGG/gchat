@@ -54,6 +54,22 @@ def work_directory(directory, target, item):
 
 
 def invoke(target, stage, manifest, directory, previous=None):
+    base = directory.parent.parent if directory.parent.name == 'revisions' else directory
+    if base.parent.name == manifest['release_id'] and base.parent.parent.name == 'deployment':
+        # The independently installed watchdog can still enter at the legacy
+        # target path. Resolve its frozen activation pointer before any worker
+        # call, while retaining the immutable candidate at that legacy entry.
+        source = base / 'candidate.json'
+        if source.exists() and json.loads(source.read_text()) != manifest:
+            raise ValueError('deployment target source binding changed')
+        if directory == base:
+            journal = base.parent / 'journal.json'
+            if journal.is_file():
+                report = json.loads(journal.read_text())
+                if report.get('sources') != manifest['sources']:
+                    raise ValueError('deployment journal source binding changed')
+                directory = work_directory(base.parent, target, report['targets'].get(target['id'], {}))
+        if not source.exists(): write(source, manifest)
     directory.mkdir(parents=True, exist_ok=True)
     source = directory / 'candidate.json'
     write(source, manifest)
@@ -67,7 +83,6 @@ def invoke(target, stage, manifest, directory, previous=None):
     env = dict(os.environ, GCHAT_RELEASE_MANIFEST=str(source),
                GCHAT_DEPLOYMENT_TARGET=str(spec), GCHAT_DEPLOYMENT_STAGE=stage,
                GCHAT_DEPLOYMENT_RECEIPT=str(output), GCHAT_DEPLOYMENT_PREVIOUS=str(prior))
-    base = directory.parent.parent if directory.parent.name == 'revisions' else directory
     if base.parent.name == manifest['release_id'] and base.parent.parent.name == 'deployment':
         write(base.parent / 'progress.json', {'target': target['id'], 'stage': stage,
               'started_at': int(time.time()), 'deadline_at': int(time.time()) + target.get('timeout', 120)})
