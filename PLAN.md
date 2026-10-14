@@ -1,3 +1,11 @@
+F5 / release backup retention, 2026-10-14: the optional
+`backup_archive_required` policy preserves completed daily snapshots until the
+verified archive owner retires them. Producer rotation shares its nonblocking
+lock with archival. Three controls fail on the old producer; all25 maintenance,
+controller and input controls pass after the repair. The corresponding tf-infra
+archive adapter is landed; actual archive/restore and qualified controller-policy
+activation remain operational gates. [Source proof](docs/evidence/durable-host/source.json).
+
 F5 / durable-host, 2026-10-14: signed0.1.216 is installed and its packaged host
 is independently verified against the public artifact. All202 recorded messages,
 eleven memberships and retained cache survive its normal automatic update and a

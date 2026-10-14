@@ -42,6 +42,12 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 # GChat
 
+Release ledger archival supports `backup_archive_required: true` on the POSIX
+controller. It retains closed daily snapshots for the verified archive worker and
+coordinates rotation with that worker's lock. Enable it with qualified off-site
+archival and freshness monitoring; see [automatic release maintenance](docs/AUTOMATIC_RELEASES.md).
+Source qualification and production activation are recorded separately.
+
 **Cross-platform publication follow-through (2026-10-14, in progress):** the
 reviewed IRC UX prose/receipt paths and delivery-controller helpers are classified
 separately from application artifacts. The classifier is deployed first through

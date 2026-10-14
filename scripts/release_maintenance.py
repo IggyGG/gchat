@@ -61,6 +61,27 @@ def refresh_apt(output, key, now=None):
 
 
 def maintain(state, ledger, config):
+    archive_required = config.get('backup_archive_required', False)
+    if type(archive_required) is not bool:
+        raise ValueError('backup_archive_required must be a boolean')
+    if not archive_required:
+        return _maintain(state, ledger, config, archive_required=False)
+    if os.name != 'posix':
+        raise ValueError('backup_archive_required needs the POSIX archive worker')
+    import fcntl
+    descriptor = os.open(Path(state) / '.cluster-archive.lock',
+                         os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, 'a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            # Retry normal daily maintenance after the bounded archive cycle;
+            # never change its selected recovery point during verification.
+            return
+        return _maintain(state, ledger, config, archive_required=True)
+
+
+def _maintain(state, ledger, config, *, archive_required):
     state = Path(state)
     marker = state / 'maintenance.json'
     if marker.exists() and time.time() - marker.stat().st_mtime < 86400: return
@@ -75,5 +96,12 @@ def maintain(state, ledger, config):
     temporary.chmod(0o600); os.replace(temporary, backup / (name + '.sqlite'))
     # Only our completed, daily database backups expire. Job receipts, provider
     # journals, manifests, source and published payloads are never removed here.
-    for old in sorted(backup.glob('*.sqlite'))[:-7]: old.unlink()
+    if not archive_required:
+        for old in sorted(backup.glob('*.sqlite'))[:-7]: old.unlink()
+    else:
+        # The closed-file archive owner retires only remotely restored snapshots.
+        # An archive outage must retain local recovery data, not expire it by age.
+        directory = os.open(backup, os.O_RDONLY | os.O_DIRECTORY)
+        try: os.fsync(directory)
+        finally: os.close(directory)
     atomic_json(marker, {'completed_at': int(time.time()), 'database_backup': name + '.sqlite'})

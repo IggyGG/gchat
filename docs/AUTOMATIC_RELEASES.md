@@ -447,7 +447,19 @@ state, provider journals or the release database. Back up SQLite using its backu
 API (or a consistent stopped-volume snapshot), including source manifests and
 provider journals. The daily maintenance task verifies and refreshes the signed APT index when
 fewer than seven of its fourteen valid days remain, even without a new release.
-It retains seven consistent daily SQLite backups; cluster volume backups must
+By default it retains seven consistent daily SQLite backups. With the explicitly
+configured POSIX policy `backup_archive_required: true`, daily maintenance instead
+preserves every completed snapshot for the verified off-site archive owner. It
+uses the shared nonblocking `/state/.cluster-archive.lock`; a busy archive cycle
+defers daily rotation until the next normal coordinator tick. An unavailable
+archive cannot trigger local age-based expiry under this policy. Invalid policy
+types are refused. The newest local snapshot remains the archive worker's recovery
+floor. Qualify the worker, independently recoverable key, remote readback/native
+SQLite restore and failure/freshness alerts before enabling unattended retirement.
+Controller source activation must precede enabling this policy; a configuration
+field alone cannot change an older running controller's retention behavior.
+
+Cluster volume backups must
 also retain the immutable job evidence and provider journals.
 
 After an interrupted external action, the request ID is reconciled with the

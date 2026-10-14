@@ -1,3 +1,11 @@
+F5 / archive-required snapshots, 2026-10-14: run `release_maintenance_test.py`.
+Require every older snapshot to survive until verified archival, daily rotation
+to defer under the archive owner's real kernel lock, and invalid policy types to
+fail before writing a backup marker. Preserve native SQLite integrity and APT
+signature refresh controls. All5 cases pass, alongside18 controller and2 input
+checks. Before enabling the production policy, verify its loaded source, the
+separate bounded archive worker, independent key recovery and scheduled alerts.
+
 F5 activation process observation, 2026-10-14: transient `/proc` PermissionError
 after a single restart must break the stable observation pair, then permit success
 only after two consecutive exact PID/path/hash observations. Persistent denial

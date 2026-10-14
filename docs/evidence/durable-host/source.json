@@ -114,5 +114,25 @@
     "debug-profile large-state startup timeout; optimized build passes unchanged deadline",
     "live recipient acknowledgment deadline on retained production runtime"
   ],
+  "release_backup_retention_20261014": {
+    "policy": "backup_archive_required",
+    "causal_baseline": "21d068a",
+    "causal_failures": 3,
+    "maintenance_passed": 5,
+    "controller_passed": 18,
+    "input_passed": 2,
+    "source_unchanged": true,
+    "source_sha256": {
+      "scripts/release_maintenance.py": "1e1563b7ff9fcc69e84be491abddf9583df26bfa24ec259cc1ad19bb9f68aa71",
+      "scripts/tests/release_maintenance_test.py": "4a4c5e9193c549fe0cc84c2463ea11158c7effbc1e9687be51015d539450c4ab"
+    },
+    "deployed": false,
+    "code_comparison": {
+      "repository_path": "EnterpriseDB/barman:tests/test_server.py",
+      "cosine": 0.6523,
+      "rerank": 0.0249,
+      "conclusion": "Generic backup-lock tests; no close implementation. Nonblocking owner locking and archive-required retention are directly regression-tested."
+    }
+  },
   "remaining": "See installed.json; source and isolated proofs do not qualify signed release, live delivery, installed migration or final operational acceptance."
 }
