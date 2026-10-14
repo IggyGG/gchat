@@ -8,7 +8,7 @@ import re
 import subprocess
 
 from release_coordinator import atomic_json
-from release_deployment import invoke
+from release_deployment import invoke, work_directory
 from release_pair import validate
 
 
@@ -36,7 +36,7 @@ def recover(state, *, worker=invoke, now=None):
         target = targets[0]
         item = report['targets'].get(target['id'], {})
         if item.get('state') not in ('activating', 'rollback_pending', 'rollback_failed'): return False
-        work = directory / target['id']
+        work = work_directory(directory, target, item)
         manifest = validate(json.loads((work / 'candidate.json').read_text()))
         if manifest['release_id'] != owner['release_id'] or manifest['sources'] != report['sources']:
             raise ValueError('controller recovery source binding differs from original rollout')

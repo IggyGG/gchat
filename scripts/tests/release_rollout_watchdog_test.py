@@ -62,6 +62,21 @@ class WatchdogTests(unittest.TestCase):
         self.assertTrue(watchdog.recover(self.root, worker=self.worker, now=291))
         self.assertEqual(self.calls, ['rollback'])
 
+    def test_revised_controller_recovers_its_own_retained_directory(self):
+        revision = 'd' * 64
+        self.report['targets']['controller']['work_revision'] = revision
+        atomic_json(self.directory / 'journal.json', self.report)
+        revised = self.work / 'revisions' / revision
+        atomic_json(revised / 'candidate.json', self.manifest)
+        # A stale first-generation before-image is deliberately retained.
+        atomic_json(self.work / 'kubernetes-before.json', {'images': {'coordinator': 'old-unrelated'}})
+        def revised_worker(target, stage, manifest, work, previous=None):
+            self.assertEqual(work, revised)
+            return self.worker(target, stage, manifest, work, previous)
+        self.assertTrue(watchdog.recover(self.root, worker=revised_worker, now=230))
+        self.assertEqual(json.loads((self.work / 'kubernetes-before.json').read_text()),
+                         {'images': {'coordinator': 'old-unrelated'}})
+
     def test_unrelated_workload_and_changed_source_are_not_rolled_back(self):
         self.report['inventory']['targets'][0]['name'] = 'unrelated'
         atomic_json(self.directory / 'journal.json', self.report)

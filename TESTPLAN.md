@@ -8,6 +8,17 @@ Private source overrides are resolved before locked qualification; preserve both
 canonical lockfiles and record the derived lock. New Mac native results remain
 the platform acceptance gate.
 
+F5 / controller rollout generations, 2026-10-14: all 58 deployment, watchdog,
+controller and Kubernetes-worker controls pass with a 4 GiB memory limit. The
+causal regression runs the real Kubernetes before-image guard for two qualified
+controller images sharing one native release, then fails the second canary and
+checks that only its immediate predecessor is restored. Both original snapshots
+remain intact. Pending preparation keeps the previous rollback pointer; legacy
+in-flight directories remain usable; the independent watchdog follows the frozen
+activation's directory. The complete Python suite passes 1,178 tests (one existing
+Windows-only DACL skip), with 418.6 MiB actual peak under the 4 GiB hard limit.
+Source tests do not establish production activation.
+
 F5 / archive-required snapshots, 2026-10-14: run `release_maintenance_test.py`.
 Require every older snapshot to survive until verified archival, daily rotation
 to defer under the archive owner's real kernel lock, and invalid policy types to

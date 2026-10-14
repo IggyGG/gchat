@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from release_deployment import reconcile, inventory, request_rollback, handoff, write
+from release_deployment import reconcile, inventory, request_rollback, handoff, write, work_directory
 
 
 @unittest.skipUnless(os.name == 'posix', 'deployment owner uses POSIX locks')
@@ -169,6 +169,77 @@ class DeploymentTests(unittest.TestCase):
         retained = list((self.root / 'deployment' / self.manifest['release_id']).glob('revision-*.json'))
         self.assertEqual(len(retained), 1)
         self.assertEqual(json.loads(retained[0].read_text())['state'], 'blocked')
+
+    def test_successor_image_retains_each_before_image_and_rolls_back_only_its_own(self):
+        # Exercise the real Kubernetes before-image guard across two controller
+        # revisions of ONE native release. A flat directory fails the second
+        # activation as drift and can restore an unrelated older image.
+        import copy
+        from unittest.mock import patch
+        import release_kubernetes_worker as kube
+        target = {'id': 'controller', 'kind': 'deployment', 'namespace': 'ghost-com',
+                  'name': 'gchat-release', 'containers': ['coordinator'], 'image': 'controller',
+                  'artifact_root': str(self.root / 'infrastructure'),
+                  'workers': {s: ['worker'] for s in ('observe', 'prepare', 'activate', 'check', 'rollback')}}
+        build = self.root / 'infrastructure' / self.manifest['release_id'] / 'build.json'
+        write(build, {'sources': self.manifest['sources'], 'qualified': True})
+        current = {'metadata': {'uid': 'original-workload'}, 'spec': {
+            'template': {'spec': {'containers': [{'name': 'coordinator', 'image': 'old'}]}}}}
+        original = copy.deepcopy(current)
+        paths = []; failed = False
+        def observe(_, image):
+            actual = current['spec']['template']['spec']['containers'][0]['image']
+            return {'healthy': True, 'matches': actual == image, 'running': {'image': actual}}
+        def install(_, resource, replacement, partition):
+            resource['spec']['template']['spec']['containers'][0]['image'] = replacement['coordinator']
+        def native(t, stage, manifest, directory, previous=None):
+            directory.mkdir(parents=True, exist_ok=True)
+            if stage == 'check':
+                if failed: raise ValueError('failed successor canary')
+                return {'passed': True}
+            result = kube.run(t, manifest, stage, directory / 'result.json')
+            if stage == 'prepare': paths.append(directory / 'kubernetes-before.json')
+            return result
+        with patch.object(kube, 'resource', return_value=current), \
+             patch.object(kube, 'expected_image', side_effect=lambda t, b: t['qualified_image']), \
+             patch.object(kube, 'observe', side_effect=observe), \
+             patch.object(kube, 'patch_images', side_effect=install), \
+             patch.object(kube, 'kubectl', return_value=b'{"status":{"succeeded":1}}'), \
+             patch.object(kube.subprocess, 'run'):
+            first = {'targets': [{**target, 'qualified_image': 'registry/controller@sha256:' + '1' * 64}]}
+            self.assertFalse(reconcile(self.root, self.manifest, first, native))
+            self.assertTrue(reconcile(self.root, self.manifest, first, native))
+            prior = paths[0].read_bytes()
+            second = {'targets': [{**target, 'qualified_image': 'registry/controller@sha256:' + '2' * 64}]}
+            failed = True
+            self.assertFalse(reconcile(self.root, self.manifest, second, native))
+            self.assertEqual(current['spec']['template']['spec']['containers'][0]['image'], first['targets'][0]['qualified_image'])
+            self.assertNotEqual(paths[0], paths[1])
+            self.assertEqual(paths[0].read_bytes(), prior)
+            self.assertEqual(json.loads(prior)['images']['coordinator'], 'old')
+            self.assertEqual(json.loads(paths[1].read_bytes())['images']['coordinator'], first['targets'][0]['qualified_image'])
+            self.assertEqual(current['metadata'], original['metadata'])
+
+    def test_incomplete_preparation_preserves_previous_rollback_pointer(self):
+        for _ in range(3): self.tick()
+        journal = self.root / 'deployment' / self.manifest['release_id'] / 'journal.json'
+        previous = json.loads(journal.read_text())['targets']['canary']
+        self.config['revision'] = 2
+        self.live['canary']['matches'] = False
+        def waiting(target, stage, *args):
+            if stage == 'prepare': return None
+            return self.worker(target, stage, *args)
+        self.assertFalse(reconcile(self.root, self.manifest, self.config, waiting))
+        current = json.loads(journal.read_text())['targets']['canary']
+        self.assertEqual(current['work_revision'], previous['work_revision'])
+        self.assertEqual(current['previous'], previous['previous'])
+
+    def test_legacy_active_directory_and_invalid_worker_revision(self):
+        target = self.config['targets'][0]
+        self.assertEqual(work_directory(self.root, target, {}), self.root / 'canary')
+        for revision in ('../escape', 'short', 123):
+            with self.subTest(revision=revision), self.assertRaisesRegex(ValueError, 'worker revision'):
+                work_directory(self.root, target, {'work_revision': revision})
 
     def test_inventory_revision_cannot_abandon_pending_rollback(self):
         ordinary = self.worker

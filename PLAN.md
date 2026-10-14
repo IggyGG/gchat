@@ -63,6 +63,15 @@ controller-only bootstrap for the pending cross-platform follow-through rollout.
 
 ## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
 
+The live classifier bootstrap exposed a retained rollback-snapshot collision:
+successive controller images shared one native release's first before-image.
+New activations now freeze an inventory-revision worker directory with their
+activation intent. Preparation, resumption and independent rollback share that
+directory; older attempts and legacy in-flight effects keep their original bytes
+and paths. Qualify and deploy the matching watchdog before using new generations.
+The actual bootstrap resumed through the ordinary full-inventory runner, with
+every canary/health gate and without authorizing native retries.
+
 In progress: bootstrap exact reviewed documentation/controller input paths, then
 qualify and deploy actual worker fingerprints, source/run-bound failure evidence,
 bounded policy recovery, durable seven-target delivery records, owned follow-ups
