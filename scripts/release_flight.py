@@ -16,9 +16,27 @@ def _external_ios_wait(state, ledger, release, *, fresh):
     manifest = ledger.manifest(release)
     stage = 'prerequisite' if ledger.target(release, 'ios')['state'] == 'verified' else 'submit'
     work = job(Path(state), manifest, 'ios', stage)
-    if not (work/'attempted.json').is_file():
-        return False
     try:
+        if fresh:
+            # Read-only prerequisite polling can continue after this candidate's
+            # deployment is retired. Use its newest source-bound observation,
+            # including approval/rejection: never fall back to an old review.
+            choices = []
+            for kind in ('submit', 'prerequisite'):
+                candidate = job(Path(state), manifest, 'ios', kind)
+                path = candidate/'encryption-observation.json'
+                if not (candidate/'attempted.json').is_file() or not path.is_file():
+                    continue
+                observation = json.loads(path.read_text())
+                if (not isinstance(observation, dict) or observation.get('release_id') != release
+                        or observation.get('sources') != manifest['sources']
+                        or type(observation.get('at')) is not int or not 0 <= observation['at'] <= time.time()):
+                    return False
+                choices.append((observation['at'], path.stat().st_mtime_ns, kind, candidate))
+            if not choices: return False
+            _, _, stage, work = max(choices)
+        if not (work/'attempted.json').is_file():
+            return False
         from release_provider import external_wait_fresh
         waiting = json.loads((work/'external-prerequisite.json').read_text())
         observation_path = work/'encryption-observation.json'

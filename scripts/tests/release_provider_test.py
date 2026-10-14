@@ -133,7 +133,8 @@ sys.stdout.buffer.write(header.encode() + data[offset:])
              patch('release_provider.subprocess.Popen', side_effect=fixture_transport):
             result = self.collect()
         self.assertEqual((self.root / 'native.zip').read_bytes(), data)
-        self.assertEqual((self.root / 'native.zip').stat().st_mode & 0o777, 0o600)
+        if os.name == 'posix':
+            self.assertEqual((self.root / 'native.zip').stat().st_mode & 0o777, 0o600)
         self.assertEqual(result['external_id'], '123')
         self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))
 

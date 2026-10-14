@@ -210,6 +210,15 @@ receive a new ID. Completed worker logs are closed even when a platform is
 blocked; status lists live processes. This prevents descriptor exhaustion from
 long-running store review and preserves unknown outcomes for reconciliation.
 
+Retained iOS submissions continue the existing GET-only encryption-prerequisite
+poll when their deployment is no longer selected. Their publication budget remains
+paused and the normal deployment/compatibility gates still govern every upload
+or submission. Review status uses the newest source-bound submit/prerequisite
+observation; an approval or rejection never falls back to an older review record.
+Historical no-upload proof remains separate and unchanged for safe successor
+handoff. A read-only poll cannot pin that handoff, and an observer with missing
+Apple build metadata refuses rather than attempting to upload it again.
+
 The controller target may retain a separately qualified operations image through
 `controller_qualification` and its SHA-256 in the operator inventory. Its sealed
 receipt must bind exact source, actual-image runtime tests, registry configuration

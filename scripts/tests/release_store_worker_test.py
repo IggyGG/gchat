@@ -92,6 +92,26 @@ class IosUploadTests(unittest.TestCase):
                 self.assertFalse(job(state,self.manifest,'ios','submit').exists())
                 self.assertFalse((work/'receipt.json').exists())
 
+    def test_read_only_observer_cannot_reconstruct_a_missing_apple_binding_by_uploading(self):
+        from release_publish import job
+        from release_automation_test import candidate
+        self.manifest = candidate(); self.proof['relay_compatible'] = True
+        state = self.work / 'state'; state.mkdir()
+        source = self.work / 'manifest.json'; source.write_bytes(canonical(self.manifest))
+        config = self.work / 'stores.json'; config.write_bytes(canonical({'ios': self.config}))
+        work = job(state, self.manifest, 'ios', 'observe'); work.mkdir(parents=True)
+        environment = {'GCHAT_RELEASE_MANIFEST': str(source), 'GCHAT_RELEASE_RECEIPT': str(work / 'receipt.json'),
+                       'GCHAT_RELEASE_TARGET': 'ios', 'GCHAT_RELEASE_STAGE': 'observe'}
+        with patch.dict(worker.os.environ, environment), \
+             patch.object(sys, 'argv', ['worker', '--state', str(state), '--config', str(config)]), \
+             patch.object(worker, 'apple', return_value=self.api), \
+             patch.object(worker, 'ios_build', side_effect=AssertionError('read-only observer tried to upload')), \
+             self.assertRaisesRegex(ValueError, 'binding.*read-only'):
+            worker.main()
+        self.gh.assert_not_called()
+        self.api.request.assert_not_called()
+        self.assertFalse((work / 'receipt.json').exists())
+
     def test_exact_recovered_upload_dispatched_only_once(self):
         self.invoke(); self.invoke()
         posts = [c for c in self.gh.call_args_list if c.kwargs.get('method') == 'POST']

@@ -126,6 +126,50 @@ class FlightTests(unittest.TestCase):
         (work/'attempted.json').unlink()
         self.assertFalse(internal_complete(self.controller.ledger,self.releases[0],self.root))
 
+    def test_latest_read_only_review_replaces_stale_review_but_preserves_no_upload_history(self):
+        from release_publish import job
+        from release_store_worker import retain_external_wait
+        from release_feed import digest
+        from release_flight import external_ios_wait, unsubmitted_ios_wait
+        from unittest.mock import patch
+        work, gates = self.external_wait_fixture()
+        manifest = self.controller.ledger.manifest(self.releases[0])
+        now = int(time.time())
+        observed = json.loads((work / 'encryption-observation.json').read_text())
+        observed['at'] = now - 1800
+        atomic_json(work / 'encryption-observation.json', observed)
+        with patch('release_store_worker.time.time', return_value=now - 1800):
+            retain_external_wait(manifest, work, *gates)
+        marker = json.loads((work / 'attempted.json').read_text())
+        atomic_json(work / 'attempted.json', dict(marker, attempted=now - 1900))
+        original = (work / 'external-prerequisite.json').read_bytes()
+        self.assertFalse(external_ios_wait(self.root, self.controller.ledger, manifest['release_id']))
+        fresh = job(self.root, manifest, 'ios', 'prerequisite')
+        atomic_json(fresh / 'attempted.json', {'request_id': fresh.name, 'attempted': now})
+        atomic_json(fresh / 'encryption-observation.json', dict(observed, at=now))
+        retain_external_wait(manifest, fresh, *gates)
+        self.assertTrue(external_ios_wait(self.root, self.controller.ledger, manifest['release_id']))
+        # A newer approval cannot fall back to an older IN_REVIEW record.
+        atomic_json(fresh / 'encryption-observation.json', dict(observed, at=now, state='APPROVED'))
+        self.assertFalse(external_ios_wait(self.root, self.controller.ledger, manifest['release_id']))
+        self.assertEqual((work / 'external-prerequisite.json').read_bytes(), original)
+        self.assertEqual(unsubmitted_ios_wait(self.root, self.controller.ledger, manifest['release_id']),
+                         digest(work / 'external-prerequisite.json'))
+
+    def test_newer_approval_never_falls_back_to_an_older_fresh_review(self):
+        from release_publish import job
+        from release_flight import external_ios_wait
+        from unittest.mock import patch
+        work, _ = self.external_wait_fixture()
+        manifest = self.controller.ledger.manifest(self.releases[0])
+        observed = json.loads((work / 'encryption-observation.json').read_text())
+        self.assertTrue(external_ios_wait(self.root, self.controller.ledger, manifest['release_id']))
+        fresh = job(self.root, manifest, 'ios', 'prerequisite')
+        atomic_json(fresh / 'attempted.json', {'request_id': fresh.name})
+        atomic_json(fresh / 'encryption-observation.json', dict(observed, state='APPROVED', at=observed['at'] + 1))
+        with patch('release_flight.time.time', return_value=observed['at'] + 2):
+            self.assertFalse(external_ios_wait(self.root, self.controller.ledger, manifest['release_id']))
+
     def test_external_wait_cannot_bypass_missing_changed_expired_or_wrong_source_gates(self):
         for change in ('evidence','receipt','time','source','france','state','dispatch','uploaded'):
             with self.subTest(change=change):

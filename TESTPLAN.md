@@ -20,6 +20,19 @@ native provider boundary passes53 tests with site-packages disabled (4.906s).
 Exact committed hashes match the full-suite snapshot. These source results do
 not replace qualification of the recovery image or the original signed artifact.
 
+F5 / retained Apple review observation, 2026-10-14: the original deployment gate
+causally fails the retired-submission polling, newest-review and read-only upload
+controls. The corrected coordinator keeps the publication clock paused and polls
+only the existing GET-only encryption prerequisite. Approval cannot mark the app
+available; newer approval/rejection cannot fall back to an older IN_REVIEW file.
+Historical no-upload proof remains intact for safe successor handoff, including
+when an old read-only poll is present. Missing Apple build metadata cannot make
+an observer dispatch an upload. The portable artifact test asserts Unix mode bits
+only on POSIX; byte/range/source assertions still run on every platform.
+All160 affected controls and all1,201 Python tests pass (one existing Windows
+DACL skip). The full run takes121.007s with unchanged source and peaks at350.7MiB
+under the4GiB test-scope ceiling. Native image qualification remains mandatory.
+
 F5 / portable provider and retained downloads, 2026-10-14: run the provider,
 failure and coordinator controls with `python3 -S`; all122 pass. A subprocess
 without site-packages reproduces the actual native-runner HTTP-fixture boundary.

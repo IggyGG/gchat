@@ -104,6 +104,53 @@ class CoordinatorTests(unittest.TestCase):
         self.assertTrue(all(log.closed for log in logs))
         self.assertEqual(c.ledger.db.execute("SELECT COUNT(*) FROM effects WHERE state='confirmed'").fetchone()[0], 0)
 
+    def test_retained_store_observation_survives_a_new_deployment_without_submitting(self):
+        from release_minutes import budget
+        from release_publish import job
+        for platform, bound, stage in (('ios', False, 'prerequisite'),
+                                      ('ios', True, 'prerequisite')):
+            with self.subTest(platform=platform, bound=bound):
+                root = self.root / (platform + str(bound))
+                c = Coordinator(root, {'publication_policy': 'production-minutes-v1',
+                    'workers': {platform: {'submit': {}, 'observe': {}, 'prerequisite': {}}}})
+                self.addCleanup(c.ledger.close)
+                release = c.ledger.add(self.manifest)
+                for state in ('building', 'verifying', 'verified', 'submitting'):
+                    c.ledger.transition(release, platform, state, evidence='a' * 64)
+                original = c.ledger.effect(release, platform, 'submit')
+                submit = job(root, self.manifest, platform, 'submit')
+                atomic_json(submit / 'attempted.json', {'request_id': original['id'], 'attempted': 100})
+                if bound: atomic_json(submit / 'apple-build.json', {'build_id': 'original'})
+                marker = (submit / 'attempted.json').read_bytes()
+                clock = budget(root, self.manifest, platform, 'submitting', now=100, phase='publication')
+                with patch.object(c, 'deployment_ready', return_value=False), \
+                     patch('release_coordinator.time.time', return_value=1000), \
+                     patch.object(c, 'execute', return_value=({'provider_state': 'available'}, 'b' * 64)) as execute:
+                    c.step(release, platform)
+                execute.assert_called_once_with(self.manifest, platform, stage)
+                # An encryption approval is never an availability receipt.
+                self.assertEqual(c.ledger.target(release, platform)['state'],
+                                 'submitting' if stage == 'prerequisite' else 'available')
+                self.assertEqual(c.ledger.effect(release, platform, 'submit'), original)
+                self.assertEqual((submit / 'attempted.json').read_bytes(), marker)
+                paused = json.loads((root / 'publication-runs' / release / (platform + '.json')).read_text())
+                self.assertEqual(paused['started_at'], clock['started_at'])
+                self.assertEqual(paused['deadline_at'], clock['deadline_at'])
+                self.assertEqual(paused['paused_at'], 1000)
+
+    def test_deployment_wait_does_not_start_an_unsubmitted_store_operation(self):
+        for platform in ('ios', 'android'):
+            with self.subTest(platform=platform):
+                c = Coordinator(self.root / platform, {'workers': {platform: {'prerequisite': {}, 'observe': {}}}})
+                self.addCleanup(c.ledger.close)
+                release = c.ledger.add(self.manifest)
+                for state in ('building', 'verifying', 'verified'):
+                    c.ledger.transition(release, platform, state, evidence='a' * 64)
+                with patch.object(c, 'deployment_ready', return_value=False), patch.object(c, 'execute') as execute:
+                    c.step(release, platform)
+                execute.assert_not_called()
+                self.assertEqual(c.ledger.target(release, platform)['state'], 'verified')
+
     def test_corrected_diagnostics_get_a_new_snapshot_without_rearming_native_build(self):
         from unittest.mock import Mock
         recipe = {'run': ['read-only-diagnostics'], 'reconcile': ['read-only-diagnostics']}
@@ -213,6 +260,9 @@ class CoordinatorTests(unittest.TestCase):
         approved = False
         def execute(manifest, platform, stage):
             calls.append((manifest['release_id'], stage))
+            if manifest['release_id'] == old:
+                self.assertEqual(stage, 'prerequisite')
+                return None
             self.assertEqual(manifest['release_id'], latest)
             if stage == 'compatibility':
                 return read_receipt(job(c.state, manifest, platform, stage)/'receipt.json', manifest, platform, stage)
@@ -220,8 +270,8 @@ class CoordinatorTests(unittest.TestCase):
             return ({'provider_state': 'in_review'}, 'd'*64) if approved else None
         with patch.object(c, 'deployment_ready', side_effect=lambda m: m['release_id'] == latest), \
              patch.object(c, 'execute', side_effect=execute):
-            c.step(old, 'ios')  # Reproduces the stale deployment ownership gate.
-            self.assertEqual(calls, [])
+            c.step(old, 'ios')  # The retired deployment permits only a read-only prerequisite poll.
+            self.assertEqual(calls, [(old, 'prerequisite')])
             c.step(latest, 'ios')
             self.assertEqual(c.ledger.target(old, 'ios')['state'], 'superseded')
             self.assertEqual(c.ledger.target(latest, 'ios')['state'], 'submitting')
@@ -230,7 +280,7 @@ class CoordinatorTests(unittest.TestCase):
             approved = True
             c.step(latest, 'ios')
             c.step(old, 'ios')
-        self.assertEqual(calls, [(latest, 'compatibility'), (latest, 'submit'), (latest, 'submit')])
+        self.assertEqual(calls, [(old, 'prerequisite'), (latest, 'compatibility'), (latest, 'submit'), (latest, 'submit')])
         self.assertEqual(c.ledger.target(latest, 'ios')['state'], 'in_review')
         self.assertEqual(c.ledger.target(old, 'ios')['evidence'], old_evidence)
         self.assertEqual({path: path.read_bytes() for path in work.iterdir()}, originals)
@@ -277,6 +327,19 @@ class CoordinatorTests(unittest.TestCase):
                     c.step(latest, 'ios')
                 self.assertEqual(c.ledger.target(old, 'ios'), before)
                 self.assertIn(c.ledger.target(latest, 'ios')['state'], ('verified', 'blocked'))
+
+    def test_read_only_encryption_poll_cannot_pin_an_unsubmitted_predecessor(self):
+        from release_publish import job
+        c, old, latest, work = self.ios_handoff_fixture('read-only-handoff')
+        original = {path: path.read_bytes() for path in work.iterdir()}
+        c.running_workers['read-only'] = {'release_id': old, 'platform': 'ios', 'stage': 'prerequisite'}
+        manifest = c.ledger.manifest(latest)
+        report, digest = read_receipt(job(c.state, manifest, 'ios', 'compatibility')/'receipt.json', manifest, 'ios', 'compatibility')
+        with patch.object(c, 'deployment_ready', return_value=True), patch.object(c, 'execute', return_value=(report, digest)):
+            c.step(latest, 'ios')
+        self.assertEqual(c.ledger.target(old, 'ios')['state'], 'superseded')
+        self.assertEqual(c.ledger.target(latest, 'ios')['state'], 'submitting')
+        self.assertEqual({path: path.read_bytes() for path in work.iterdir()}, original)
 
     @unittest.skipUnless(os.name == 'posix', 'controller uses POSIX process groups')
     def test_nonblocking_worker_does_not_prevent_another_platform_and_reconciles_same_effect(self):
