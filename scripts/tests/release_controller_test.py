@@ -27,6 +27,49 @@ def intent_fixture(state, baseline=None):
 
 
 class ControllerTests(unittest.TestCase):
+    def test_classifier_migration_reproduces_original_qualified_inventories(self):
+        from release_pair import identity
+        import release_inputs
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); repositories = {}
+            current_classifier = Path(release_inputs.__file__).read_text()
+            old_classifier = current_classifier.replace("'TESTING.md', 'docs/IRC-UX.md',", "'TESTING.md',")
+            def commit(project):
+                repository = repositories[project]
+                subprocess.run(['git', '-C', str(repository), 'add', '.'], check=True, capture_output=True)
+                subprocess.run(['git', '-C', str(repository), '-c', 'user.name=Fixture',
+                    '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'qualified source'], check=True, capture_output=True)
+                return identity(repository)
+            baseline = candidate()
+            for project in ('gchat', 'gcoms'):
+                repository = root / project; repositories[project] = repository
+                subprocess.run(['git', 'init', '-q', str(repository)], check=True)
+                (repository / 'Cargo.lock').write_text('pinned runtime')
+                if project == 'gchat':
+                    (repository / 'scripts').mkdir(); (repository / 'docs').mkdir()
+                    (repository / 'scripts/release_inputs.py').write_text(old_classifier)
+                    (repository / 'docs/IRC-UX.md').write_text('unchanged reviewed prose')
+                baseline['sources'][project] = commit(project)
+            baseline['release_id'] = hashlib.sha256(canonical({k: v for k, v in baseline.items() if k != 'release_id'})).hexdigest()
+            namespace = {}; exec(old_classifier, namespace)
+            before = namespace['fingerprints'](repositories, baseline['sources'])
+            (repositories['gchat'] / 'scripts/release_inputs.py').write_text(current_classifier)
+            sources = {**baseline['sources'], 'gchat': commit('gchat')}
+            after = namespace['fingerprints'](repositories, sources)
+            intent = controller.queue(root / 'state', baseline, sources, before, after)
+            original = canonical(intent)
+            self.assertEqual(controller.verify_inputs(intent, repositories), baseline)
+            self.assertEqual(canonical(intent), original)
+            wrong = copy.deepcopy(intent); wrong['inputs']['qualification'] = 'f' * 64
+            wrong['id'] = hashlib.sha256(canonical({k: v for k, v in wrong.items() if k != 'id'})).hexdigest()
+            with self.assertRaisesRegex(ValueError, 'committed input'):
+                controller.verify_inputs(wrong, repositories)
+            (repositories['gchat'] / 'Cargo.lock').write_text('changed runtime')
+            changed = copy.deepcopy(intent); changed['sources']['gchat'] = commit('gchat')
+            changed['id'] = hashlib.sha256(canonical({k: v for k, v in changed.items() if k != 'id'})).hexdigest()
+            with self.assertRaisesRegex(ValueError, 'committed input'):
+                controller.verify_inputs(changed, repositories)
+
     def test_finished_worker_records_do_not_own_activation_but_live_processes_and_readers_do(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -42,6 +42,13 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 # GChat
 
+**Cross-platform publication follow-through (2026-10-14, in progress):** the
+reviewed IRC UX prose/receipt paths and delivery-controller helpers are classified
+separately from application artifacts. The classifier is deployed first through
+normal source-bound controller qualification. Durable delivery ownership,
+diagnostics and notifications follow in the qualified implementation; this
+checkpoint does not claim cross-platform publication or feature activation.
+
 **IRC workspace delivery, 2026-10-13:** signed Linux **0.1.214** is installed and
 verified through the existing desktop entry, including normal relaunch. Channels,
 chat and users now share aligned header/content/footer rows; topics and multiline

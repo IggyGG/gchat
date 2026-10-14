@@ -32,6 +32,15 @@ F5 release simplification, 2026-10-07: implemented shared production relay/fixtu
 
 Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrastructure targets; Linux, Windows, ARM Mac and SDK 0.1.167 are published. Controller-only qualification, persistent provider polling/cooldowns and explicit Intel-only unchanged-runtime deployment provenance are under validation. Android 1182 observation resumes its accepted submission; iOS 1.1.82 still requires Apple encryption approval. Intel cold-member recovery now uses the final durable checkpoint, with a separate native diagnostic. No new chat API or wire version is introduced. Source implementation does not itself claim activation or store availability.
 
+## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
+
+In progress: bootstrap exact reviewed documentation/controller input paths, then
+qualify and deploy actual worker fingerprints, source/run-bound failure evidence,
+bounded policy recovery, durable seven-target delivery records, owned follow-ups
+and notifications. Completion requires verified deployed code/config and live
+per-platform publication or a concrete owned blocker. Store review is not public
+availability. Preserve original requests, failures, deadlines and passed siblings.
+
 ## GCHAT-UX — conversation-first IRC workspace
 
 2026-10-13 delivery complete (OC): signed Linux **0.1.214** is installed and running

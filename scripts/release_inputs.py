@@ -21,6 +21,17 @@ CONTROL_FILES = frozenset({
     # Startup contract and receipts are documentation, never runtime inputs.
     # Keep registration/activation code and unreviewed evidence conservative.
     'docs/DURABLE_HOST.md',
+    # Reviewed IRC UX prose and retained receipts are not packaged runtime
+    # inputs. Exact paths only: new evidence/exporters remain conservative.
+    'TESTING.md', 'docs/IRC-UX.md', 'docs/evidence/irc-ux/summary.json',
+    'docs/evidence/irc-ux-alignment-20261013/summary.json',
+    'docs/evidence/irc-ux-alignment-20261013/installed.json',
+    'docs/evidence/irc-ux-canary-storage-20261013/summary.json',
+    'docs/evidence/irc-ux-terminal-owner-20261013/summary.json',
+    'docs/evidence/irc-ux-release-repairs-20261013/summary.json',
+    'docs/evidence/irc-ux-native-format-20261013/summary.json',
+    'docs/evidence/release-follow-through-20261014/source.json',
+    'docs/evidence/release-follow-through-20261014/deployed.json',
     'docs/evidence/durable-host/source.json',
     'docs/evidence/durable-host/installed.json',
     'docs/evidence/android-ten-minute-20261009/controller-recovery.json',
@@ -97,6 +108,11 @@ CONTROL_FILES = frozenset({
 # infrastructure. Unknown scripts, packaging, native workflows and all GComs
 # runtime/test inputs still require their ordinary release qualification.
 CONTROLLER_FILES = frozenset({
+    # Delivery/diagnostic helpers run solely in the qualified controller or
+    # audited mirror. Bootstrap classification before their source rollout so
+    # adding an operations helper cannot trigger a seven-platform app rebuild.
+    'scripts/release_worker_identity.py', 'scripts/release_failure.py',
+    'scripts/release_delivery.py', 'scripts/release_mirror.py',
     'scripts/release_provider.py', 'scripts/release_controller.py',
     'scripts/release_platform_deployment.py', 'scripts/release_compatibility.py',
     'scripts/build-controller.py', '.github/workflows/controller-release.yml',

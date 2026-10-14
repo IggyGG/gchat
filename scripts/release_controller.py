@@ -64,9 +64,31 @@ def validate_intent(value):
 def verify_inputs(intent, repositories):
     from release_inputs import fingerprints
     baseline = validate_intent(intent)
-    for sources, expected in ((intent['sources'], intent['inputs']),
-                             (baseline.get('upstream', baseline['sources']), intent['baseline_inputs'])):
-        if fingerprints(repositories, sources) != expected:
+    pairs = ((intent['sources'], intent['inputs']),
+             (baseline.get('upstream', baseline['sources']), intent['baseline_inputs']))
+    current = [fingerprints(repositories, sources) for sources, _ in pairs]
+    if any(actual != expected for actual, (_, expected) in zip(current, pairs)):
+        # A reviewed classifier-only update must be bootstrappable: the running
+        # controller froze its intent with the already-qualified baseline's
+        # classifier. Reproduce BOTH original inventories with those exact Git
+        # bytes, and independently require the new classifier to agree that no
+        # application/native infrastructure input changed. Never accept merely
+        # a newly relaxed classifier or rewrite the original intent hashes.
+        if ('gchat' not in repositories or
+                any(current[0][key] != current[1][key] for key in ('artifacts', 'infrastructure'))):
+            raise ValueError('controller intent does not match committed input inventories')
+        source = baseline['sources']['gchat']['commit']
+        tree = subprocess.check_output(['git', '-C', str(repositories['gchat']), 'rev-parse', source + '^{tree}'],
+                                       text=True, timeout=30).strip()
+        if tree != baseline['sources']['gchat']['tree']:
+            raise ValueError('baseline classifier source tree changed')
+        raw = subprocess.check_output(['git', '-C', str(repositories['gchat']), 'show',
+                                       source + ':scripts/release_inputs.py'], timeout=30)
+        if len(raw) > 2 * 1024 * 1024:
+            raise ValueError('baseline classifier exceeds source bound')
+        namespace = {'__name__': 'qualified_baseline_release_inputs'}
+        exec(compile(raw, 'qualified-baseline-release-inputs', 'exec'), namespace)
+        if any(namespace['fingerprints'](repositories, sources) != expected for sources, expected in pairs):
             raise ValueError('controller intent does not match committed input inventories')
     return baseline
 

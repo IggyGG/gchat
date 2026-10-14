@@ -60,6 +60,16 @@ Routine releases: push `main`; the source mirror and Kubernetes coordinator buil
 
 Routine publication now verifies the native build, signatures, permissions, startup lifecycle and eight fresh matching relays. Full mobile GUI upgrade/rollback/history/file journeys run separately with `python3 scripts/release.py qualify --platform android` or `ios`; they do not gate routine upload and never become passes from a build or upload. Routine work has a persistent 60-minute active budget, one transient retry and one-minute source settlement; external review pauses its budget. Native dependencies and compiler outputs are cached, while signed artifacts and every source binding are verified.
 
+## Cross-platform follow-through qualification (2026-10-14)
+
+Run `release_inputs_test.py` for exact reviewed IRC UX documents/receipts and
+controller-only helpers. Unknown evidence, scripts, workflows, signing and runtime
+inputs must still invalidate artifacts. Bootstrap the classifier in the actual
+qualified controller before publishing new helper modules. The implementation
+then requires native failure/source/attempt controls, bounded restart-safe retry,
+independent publication, durable owner/task/notification and actual store-result
+tests, followed by normal source-bound image/deployment verification.
+
 ## Retained earlier checkpoints
 
 IRC row alignment, 2026-10-13: `ui/browser/alignment.spec.ts` measures the shared
