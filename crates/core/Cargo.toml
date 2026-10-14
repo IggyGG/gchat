@@ -59,7 +59,7 @@ gcoms-routing = { version = "0.1.0", features = ["experimental-gc2"] }
 gcoms-transport = { version = "0.1.0", features = ["experimental-gc2"] }
 axum = "0.8"
 rcgen = { version = "0.13", default-features = false, features = ["aws_lc_rs", "pem"] }
-rustls = { version = "0.23.45", default-features = false, features = ["aws-lc-rs", "std"] }
+rustls = { version = "0.23.46", default-features = false, features = ["aws-lc-rs", "std"] }
 tokio-rustls = "0.26"
 
 [features]
