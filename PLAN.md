@@ -1,3 +1,11 @@
+F5 / native path qualification, 2026-10-14: both retained Mac217 failures are
+fixture EILSEQ at directory creation. Reopen/credential rotation now exercises
+Unicode and spaces on every platform; Unix byte-path references have a lossless
+JSON control, and Linux retains real non-UTF-8 filesystem reopening. Eight
+source-bound Linux registration cases, formatting and strict all-target core
+Clippy pass with GComs712d671 and unchanged canonical lockfiles. Fresh Mac native
+qualification and signed installed acceptance remain required. [Evidence](docs/evidence/durable-host/source.json).
+
 F5 / release backup retention, 2026-10-14: the optional
 `backup_archive_required` policy preserves completed daily snapshots until the
 verified archive owner retires them. Producer rotation shares its nonblocking

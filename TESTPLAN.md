@@ -1,3 +1,13 @@
+F5 / native path fixtures, 2026-10-14: the actual supported filesystem path test
+uses Unicode and spaces on all platforms. Every Unix build also tests raw-byte
+path reference serialization. Linux additionally creates and reopens the real
+non-UTF-8 directory. Both original Mac logs fail before host code at fixture
+mkdir/EILSEQ; keep those results. The corrected paired Linux run passes all8
+registration controls without ignored cases, formatting and strict core Clippy.
+Private source overrides are resolved before locked qualification; preserve both
+canonical lockfiles and record the derived lock. New Mac native results remain
+the platform acceptance gate.
+
 F5 / archive-required snapshots, 2026-10-14: run `release_maintenance_test.py`.
 Require every older snapshot to survive until verified archival, daily rotation
 to defer under the archive owner's real kernel lock, and invalid policy types to

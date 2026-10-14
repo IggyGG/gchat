@@ -49,7 +49,7 @@ fn save_fleet(config: &InstanceConfig, fleet: &FleetConfig) {
 #[test]
 fn registration_restores_host_and_allows_credentials_to_rotate_without_rebinding() {
     let dir = tempfile::tempdir().unwrap();
-    let home = dir.path().join("instance with spaces");
+    let home = dir.path().join("instance café 東京 with spaces");
     let (config, mut fleet, instance) = fixture(&home);
     let before = std::fs::read(path(&config)).unwrap();
     let restored = InstanceConfig::from_home(Some(&home)).unwrap();
@@ -153,6 +153,25 @@ fn symlink_and_shared_registration_files_refuse_before_startup() {
 }
 
 #[cfg(unix)]
+#[test]
+fn native_non_utf8_path_references_round_trip_without_loss() {
+    use std::os::unix::ffi::OsStringExt;
+    let dir = tempfile::tempdir().unwrap();
+    let expected = dir
+        .path()
+        .join(std::ffi::OsString::from_vec(b"instance-\xff".to_vec()));
+    let encoded = LocalPath::new(&expected).unwrap();
+    assert!(matches!(encoded, LocalPath::Unix { .. }));
+    let saved = serde_json::to_vec(&encoded).unwrap();
+    let restored: LocalPath = serde_json::from_slice(&saved).unwrap();
+    assert_eq!(restored.path().unwrap(), expected);
+}
+
+// macOS's native filesystem rejects this byte spelling before host code runs
+// (EILSEQ in both native Mac gates). Keep real byte-path reopening on Linux and
+// lossless reference serialization above on every Unix target. The main reopen
+// control uses Unicode and spaces on every supported platform.
+#[cfg(target_os = "linux")]
 #[test]
 fn native_non_utf8_paths_survive_saved_host_reopen() {
     use std::os::unix::ffi::OsStringExt;

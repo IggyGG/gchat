@@ -42,6 +42,11 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 # GChat
 
+Saved-host path qualification covers Unicode and spaces across supported platforms,
+lossless Unix byte-path references, and real Linux non-UTF-8 profile reopening.
+The focused paired Linux suite and strict checks pass; new Mac native qualification
+is tracked in [durable-host evidence](docs/evidence/durable-host/source.json).
+
 Controller qualification accepts additional source-bound test suites while keeping
 every baseline gate mandatory. Historical hash-pinned overlays retain their exact
 source/image evidence. This compatibility bootstrap allows follow-through checks
