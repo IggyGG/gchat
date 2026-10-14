@@ -62,6 +62,15 @@ diagnostic evidence are retained; the new automation is not yet deployed. Native
 blockers are now identified from original job and child logs, including the Mac
 path test, Windows tooling imports, iOS lifecycle assertion and SDK registry DNS.
 
+Native build archival now uses the existing encrypted Hetzner S3 closed-file
+archive CLI (`triform.closed-file-archive/v1`). GChat selects only older completed
+build ZIPs, keeps current/latest/forty recent candidates and pending operator work
+online, verifies an independent restored ZIP against the original native receipt,
+then permits exact-file retirement. Logs, receipts and extracted artifacts remain
+local. A cold pointer records the pinned archive manifest and restoration receipt;
+restore original bytes before requesting historical requalification. No new archive
+format, key scheme or application qualification is introduced.
+
 **IRC workspace delivery, 2026-10-13:** signed Linux **0.1.214** is installed and
 verified through the existing desktop entry, including normal relaunch. Channels,
 chat and users now share aligned header/content/footer rows; topics and multiline

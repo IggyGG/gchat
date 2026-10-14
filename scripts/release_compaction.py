@@ -10,8 +10,143 @@ import stat
 import time
 import uuid
 import zipfile
+import sqlite3
+import subprocess
+import sys
+import tempfile
+from contextlib import closing
 
 from release_coordinator import atomic_json, read_receipt
+
+
+def protected_archive_releases(state, db, keep_recent=40):
+    """Current, rollback/recent and operator-owned releases stay online."""
+    if type(keep_recent) is not int or not 30 <= keep_recent <= 256:
+        raise ValueError('cold archival must retain at least thirty recent candidates')
+    protected = {r[0] for r in db.execute('SELECT id FROM candidates ORDER BY seq DESC LIMIT ?', (keep_recent,))}
+    protected.update(r[0] for r in db.execute('SELECT candidate FROM latest'))
+    for name in ('deployment/desired.json', 'deployment/owner.json', 'public/status.json'):
+        path = state / name
+        if not path.is_file(): continue
+        value, _ = checked_metadata(path, 4 * 1024 ** 2)
+        if value.get('release_id'): protected.add(value['release_id'])
+        protected.update(w['release_id'] for w in value.get('running_workers', []))
+    for directory in ('control/incoming', 'control/qualifications'):
+        paths = list((state / directory).glob('*.json'))
+        if len(paths) > 512: raise ValueError('pending controls exceed cold-archive bound')
+        for path in paths:
+            value, _ = checked_metadata(path, 65536)
+            if value.get('release_id'): protected.add(value['release_id'])
+    return protected
+
+
+def cold_native_plan(state, keep_recent=40, maximum_files=64):
+    """Producer eligibility only; the existing encrypted archiver owns S3 I/O."""
+    state = Path(state).resolve()
+    if type(maximum_files) is not int or not 1 <= maximum_files <= 64:
+        raise ValueError('cold native archival file count exceeds bound')
+    with closing(sqlite3.connect((state / 'ledger.sqlite').as_uri() + '?mode=ro', uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        protected = protected_archive_releases(state, db, keep_recent)
+        rows = db.execute("""SELECT c.seq,c.id,c.manifest,p.platform,e.id AS work,e.evidence FROM candidates c
+            JOIN platforms p ON p.candidate=c.id JOIN effects e ON e.candidate=c.id AND e.platform=p.platform
+            WHERE p.state='available' AND e.kind='build' AND e.state='confirmed' ORDER BY c.seq""").fetchall()
+        selected = []
+        for row in rows:
+            if row['id'] in protected: continue
+            if not re.fullmatch('[0-9a-f]{64}', row['work']): raise ValueError('invalid archive effect identity')
+            work = state / 'jobs' / row['work']; path = work / 'native.zip'
+            if not path.is_file() or path.is_symlink(): continue
+            before = path.stat()
+            if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+                    or not 16 * 1024 ** 2 <= before.st_size <= 2 * 1024 ** 3): continue
+            manifest = json.loads(row['manifest'])
+            report, (receipt_sha, _) = checked_metadata(work / 'receipt.json', 2 * 1024 ** 2)
+            expected = {'schema': 1, 'release_id': row['id'], 'sources': manifest['sources'],
+                        'platform': row['platform'], 'stage': 'build', 'passed': True, 'source_unchanged': True}
+            refs = [r for r in report.get('evidence', []) if r.get('path') == 'native.zip']
+            if (receipt_sha != row['evidence'] or any(report.get(k) != v for k, v in expected.items())
+                    or len(refs) != 1 or not re.fullmatch('[0-9a-f]{64}', str(refs[0].get('sha256')))):
+                raise ValueError('cold archive source/receipt binding changed')
+            selected.append({'schema': 1, 'release_id': row['id'], 'sources': manifest['sources'],
+                'platform': row['platform'], 'request_id': row['work'], 'receipt_sha256': row['evidence'],
+                'source': 'jobs/' + row['work'] + '/native.zip', 'source_sha256': refs[0]['sha256'],
+                'source_bytes': before.st_size, 'source_identity': list(identity(before))})
+            if len(selected) >= maximum_files: break
+    return selected
+
+
+def archive_tool(tool, action, state, receipt, *, source=None, destination=None, maximum_bytes=2 * 1024 ** 3):
+    argv = [sys.executable, str(tool), action, '--root', str(state), '--receipt', str(receipt)]
+    if source: argv += ['--source', source, '--owner', 'gchat-native-builds', '--maximum-bytes', str(maximum_bytes)]
+    if destination: argv += ['--destination', str(destination)]
+    result = subprocess.run(argv, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1800)
+    if len(result.stdout) > 65536: raise ValueError('archive tool response exceeds bound')
+    return json.loads(result.stdout)
+
+
+def archive_cold_native(state, tool, *, retire=False, target_bytes=20 * 1024 ** 3, maximum_files=64, keep_recent=40):
+    """Use triform.closed-file-archive/v1, with independent native-byte restore.
+
+    The public CLI supplies encryption, remote manifests, exact-inode retirement
+    and crash quarantine. This adapter only owns GChat eligibility and verifies
+    that recovered bytes still match the original ledger-bound native receipt.
+    """
+    from release_provider import locked
+    state = Path(state).resolve()
+    if type(retire) is not bool or type(target_bytes) is not int or not 0 < target_bytes <= 64 * 1024 ** 3:
+        raise ValueError('cold archive batch policy is invalid')
+    root = state / 'maintenance/native-archives'; root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    results, reclaimed = [], 0
+    with locked(root / 'producer.lock'):
+        for item in cold_native_plan(state, keep_recent, maximum_files):
+            if reclaimed >= target_bytes: break
+            path = state / item['source']; work = path.parent
+            # Full original receipt verification occurs before any S3 operation.
+            read_receipt(work / 'receipt.json', item, item['platform'], 'build')
+            if list(identity(path.stat())) != item['source_identity']: raise ValueError('native archive changed after planning')
+            directory = root / item['request_id']; directory.mkdir(exist_ok=True, mode=0o700)
+            eligibility = directory / 'eligibility.json'
+            if eligibility.exists() and json.loads(eligibility.read_text()) != item:
+                raise ValueError('native archival eligibility changed; reconcile the original attempt')
+            atomic_json(eligibility, item)
+            receipt = directory / 'archive.json'
+            if not receipt.is_file(): archive_tool(tool, 'archive', state, receipt, source=item['source'])
+            retained, _ = checked_metadata(receipt, 16384)
+            if (retained.get('format') != 'triform.closed-file-archive/v1'
+                    or retained.get('owner') != 'gchat-native-builds'
+                    or any(retained.get(k) != item[k] for k in ('source', 'source_sha256', 'source_bytes', 'source_identity'))
+                    or retained.get('plaintext_verified') is not True):
+                raise ValueError('encrypted archive does not bind the eligible native input')
+            with tempfile.TemporaryDirectory(prefix='native-archive-restore-') as scratch:
+                restored = Path(scratch) / 'native.zip'
+                archive_tool(tool, 'restore', state, receipt, destination=restored)
+                digest, info = file_digest(restored)
+                if digest != item['source_sha256'] or info.st_size != item['source_bytes']:
+                    raise ValueError('restored native archive differs from original qualification')
+            verified = {'schema': 1, 'release_id': item['release_id'], 'sources': item['sources'],
+                        'request_id': item['request_id'], 'receipt_sha256': item['receipt_sha256'],
+                        'source_sha256': digest, 'restored_original_bytes': True,
+                        'archive_manifest': retained['manifest_key'], 'at': int(time.time())}
+            atomic_json(directory / 'restoration.json', verified)
+            # Preserve an operator-readable cold pointer before retirement.
+            atomic_json(work / 'native.zip.archive.json', {'schema': 1, 'archive_receipt': str(receipt.relative_to(state)),
+                'source_sha256': digest, 'receipt_sha256': item['receipt_sha256'], 'archive_manifest': retained['manifest_key']})
+            result = dict(verified, retired=False)
+            if retire:
+                with closing(sqlite3.connect((state / 'ledger.sqlite').as_uri() + '?mode=ro', uri=True)) as db:
+                    if item['release_id'] in protected_archive_releases(state, db, keep_recent): continue
+                if hashlib.sha256((work / 'receipt.json').read_bytes()).hexdigest() != item['receipt_sha256']:
+                    raise ValueError('native receipt changed before retirement')
+                retirement = archive_tool(tool, 'retire', state, receipt)
+                result.update(retired=True, retirement=retirement)
+                reclaimed += retirement['allocated_bytes_released']
+            results.append(result)
+            atomic_json(directory / 'result.json', result)
+        report = {'schema': 1, 'original_bytes_retained': True, 'reclaimed_bytes': reclaimed,
+                  'keep_recent_candidates': keep_recent, 'completed_at': int(time.time()), 'objects': results}
+        atomic_json(root / ('batch-' + str(time.time_ns()) + '.json'), report)
+    return report
 
 
 def identity(value):
@@ -594,9 +729,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', type=Path, required=True)
     parser.add_argument('--maximum-builds', type=int, default=8)
+    parser.add_argument('--archive-native', action='store_true', help='use the approved encrypted closed-file archive CLI')
+    parser.add_argument('--archive-tool', type=Path)
+    parser.add_argument('--retire-archived', action='store_true')
+    parser.add_argument('--reclaim-gib', type=int, default=20)
     args = parser.parse_args()
     if not 1 <= args.maximum_builds <= 256:
         parser.error('maximum builds must be between 1 and 256')
+    if args.archive_native:
+        if not args.archive_tool or not args.archive_tool.is_file(): parser.error('--archive-tool is required')
+        print(json.dumps(archive_cold_native(args.state, args.archive_tool, retire=args.retire_archived,
+                                            target_bytes=args.reclaim_gib * 1024 ** 3)), flush=True)
+        return
+    if args.archive_tool or args.retire_archived: parser.error('archival options require --archive-native')
     print(json.dumps({'completed': compact(args.state, args.maximum_builds),
                       'canaries': compact_canaries(args.state),
                       'rollback_images': compact_rollback_images(args.state),

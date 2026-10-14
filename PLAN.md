@@ -71,6 +71,13 @@ Expanded verified compaction covered 129 canaries and 47 images, reclaiming only
 these estimates do not authorize file replacement. Archival placement or added
 capacity requires an explicit operational decision before image activation.
 
+The user selected Hetzner S3 archival. The producer adapter now reuses infrastructure
+commit `866e891`'s existing encrypted closed-file CLI and backup format. Four causal
+controls pass for old-completed selection, protected releases/operator races,
+native restored-byte verification and unchanged original ledger/evidence. The
+earlier direct-S3 prototype remains unlanded private evidence. Actual encrypted
+archives, restoration, reclaimed space and controller activation remain pending.
+
 ## GCHAT-UX — conversation-first IRC workspace
 
 2026-10-13 delivery complete (OC): signed Linux **0.1.214** is installed and running

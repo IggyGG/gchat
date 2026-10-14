@@ -16,6 +16,88 @@ from release_pair import canonical
 import release_compaction as compactor
 
 
+class ColdNativeProducerTests(unittest.TestCase):
+    def setUp(self):
+        from release_automation_test import candidate
+        from release_ledger import Ledger
+        self.temporary = tempfile.TemporaryDirectory(); self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.ledger = Ledger(self.root / 'ledger.sqlite'); self.addCleanup(self.ledger.close)
+        manifests = [candidate(n) for n in range(1, 43)]
+        for manifest in manifests: self.ledger.add(manifest)
+        self.manifest = manifests[0]; self.platform = 'linux-x86_64'
+        self.request = self.ledger.effect(self.manifest['release_id'], self.platform, 'build')['id']
+        self.work = self.root / 'jobs' / self.request; self.work.mkdir(parents=True)
+        self.data = b'original native ZIP bytes' * (16 * 1024 ** 2 // 25 + 1)
+        (self.work / 'native.zip').write_bytes(self.data)
+        self.sha = hashlib.sha256(self.data).hexdigest()
+        compactor.atomic_json(self.work / 'receipt.json', {'schema': 1, 'release_id': self.manifest['release_id'],
+            'sources': self.manifest['sources'], 'platform': self.platform, 'stage': 'build',
+            'passed': True, 'source_unchanged': True, 'evidence': [{'path': 'native.zip', 'sha256': self.sha}]})
+        self.receipt_sha = hashlib.sha256((self.work / 'receipt.json').read_bytes()).hexdigest()
+        self.ledger.complete_effect(self.request, 'original-native-run', self.receipt_sha)
+        for manifest in manifests[:2]:
+            for state in ('building', 'verifying', 'verified', 'publishing', 'available'):
+                self.ledger.transition(manifest['release_id'], self.platform, state, evidence='a' * 64)
+
+    def tool(self, tool, action, state, receipt, *, source=None, destination=None, **kwargs):
+        if action == 'archive':
+            path = state / source
+            compactor.atomic_json(receipt, {'format': 'triform.closed-file-archive/v1', 'owner': 'gchat-native-builds',
+                'source': source, 'source_sha256': self.sha, 'source_bytes': len(self.data),
+                'source_identity': list(compactor.identity(path.stat())), 'plaintext_verified': True,
+                'manifest_key': 'cluster-retention/v1/gchat-native-builds/original/manifest.json'})
+            return {'archived': source}
+        if action == 'restore':
+            destination.write_bytes(self.data)
+            return {'source_sha256': self.sha}
+        self.assertEqual(action, 'retire')
+        path = self.work / 'native.zip'; size = path.stat().st_blocks * 512; path.unlink()
+        return {'retired': 'jobs/' + self.request + '/native.zip', 'allocated_bytes_released': size}
+
+    def test_only_old_available_builds_are_selected_and_pending_work_is_protected(self):
+        plan = compactor.cold_native_plan(self.root)
+        self.assertEqual([p['request_id'] for p in plan], [self.request])
+        compactor.atomic_json(self.root / 'control/incoming/operator.json', {'release_id': self.manifest['release_id']})
+        self.assertEqual(compactor.cold_native_plan(self.root), [])
+
+    def test_verified_native_restore_precedes_retirement_and_keeps_all_other_evidence(self):
+        original = (self.work / 'receipt.json').read_bytes()
+        (self.work / 'original.log').write_bytes(b'original failed attempts')
+        before = [tuple(r) for r in self.ledger.db.execute('SELECT * FROM platforms')]
+        with patch.object(compactor, 'archive_tool', side_effect=self.tool) as calls:
+            result = compactor.archive_cold_native(self.root, 'approved-archive.py', retire=True, target_bytes=1)
+        self.assertEqual([c.args[1] for c in calls.call_args_list], ['archive', 'restore', 'retire'])
+        self.assertEqual(len(result['objects']), 1); self.assertGreater(result['reclaimed_bytes'], 0)
+        self.assertFalse((self.work / 'native.zip').exists())
+        self.assertEqual((self.work / 'receipt.json').read_bytes(), original)
+        self.assertTrue((self.work / 'original.log').exists())
+        self.assertTrue((self.work / 'native.zip.archive.json').exists())
+        self.assertEqual(before, [tuple(r) for r in self.ledger.db.execute('SELECT * FROM platforms')])
+
+    def test_failed_restore_preserves_the_original_and_never_calls_retirement(self):
+        def broken(*args, **kwargs):
+            if args[1] == 'restore': kwargs['destination'].write_bytes(b'wrong'); return {}
+            return self.tool(*args, **kwargs)
+        with patch.object(compactor, 'archive_tool', side_effect=broken) as calls, \
+             self.assertRaisesRegex(ValueError, 'original qualification'):
+            compactor.archive_cold_native(self.root, 'approved-archive.py', retire=True, target_bytes=1)
+        self.assertNotIn('retire', [c.args[1] for c in calls.call_args_list])
+        self.assertEqual((self.work / 'native.zip').read_bytes(), self.data)
+
+    def test_new_operator_request_after_upload_defers_retirement(self):
+        def intervening(*args, **kwargs):
+            result = self.tool(*args, **kwargs)
+            if args[1] == 'restore':
+                compactor.atomic_json(self.root / 'control/incoming/operator.json', {'release_id': self.manifest['release_id']})
+            return result
+        with patch.object(compactor, 'archive_tool', side_effect=intervening) as calls:
+            result = compactor.archive_cold_native(self.root, 'approved-archive.py', retire=True, target_bytes=1)
+        self.assertEqual(result['reclaimed_bytes'], 0)
+        self.assertNotIn('retire', [c.args[1] for c in calls.call_args_list])
+        self.assertTrue((self.work / 'native.zip').is_file())
+
+
 @unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
 class CompactionTests(unittest.TestCase):
     def setUp(self):

@@ -79,6 +79,14 @@ then requires native failure/source/attempt controls, bounded restart-safe retry
 independent publication, durable owner/task/notification and actual store-result
 tests, followed by normal source-bound image/deployment verification.
 
+For approved native archival, run `release_compaction_test.ColdNativeProducerTests`
+and the existing infrastructure archive/backup corruption controls. Require a real
+S3 ciphertext/plaintext readback, independent restoration matching the original
+native receipt, unchanged closed-file identity and fresh protected-release checks
+before retirement. Keep originals on failed recovery, source changes or new
+operator requests. Retain the key outside Kubernetes and the exact archive/tool
+source, receipts, actual reclaimed bytes and restoration commands.
+
 Run `release_worker_identity_test`, `release_failure_test`, `release_delivery_test`
 and the full release/controller suites. Exercise actual bounded subprocess output,
 lost replies, immutable log hashes, stale pins, unchanged sibling workers, provider

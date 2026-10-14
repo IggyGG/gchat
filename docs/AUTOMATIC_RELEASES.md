@@ -116,6 +116,27 @@ the rendered/merged policy configuration and the updated source-mirror consumer.
 Source tests alone do not establish activation. Retained source/deployment
 receipts are in `docs/evidence/release-follow-through-20261014/`.
 
+### Approved cold native archives
+
+`release_compaction.py --state /state --archive-native --archive-tool TOOL`
+adapts the existing infrastructure closed-file archive CLI to GChat eligibility.
+The default uploads and independently restores/verifies; `--retire-archived`
+additionally permits retirement after a fresh ownership check. The default batch
+target is 20 GiB, at most 64 files of at most 2 GiB each. Forty recent candidates,
+every advertised latest candidate, selected/owned deployment, active worker and
+pending operator request stay online. Only completed, ledger-confirmed native
+build ZIPs are selected. Every other source, journal, log and extraction stays local.
+
+The archive tool supplies the existing GHOSTBACKUP1 encryption, S3 byte/plaintext
+readback, remote manifests, exact-inode retirement and interrupted-retirement
+quarantine. Supply its existing protected credentials and independently recoverable
+archive key through the approved backup runtime, with separate bounded scratch.
+GChat's `maintenance/native-archives/<build-request>/` retains producer eligibility,
+archive, native restoration and retirement receipts. `native.zip.archive.json`
+beside the original build receipt points to them. Historical requalification must
+restore the exact ZIP through that CLI before reading the original receipt; a cold
+archive is never replaced by a fresh build or by a new source label.
+
 The GitHub `release-signing` environment must permit `release/gchat-*` and
 `release/qualification-*` branches. Qualification refs are immutable and bound to
 the exact helper commit. Keep all other environment protection rules. A terminal
