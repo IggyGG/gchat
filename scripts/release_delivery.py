@@ -135,9 +135,13 @@ def diagnostics(state, manifest, platform):
         result = retained_diagnostics(root, manifest, platform)
         if result:
             report, reference = result
+            failed = sorted({name for j in report['jobs'] for name in j.get('failed_checks', [])} |
+                            {name for a in report.get('child_evidence', []) for m in a.get('members', [])
+                             for name in m.get('failed_checks', [])})[:8]
             reports.append({'code': report['code'], 'category': report['category'], 'repo': report['repo'],
                             'run_id': report['run_id'], 'run_attempt': report['run_attempt'],
                             'diagnostics_pending': report['diagnostics_pending'], 'evidence_sha256': reference['sha256'],
+                            'failed_checks': failed,
                             'artifact_evidence': [{key: a.get(key) for key in ('artifact_id', 'sha256', 'state')}
                                                   for a in report.get('child_evidence', [])],
                             'jobs': [{key: job.get(key) for key in ('name', 'job_id', 'attempt', 'step', 'code', 'log_sha256')}
@@ -224,14 +228,27 @@ def update(controller):
                 if blocked:
                     recovery_path = controller.recovery_path(manifest['release_id'], platform)
                     recovery = read_json(recovery_path) if recovery_path.is_file() else {}
-                    native = diagnostics(state, manifest, platform)
+                    from release_coordinator import STORAGE_HEADROOM_REASON
+                    capacity = recovery.get('cause') == 'storage_headroom' or target.get('reason') == STORAGE_HEADROOM_REASON
+                    native = [] if capacity else diagnostics(state, manifest, platform)
                     category = recovery.get('classification', 'unclassified')
                     if native: category = next((r['category'] for r in native if r['category'] in ('code', 'operator')), native[0]['category'])
                     if category not in ACTIONS: category = 'unclassified'
                     record.update(classification=category, diagnostics=native, next_action=ACTIONS[category],
                                   evidence=target.get('evidence'), failure=recovery.get('code', 'worker_failed'))
+                    checks = sorted({name for r in native for name in r['failed_checks']})[:8]
+                    if checks and category == 'code':
+                        record['next_action'] = 'Investigate ' + ', '.join(checks) + '; qualify a source-corrected successor.'
                     if any(r['code'] == 'native_posix_import' for r in native):
                         record['next_action'] = 'Guard POSIX-only fcntl imports in portable native tooling, then publish a source-corrected candidate.'
+                    elif any(r['code'] == 'native_dependency_network' for r in native):
+                        record['next_action'] = 'Restore runner DNS/registry connectivity; review the original retry budget before an explicit native retry or qualified successor.'
+                    if capacity:
+                        import shutil
+                        record.update(classification='infrastructure', failure='storage_headroom',
+                            required_free_bytes=controller.config.get('minimum_free_bytes', 16 * 1024 ** 3),
+                            current_free_bytes=shutil.disk_usage(state).free,
+                            next_action='Restore reserved release-storage headroom through verified retention; expired untouched work needs a new immutable successor.')
                     if target['state'] == 'available':
                         record.update(state='blocked', milestone='evidence_blocked',
                                       next_action='Restore and verify the retained public-availability receipt.')
@@ -239,7 +256,7 @@ def update(controller):
                         record['next_action'] = 'Qualify a source-containing successor; this delivery obligation remains open.'
                     # Read-only diagnostics have their own effect; they can never
                     # change the failed build or pass an application gate.
-                    if (record['stage'] == 'building' and 'diagnose' in controller.config.get('workers', {}).get(platform, {})):
+                    if (not capacity and record['stage'] == 'building' and 'diagnose' in controller.config.get('workers', {}).get(platform, {})):
                         try: controller.execute(manifest, platform, 'diagnose')
                         except (ValueError, KeyError, OSError, subprocess.SubprocessError):
                             record['diagnostic_followup'] = 'Inspect retained diagnostic worker log; original build remains blocked.'
@@ -247,8 +264,11 @@ def update(controller):
             # platform/stage/failure shape, retaining every related obligation.
             shape = sorted((job.get('name') or '', job.get('step') or '', job.get('code') or '')
                            for report in record.get('diagnostics', []) for job in report['jobs'])
+            failed = sorted({name for r in record.get('diagnostics', []) for name in r['failed_checks']})
             task_id = hashlib.sha256(canonical([platform, record.get('classification'), record['stage'],
-                                               shape or record.get('failure', 'worker_failed')])).hexdigest()
+                                               shape or record.get('failure', 'worker_failed'), failed])).hexdigest()
+            if record.get('failure') == 'storage_headroom':
+                task_id = hashlib.sha256(canonical(['release_storage_headroom'])).hexdigest()
             with ledger.transaction():
                 task = ledger.db.execute('SELECT * FROM delivery_tasks WHERE id=?', (task_id,)).fetchone()
                 if not record['fulfilled'] and record['state'] in ('blocked', 'failed', 'superseded'):
@@ -256,14 +276,15 @@ def update(controller):
                     generation = task['generation'] if task and task['state'] == 'open' else (task['generation'] + 1 if task else 1)
                     old = json.loads(task['record']) if task else {}
                     record['owner'] = old.get('owner', record['owner'])
-                    task_record = {'id': task_id, 'delivery_id': old.get('delivery_id', delivery['id']), 'platform': platform,
+                    task_record = {'id': task_id, 'delivery_id': old.get('delivery_id', delivery['id']), 'platform': old.get('platform', platform),
                                    'owner': record['owner'], 'candidate': record['candidate'], 'state': 'open',
                                    'classification': record.get('classification'), 'next_action': record['next_action'],
                                    'diagnostics': record.get('diagnostics', []), 'updated_at': int(time.time()),
+                                   'platforms': sorted(set(old.get('platforms', [])) | {platform}),
                                    'deliveries': sorted(set(old.get('deliveries', [])) | {delivery['id']})}
                     if {k: v for k, v in old.items() if k != 'updated_at'} != {k: v for k, v in task_record.items() if k != 'updated_at'}:
                         ledger.db.execute('INSERT OR REPLACE INTO delivery_tasks VALUES(?,?,?,?,?,?)',
-                                          (task_id, task_record['delivery_id'], platform, generation, 'open', canonical(task_record).decode()))
+                                          (task_id, task_record['delivery_id'], task_record['platform'], generation, 'open', canonical(task_record).decode()))
                     notify(ledger, task_id + '-' + str(generation), {'kind': 'intervention', 'delivery_id': delivery['id'],
                         'platform': platform, 'owner': record['owner'], 'task_id': task_id,
                         'next_action': record['next_action']})

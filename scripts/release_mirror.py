@@ -46,7 +46,7 @@ def notify_deliveries(state, *, fetch=None, send=None):
     gap = new[0]['sequence'] > previous['sequence'] + 1
     intervention = sum(n['kind'] == 'intervention' for n in new)
     complete = len(new) - intervention
-    message = f'{intervention} platform follow-ups need attention; {complete} deliveries fully published. '
+    message = f'{intervention} release follow-ups need attention; {complete} deliveries fully published. '
     message += 'Run release.py status for owners, versions and next actions.'
     if gap: message += ' Older notices remain in the coordinator ledger.'
     intent = {'sequence': previous['sequence'], 'through': new[-1]['sequence'], 'state': 'intent',

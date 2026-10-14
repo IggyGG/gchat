@@ -20,6 +20,7 @@ DESCRIPTIONS = {
     'native_check_failed': ('code', 'Native qualification failed; repair the recorded failed job.'),
     'native_posix_import': ('code', 'Portable native tooling imports the POSIX-only fcntl module on Windows.'),
     'native_runner_unavailable': ('infrastructure', 'The native runner or its infrastructure was unavailable.'),
+    'native_dependency_network': ('infrastructure', 'Native qualification could not reach its pinned dependency registry.'),
     'native_operator_action': ('operator', 'Native signing or account configuration needs operator attention.'),
     'native_diagnostics_pending': ('unclassified', 'Native qualification failed; original job diagnostics are pending.'),
     'native_log_truncated': ('unclassified', 'Native qualification failed; inspect the original full provider log.'),
@@ -65,11 +66,14 @@ def classify_native_log(text, *, complete):
         return 'native_log_truncated'
     if "ModuleNotFoundError: No module named 'fcntl'" in text:
         return 'native_posix_import'
-    if re.search(r'(?im)(test result: FAILED|^\s*FAILED\s|^FAIL(?:ED)?:\s|^ERROR:\s|AssertionError|error\[E\d+\]|error: (?:could not compile|failed to compile|test failed)|\bFAILURES?={1}\d|FAILED \([^\n]*(?:failures|errors)=|Test (?:Case|Suite) [^\n]+ failed)', text):
+    if re.search(r'(?im)(test result: FAILED|^\s*FAILED\s|^FAIL(?:ED)?:\s|AssertionError|error\[E\d+\]|error: (?:could not compile|failed to compile|test failed)|\bFAILURES?={1}\d|FAILED \([^\n]*(?:failures|errors)=|Test (?:Case|Suite) [^\n]+ failed)', text):
         return 'native_check_failed'
     if re.search(r'(?im)(no signing certificate|signing certificate.*expired|provisioning profile.*(?:not found|expired)|resource not accessible by integration|invalid client secret|authentication credentials.*(?:invalid|missing))', text):
         return 'native_operator_action'
     if not complete: return 'native_log_truncated'
+    if (re.search(r'error: failed to download from `https://static\.crates\.io/crates/[A-Za-z0-9_./-]+`', text)
+            and re.search(r'Caused by:\s*(?:\[6\].*Could not resolve host: static\.crates\.io|\[28\].*(?:Timeout|timed out|too slow))', text)):
+        return 'native_dependency_network'
     infrastructure = (
         r'(?im)^.*##\[error\].*(?:hosted runner lost communication with the server|runner has received a shutdown signal|runner unexpectedly disconnected)',
         r'(?im)^.*##\[error\].*(?:failed to download action|unable to download action).*(?:502|503|504|timed out|connection reset)',
@@ -83,6 +87,14 @@ def read_json(path, limit=65536):
     with path.open('rb') as stream: raw = stream.read(limit + 1)
     if len(raw) > limit: raise ValueError('diagnostic JSON exceeds its bound')
     return json.loads(raw)
+
+
+def failed_checks(text):
+    """Expose bounded code identifiers, never arbitrary log lines or arguments."""
+    patterns = (r'---- ([A-Za-z_][A-Za-z0-9_:]{0,199}) stdout ----',
+                r'Failed to import test module: ([A-Za-z_][A-Za-z0-9_.]{0,199})',
+                r'error: -\[([A-Za-z_][A-Za-z0-9_.]{0,99} [A-Za-z_][A-Za-z0-9_]{0,99})\] :')
+    return sorted({name for pattern in patterns for name in re.findall(pattern, text)})[:8]
 
 
 def read_log(path):
@@ -115,6 +127,46 @@ def artifact_names(manifest, platform, run, checks):
         if match:
             names.update(f'mobile-{match[1]}-{match[2]}-{variant}-{source}' for variant in ('base', 'push'))
     return names
+
+
+def diagnostic_archive(root, artifact, repo, download):
+    from release_provider import locked
+    sha, size = artifact['digest'].removeprefix('sha256:'), artifact['size_in_bytes']
+    path = root / (sha + '.zip')
+    with locked(root / (sha + '.lock')):
+        # Only unverified downloads owned by this artifact reader are disposable.
+        # The lock excludes live readers/writers of these partial files.
+        for partial in root.glob(sha + '-*.partial'):
+            if partial.is_symlink() or not partial.is_file(): raise ValueError('invalid diagnostic partial file')
+            partial.unlink()
+        if not path.is_file():
+            partial = root / (sha + '-' + uuid.uuid4().hex + '.partial')
+            try:
+                with partial.open('xb') as stream:
+                    os.chmod(partial, 0o600)
+                    download(f'actions/artifacts/{artifact["id"]}/zip', repo=repo, stream=stream, timeout=450,
+                             private_diagnostic=True, maximum_bytes=size)
+                if partial.stat().st_size != size: raise ValueError('diagnostic archive size differs from provider inventory')
+                with partial.open('rb') as stream: digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+                if digest != sha: raise ValueError('diagnostic archive hash differs from original run')
+                os.replace(partial, path)
+            finally:
+                partial.unlink(missing_ok=True)
+        if path.is_symlink() or path.stat().st_size != size:
+            raise ValueError('retained diagnostic archive changed')
+        with path.open('rb') as stream:
+            if hashlib.file_digest(stream, 'sha256').hexdigest() != sha: raise ValueError('retained diagnostic archive changed')
+    return path
+
+
+def retain_collection_error(work, error):
+    raw = getattr(error, 'stderr', None) or str(error).encode('utf-8', errors='replace')
+    if isinstance(raw, str): raw = raw.encode('utf-8', errors='replace')
+    raw = raw[:16384]
+    value = {'type': type(error).__name__, 'private_detail': raw.decode('utf-8', errors='replace')}
+    sha = hashlib.sha256(canonical(value)).hexdigest()
+    immutable(Path(work) / 'diagnostic-errors' / (sha + '.json'), value)
+    return {'error_type': type(error).__name__, 'error_sha256': sha}
 
 
 def archive_diagnostics(manifest, platform, work, run, checks, *, repo, api=None, download=None):
@@ -154,23 +206,7 @@ def archive_diagnostics(manifest, platform, work, run, checks, *, repo, api=None
             if shutil.disk_usage(root).free < 16 * 1024 ** 3 + size:
                 evidence.append({'artifact_id': artifact['id'], 'sha256': sha, 'state': 'waiting_storage_headroom'})
                 continue
-            partial = root / (sha + '-' + uuid.uuid4().hex + '.partial')
-            with partial.open('wb') as stream:
-                os.chmod(partial, 0o600)
-                download(f'actions/artifacts/{artifact["id"]}/zip', repo=repo, stream=stream, timeout=180,
-                         private_diagnostic=True, maximum_bytes=size)
-            if partial.stat().st_size != size:
-                raise ValueError('diagnostic archive size differs from provider inventory')
-            with partial.open('rb') as stream: digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-            if digest != sha: raise ValueError('diagnostic archive hash differs from original run')
-            if path.exists():
-                partial.unlink()  # Concurrent source-identical diagnostics share the verified archive below.
-            else:
-                os.replace(partial, path)
-        if path.is_symlink() or path.stat().st_size != size:
-            raise ValueError('retained diagnostic archive changed')
-        with path.open('rb') as stream:
-            if hashlib.file_digest(stream, 'sha256').hexdigest() != sha: raise ValueError('retained diagnostic archive changed')
+        path = diagnostic_archive(root, artifact, repo, download)
         members = []
         with zipfile.ZipFile(path) as archive:
             if len(archive.infolist()) > 10000: raise ValueError('diagnostic archive member inventory exceeds bound')
@@ -187,7 +223,8 @@ def archive_diagnostics(manifest, platform, work, run, checks, *, repo, api=None
                 if retained.is_symlink() or read_log(retained) != raw: raise ValueError('retained diagnostic member changed')
                 members.append({'member': member.filename[:512], 'sha256': digest, 'truncated': truncated,
                                 'log': str(retained.relative_to(work)),
-                                'code': classify_native_log(raw.decode('utf-8', errors='replace'), complete=not truncated)})
+                                'code': classify_native_log(raw.decode('utf-8', errors='replace'), complete=not truncated),
+                                'failed_checks': failed_checks(raw.decode('utf-8', errors='replace'))})
         evidence.append({'artifact_id': artifact['id'], 'sha256': sha, 'state': 'retained',
                          'archive': str(path.relative_to(work)), 'members': members})
     return evidence
@@ -237,7 +274,7 @@ def native_diagnostics(manifest, platform, work, run, checks, *, repo, download)
                 immutable(marker, detail)
             except (ProviderWait, OSError, TimeoutError, subprocess.SubprocessError) as error:
                 jobs.append({**job, 'name': name, 'code': 'native_diagnostics_pending',
-                             'diagnostic_error': type(error).__name__})
+                             'diagnostic_error': type(error).__name__, **retain_collection_error(work, error)})
                 continue
         text = read_log(path).decode('utf-8', errors='replace')
         code = classify_native_log(text, complete=not detail['truncated'])
@@ -245,7 +282,7 @@ def native_diagnostics(manifest, platform, work, run, checks, *, repo, download)
         if job.get('conclusion') == 'cancelled': code = 'native_failure_unknown'
         jobs.append({**job, 'name': name, 'code': code,
                      'log': str(path.relative_to(work)), 'log_sha256': detail['sha256'],
-                     'truncated': detail['truncated']})
+                     'truncated': detail['truncated'], 'failed_checks': failed_checks(text)})
         evidence.append({'path': str(path.relative_to(work)), 'sha256': detail['sha256']})
     if not jobs: raise ValueError('native diagnostic request has no failed jobs')
     codes = {job['code'] for job in jobs}
@@ -257,11 +294,11 @@ def native_diagnostics(manifest, platform, work, run, checks, *, repo, download)
         try:
             child_evidence = archive_diagnostics(manifest, platform, work, run, checks, repo=repo)
             child_codes = {m['code'] for a in child_evidence for m in a.get('members', [])
-                           if DESCRIPTIONS[m['code']][0] in ('code', 'operator')}
+                           if m['code'] in ('native_posix_import', 'native_check_failed', 'native_operator_action', 'native_dependency_network')}
             codes.update(child_codes)
         except (ProviderWait, OSError, TimeoutError, subprocess.SubprocessError) as error:
-            child_evidence = [{'state': 'pending', 'error_type': type(error).__name__}]
-    order = ('native_operator_action', 'native_posix_import', 'native_check_failed', 'native_diagnostics_pending',
+            child_evidence = [{'state': 'pending', **retain_collection_error(work, error)}]
+    order = ('native_operator_action', 'native_posix_import', 'native_check_failed', 'native_dependency_network', 'native_diagnostics_pending',
              'native_log_truncated', 'native_failure_unknown', 'native_runner_unavailable')
     code = next(value for value in order if value in codes)
     report = {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],

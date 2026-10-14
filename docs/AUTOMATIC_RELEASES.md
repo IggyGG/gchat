@@ -78,6 +78,11 @@ archive-supplied paths are never extracted or executed. Nested evidence can refi
 a failure but cannot authorize a native retry. Late diagnostics cannot replace a
 newer native attempt. New GitHub CLI escape-sequence handling is opted into only
 for bounded private diagnostic storage, with compatibility for older CLI images.
+Interrupted unverified downloads are private disposable scratch under an exclusive
+artifact lock; verified archives and original failure evidence remain immutable.
+Public follow-ups include bounded failed-test identifiers. A shared storage block
+creates one owned task across affected platforms and does not poll undispatched
+native jobs. Storage restoration never resets an expired original build deadline.
 
 `native_retry_policy: native-transient-v1` explicitly permits one failed-job retry
 only after complete, positively identified runner/action-download infrastructure

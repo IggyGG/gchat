@@ -59,6 +59,18 @@ bootstrap `21d068a` is mirrored; activation currently waits on normal storage
 headroom. Implementation/image/configuration deployment and real notification
 delivery remain required before this task is complete.
 
+Live triage is now source/run/attempt-bound: both Macs fail the non-UTF-8 host-path
+test on macOS (`Illegal byte sequence`); Windows fails eleven portable tooling
+imports of `fcntl`; iOS fails the ten-second passphrase-population lifecycle
+assertion; SDK qualification fails DNS access to its pinned crates.io dependency.
+The SDK failure is infrastructure, not a compiler failure. Its original automatic
+retry window remains expired. Child logs and immutable archives are retained.
+The controller bootstrap still needs storage: 12.7 GB free versus 17.2 GB reserved.
+Expanded verified compaction covered 129 canaries and 47 images, reclaiming only
+63 MB. Read-only surveys found less than 1 GB of further potential duplicates;
+these estimates do not authorize file replacement. Archival placement or added
+capacity requires an explicit operational decision before image activation.
+
 ## GCHAT-UX — conversation-first IRC workspace
 
 2026-10-13 delivery complete (OC): signed Linux **0.1.214** is installed and running

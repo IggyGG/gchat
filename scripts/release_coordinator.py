@@ -284,8 +284,10 @@ class Coordinator:
         atomic_json(path, {'stage': stage, 'revision': revision, 'fingerprint_schema': 2, 'attempts': attempts,
                           'cause': 'storage_headroom' if isinstance(error, StorageHeadroomError) else 'worker',
                           'transient': transient,
-                          'classification': error.category if isinstance(error, WorkerFailure) else ('infrastructure' if transient else 'unclassified'),
-                          'code': error.code if isinstance(error, WorkerFailure) else 'worker_failed',
+                          'classification': error.category if isinstance(error, WorkerFailure) else (
+                              'infrastructure' if transient or isinstance(error, StorageHeadroomError) else 'unclassified'),
+                          'code': error.code if isinstance(error, WorkerFailure) else (
+                              'storage_headroom' if isinstance(error, StorageHeadroomError) else 'worker_failed'),
                           'failure': getattr(error, 'report', None),
                           'retry_at': int(time.time()) + min(300, 30 * 2 ** min(attempts - 1, 4))})
 

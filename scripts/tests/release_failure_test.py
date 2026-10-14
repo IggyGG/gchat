@@ -41,11 +41,21 @@ class FailureTests(unittest.TestCase):
             ('error[E0308]: mismatched types\n##[error]hosted runner unavailable', True, 'native_check_failed'),
             ('No signing certificate found', True, 'native_operator_action'),
             ('HTTP 503\nfixture timed out', True, 'native_failure_unknown'),
+            ('error: failed to download from `https://static.crates.io/crates/quick-xml/0.41.0/download`\nCaused by:\n  [6] Could not resolve host: static.crates.io', True, 'native_dependency_network'),
+            ('error: unexplained provider failure', True, 'native_failure_unknown'),
             ('##[error]hosted runner unavailable', False, 'native_log_truncated'),
             ('x' * 20000 + '##[error]hosted runner unavailable', True, 'native_log_truncated'),
         ]
         for text, complete, code in examples:
             with self.subTest(code=code): self.assertEqual(failure.classify_native_log(text, complete=complete), code)
+
+    def test_failure_identifiers_exclude_log_arguments_and_expected_negative_fixture(self):
+        text = ("---- chat_service::host_registration::tests::native_paths stdout ----\n"
+                "Failed to import test module: android_release_cluster_test\n"
+                "runner.swift:69: error: -[LifecycleTests.GChatLifecycleTests testProfileBackgroundAndReopen] : timeout\n"
+                "AssertionError: original gate failed\nprivate-token=do-not-publish")
+        self.assertEqual(failure.failed_checks(text), ['LifecycleTests.GChatLifecycleTests testProfileBackgroundAndReopen',
+            'android_release_cluster_test', 'chat_service::host_registration::tests::native_paths'])
 
     def test_bound_logs_are_immutable_reused_and_tampering_is_rejected(self):
         report, ref = self.diagnose()

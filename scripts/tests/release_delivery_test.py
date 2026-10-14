@@ -134,6 +134,23 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(set(json.loads(tasks[0][0])['deliveries']), {self.release, release})
         self.assertEqual(len(delivery.public_notifications(self.controller.ledger)['notifications']), 1)
 
+    def test_shared_storage_block_has_one_task_without_polling_undispatched_native_jobs(self):
+        from release_coordinator import StorageHeadroomError, STORAGE_HEADROOM_REASON
+        for platform in PLATFORMS:
+            self.controller.ledger.transition(self.release, platform, 'building')
+            self.controller.record_failure(self.release, platform, 'build', StorageHeadroomError(STORAGE_HEADROOM_REASON))
+            self.controller.ledger.transition(self.release, platform, 'blocked', reason=STORAGE_HEADROOM_REASON)
+        self.controller.config['workers'] = {p: {'diagnose': {}} for p in PLATFORMS}
+        with patch.object(self.controller, 'execute') as execute:
+            report = self.refresh()
+        execute.assert_not_called()
+        tasks = list(self.controller.ledger.db.execute("SELECT record FROM delivery_tasks WHERE state='open'"))
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(set(json.loads(tasks[0][0])['platforms']), set(PLATFORMS))
+        self.assertEqual(len({p['task_id'] for p in report['platforms']}), 1)
+        self.assertTrue(all(p['classification'] == 'infrastructure' and p['required_free_bytes'] == 16 * 1024 ** 3
+                            for p in report['platforms']))
+
     def test_first_activation_seeds_latest_and_explicit_track_keeps_older_obligations(self):
         manifests = [candidate(n) for n in (2, 3)]
         for manifest in manifests: self.controller.ledger.add(manifest)

@@ -57,6 +57,11 @@ obligation. The existing mirror timer consumes deduplicated intervention and
 completion notices. See [the configuration and completion contract](docs/AUTOMATIC_RELEASES.md#delivery-follows-the-change-through-every-required-platform).
 Actual image/configuration activation is a separate required check.
 
+Current activation is blocked by release-storage headroom. The source branch and
+diagnostic evidence are retained; the new automation is not yet deployed. Native
+blockers are now identified from original job and child logs, including the Mac
+path test, Windows tooling imports, iOS lifecycle assertion and SDK registry DNS.
+
 **IRC workspace delivery, 2026-10-13:** signed Linux **0.1.214** is installed and
 verified through the existing desktop entry, including normal relaunch. Channels,
 chat and users now share aligned header/content/footer rows; topics and multiline
