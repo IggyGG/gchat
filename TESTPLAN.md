@@ -79,6 +79,17 @@ then requires native failure/source/attempt controls, bounded restart-safe retry
 independent publication, durable owner/task/notification and actual store-result
 tests, followed by normal source-bound image/deployment verification.
 
+Run `release_worker_identity_test`, `release_failure_test`, `release_delivery_test`
+and the full release/controller suites. Exercise actual bounded subprocess output,
+lost replies, immutable log hashes, stale pins, unchanged sibling workers, provider
+quotas, source/run/attempt substitution, exact store observation, restart-persistent
+tasks and notification deduplication. Use real temporary Git histories for
+successor/equivalence controls; a failed original remains failed after a source-
+containing successor publishes. All new suites are required inside the actual
+controller image. Verify the installed policy/diagnostic recipes and mirror
+notification consumer, then track the real shared UI delivery through independent
+publications, ongoing store observation and actionable owned native blockers.
+
 ## Retained earlier checkpoints
 
 IRC row alignment, 2026-10-13: `ui/browser/alignment.spec.ts` measures the shared

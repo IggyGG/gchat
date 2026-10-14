@@ -25,6 +25,7 @@ class NativeRunBindingTests(unittest.TestCase):
         self.request = 'f' * 64
         self.target = 'macos-x86_64'
         self.run = {'id': 123, 'display_title': 'Forgejo macOS ' + self.request,
+                    'run_attempt': 1,
                     'head_sha': self.manifest['sources']['gchat']['commit'],
                     'event': 'workflow_dispatch', 'head_repository': {'full_name': release_jobs.REPO},
                     'path': '.github/workflows/macos-release.yml', 'status': 'in_progress',
@@ -36,7 +37,7 @@ class NativeRunBindingTests(unittest.TestCase):
         return release_jobs.collect(self.manifest, self.target, self.root, self.request, reconcile=True)
 
     def discover(self):
-        with patch('release_jobs.gh', return_value={'workflow_runs': [self.run]}) as api:
+        with patch('release_jobs.gh', side_effect=lambda p, **k: {'jobs': []} if '/jobs?' in p else {'workflow_runs': [self.run]}) as api:
             self.assertIsNone(self.collect())
         self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))
 
@@ -44,11 +45,12 @@ class NativeRunBindingTests(unittest.TestCase):
         self.discover()
         def provider(path, **kwargs):
             self.assertEqual(kwargs.get('method', 'GET'), 'GET')
-            return self.run if path == 'actions/runs/123' else {'workflow_runs': []}
+            return self.run if path == 'actions/runs/123' else {'jobs': []} if '/jobs?' in path else {'workflow_runs': []}
         with patch('release_jobs.gh', side_effect=provider) as api, \
              patch('release_jobs.time.time', return_value=4000):
             self.assertIsNone(self.collect())
-        api.assert_called_once_with('actions/runs/123')
+        self.assertEqual([c.args[0] for c in api.call_args_list],
+                         ['actions/runs/123', 'actions/runs/123/attempts/1/jobs?per_page=100&page=1'])
         self.assertEqual(json.loads((self.root / 'run.json').read_text())['id'], 123)
 
     def test_legacy_dispatched_job_can_be_bound_without_dispatching_again(self):
@@ -66,13 +68,17 @@ class NativeRunBindingTests(unittest.TestCase):
         digest = hashlib.sha256(archive.read_bytes()).hexdigest()
         completed = {**self.run, 'status': 'completed', 'conclusion': 'success'}
         artifact = {'id': 456, 'name': self.target, 'expired': False,
-                    'digest': 'sha256:' + digest, 'size_in_bytes': archive.stat().st_size}
-        with patch('release_jobs.gh', side_effect=[completed, {'artifacts': [artifact]}]) as api:
+                    'digest': 'sha256:' + digest, 'size_in_bytes': archive.stat().st_size,
+                    'workflow_run': {'id': 123, 'head_sha': self.run['head_sha']}}
+        checks = {'jobs': [{'id': 789, 'name': 'macos (macos-x86_64)', 'run_id': 123,
+                           'run_attempt': 1, 'head_sha': self.run['head_sha'], 'status': 'completed', 'conclusion': 'success'}]}
+        with patch('release_jobs.gh', side_effect=[completed, checks, {'artifacts': [artifact]}]) as api:
             result = self.collect()
         self.assertEqual([c.args[0] for c in api.call_args_list],
-                         ['actions/runs/123', 'actions/runs/123/artifacts?per_page=100'])
-        self.assertEqual((result['external_id'], result['evidence']),
-                         ('123', [{'path': 'native.zip', 'sha256': digest}]))
+                         ['actions/runs/123', 'actions/runs/123/attempts/1/jobs?per_page=100&page=1',
+                          'actions/runs/123/artifacts?per_page=100'])
+        self.assertEqual((result['external_id'], result['evidence'][0]),
+                         ('123', {'path': 'native.zip', 'sha256': digest}))
         self.assertEqual((self.root / 'native/original-evidence.txt').read_text(),
                          'original protected native artifact')
 
@@ -116,10 +122,13 @@ class NativeRunBindingTests(unittest.TestCase):
 
     def test_overdue_pinned_failure_does_not_start_a_recovery_workflow(self):
         self.discover()
+        checks = {'jobs': [{'id': 789, 'name': 'macos (macos-x86_64)', 'run_id': 123,
+                           'run_attempt': 1, 'head_sha': self.run['head_sha'], 'status': 'completed', 'conclusion': 'failure'}]}
         with patch.dict(os.environ, GCHAT_RELEASE_RECONCILE_ONLY='1'), \
-             patch('release_jobs.gh', return_value={**self.run, 'status': 'completed', 'conclusion': 'failure'}), \
+             patch('release_jobs.gh', side_effect=[{**self.run, 'status': 'completed', 'conclusion': 'failure'}, checks]), \
+             patch('release_provider.github_log', return_value=(b'original unexplained failure', False)), \
              patch('release_recovery.collect') as recover:
-            with self.assertRaisesRegex(ValueError, 'no new recovery dispatch'): self.collect()
+            with self.assertRaisesRegex(ValueError, 'recorded job'): self.collect()
         recover.assert_not_called()
 
 
@@ -127,6 +136,8 @@ class NativeFailedJobRetryTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name); self.manifest = candidate(); self.request = 'f' * 64
+        log = patch('release_provider.github_log', return_value=(b'original test failure', False))
+        log.start(); self.addCleanup(log.stop)
         self.target = 'linux-x86_64'
         self.run = {'id': 123, 'display_title': 'Forgejo Linux ' + self.request,
                     'head_sha': self.manifest['sources']['gchat']['commit'], 'run_attempt': 1,

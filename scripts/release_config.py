@@ -31,7 +31,11 @@ def configuration(state=Path('/state'),scripts=Path('/opt/gchat/scripts'),config
         else:workers[target]['publish']=recipe('release_publish.py','--state',state,'--config',config/'publisher.json',timeout=900)
     workers['linux-x86_64']['infrastructure']=recipe('release_infrastructure_bundle.py','--state',state,'--config',config/'infrastructure.json',timeout=900)
     workers['linux-x86_64']['relay_load']=recipe('release_relay_load.py','--state',state,timeout=900)
+    for target in PLATFORMS:
+        workers[target]['diagnose'] = recipe('release_failure.py', '--state', state, timeout=600)
     return {'schema':1,'publication_policy':'production-minutes-v1','automatic_recovery':True,'nonblocking_workers':True,'maximum_workers':3,'single_flight':True,
+        'native_retry_policy':'native-transient-v1',
+        'delivery_tracking':{'owner':'IggyGG','successor_policy':'source-descendant-or-reviewed-equivalent-v1'},
         'poll_interval_seconds':10,'github_poll_interval_seconds':120,'store_poll_interval_seconds':900,
         'nonblocking_deployment':True,'maximum_acceptance_workers':6,'deployment_step_timeout_seconds':1800,
         'deployment_file':str(config/'deployment.json'),

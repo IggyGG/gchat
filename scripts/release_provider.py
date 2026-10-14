@@ -1,5 +1,6 @@
 """Durable, bounded provider waits; never authorize another external mutation."""
 from contextlib import contextmanager
+from functools import lru_cache
 from email.utils import parsedate_to_datetime
 import hashlib
 import json
@@ -7,6 +8,7 @@ import os
 from pathlib import Path
 import random
 import subprocess
+import sys
 import time
 import uuid
 
@@ -193,6 +195,9 @@ def github(path, *, repo, method='GET', body=None, refresh=False):
     except (ValueError, UnicodeDecodeError):
         decoded = None
     classify('github', method, path, status, headers, decoded)
+    if status in (502, 503, 504):
+        from release_failure import WorkerFailure
+        raise WorkerFailure('provider_unavailable', reconcile_retry=True)
     if result.returncode:
         raise subprocess.CalledProcessError(result.returncode, command, stderr=result.stderr)
     reset_after_success('github')
@@ -217,13 +222,22 @@ def worker_main(main):
                 'stage': os.environ['GCHAT_RELEASE_STAGE']})
         print(str(error))
         raise SystemExit(75)
+    except Exception as error:
+        from release_failure import retain_worker_failure
+        try:
+            retain_worker_failure(error)
+        except (ValueError, OSError, KeyError):
+            # Keep the original error/exit and private log even if diagnostics
+            # cannot be retained. Missing classification never authorizes retry.
+            print('Structured worker failure could not be retained', file=sys.stderr)
+        raise
 
 
 def recipe_provider(recipe, platform):
     if recipe.get('provider') in PROVIDERS:
         return recipe['provider']
     names = {Path(arg).name for arg in recipe.get('run', [])}
-    if names & {'release_jobs.py', 'release_sdk.py', 'release_acceptance.py', 'release_relay_load.py'}:
+    if names & {'release_jobs.py', 'release_sdk.py', 'release_acceptance.py', 'release_relay_load.py', 'release_failure.py'}:
         return 'github'
     if 'release_store_worker.py' in names:
         return 'play' if platform == 'android' else 'apple'
@@ -296,13 +310,19 @@ def external_wait_fresh(state, release, platform, stage, request, observed_at):
     return now - observed_at <= max(600, value['next_poll_at'] - value['observed_at'] + 120)
 
 
-def github_download(path, *, repo, stream, timeout):
+def github_download(path, *, repo, stream, timeout, private_diagnostic=False, maximum_bytes=None):
     """Stream large archives; classify quota headers before hash verification."""
     before_request('github')
-    command = ['gh', 'api', '--include', 'repos/' + repo + '/' + path]
+    options = github_log_options() if private_diagnostic else []
+    command = ['gh', 'api', '--include', *options, 'repos/' + repo + '/' + path]
     error = None
     try:
-        subprocess.run(command, stdout=stream, stderr=subprocess.PIPE, check=True, timeout=timeout)
+        if private_diagnostic:
+            if type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 256 * 1024 * 1024:
+                raise ValueError('private diagnostic download needs a bounded size')
+            bounded_diagnostic_download(command, stream, maximum_bytes + 65536, timeout)
+        else:
+            subprocess.run(command, stdout=stream, stderr=subprocess.PIPE, check=True, timeout=timeout)
     except subprocess.CalledProcessError as caught:
         error = caught
     stream.flush()
@@ -333,3 +353,110 @@ def github_download(path, *, repo, stream, timeout):
                 stream.write(chunk)
             stream.truncate(); stream.flush()
     reset_after_success('github')
+
+
+def bounded_diagnostic_download(command, stream, maximum, timeout):
+    """Stream to the owned file with an enforced byte cap, not just metadata."""
+    import concurrent.futures
+    from release_coordinator import stop_worker
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               start_new_session=os.name != 'nt')
+    def copy():
+        size = 0
+        while chunk := process.stdout.read(min(65536, maximum + 1 - size)):
+            size += len(chunk)
+            if size > maximum: return False
+            stream.write(chunk)
+        return True
+    def errors():
+        prefix = bytearray()
+        while chunk := process.stderr.read(8192): prefix.extend(chunk[:max(0, 16384 - len(prefix))])
+        return bytes(prefix)
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    output, error = pool.submit(copy), pool.submit(errors)
+    try:
+        try: complete = output.result(timeout=timeout)
+        except concurrent.futures.TimeoutError: raise subprocess.TimeoutExpired(command, timeout) from None
+        if not complete:
+            stop_worker(process)
+            raise ValueError('diagnostic download exceeded its byte cap')
+        process.wait(timeout=15)
+        stderr = error.result(timeout=15)
+        if process.returncode: raise subprocess.CalledProcessError(process.returncode, command, stderr=stderr)
+    finally:
+        if process.poll() is None: stop_worker(process)
+        pool.shutdown(wait=True)
+        process.stdout.close(); process.stderr.close()
+
+
+@lru_cache(maxsize=1)
+def github_log_options():
+    # New gh releases refuse ANSI-bearing logs even on a pipe. The receiver is
+    # bounded private storage, never a terminal. Older qualified images do not
+    # have this flag; detect the local capability without a provider request.
+    result = subprocess.run(['gh', 'api', '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            check=True, timeout=15)
+    return ['--allow-escape-sequences'] if b'--allow-escape-sequences' in result.stdout else []
+
+
+def github_log(path, *, repo, maximum_bytes=4 * 1024 * 1024, timeout=60):
+    """Read a bounded private log prefix; never buffer an unlimited provider log."""
+    import concurrent.futures
+    import re
+    if (repo not in ('IggyGG/gchat', 'IggyGG/gcoms')
+            or not re.fullmatch(r'actions/jobs/[1-9][0-9]*/logs', path)
+            or type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 4 * 1024 * 1024
+            or not 0 < timeout <= 120):
+        raise ValueError('invalid native diagnostic log request')
+    before_request('github')
+    command = ['gh', 'api', '--include', *github_log_options(), 'repos/' + repo + '/' + path]
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               start_new_session=os.name != 'nt')
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    output = pool.submit(process.stdout.read, maximum_bytes + 65536 + 1)
+    def drain_errors():
+        prefix = bytearray()
+        while chunk := process.stderr.read(8192):
+            prefix.extend(chunk[:max(0, 16384 - len(prefix))])
+        return bytes(prefix)
+    errors = pool.submit(drain_errors)
+    try:
+        try:
+            raw = output.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise subprocess.TimeoutExpired(command, timeout) from None
+        capped = len(raw) > maximum_bytes + 65536
+        if capped:
+            from release_coordinator import stop_worker
+            stop_worker(process)
+        else:
+            process.wait(timeout=15)
+        stderr = errors.result(timeout=15)
+    finally:
+        if process.poll() is None:
+            from release_coordinator import stop_worker
+            stop_worker(process)
+        pool.shutdown(wait=True)
+        process.stdout.close(); process.stderr.close()
+    offset, status, headers = 0, 0, {}
+    while raw[offset:].startswith(b'HTTP/'):
+        rest = raw[offset:]
+        separator = b'\r\n\r\n' if b'\r\n\r\n' in rest[:65536] else b'\n\n'
+        header, found, _ = rest.partition(separator)
+        if not found or offset + len(header) + len(separator) > 65536:
+            raise ValueError('native log HTTP headers exceed bound')
+        status = int(header.splitlines()[0].split()[1])
+        headers = {line.split(b':', 1)[0].decode('ascii', errors='replace').lower():
+                   line.split(b':', 1)[1].decode('latin1').strip()
+                   for line in header.splitlines()[1:] if b':' in line}
+        offset += len(header) + len(separator)
+    body = raw[offset:]
+    try:
+        decoded = json.loads(body) if status >= 400 else None
+    except (ValueError, UnicodeDecodeError): decoded = None
+    classify('github', 'GET', path, status, headers, decoded)
+    if process.returncode and not capped:
+        raise subprocess.CalledProcessError(process.returncode, command, stderr=stderr[:16384])
+    if status != 200: raise ValueError('native diagnostic log response was not successful')
+    reset_after_success('github')
+    return body[:maximum_bytes], capped or len(body) > maximum_bytes

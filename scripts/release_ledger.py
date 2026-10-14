@@ -58,6 +58,21 @@ class Ledger:
                 seq INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL,
                 candidate TEXT NOT NULL, platform TEXT NOT NULL, state TEXT NOT NULL,
                 detail TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS deliveries (
+                id TEXT PRIMARY KEY REFERENCES candidates(id), created INTEGER NOT NULL,
+                owner TEXT NOT NULL, policy TEXT NOT NULL, required TEXT NOT NULL,
+                state TEXT NOT NULL, record TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS delivery_targets (
+                delivery TEXT NOT NULL REFERENCES deliveries(id), platform TEXT NOT NULL,
+                record TEXT NOT NULL, PRIMARY KEY(delivery,platform));
+            CREATE TABLE IF NOT EXISTS delivery_tasks (
+                id TEXT PRIMARY KEY, delivery TEXT NOT NULL REFERENCES deliveries(id),
+                platform TEXT NOT NULL, generation INTEGER NOT NULL, state TEXT NOT NULL,
+                record TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS delivery_notifications (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE,
+                created INTEGER NOT NULL, record TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS delivery_meta (key TEXT PRIMARY KEY,value TEXT NOT NULL);
         ''')
 
     def close(self):

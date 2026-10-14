@@ -20,6 +20,97 @@ Routine publication now verifies the native build, signatures, permissions, star
 
 ## Routine release operation
 
+### Delivery follows the change through every required platform
+
+The `delivery_tracking` configuration names the responsible maintainer and the
+reviewed successor policy. The production renderer selects `IggyGG` and
+`source-descendant-or-reviewed-equivalent-v1`. Once that qualified configuration
+is active, discovery registers a durable delivery in the same release ledger for
+every new candidate. The default scope is Linux x86-64, both Mac architectures,
+Windows x86-64, Android, iOS and SDK. An explicit `selected_platforms` manifest is
+recorded as a scope exception. First activation seeds the latest candidate;
+`python3 scripts/release.py track --release FULL_ID` explicitly adds an older
+change without rebuilding or changing its original release record.
+
+`release.py status` and `/status.json` expose each delivery's required targets,
+published version/source proof, current candidate/milestone, owner, diagnostics,
+next action and persistent repair-task ID. Healthy targets publish independently.
+The delivery remains `partially_published` until every required target has a
+verified public artifact or actual store-availability receipt. Source queued,
+building, built, qualified, submitting, processing, external review and published
+are separate milestones. An Apple encryption prerequisite is also distinct from
+upload or App Store review. Finishing source edits or a Linux installation is not
+completion of a shared cross-platform delivery.
+
+A successor may fulfill an earlier obligation only with verified upstream Git
+ancestry, or explicitly recorded equivalent reviewed runtime/qualification inputs.
+SDK containment concerns the companion SDK source; application containment covers
+both repositories. Prepared version-only commits keep their original labels.
+Every public receipt remains bound to its own candidate, source pair and platform;
+no earlier failed platform becomes passed. Mobile availability follows the latest
+confirmed observation pointer, never the first retained review receipt.
+
+Open blockers retain a deduplicated task owned by the configured maintainer.
+Fixes to native application/test source need a new immutable candidate. Account,
+signing and store actions retain the original request for reconciliation. External
+reviews continue their ordinary provider-paced polling with an explicit external
+owner. Intervention and required-target completion events remain in the ledger's
+durable notification outbox. `/updates/delivery-notifications.json` exposes its bounded
+public feed; the existing audited workstation source-mirror timer groups new
+events into a desktop notice. Its private notification journal survives restart,
+records local delivery outcomes and detects gaps. Unknown notification outcomes
+remain visible for operator reconciliation instead of repeated desktop alerts.
+The notification process receives desktop-session variables, never provider keys.
+
+### Failure evidence and bounded recovery
+
+Every platform retains native run, attempt, job and failed-step identities. Failed
+job logs are private, hash-bound and bounded to 4 MiB; unavailable or truncated
+logs remain explicitly incomplete. The `diagnose` worker only reads the original
+provider requests and has its own diagnostics-only receipt. It cannot qualify an
+application or turn a failed build into a pass. Public classifications use fixed
+descriptions; raw provider logs and execution tracebacks stay private.
+
+When the job output only reports a wrapper failure, diagnostics inspect known
+source/run-bound evidence archives within a 256 MiB total download budget and the
+existing storage headroom gate. Downloaded bytes and child-log reads are bounded;
+archive-supplied paths are never extracted or executed. Nested evidence can refine
+a failure but cannot authorize a native retry. Late diagnostics cannot replace a
+newer native attempt. New GitHub CLI escape-sequence handling is opted into only
+for bounded private diagnostic storage, with compatibility for older CLI images.
+
+`native_retry_policy: native-transient-v1` explicitly permits one failed-job retry
+only after complete, positively identified runner/action-download infrastructure
+failure. Compiler/test, signing/account, cancelled and unknown failures are not
+automatic native retries. A durable intent precedes the POST. A missing reply
+reconciles that same run and never repeats the POST. Passed siblings stay intact,
+the original 60-minute application budget still applies, and the policy also has
+a two-hour window from the original provider run creation. SDK callers share the
+same original source/matrix retry lock across application candidates. Operator
+and automatic intents cannot each issue a retry against an ambiguous run.
+
+Worker corrections use fingerprints of the actual qualified Python/imported
+helper/configuration bytes and interpreter/dependency versions, scoped to the
+stage. A stale `controller_revision` label cannot mask or manufacture a qualified
+worker correction; status exposes that ignored override. Legacy blocked rows do
+not acquire a fake correction merely from the fingerprint-schema migration.
+They receive read-only diagnostics and owned follow-up. Recovery history, old
+failure reports, native attempts, provider IDs and original deadlines remain
+retained. Explicit reviewed retained-artifact recovery registrations keep their
+existing separate verification gates.
+
+The reviewed IRC UX documentation/receipt paths are qualification-only inputs.
+Unknown files, actual runtime/build/signing/native workflow inputs still invalidate
+their artifacts. Classifier rollout reproduces both original input inventories
+with the exact qualified baseline classifier and independently verifies unchanged
+native inputs with the new classifier. It never rewrites an intent or accepts a
+newly relaxed classifier as the sole proof.
+
+**Activation evidence:** these features require the qualified controller image,
+the rendered/merged policy configuration and the updated source-mirror consumer.
+Source tests alone do not establish activation. Retained source/deployment
+receipts are in `docs/evidence/release-follow-through-20261014/`.
+
 The GitHub `release-signing` environment must permit `release/gchat-*` and
 `release/qualification-*` branches. Qualification refs are immutable and bound to
 the exact helper commit. Keep all other environment protection rules. A terminal

@@ -134,9 +134,14 @@ class ExistingSdkRunTests(unittest.TestCase):
                 self.assertIsNone(build(manifest, cache))
                 self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
                 dispatched.update(status='completed', conclusion='failure')
-                api.return_value = {'workflow_runs': [push, dispatched]}
-                with self.assertRaisesRegex(ValueError, 'native SDK qualification failed: 2'):
-                    build(manifest, cache)
+                dispatched['run_attempt'] = 1
+                api.side_effect = lambda path, **kwargs: ({'jobs': [{'id': 99, 'name': 'native (windows-2022)',
+                    'run_id': 2, 'head_sha': dispatched['head_sha'], 'run_attempt': 1,
+                    'status': 'completed', 'conclusion': 'failure'}]} if '/jobs?' in path else
+                    {'workflow_runs': [push, dispatched]})
+                with patch('release_provider.github_log', return_value=(b'test result: FAILED. 0 passed; 1 failed', False)):
+                    with self.assertRaisesRegex(ValueError, 'repair the recorded failed job'):
+                        build(manifest, cache)
 
     def test_dispatch_selection_rejects_duplicates_and_all_identity_mismatches(self):
         from release_sdk import select_run

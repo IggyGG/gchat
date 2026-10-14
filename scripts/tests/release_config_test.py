@@ -28,7 +28,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_every_platform_has_reconcilable_exact_pipeline(self):
         config=configuration();self.assertEqual(set(config['workers']),set(PLATFORMS))
         for platform,stages in config['workers'].items():
-            expected={'build','verify','compatibility'}|({'submit','observe'} if platform in {'ios','android'} else {'publish'})
+            expected={'build','verify','compatibility','diagnose'}|({'submit','observe'} if platform in {'ios','android'} else {'publish'})
             if platform=='linux-x86_64':expected.update(('infrastructure','relay_load'))
             if platform=='ios':expected.add('prerequisite')
             if platform!='sdk':expected.add('acceptance')

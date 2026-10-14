@@ -123,6 +123,17 @@ def collect(manifest, target, work, original):
             'followup_run_id': followup['id'], 'recovery_requires_verification': True, 'evidence': references}
 
 
+def registered(manifest, target):
+    """Query reviewed authority without confusing absence with native failure."""
+    if target.startswith('macos'):
+        from release_macos_recovery import rule_for
+        return rule_for(manifest, target) is not None
+    if target == 'ios':
+        from release_ios_recovery import registered as ios_registered, RULE
+        return manifest['release_id'] == RULE['release_id'] or ios_registered(manifest) is not None
+    return target == 'windows-x86_64' and manifest['release_id'] == WINDOWS36['release_id']
+
+
 def verify_windows(manifest, root, recovery, worker):
     from release_verify import load_module
     rule = WINDOWS36

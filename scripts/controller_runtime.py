@@ -14,6 +14,7 @@ from release_pair import canonical
 
 SUITES = (
     'release_minutes_test', 'release_provider_test', 'release_stores_test', 'release_store_worker_test',
+    'release_worker_identity_test', 'release_failure_test', 'release_delivery_test',
     'release_controller_test', 'release_controller_qualification_test',
     'release_discovery_test', 'release_platform_deployment_test',
     'release_config_test', 'release_acceptance_test', 'mobile_acceptance_test',

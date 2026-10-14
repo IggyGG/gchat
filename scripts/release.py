@@ -10,7 +10,7 @@ import sys
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', type=Path, help='local controller state; default uses the existing Kubernetes controller')
-    parser.add_argument('action', choices=('status', 'resume', 'rollback', 'qualify', 'handoff'), nargs='?', default='status')
+    parser.add_argument('action', choices=('status', 'resume', 'rollback', 'qualify', 'handoff', 'track'), nargs='?', default='status')
     parser.add_argument('--release', help='full immutable release ID; default is the selected deployment')
     parser.add_argument('--platform', help='resume only this platform')
     parser.add_argument('--json', action='store_true', help='machine-readable status')
@@ -35,6 +35,19 @@ def main():
             print(json.dumps(value, indent=2))
         else:
             print(f"Release {value['sequence']}  {value['release_id']}")
+            if (value.get('delivery_tracking') or {}).get('state') == 'blocked':
+                print('Delivery tracking is blocked; retained delivery reports are stale. ' + value['delivery_tracking']['next_action'])
+            for delivery in value.get('deliveries', [])[:5]:
+                if not delivery: continue
+                print(f"Delivery {delivery['id'][:12]}: {delivery['state']} "
+                      f"({delivery['fulfilled_count']}/{len(delivery['required_platforms'])}) owner={delivery['owner']}"
+                      + (' [stale]' if delivery.get('stale') else ''))
+                for target in delivery['platforms']:
+                    published = target.get('published') or {}
+                    print(f"  {target['platform']}: {target['state']} public={published.get('version', 'none')} "
+                          f"contains-change={target['published_contains_change']} candidate={target['candidate_version']}")
+                    print(f"    {target['next_action']}")
+                    if target.get('task_id'): print(f"    task={target['task_id']} owner={target['owner']}")
             if value.get('flight'):
                 print(f"Pending release: {value['flight'].get('pending') or 'none'}")
             progress = value.get('deployment_progress')

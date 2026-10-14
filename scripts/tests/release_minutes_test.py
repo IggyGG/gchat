@@ -319,8 +319,9 @@ class MinutesTests(unittest.TestCase):
              patch('release_jobs.gh', side_effect=[{'workflow_runs': [run]}, {'jobs': [
                  {'id': 456, 'name': 'qualify-gcoms', 'run_id': 123, 'run_attempt': 1,
                   'head_sha': run['head_sha'], 'status': 'completed', 'conclusion': 'failure'}]}]) as api, \
-             patch('release_recovery.collect') as recovery:
-            with self.assertRaisesRegex(ValueError, 'native check qualify-gcoms failure'):
+             patch('release_recovery.collect') as recovery, \
+             patch('release_provider.github_log', return_value=(b'test result: FAILED. 0 passed; 1 failed', False)):
+            with self.assertRaisesRegex(ValueError, 'repair the recorded failed job'):
                 collect(self.manifest, 'linux-x86_64', self.root, request, reconcile=True)
         recovery.assert_not_called()
         self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))

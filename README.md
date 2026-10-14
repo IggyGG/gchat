@@ -49,6 +49,14 @@ normal source-bound controller qualification. Durable delivery ownership,
 diagnostics and notifications follow in the qualified implementation; this
 checkpoint does not claim cross-platform publication or feature activation.
 
+The follow-through implementation adds source-bound native failure evidence,
+stage-specific worker fingerprints, explicit bounded transient recovery and
+durable owned delivery tasks. `release.py status` reports per-platform publication
+and source containment; `track --release FULL_ID` retains an older change's
+obligation. The existing mirror timer consumes deduplicated intervention and
+completion notices. See [the configuration and completion contract](docs/AUTOMATIC_RELEASES.md#delivery-follows-the-change-through-every-required-platform).
+Actual image/configuration activation is a separate required check.
+
 **IRC workspace delivery, 2026-10-13:** signed Linux **0.1.214** is installed and
 verified through the existing desktop entry, including normal relaunch. Channels,
 chat and users now share aligned header/content/footer rows; topics and multiline

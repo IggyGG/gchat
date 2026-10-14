@@ -64,6 +64,51 @@ def select_run(found, commit, workflow, dispatched):
     return None if dispatched or not found else found[0]
 
 
+def observe_run(work, kind, commit):
+    """Read the original SDK request; observation never creates a dispatch."""
+    workflow, prefix, _ = JOBS[kind]
+    request = hashlib.sha256(canonical([commit, kind])).hexdigest()
+    marker = work / 'dispatch.json'
+    for refresh in (False, True):
+        found = []
+        for page in range(1, 11):
+            runs = api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}', **({'refresh': True} if refresh else {}))['workflow_runs']
+            found += [r for r in runs if matching_run(r, kind, commit, request, prefix)
+                      or (r.get('event') == 'workflow_dispatch' and r.get('display_title') == prefix + request)]
+            if len(runs) < 100: break
+        if found or marker.exists(): break
+    for run in found:
+        if type(run.get('id')) is not int or run['id'] <= 0: raise ValueError('invalid SDK run identity')
+        retained = work / ('observed-run-' + str(run['id']) + '.json')
+        if not retained.exists(): atomic_json(retained, run)
+    return select_run(found, commit, workflow, marker.exists())
+
+
+def native_failure(manifest, work, kind, run, *, retry=True):
+    from release_jobs import native_checks, policy_retry
+    from release_failure import native_diagnostics, failed_jobs, WorkerFailure
+    from release_provider import github_log
+    checks = native_checks(run, 'sdk', work, api=api)
+    diagnostic = reference = None
+    if failed_jobs(checks):
+        diagnostic, reference = native_diagnostics(manifest, 'sdk', work, run, checks, repo=REPO, download=github_log)
+    if not retry: return diagnostic, reference
+    commit = manifest['sources']['gcoms']['commit']
+    def validate_fresh(fresh):
+        if (fresh.get('id') != run['id'] or fresh.get('event') != run.get('event')
+                or fresh.get('display_title') != run.get('display_title')
+                or select_run([fresh], commit, JOBS[kind][0], False) is None):
+            raise ValueError('SDK retry original request changed')
+    if policy_retry(manifest, 'sdk', work, run, checks, diagnostic, repo=REPO, validate_fresh=validate_fresh):
+        return True
+    if diagnostic:
+        # Reference the shared source/matrix evidence from the actual worker
+        # failure without copying or relabelling the original native artifacts.
+        raise WorkerFailure(diagnostic['code'], diagnostics={**reference, 'sdk_matrix': kind, 'source': commit})
+    if run['status'] == 'completed': raise WorkerFailure('native_failure_unknown')
+    return False
+
+
 def qualification_inputs(repository, commit):
     """Retain every build, test, feature, platform and toolchain input."""
     from release_inputs import GCOMS_STATUS_FILES, GCOMS_ANDROID_RELEASE_FILES
@@ -154,23 +199,7 @@ def build(manifest,cache):
             continue
         work=cache/kind;work.mkdir(exist_ok=True);request=hashlib.sha256(canonical([commit,kind])).hexdigest()
         marker=work/'dispatch.json'
-        for refresh in (False,True):
-            found=[]
-            for page in range(1,11):
-                runs=api(f'actions/workflows/{workflow}/runs?per_page=100&page={page}',
-                         **({'refresh':True} if refresh else {}))['workflow_runs']
-                found += [r for r in runs if matching_run(r,kind,commit,request,prefix)
-                          or (r.get('event') == 'workflow_dispatch' and r.get('display_title') == prefix + request)]
-                if len(runs)<100:break
-            # Cached absence cannot authorize a new external effect. Recheck
-            # GitHub once before the first dispatch; existing intents still wait.
-            if found or marker.exists():break
-        # Retain both independently created provider records; selecting one
-        # neither cancels the other nor changes its source or original result.
-        for run in found:
-            retained = work / ('observed-run-' + str(int(run['id'])) + '.json')
-            if not retained.exists():atomic_json(retained,run)
-        run=select_run(found,commit,workflow,marker.exists())
+        run=observe_run(work,kind,commit)
         if run is None:
             if not marker.exists():
                 atomic_json(marker,{'at':int(time.time()),'request':request,'commit':commit})
@@ -182,7 +211,8 @@ def build(manifest,cache):
         if run.get('event') == 'workflow_dispatch' and not marker.exists():
             atomic_json(marker,{'at':int(time.time()),'request':request,'commit':commit,'observed_run':run['id']})
         if run['status']!='completed':complete=False;continue
-        if run['conclusion']!='success':raise ValueError('native SDK qualification failed: '+str(run['id']))
+        if run['conclusion']!='success':
+            if native_failure(manifest, work, kind, run): complete=False;continue
         values=api(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts'];names=expected_names(kind,commit)
         selected=[a for a in values if a['name'] in names and not a['expired']]
         if {a['name'] for a in selected}!=names or len(selected)!=len(names):raise ValueError('SDK matrix artifacts missing')

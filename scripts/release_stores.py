@@ -16,7 +16,10 @@ from release_pair import validate
 
 
 class ProviderError(RuntimeError):
-    pass
+    def __init__(self, message, *, status=None, transient=False):
+        super().__init__(message)
+        self.status = status
+        self.transient = transient
 
 
 class Provider:
@@ -27,7 +30,11 @@ class Provider:
     def request(self, method, path, **kwargs):
         from release_provider import before_request, classify, reset_after_success
         before_request(self.provider)
-        response = self.session.request(method, self.base + path, timeout=(15, 120), **kwargs)
+        import requests
+        try:
+            response = self.session.request(method, self.base + path, timeout=(15, 120), **kwargs)
+        except (requests.Timeout, requests.ConnectionError) as error:
+            raise ProviderError('Provider connection unavailable; reconcile the original request', transient=True) from error
         if not response.ok:
             try:
                 body = response.json()
@@ -35,7 +42,8 @@ class Provider:
                 body = None
             classify(self.provider, method, path, response.status_code, response.headers, body)
             # Provider bodies can contain temporary URLs or personal details.
-            raise ProviderError(f'Provider HTTP {response.status_code}; action requires reconciliation')
+            raise ProviderError(f'Provider HTTP {response.status_code}; action requires reconciliation',
+                                status=response.status_code, transient=response.status_code in (502, 503, 504))
         reset_after_success(self.provider)
         return response.json() if response.content else {}
 
@@ -53,7 +61,9 @@ def google(config):
                            'exp': int(time.time()) + 600}, credentials['private_key'], algorithm='RS256')
     response = requests.post('https://oauth2.googleapis.com/token', timeout=30,
                              data={'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion': assertion})
-    if not response.ok: raise ProviderError('Play publisher authentication failed')
+    if not response.ok:
+        raise ProviderError('Play publisher authentication failed', status=response.status_code,
+                            transient=response.status_code in (502, 503, 504))
     session = requests.Session()
     session.headers['Authorization'] = 'Bearer ' + response.json()['access_token']
     return Provider(session, 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/' + config['package'])

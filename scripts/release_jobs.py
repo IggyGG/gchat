@@ -132,7 +132,9 @@ def native_checks(run, target, work, api=None):
     seen = set()
     for item in jobs:
         name, original = item.get('name'), item.get('run_attempt')
-        if (name not in NATIVE_JOBS[target] or type(original) is not int or not 1 <= original <= attempt
+        valid_name = (name in NATIVE_JOBS[target] if target != 'sdk' else
+                      isinstance(name, str) and re.fullmatch(r'[A-Za-z0-9 ()_,.\-/]{1,160}', name))
+        if (not valid_name or type(original) is not int or not 1 <= original <= attempt
                 or type(item.get('run_id')) is not int or item.get('run_id') != run['id'] or item.get('head_sha') != run['head_sha']
                 or type(item.get('id')) is not int or item['id'] <= 0 or (name, original) in seen):
             raise ValueError('native job source/run/attempt identity is invalid or ambiguous')
@@ -181,6 +183,17 @@ def retry_failed_jobs(manifest, target, work, request_id, run, checks, api=None)
     authorization = work / 'native-retry-authorization.json'
     if not authorization.is_file(): return False
     with locked(work / 'native-retry.lock'):
+        # A policy intent owns the same provider operation, including a lost
+        # response. An operator resume cannot create a second POST alongside it.
+        automatic = work / 'native-policy-retry.json'
+        if automatic.is_file():
+            retained = json.loads(automatic.read_text())
+            if retained.get('run_id') != run['id']: raise ValueError('native policy retry run changed')
+            if run['run_attempt'] <= retained['from_attempt']:
+                if time.time() > retained['requested_at'] + 1800:
+                    raise ValueError('native retry outcome remains unknown; original intent retained, no redispatch')
+                return True
+            return False
         grant = json.loads(authorization.read_text())
         binding = {'schema': 1, 'release_id': manifest['release_id'], 'sources': manifest['sources'],
                    'platform': target, 'request_id': request_id, 'run_id': run['id']}
@@ -245,6 +258,63 @@ def require_passed_checks(checks, names):
     return passed
 
 
+def policy_retry(manifest, target, work, run, checks, diagnostics, *, repo=REPO, validate_fresh, api=None):
+    """One policy-authorized failed-job retry, on the original immutable run.
+
+    Shared SDK callers use the same source/matrix directory and lock. Neither a
+    new GChat candidate nor a controller restart can rearm that provider run.
+    """
+    from release_provider import github
+    from datetime import datetime
+    api = (lambda path, **kwargs: github(path, repo=repo, **kwargs)) if api is None else api
+    path = work / 'native-policy-retry.json'
+    source = manifest['sources']['gcoms' if target == 'sdk' else 'gchat']['commit']
+    binding = {'schema': 1, 'policy': 'native-transient-v1', 'repo': repo,
+               'platform': target, 'run_id': run['id'], 'source': source, 'from_attempt': 1}
+    with locked(work / 'native-retry.lock'):
+        if path.is_file():
+            retained = json.loads(path.read_text())
+            if any(retained.get(k) != v for k, v in binding.items()):
+                raise ValueError('native policy retry binding changed')
+            if run['run_attempt'] > 1:
+                if retained['state'] != 'observed':
+                    atomic_json(path, {**retained, 'state': 'observed', 'observed_attempt': run['run_attempt']})
+                return False
+            if time.time() > retained['requested_at'] + 1800:
+                raise ValueError('native policy retry outcome unknown; no redispatch')
+            return True
+        if ((work / 'native-retry.json').exists() or (work / 'native-retry-authorization.json').exists()
+                or os.environ.get('GCHAT_RELEASE_NATIVE_RETRY_POLICY') != 'native-transient-v1'
+                or os.environ.get('GCHAT_RELEASE_RECONCILE_ONLY') == '1'
+                or run['run_attempt'] != 1 or run['status'] != 'completed'
+                or diagnostics is None or diagnostics.get('native_retry_eligible') is not True):
+            return False
+        if (diagnostics.get('sources') != manifest['sources'] or diagnostics.get('run_id') != run['id']
+                or diagnostics.get('run_attempt') != run['run_attempt'] or diagnostics.get('repo') != repo
+                or diagnostics.get('platform') != target):
+            raise ValueError('native policy diagnostics source/run changed')
+        try:
+            created = int(datetime.fromisoformat(run['created_at'].replace('Z', '+00:00')).timestamp())
+        except (KeyError, ValueError, TypeError):
+            return False  # Unknown original deadline cannot authorize a retry.
+        deadline = created + RETRY_AUTHORIZATION_SECONDS
+        if not created <= time.time() < deadline: return False
+        fresh = api(f'actions/runs/{run["id"]}', refresh=True)
+        validate_fresh(fresh)
+        if fresh.get('run_attempt') != 1 or fresh.get('status') != 'completed': return True
+        if fresh.get('conclusion') not in ('failure', 'timed_out', 'startup_failure'): return False
+        from release_failure import failed_jobs, immutable
+        proof = {'diagnostics': diagnostics, 'checks': checks}
+        proof_sha = hashlib.sha256(canonical(proof)).hexdigest()
+        immutable(work / 'native-policy-evidence' / (proof_sha + '.json'), proof)
+        intent = {**binding, 'actor': 'policy', 'requested_at': int(time.time()), 'deadline_at': deadline,
+                  'diagnostic_sha256': proof_sha, 'failed_jobs': failed_jobs(checks), 'state': 'intent'}
+        atomic_json(path, intent)
+        api(f'actions/runs/{run["id"]}/rerun-failed-jobs', method='POST')
+        atomic_json(path, {**intent, 'state': 'accepted'})
+        return True
+
+
 def collect(manifest, target, work, request_id, reconcile=False):
     workflow, prefix = WORKFLOWS[target]
     marker = work / 'dispatch.json'
@@ -276,22 +346,24 @@ def collect(manifest, target, work, request_id, reconcile=False):
         atomic_json(marker, {'at': int(time.time()), 'request_id': request_id, 'commit': expected})
         gh(f'actions/workflows/{workflow}/dispatches', method='POST', body={'ref': refs['gchat'].removeprefix('refs/heads/'), 'inputs': inputs})
         return None
-    checks = None
-    retry_authorized = (work / 'native-retry-authorization.json').is_file()
-    if target == 'linux-x86_64' or retry_authorized:
-        checks = native_checks(run, target, work)
-        retrying = retry_failed_jobs(manifest, target, work, request_id, run, checks)
-        required = ('qualify', 'qualify-gcoms', 'linux') if target == 'linux-x86_64' else NATIVE_JOBS[target]
-        if retrying and any(checks['jobs'].get(n, {}).get('conclusion') != 'success' for n in required):
-            return None
-        if not require_passed_checks(checks, required): return None
-    else:
-        if run['status'] != 'completed': return None
-        if run['conclusion'] != 'success':
-            if os.environ.get('GCHAT_RELEASE_RECONCILE_ONLY') == '1':
-                raise ValueError('original native build failed after its deadline; no new recovery dispatch')
-            from release_recovery import collect as collect_recovery
-            return collect_recovery(manifest, target, work, run)
+    checks = native_checks(run, target, work)
+    from release_failure import native_diagnostics, failed_jobs, WorkerFailure
+    from release_provider import github_log
+    diagnostic = reference = None
+    if failed_jobs(checks):
+        diagnostic, reference = native_diagnostics(manifest, target, work, run, checks, repo=REPO, download=github_log)
+    retrying = policy_retry(manifest, target, work, run, checks, diagnostic,
+        validate_fresh=lambda fresh: validate_run(fresh, expected, workflow, prefix + request_id, run['id']))
+    retrying = retrying or retry_failed_jobs(manifest, target, work, request_id, run, checks)
+    required = ('qualify', 'qualify-gcoms', 'linux') if target == 'linux-x86_64' else NATIVE_JOBS[target]
+    if any(checks['jobs'].get(n, {}).get('conclusion') != 'success' for n in required):
+        if retrying: return None
+        if diagnostic:
+            if run['status'] == 'completed' and os.environ.get('GCHAT_RELEASE_RECONCILE_ONLY') != '1':
+                from release_recovery import registered, collect as collect_recovery
+                if registered(manifest, target): return collect_recovery(manifest, target, work, run)
+            raise WorkerFailure(diagnostic['code'], diagnostics=reference)
+    if not require_passed_checks(checks, required): return None
     artifacts = gh(f'actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']
     name = target if target.startswith(('linux', 'macos', 'windows')) else f'{target}-{expected}-{manifest["sources"]["gcoms"]["commit"]}'
     if target == 'ios': name += '-' + manifest['versions']['ios']

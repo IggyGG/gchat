@@ -121,6 +121,12 @@ class Coordinator:
         self.state.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(self.state / 'ledger.sqlite')
         self.config = config
+        self.worker_identity_cache = {}
+        policy = config.get('native_retry_policy')
+        if policy not in (None, 'native-transient-v1'):
+            raise ValueError('unknown native retry policy')
+        from release_delivery import configuration as delivery_configuration
+        delivery_configuration(config.get('delivery_tracking'))
         self.running_workers = {}
         from release_deployment_runner import DeploymentRunner
         self.deployment_runner = DeploymentRunner(self.state, deployment_timeout)
@@ -196,8 +202,10 @@ class Coordinator:
         return self.state / 'recovery' / release / (platform + '.json')
 
     def worker_revision(self, platform, stage):
-        return hashlib.sha256(canonical({'controller': self.config.get('controller_revision', os.environ.get('GCHAT_CONTROLLER_REVISION')),
-            'worker': self.config.get('workers', {}).get(platform, {}).get(stage)})).hexdigest()
+        from release_worker_identity import fingerprint
+        return fingerprint(self.config.get('workers', {}).get(platform, {}).get(stage, {}), platform, stage,
+            legacy_revision=self.config.get('controller_revision', os.environ.get('GCHAT_CONTROLLER_REVISION')),
+            cache=self.worker_identity_cache)
 
     def resume_corrected(self, release, platform, target):
         # Old controllers blocked even read-only collection after one hour.
@@ -241,7 +249,16 @@ class Coordinator:
                         return False
                 self.ledger.transition(release, platform, 'building', evidence=target['evidence'])
                 return True
-        changed = recovery['revision'] != self.worker_revision(platform, recovery['stage'])
+        # A schema migration is not evidence of a worker correction. Legacy
+        # blocked native runs get read-only diagnostics and an owned follow-up.
+        try:
+            revision = self.worker_revision(platform, recovery['stage'])
+        except (ValueError, OSError):
+            return False  # Unreadable/invalid configuration cannot prove a correction.
+        changed = (recovery.get('fingerprint_schema') == 2
+                   and recovery['revision'] != revision
+                   and not (recovery.get('code', '').startswith('native_')
+                            and recovery.get('classification') in ('code', 'operator')))
         from release_minutes import enabled
         retry = (self.config.get('automatic_recovery', False) and recovery.get('transient')
                  and recovery['attempts'] <= (1 if enabled(self.config) else 5) and time.time() >= recovery['retry_at'])
@@ -252,14 +269,33 @@ class Coordinator:
         return True
 
     def record_failure(self, release, platform, stage, error):
+        from release_failure import immutable, WorkerFailure
         path = self.recovery_path(release, platform)
         previous = json.loads(path.read_text()) if path.exists() else {}
-        revision = self.worker_revision(platform, stage)
-        attempts = previous.get('attempts', 0) + 1 if previous.get('revision') == revision else 1
-        atomic_json(path, {'stage': stage, 'revision': revision, 'attempts': attempts,
+        if previous:
+            immutable(path.parent / 'history' / platform / (hashlib.sha256(canonical(previous)).hexdigest() + '.json'), previous)
+        try:
+            revision = self.worker_revision(platform, stage)
+        except (ValueError, OSError):
+            revision = None  # Retain the failure even when configuration identity is invalid.
+        attempts = previous.get('attempts', 0) + 1
+        transient = (isinstance(error, (TimeoutError, ConnectionError, subprocess.TimeoutExpired))
+                     or isinstance(error, WorkerFailure) and error.reconcile_retry)
+        atomic_json(path, {'stage': stage, 'revision': revision, 'fingerprint_schema': 2, 'attempts': attempts,
                           'cause': 'storage_headroom' if isinstance(error, StorageHeadroomError) else 'worker',
-                          'transient': isinstance(error, (TimeoutError, ConnectionError, subprocess.TimeoutExpired)),
+                          'transient': transient,
+                          'classification': error.category if isinstance(error, WorkerFailure) else ('infrastructure' if transient else 'unclassified'),
+                          'code': error.code if isinstance(error, WorkerFailure) else 'worker_failed',
+                          'failure': getattr(error, 'report', None),
                           'retry_at': int(time.time()) + min(300, 30 * 2 ** min(attempts - 1, 4))})
+
+    def worker_failed(self, work, manifest, platform, stage, execution):
+        from release_failure import read_worker_failure, WorkerFailure
+        report = read_worker_failure(work, manifest, platform, stage, execution)
+        error = WorkerFailure(report['code'], diagnostics=report.get('diagnostics'),
+                              reconcile_retry=report['reconcile_retry']) if report else WorkerFailure('worker_failed')
+        error.report = report
+        raise error
 
     def relay_load_ready(self, manifest):
         """Collect the same Linux workflow's gate; never dispatch another load."""
@@ -386,6 +422,16 @@ class Coordinator:
             if not admitted and shutil.disk_usage(self.state).free < self.config.get('minimum_free_bytes', 16 * 1024 ** 3):
                 raise StorageHeadroomError(STORAGE_HEADROOM_REASON)
         effect_kind = stage
+        if stage == 'diagnose':
+            from release_failure import diagnostic_identity
+            effect_kind = 'diagnose-' + diagnostic_identity(self.state, manifest, platform)
+            # Finish an owned diagnostic execution even if it just discovered
+            # the legacy run identity. A later native attempt gets a new read-
+            # only snapshot; neither snapshot can rearm the original build.
+            for key, item in self.running_workers.items():
+                if (item['release_id'], item['platform'], item['stage']) == (manifest['release_id'], platform, stage):
+                    effect_kind = self.ledger.db.execute('SELECT kind FROM effects WHERE id=?', (key,)).fetchone()[0]
+                    break
         if stage == 'observe':
             pointer = self.state / 'observe-effects' / manifest['release_id'] / (platform + '.json')
             if pointer.is_file():
@@ -448,7 +494,7 @@ class Coordinator:
             if process.returncode == 76:
                 raise ConnectionError(stage + ' provider temporarily unavailable; original request retained')
             if process.returncode:
-                raise ValueError(stage + ' worker failed; inspect retained worker log')
+                self.worker_failed(work, manifest, platform, stage, pending['execution_id'])
             if not output.is_file():
                 raise ValueError(stage + ' worker finished without a source-bound receipt')
         # A dispatch receipt is durable before the next polling cycle. On restart
@@ -482,6 +528,9 @@ class Coordinator:
                            GCHAT_RELEASE_RECEIPT=str(output), GCHAT_RELEASE_TARGET=platform,
                            GCHAT_RELEASE_STAGE=stage, GCHAT_RELEASE_REQUEST_ID=effect['id'],
                            GCHAT_RELEASE_PROVIDER_STATE=str(self.state / 'provider-poll'))
+        environment.pop('GCHAT_RELEASE_NATIVE_RETRY_POLICY', None)
+        if self.config.get('native_retry_policy'):
+            environment['GCHAT_RELEASE_NATIVE_RETRY_POLICY'] = self.config['native_retry_policy']
         if stage == 'build' and self.minutes and platform != 'sdk':
             from release_minutes import budget
             try:
@@ -515,6 +564,7 @@ class Coordinator:
             (work / 'provider-wait.json').unlink(missing_ok=True)
             self.provider_defer(manifest, platform, stage, effect, provider, work)
             log_path = work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')
+            environment['GCHAT_RELEASE_EXECUTION_ID'] = log_path.name
             log = log_path.open('xb')
             atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
             try:
@@ -525,7 +575,7 @@ class Coordinator:
                 raise
             timeout = recipe.get('timeout', 120)
             self.running_workers[effect['id']] = {'process': process, 'log': log, 'argv': argv,
-                'release_id': manifest['release_id'], 'platform': platform, 'stage': stage,
+                'release_id': manifest['release_id'], 'platform': platform, 'stage': stage, 'execution_id': log_path.name,
                 'timeout': timeout, 'deadline': time.monotonic() + timeout,
                 'started_at': int(time.time()), 'deadline_at': int(time.time()) + timeout}
             atomic_json(work / 'progress.json', {'stage': stage, 'started_at': int(time.time()),
@@ -534,7 +584,9 @@ class Coordinator:
         (work / 'provider-wait.json').unlink(missing_ok=True)
         self.provider_defer(manifest, platform, stage, effect, provider, work)
         atomic_json(marker, {'request_id': effect['id'], 'attempted': int(time.time())})
-        with (work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')).open('xb') as log:
+        log_path = work / (str(time.time_ns()) + '-' + uuid.uuid4().hex + '.log')
+        environment['GCHAT_RELEASE_EXECUTION_ID'] = log_path.name
+        with log_path.open('xb') as log:
             result = subprocess.run(argv, env=environment, cwd=work, stdout=log,
                                     stderr=subprocess.STDOUT, timeout=recipe.get('timeout', 120))
         if result.returncode == 75:
@@ -543,7 +595,7 @@ class Coordinator:
         if result.returncode == 76:
             raise ConnectionError(stage + ' provider temporarily unavailable; original request retained')
         if result.returncode:
-            raise ValueError(stage + ' worker failed; inspect retained worker log')
+            self.worker_failed(work, manifest, platform, stage, log_path.name)
         report, digest = read_receipt(output, manifest, platform, stage)
         self.ledger.complete_effect(effect['id'], str(report.get('external_id', effect['id'])), digest)
         if provider and stage != 'observe':
@@ -724,6 +776,16 @@ class Coordinator:
                 'schema': 1, 'reason': type(error).__name__, 'at': int(time.time())})
         self.reconcile_deployment()
         public = self.ledger.status()
+        from release_delivery import update as update_deliveries, public_notifications
+        try:
+            public['deliveries'] = update_deliveries(self)
+            notifications = self.state / 'public/updates/delivery-notifications.json'
+            atomic_json(notifications, public_notifications(self.ledger))
+            notifications.chmod(0o644)
+        except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
+            public['delivery_tracking'] = {'state': 'blocked', 'owner': self.config.get('delivery_tracking', {}).get('owner'),
+                'next_action': 'Inspect retained delivery state and source/publication evidence.', 'error_type': type(error).__name__}
+            public['deliveries'] = [dict(json.loads(row[0]), stale=True) for row in self.ledger.db.execute('SELECT record FROM deliveries ORDER BY created DESC LIMIT 30')]
         public['observed_at'] = int(time.time())
         if self.config.get('single_flight', False):
             from release_flight import select
@@ -731,6 +793,9 @@ class Coordinator:
         from release_provider import public_waits
         public['provider_waits'] = public_waits(self.state)
         public['publication_policy'] = self.config.get('publication_policy')
+        public['worker_identity'] = {'schema': 2, 'source': os.environ.get('GCHAT_CONTROLLER_REVISION'),
+            'stale_override_ignored': bool(self.config.get('controller_revision') and
+                self.config['controller_revision'] != os.environ.get('GCHAT_CONTROLLER_REVISION'))}
         public['running_workers'] = [{key: item[key] for key in ('release_id', 'platform', 'stage', 'started_at', 'deadline_at')}
                                     for item in self.running_workers.values() if item['process'].poll() is None]
         public['deployment_worker'] = self.deployment_runner.progress()

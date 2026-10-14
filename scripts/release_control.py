@@ -93,6 +93,7 @@ def status(state, release=None, now=None):
             'deployment': {'state': deployment.get('state', 'waiting_artifacts'),
                            'reason': deployment.get('reason', ''), 'targets': targets},
             'platforms': platforms, 'flight': public.get('flight'),
+            'deliveries': public.get('deliveries', []), 'delivery_tracking': public.get('delivery_tracking'),
             'publication_policy': public.get('publication_policy'),
             'relay_load': load,
             'controller_status_age_seconds': max(0, now - public['observed_at']) if public.get('observed_at') else None,
@@ -103,7 +104,7 @@ def status(state, release=None, now=None):
 
 
 def request(state, action, release=None, platform=None, *, observed=None, reason=None):
-    if action not in ('resume', 'rollback', 'qualify', 'handoff'):
+    if action not in ('resume', 'rollback', 'qualify', 'handoff', 'track'):
         raise ValueError('unsupported release control')
     if action == 'qualify' and platform not in ('android', 'ios'):
         raise ValueError('deep mobile qualification requires --platform android or ios')
@@ -210,6 +211,10 @@ def consume(controller):
             elif value['action'] == 'qualify' and value.get('platform') in ('android', 'ios'):
                 atomic_json(state / 'control/qualifications' / (value['id'] + '.json'), value)
                 result = {'state': 'accepted', 'qualification': 'queued'}
+            elif value['action'] == 'track' and value.get('platform') is None:
+                from release_delivery import register
+                register(controller.ledger, controller.ledger.manifest(release), controller.config.get('delivery_tracking'))
+                result = {'state': 'accepted', 'delivery': release}
             elif value['action'] == 'rollback' and value.get('platform') is None:
                 from release_deployment import request_rollback
                 request_rollback(state, release)

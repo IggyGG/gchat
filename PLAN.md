@@ -49,6 +49,16 @@ and notifications. Completion requires verified deployed code/config and live
 per-platform publication or a concrete owned blocker. Store review is not public
 availability. Preserve original requests, failures, deadlines and passed siblings.
 
+Source checkpoint: the delivery/failure/fingerprint implementation passes 1,162
+Python controls (one existing platform skip) in short private SSD scratch. The
+first long/symlinked-scratch run and its nine fixture failures remain retained.
+The 534-case release run and 76 focused controls also pass. Read-only live probes
+identified Windows' POSIX-only tooling import failure and retained original native
+job/step identities for all five currently blocked targets. Source-bound classifier
+bootstrap `21d068a` is mirrored; activation currently waits on normal storage
+headroom. Implementation/image/configuration deployment and real notification
+delivery remain required before this task is complete.
+
 ## GCHAT-UX — conversation-first IRC workspace
 
 2026-10-13 delivery complete (OC): signed Linux **0.1.214** is installed and running

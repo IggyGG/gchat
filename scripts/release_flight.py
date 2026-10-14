@@ -158,7 +158,7 @@ def can_build(coordinator, release, platform):
 def can_execute(coordinator, release, platform, stage, kind):
     if not coordinator.config.get('single_flight', False):
         return True
-    if stage in ('verify', 'observe', 'prerequisite'):
+    if stage in ('verify', 'observe', 'prerequisite', 'diagnose'):
         return True  # Retain completed artifacts and observe external store reviews.
     from release_minutes import enabled
     minutes = enabled(coordinator.config)

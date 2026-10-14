@@ -998,7 +998,7 @@ class AcceptanceFreshnessTests(unittest.TestCase):
     def coordinator(self, root):
         script = root / 'waiting.py'; script.write_text('raise SystemExit(75)\n')
         command = [sys.executable, str(script)]
-        c = Coordinator(root, {'workers': {'linux-x86_64': {'acceptance': {'run': command, 'reconcile': command, 'max_age_seconds': 60}}}})
+        c = Coordinator(root, {'controller_revision': 'fixture-v1', 'workers': {'linux-x86_64': {'acceptance': {'run': command, 'reconcile': command, 'max_age_seconds': 60}}}})
         self.addCleanup(c.ledger.close); manifest = candidate(); c.ledger.add(manifest)
         effect = c.ledger.effect(manifest['release_id'], 'linux-x86_64', 'acceptance')
         work = root / 'jobs' / effect['id']; work.mkdir(parents=True)
