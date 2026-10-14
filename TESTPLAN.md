@@ -14,6 +14,15 @@ with unchanged source, one existing Windows-only DACL skip, and a verified4GiB
 cgroup ceiling (200.7MiB measured peak). Do not substitute an address-space cap
 for the RAM ceiling: the JVM reserves more virtual space for real signing tests.
 
+Native noexec correction: two process fixtures fail on the original source under
+`--read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m` with real PermissionError13.
+All53 provider controls now pass with that same mount, UID10001, no network,
+512MiB memory and Python3.12 `-S`. Owned scripts use the interpreter; production
+transport and sandbox flags are unchanged. The full1195-test checkpoint above
+retains its prior exact source binding. Native controller failure38571491447 is
+still failed; its missing inner artifact prompted unconditional failure-evidence
+retention under a separate artifact name.
+
 F5 / controller rollout generations, 2026-10-14: all 58 deployment, watchdog,
 controller and Kubernetes-worker controls pass with a 4 GiB memory limit. The
 causal regression runs the real Kubernetes before-image guard for two qualified

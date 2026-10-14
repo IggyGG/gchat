@@ -52,10 +52,11 @@ jobs:
           CONTROLLER_INTENT: ${{ inputs.intent }}
           CONTROLLER_REQUEST_ID: ${{ inputs.request_id }}
         run: python3 gchat/scripts/build-controller.py --gcoms gcoms --output controller-evidence
-      - name: Retain immutable qualified controller
+      - name: Retain controller qualification or failure evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: controller-qualified
+          name: ${{ job.status == 'success' && 'controller-qualified' || format('controller-failure-{0}', github.run_attempt) }}
           path: controller-evidence/*
           if-no-files-found: error
           retention-days: 30
