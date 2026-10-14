@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "date": "2026-10-14",
+  "scope": "Automatic cross-platform publication follow-through implementation and original-run diagnostics",
+  "implementation_commit": "6654fbba84d92c7f33e845db8061075eff1761c9",
+  "feature_branch": "agent/release-follow-through-235635c9",
+  "classifier_bootstrap_main_commit": "21d068a02563495c1ff8b24fa2faccadbcbfe18d",
+  "runtime_features_deployed": false,
+  "all_platform_publication_complete": false,
+  "validation": {
+    "full_python_checkpoint": {
+      "implementation_checkpoint": "547d161",
+      "tests": 1162,
+      "seconds": 136.791,
+      "passed": true,
+      "skipped": 1,
+      "skip_reason": "Existing native Windows DACL semantics check on Linux",
+      "log_sha256": "0e70bc52f20baa4aff928b5b84036ed806febd7f534d2a769276d915fda99854",
+      "scratch": "Short private SSD temporary directories, cleaned after the test run"
+    },
+    "diagnostic_and_identity_refinements": {
+      "tests": 37,
+      "seconds": 9.571,
+      "passed": true,
+      "skipped": 0,
+      "log_sha256": "9f3a80ae4182a98e534594df09c331727e00a8f1772aac6df1825fb8275c152e"
+    },
+    "storage_followup_and_coordinator": {
+      "tests": 60,
+      "seconds": 48.099,
+      "passed": true,
+      "skipped": 0,
+      "log_sha256": "b365b4fe7212fa61e3ef8b1d108542b35a82b0a2094763fd12b6cc78a988bfe8"
+    },
+    "source_audit": {"passed": true, "reported_paths": 921},
+    "original_failures_retained": "The first full host run's long/symlinked temporary-path fixture failures remain in private evidence; production gates were not weakened."
+  },
+  "implementation_sha256": {
+    "scripts/release_delivery.py": "eb421dbbc4a6b1bffd6838dd829ba6afd8bf3b5d68adbd44c9c1ec62de536f24",
+    "scripts/release_failure.py": "59124efc75810f5822c9ab0a84342d8b920ca2955c8e3932a806d15a08a7708c",
+    "scripts/release_worker_identity.py": "e90710429635a130ac1f2007e50ce5b419f18075249abf628424f2b9247c2659",
+    "scripts/release_coordinator.py": "ff468bbfed9028fd1ec0e04ad45f9aacf8de8ffa2c55575d4225caf1d95cb0b5",
+    "scripts/release_provider.py": "c64acdd9001298da36f1a918e03857913b78684a304895c0e6ea8fa662061bfa",
+    "scripts/release_jobs.py": "4fc7c9e883984cecdbfeb2798a3dc895ce0eb57eaef8c08e837ea44d8cb8f45f",
+    "scripts/release_sdk.py": "00392d73978e0ba1c3a31f999bf63f9e01667a765735f1428ded9526172e7a87",
+    "scripts/release_mirror.py": "ffe3f4bf0102053c80ebec6a84968a47a618cdb1c8dfbd9ed6081ff35c6138cd"
+  },
+  "original_native_observation": {
+    "release_id": "78b2d97a0d6ba7375400248ec829f68999aa70d56c761b6c1e3c5f67945bd0c3",
+    "gchat_commit": "073ebb16bf97d7702e7f503e517f1b8f96556902",
+    "gcoms_commit": "9e889b7c17702ebbe365f8c34eb42f1c4fe7193b",
+    "runs": [
+      {"platform": "macos-aarch64", "run": 38488672438, "job": 115608412052, "attempt": 1, "classification": "code", "failed_check": "chat_service::host_registration::tests::native_non_utf8_paths_survive_saved_host_reopen", "finding": "macOS rejects the test's non-UTF-8 filename with Illegal byte sequence."},
+      {"platform": "macos-x86_64", "run": 38488673252, "job": 115608415494, "attempt": 1, "classification": "code", "failed_check": "chat_service::host_registration::tests::native_non_utf8_paths_survive_saved_host_reopen", "finding": "Same native path test failure as Apple Silicon."},
+      {"platform": "windows-x86_64", "run": 38488671822, "job": 115608410670, "attempt": 1, "classification": "code", "finding": "Eleven GComs portable Python tooling tests cannot import the POSIX-only fcntl module."},
+      {"platform": "ios", "run": 38488670029, "job": 115608404294, "attempt": 1, "classification": "code", "failed_check": "LifecycleTests.GChatLifecycleTests testProfileBackgroundAndReopen", "finding": "The original ten-second passphrase population expectation fails at LifecycleTests.swift:69.", "artifact_id": 11862405982, "archive_sha256": "84d7dfab23fcf90885e40d2a0e26ab8ef5f21fb4959e7af18eb0ca4c2f166ab9"},
+      {"platform": "sdk", "run": 38459035587, "job": 115509109224, "attempt": 1, "classification": "infrastructure", "finding": "Pinned quick-xml dependency download fails DNS resolution for static.crates.io; no compiler cause is inferred.", "artifact_id": 11844698566, "archive_sha256": "eca45d95518a69a4624a160e9c325b38542b0caaf7bb2730bbfdbfd1a006df03", "original_retry_window_preserved": true}
+    ],
+    "provider_operations": "Read-only original-run/job/artifact collection; no native dispatch or retry was requested by these probes."
+  },
+  "activation_blocker": {
+    "state": "waiting_storage",
+    "free_bytes_observed": 12737363968,
+    "required_free_bytes": 17179869184,
+    "volume_capacity_gib": 256,
+    "verified_compaction": {"canaries": 129, "images": 47, "reclaimed_bytes": 63356928, "all_paths_retained": true},
+    "read_only_duplicate_estimates": {"native_builds": 221, "possible_native_bytes": 941993984, "passing_receipts": 1116, "possible_receipt_bytes": 35454976, "not_mutation_authority": true},
+    "replication_and_headroom_policies_preserved": true,
+    "required_decision": "Approve archival relocation of older completed bundles while preserving their bytes and provenance, or authorize additional capacity."
+  },
+  "availability_observed": {
+    "at": 1791948649,
+    "linux-x86_64": "0.1.217",
+    "android": "1231",
+    "macos-aarch64": "0.1.176",
+    "macos-x86_64": "0.1.176",
+    "windows-x86_64": "0.1.176",
+    "sdk": "0.1.200",
+    "ios": null,
+    "newest_candidate": "0.1.218",
+    "newest_candidate_state": "All seven targets are blocked on storage admission."
+  },
+  "code_comparison": [
+    {"reference": "enso-org/enso:tools/performance/engine-benchmarks/bench_tool/gh.py", "cosine": 0.7378, "rerank": 0.9801, "comparison": "Same argv-based gh transport; this implementation bounds private output and deadlines and preserves mutation request identity."},
+    {"reference": "openclaw/openclaw:scripts/full-release-validation-policy.mjs", "cosine": 0.6943, "rerank": 0.0314, "comparison": "No close publication-proof implementation; local guards require ledger-confirmed source/platform-bound availability and the latest store observation."}
+  ],
+  "remaining_definition_of_done": [
+    "Qualified classifier and feature controller image activation through the normal source-bound deployment path",
+    "Installed policy configuration and source-mirror notification consumer verification",
+    "Actual shared-change delivery record, owned follow-ups and notification delivery in production",
+    "Final source-containing publication/review/blocker audit without claiming all-platform success from Linux"
+  ]
+}
