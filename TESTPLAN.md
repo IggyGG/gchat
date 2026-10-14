@@ -10,6 +10,16 @@ formatting; the focused run takes709.345s. Old failure and input hashes are reta
 in `docs/evidence/durable-host/source.json`. This does not qualify a new signed or
 installed artifact by itself.
 
+F5 / deterministic compaction race fixture, 2026-10-14: retain the original
+63759ceb Kubernetes qualification failure. A same-size in-place test write could
+share its old timestamp on fast scratch and trigger a later safety guard. The
+fixture now atomically replaces the victim with a distinct inode, deterministically
+testing the intended path-replacement race. It still requires the original guard
+message and now additionally checks unchanged canonical/sibling bytes, native
+archive and receipt, plus temporary-link cleanup. Production guards are unchanged.
+All32 compaction controls plus200 repetitions pass (232tests,6.410s). The corrected
+source must pass the normal actual-image/Kubernetes qualification before activation.
+
 F5 / deployed follow-through audit, 2026-10-14: sourceca310e6 passed503 checks in
 both its actual CI image and Kubernetes image, then the normal production canary.
 All271 running files match. A new source handoff schedules all seven targets, and

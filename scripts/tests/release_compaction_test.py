@@ -217,13 +217,25 @@ class CompactionTests(unittest.TestCase):
             compact_build(self.root, minimum_bytes=1)
         victim.unlink()
         victim.write_bytes(self.content)
+        archive_before = self.archive.read_bytes()
+        receipt_before = (self.root / 'receipt.json').read_bytes()
         real_link = os.link
         def race(source, target, **kwargs):
             real_link(source, target, **kwargs)
-            victim.write_bytes(b'x' * len(self.content))
+            # An in-place same-size write can share the original timestamp on
+            # fast tmpfs. Replace the path with a distinct, already-created
+            # inode so this fixture deterministically injects its stated race.
+            replacement = victim.with_name('racing-replacement')
+            replacement.write_bytes(b'x' * len(self.content))
+            os.replace(replacement, victim)
         with patch('release_compaction.os.link', side_effect=race):
             with self.assertRaisesRegex(ValueError, 'changed before replacement'):
                 compact_build(self.root, minimum_bytes=1)
+        self.assertEqual(victim.read_bytes(), b'x' * len(self.content))
+        for name in ('package.deb', 'other/package.deb'):
+            self.assertEqual((self.native / name).read_bytes(), self.content)
+        self.assertEqual(self.archive.read_bytes(), archive_before)
+        self.assertEqual((self.root / 'receipt.json').read_bytes(), receipt_before)
         self.assertFalse(list(self.native.rglob('.compact-*')))
 
 
