@@ -653,7 +653,7 @@
       "linux": {
         "corrected": {"tests": 466, "passed": 466, "skipped": 0, "seconds": 180.96},
         "posix_android_cases_executed": 198,
-        "harness_notification_cancelled_after_completed_receipt": true,
+        "harness_restart_reconciled_from_completed_receipt": true,
         "receipt_sha256": "1c91cfb6a26cb643a747bf4500eb9ec2093bb2d2c66e6537f5019f9f844f6eab",
         "log_sha256": "18169d9f4be9c9d8ebc6481418d76d44b089d5c133d1cd75ad8ff599da5a02d4"
       }
@@ -663,9 +663,42 @@
     "production_profiles_and_services_preserved": true,
     "native_sdk_application_and_signing_gates_preserved": true,
     "all_platform_publication_claimed": false,
-    "next_action": "Publish the corrected source pair through the audited mirror and qualify a new immutable native candidate; do not reset release 224's expired requests.",
+    "automatic_successor": {
+      "release_id": "08058a1e331eeab2a0286b0e90d826c6381a5899ecb895aaf441f0c7e2bbaca7",
+      "versions": {"desktop_sdk": "0.1.225", "android": "1240", "ios": "1.2.40"},
+      "upstream": {
+        "gchat": "c06fa9f453e137e98d927dd6b3e6b23c31dedd41",
+        "gcoms": "5f4fa280e679fe536395126ab0aa8f84b89bd90d"
+      },
+      "frozen_sources": {
+        "gchat": {"commit": "878f3de31e0ea8840d6c702c4e01ac9da93e2116", "tree": "99dfcd9c021e673005f72cf89940c3f205d20e05"},
+        "gcoms": {"commit": "5f4fa280e679fe536395126ab0aa8f84b89bd90d", "tree": "848a78573f4f6f6720ee47a3d8f506e0fac1fa58"}
+      },
+      "gcoms_documentation_successor_qualification_inputs_sha256": "2eb9291efb823830f68d9147caf6ffb26ac78a1c531d416639ceefc5e9e019b0",
+      "audited_mirror_at": {"gchat": 1792019380, "gcoms": 1792019371},
+      "required_platforms": ["linux-x86_64", "macos-aarch64", "macos-x86_64", "windows-x86_64", "android", "ios", "sdk"],
+      "state": "building",
+      "desktop_provider_runs": {"macos-aarch64": 38652481086, "macos-x86_64": 38652481304, "windows-x86_64": 38652481683},
+      "windows_original_gate": {
+        "job_id": 116154355284,
+        "step": "Qualify GComs source provenance and portable tooling before native compilation",
+        "conclusion": "success",
+        "completed_at": "2026-10-14T23:13:12Z",
+        "source": "878f3de31e0ea8840d6c702c4e01ac9da93e2116"
+      },
+      "older_failed_requests_and_deadlines_preserved": true,
+      "new_artifact_publication_verified": false
+    },
+    "next_action": "Observe the original release 225 build, signing and publication requests. Both Mac targets and Windows are progressing; public availability still requires their final verified receipts.",
     "owner": "IggyGG",
     "private_evidence_directory": "test-evidence/release-local-native/",
+    "evidence": [
+      {"path": "test-evidence/release-local-native/native-controls.json", "sha256": "261c95860e1f08d386ed90822d0221c2128e50ebaf8ed9d8b501c5dcc476ba9a"},
+      {"path": "test-evidence/release-local-native/automatic-successor.json", "sha256": "11266a565e18aa07dab2ecf1d0e2b2b9f952b0cd47d3361743d61b73444bd4b7"},
+      {"path": "test-evidence/release-local-native/native-provider-progress.json", "sha256": "d691cb87604b488a7086890345eb7ceef41a859bb01c8ebf3443ee5716692a4e"},
+      {"path": "test-evidence/release-local-native/publication-status.json", "sha256": "78c38f9333b34efaec6f8bb86eff1628b476c1e9617b43ad9293f67f6a78420c"},
+      {"path": "test-evidence/release-local-native/windows-original-gate-cleared.json", "sha256": "58eefa7e841855847f300e7b06f6ed54f2f2cd529b42c340cfc2681b851216e2"}
+    ],
     "code_comparison": {
       "path": "mifos/head:resources/scripts/githooks/ciabot.bash",
       "cosine": 0.6922,

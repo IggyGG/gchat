@@ -4,10 +4,14 @@ then passes the complete Python gate: Linux466/466, Mac463 plus3 Linux-only
 exclusions, Windows216 plus63 explicitly inventoried exclusions. All198 POSIX
 Android orchestration cases run on Linux; no native SDK/app/signing gate is
 disabled. Original failures, exact source bundles, final patch and log hashes are
-retained. The Linux job completed and saved exit0 before the OpenCode restart
-cancelled its notification, so it was reconciled rather than rerun. Local source
+retained. The OpenCode restart cancelled the Linux tool notification; its completed
+exit0 receipt and log were reconciled rather than rerunning the test. Local source
 checks do not themselves publish desktop installers. See the native follow-up in
 `docs/evidence/release-follow-through-20261014/deployed.json`.
+The audited source handoff automatically scheduled225 across all7targets. Its
+Windows run38652481683 passed the originally failing GComs portable-tooling step;
+both Mac runs are progressing. Build/signing/publication remain separate gates,
+with original224 failures and deadlines retained.
 
 F5 / retained fleet socket recovery, 2026-10-14: the old source fails the extended
 `fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_lock` case
