@@ -124,7 +124,7 @@ async fn serve_generation(
         );
     }
     let endpoint = LocalEndpoint::new(endpoint);
-    let listener = LocalListener::bind(&endpoint).map_err(|e| e.to_string())?;
+    let (listener, _server_lock) = bind_endpoint(&endpoint)?;
     let sdk = runtime
         .0
         .embedded_runtime()
@@ -159,4 +159,83 @@ async fn serve_generation(
     };
     let cleanup = endpoint.cleanup().map_err(|e| e.to_string());
     result.and(cleanup)
+}
+
+fn bind_endpoint(
+    endpoint: &LocalEndpoint,
+) -> Result<(LocalListener, Option<std::fs::File>), String> {
+    // Match the chat endpoint's lifecycle: hold one owner through preparation,
+    // serving and cleanup. Only the existing guarded SDK preparation may reclaim
+    // a refused stale socket; live listeners and non-socket paths stay intact.
+    #[cfg(unix)]
+    let owner = Some(crate::store::acquire_lock(endpoint.path())?);
+    #[cfg(not(unix))]
+    let owner = None;
+    endpoint.prepare_server().map_err(|e| e.to_string())?;
+    let listener = LocalListener::bind(endpoint).map_err(|e| e.to_string())?;
+    Ok((listener, owner))
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::{fs::MetadataExt, net::UnixListener};
+
+    #[tokio::test]
+    async fn stale_socket_recovery_keeps_one_generation_owner() {
+        let directory = tempfile::tempdir().unwrap();
+        private_fs::make_private(directory.path(), true).unwrap();
+        let endpoint = LocalEndpoint::new(directory.path().join("fleet.sock"));
+        drop(UnixListener::bind(endpoint.path()).unwrap());
+        assert!(endpoint.path().exists());
+        let (listener, owner) = bind_endpoint(&endpoint).unwrap();
+        assert!(owner.is_some());
+        assert!(bind_endpoint(&endpoint).is_err());
+        assert!(gcoms::sdk::local::connect(&endpoint).await.is_ok());
+        drop(listener);
+        // Dropping the listener alone does not release generation ownership.
+        assert!(bind_endpoint(&endpoint).is_err());
+        drop(owner);
+        let (replacement, _owner) = bind_endpoint(&endpoint).unwrap();
+        assert!(gcoms::sdk::local::connect(&endpoint).await.is_ok());
+        drop(replacement);
+        endpoint.cleanup().unwrap();
+    }
+
+    #[tokio::test]
+    async fn active_listener_without_a_generation_lock_is_not_replaced() {
+        let directory = tempfile::tempdir().unwrap();
+        private_fs::make_private(directory.path(), true).unwrap();
+        let endpoint = LocalEndpoint::new(directory.path().join("fleet.sock"));
+        let listener = UnixListener::bind(endpoint.path()).unwrap();
+        let original = std::fs::symlink_metadata(endpoint.path()).unwrap();
+        assert!(bind_endpoint(&endpoint).is_err());
+        let retained = std::fs::symlink_metadata(endpoint.path()).unwrap();
+        assert_eq!(
+            (retained.dev(), retained.ino()),
+            (original.dev(), original.ino())
+        );
+        assert!(gcoms::sdk::local::connect(&endpoint).await.is_ok());
+        drop(listener);
+        endpoint.cleanup().unwrap();
+    }
+
+    #[tokio::test]
+    async fn regular_files_and_symlinks_are_preserved() {
+        let directory = tempfile::tempdir().unwrap();
+        private_fs::make_private(directory.path(), true).unwrap();
+        let endpoint = LocalEndpoint::new(directory.path().join("fleet.sock"));
+        std::fs::write(endpoint.path(), b"retained input").unwrap();
+        assert!(bind_endpoint(&endpoint).is_err());
+        assert_eq!(std::fs::read(endpoint.path()).unwrap(), b"retained input");
+        let target = directory.path().join("retained");
+        std::fs::rename(endpoint.path(), &target).unwrap();
+        std::os::unix::fs::symlink(&target, endpoint.path()).unwrap();
+        assert!(bind_endpoint(&endpoint).is_err());
+        assert!(std::fs::symlink_metadata(endpoint.path())
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(std::fs::read(target).unwrap(), b"retained input");
+    }
 }

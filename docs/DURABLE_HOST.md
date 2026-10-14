@@ -3,6 +3,29 @@
 Status: source and isolated lifecycle qualification passed; signed release and
 installed acceptance remain in progress (F5 / durable-host).
 
+Installed follow-up, 2026-10-14: the currently observed signed0.1.217 host retains
+the same identity, eleven conversations,203 fully paginated message digests and22
+operation records. Its fresh stopped backup contains39 regular files and
+102,540,193bytes; actual restoration in an isolated network namespace verifies
+every message digest and operation state. The original managed registration stays
+in the backup; only the isolated clone is explicitly relocated for restoration.
+Both update timers and the production service were restored after backup.
+
+The live fleet check found a further restart defect: an abandoned fleet socket
+still existed, so the fleet listener refused to bind although chat was ready.
+The startup journal and a causal retained-profile test show the same error.
+Fleet startup now uses the SDK's existing guarded socket preparation under one
+generation's owner lock, held through serving and cleanup. An active listener,
+ordinary file or symlink is refused; the runtime identity/partition checks remain
+before endpoint preparation. Actual disposable-daemon crash/relaunch recovers
+authenticated fleet attachment. Signed deployment and final installed fleet,
+message/file, rollback and login/reboot acceptance remain required.
+
+The earlier cache-count change is separately accounted for by authenticated
+seven-day expiry. Independent backup recovery restored the original41,988,496byte
+file with its original hash. This recovery is not a claim that expired live cache
+bytes survived. See the [current installed observation](evidence/durable-host/installed.json).
+
 Installed follow-up, 2026-10-13: the signed 0.1.214 successor is now installed.
 Its production host was activated after a consistent stopped backup and verified
 hotfix ancestry; only the superseded temporary override was retired. The host

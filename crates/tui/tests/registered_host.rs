@@ -6,8 +6,9 @@ use gchat_core::chat_service::{
     ChatEndpoint,
 };
 use gcoms::sdk::{
-    ipc::Capability,
+    ipc::{Capability, IpcClient},
     machine::{ComponentCredentials, ComponentRegistration, MachineRegistry},
+    GcClient,
 };
 use std::{
     path::{Path, PathBuf},
@@ -197,5 +198,93 @@ async fn configured_host_pid_and_legacy_clients_keep_their_attachment_boundaries
     assert!(!config.profile.exists());
     assert!(!config.archive.exists());
     drop((legacy, client));
+    worker.stop().await;
+}
+
+async fn fleet_identity(endpoint: &Path) -> String {
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            if let Ok(client) = IpcClient::connect_component(
+                endpoint,
+                "registered-fleet-fixture",
+                vec![Capability::IdentityRead],
+                ComponentCredentials {
+                    component_id: [2; 16],
+                    token: [7; 32],
+                },
+            )
+            .await
+            {
+                return client.refresh_identity().await.unwrap().safety_number;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("registered fleet authentication becomes ready")
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn crashed_scoped_daemon_reclaims_fleet_endpoint_and_authenticates() {
+    let dir = tempfile::tempdir().unwrap();
+    let (config, safety) = fixture(dir.path()).await;
+    let endpoint = config.protocol_socket.with_extension("fleet");
+    let selected = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    let executable = Path::new(env!("CARGO_BIN_EXE_gchat"));
+    let client = ensure_running_checked(&selected, executable, true)
+        .await
+        .unwrap();
+    let worker = Worker {
+        endpoint: selected.chat_endpoint(),
+        pid: server_pid(&selected.chat_endpoint()).unwrap(),
+    };
+    let instance = client.instance_id().to_owned();
+    client
+        .request(Request::Unlock {
+            passphrase: SECRET.into(),
+            create: false,
+        })
+        .await
+        .unwrap();
+    assert_eq!(fleet_identity(&endpoint).await, safety);
+    // Only the actual process serving this disposable profile may be killed.
+    assert_eq!(server_pid(client.endpoint()), Some(worker.pid));
+    assert!(std::process::Command::new("kill")
+        .args(["-KILL", &worker.pid.to_string()])
+        .status()
+        .unwrap()
+        .success());
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while server_pid(client.endpoint()).is_some() {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("owned crashed process releases its listeners");
+    assert!(
+        endpoint.exists(),
+        "abrupt termination retains the socket name"
+    );
+    drop((client, worker));
+
+    let reopened = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    let client = ensure_running_checked(&reopened, executable, true)
+        .await
+        .unwrap();
+    let worker = Worker {
+        endpoint: reopened.chat_endpoint(),
+        pid: server_pid(&reopened.chat_endpoint()).unwrap(),
+    };
+    assert_eq!(client.instance_id(), instance);
+    client
+        .request(Request::Unlock {
+            passphrase: SECRET.into(),
+            create: false,
+        })
+        .await
+        .unwrap();
+    assert_eq!(fleet_identity(&endpoint).await, safety);
+    client.request(Request::Disconnect).await.unwrap();
+    drop(client);
     worker.stop().await;
 }

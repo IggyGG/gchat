@@ -159,5 +159,36 @@
       "after": "chipsenkbeil/typed-path:src/native.rs, cosine0.7457/rerank0.9939, generic platform-native encodings"
     }
   },
+  "fleet_endpoint_recovery_20261014": {
+    "causal_source_baseline": "abc97490c2e038ecc11631397719ddac99e9c295",
+    "gcoms": "665d95e402bd62bface577cd80493aba608bc2df",
+    "original_installed_version": "0.1.217",
+    "original_installed_failure": "Fleet socket connection refused; startup journal reports IPC socket already exists. Chat/protocol remain served by the expected packaged host.",
+    "causal_test": "fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_lock",
+    "causal_exit_code": 101,
+    "causal_log_sha256": "b5d461dc8fc13d5cc3a328661e8a3a0489947a2d620248787727b87ec93e1d66",
+    "fleet_integration_passed": 4,
+    "endpoint_ownership_controls_passed": 3,
+    "actual_daemon_lifecycle_passed": 3,
+    "actual_sigkill_relaunch_and_authenticated_fleet_identity": true,
+    "fault_injection_profiles": "disposable only",
+    "strict_core_and_tui_all_target_clippy": true,
+    "format_passed": true,
+    "source_unchanged": true,
+    "seconds": 709.3453641060041,
+    "receipt_sha256": "b27dc0fa2c9f0740d6e40cc0af440aa89cc43dadbc2da60e6091c4e05dd62e3a",
+    "files": {
+      "crates/core/src/chat_service/fleet.rs": "382d6401316fa71d689241568fb6120f8e250ee59dc8176311a7c4cb292a186a",
+      "crates/core/tests/fleet_host.rs": "b0cedd87f1f8ad7e293968cb991f717c2cedc0190ff405330c82a8052507abb9",
+      "crates/tui/tests/registered_host.rs": "979b8d9d785ccc5526d0a265462e5f370c9258856e301588880e338a1f317126"
+    },
+    "comparison": {
+      "before": "bitdriftlabs/shared-core:logger-cli/src/service.rs, cosine0.6918/rerank0.0458",
+      "after": "2rueSid/reverprox-rs:server/src/server.rs, cosine0.729/rerank0",
+      "conclusion": "Generic listener implementations, no close lifetime-lock/stale-recovery implementation. Reuse the existing SDK preparation guards and prove live/non-socket refusal plus real crash recovery."
+    },
+    "signed_successor_qualified": false,
+    "installed_recovery_verified": false
+  },
   "remaining": "See installed.json; source and isolated proofs do not qualify signed release, live delivery, installed migration or final operational acceptance."
 }

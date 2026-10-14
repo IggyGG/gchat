@@ -1,3 +1,15 @@
+F5 / retained fleet socket recovery, 2026-10-14: the old source fails the extended
+`fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_lock` case
+on an abandoned Unix socket. The repair passes all4 fleet integration cases and3
+native endpoint controls: stale recovery with exclusive generation ownership,
+preservation of an active listener, and refusal of ordinary files/symlinks. The
+3actual CLI daemon cases include authenticated attachment after SIGKILL and cold
+registered reopen. No production profile is used for fault injection. The exact
+paired snapshot with GComs665d95e passes strict core/Tui all-target Clippy and
+formatting; the focused run takes709.345s. Old failure and input hashes are retained
+in `docs/evidence/durable-host/source.json`. This does not qualify a new signed or
+installed artifact by itself.
+
 F5 / deployed follow-through audit, 2026-10-14: sourceca310e6 passed503 checks in
 both its actual CI image and Kubernetes image, then the normal production canary.
 All271 running files match. A new source handoff schedules all seven targets, and

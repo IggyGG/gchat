@@ -1,3 +1,14 @@
+F5 / fleet endpoint recovery, 2026-10-14: actual signed217 attachment exposed a
+stale fleet socket after restart while chat remained available. The same retained
+profile regression fails the old source with `IPC socket already exists`. Fleet
+generations now use the existing guarded endpoint preparation under a lifetime
+owner lock. Four fleet integration cases, three endpoint ownership controls and
+three actual daemon lifecycle cases pass, including SIGKILL/relaunch followed by
+authenticated fleet identity. Strict core/Tui Clippy and formatting pass. A fresh
+signed217 backup also restores all203 message digests and22 operations in an
+isolated network namespace. Signed successor qualification, installed fleet
+acceptance and the broader live journey remain pending. [Evidence](docs/evidence/durable-host/source.json).
+
 F5 / native path qualification, 2026-10-14: both retained Mac217 failures are
 fixture EILSEQ at directory creation. Reopen/credential rotation now exercises
 Unicode and spaces on every platform; Unix byte-path references have a lossless

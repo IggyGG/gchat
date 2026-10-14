@@ -248,6 +248,37 @@ async fn fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_l
     assert_eq!(retained.identity().safety_number, safety);
     drop(retained);
     restarted.flush().await.unwrap();
+    drop(restarted);
+
+    #[cfg(unix)]
+    {
+        // Abrupt process exit leaves the filesystem name after its listener
+        // closes. A retained scoped host must reclaim that dead endpoint.
+        let abandoned = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+        drop(abandoned);
+        assert!(socket.exists());
+        let recovered =
+            InstanceHost::new(InstanceConfig::from_home(Some(dir.path())).unwrap()).unwrap();
+        assert!(matches!(
+            request(
+                &recovered,
+                Request::Unlock {
+                    passphrase: "fleet-test-passphrase".into(),
+                    create: false
+                }
+            )
+            .await,
+            Response::Snapshot { .. }
+        ));
+        let attached = attach(&socket, &fleet.registry.components[0].credentials).await;
+        assert_eq!(attached.identity().safety_number, safety);
+        assert_eq!(
+            attached.refresh_identity().await.unwrap().safety_number,
+            safety
+        );
+        drop(attached);
+        recovered.flush().await.unwrap();
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
