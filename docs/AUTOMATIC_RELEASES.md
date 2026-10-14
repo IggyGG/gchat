@@ -132,13 +132,33 @@ receipts are in `docs/evidence/release-follow-through-20261014/`.
 
 ### Approved cold native archives
 
-The release-state claim is272GiB after the2026-10-14 capacity follow-up. Free
+The release-state claim is 272 GiB after the 2026-10-14 capacity follow-up. Free
 space on a backing node does not automatically enlarge the claim's filesystem.
-The256→272GiB online expansion checked both existing healthy replicas against
-the unchanged25% minimum-free and120% scheduling policies before its version-
-checked PVC update. The mounted filesystem then reported29.16GiB free, above
-the unchanged16GiB release reserve. The hourly verified S3 archive continues;
+The 256→272 GiB online expansion checked both existing healthy replicas against
+the unchanged 25% minimum-free and 120% scheduling policies before its version-
+checked PVC update. The mounted filesystem then reported 29.16 GiB free, above
+the unchanged 16 GiB release reserve. The hourly verified S3 archive continues;
 this capacity change does not reset candidate deadlines or authorize retries.
+
+The follow-up controller `6bd07cf` is deployed after 503 actual-image checks,
+503 Kubernetes checks and the full production canary. Its 271 running source
+files match the frozen Git inventory. It restores GET-only Apple prerequisite
+observation after release 223 installed an older bundled controller. The first
+fresh result remains `IN_REVIEW`, including France; the original no-upload proof
+and paused publication budget remain intact. The source mirror also recovered
+automatically after its recorded GitHub quota reset. See the dated follow-up in
+`docs/evidence/release-follow-through-20261014/deployed.json`.
+
+Release 224's six native build windows expired while storage was unavailable.
+Their original requests, sources and deadlines remain retained; freeing capacity
+does not authorize new dispatches under those expired windows. The owned next
+action is a newly qualified immutable successor containing the required native
+source corrections. SDK collection resumed separately but found an archive hash
+mismatch, with overlapping consumers of the same unverified partial. Retain that
+partial and the original run; qualify a serialized collector correction before
+recovering the same immutable artifact. These blockers remain owned by `IggyGG`.
+The UI delivery is still partial: Linux 0.1.223, Android 1238 and SDK 0.1.222 are
+available; both Macs and Windows still advertise 0.1.176, and iOS is not published.
 
 `release_compaction.py --state /state --archive-native --archive-tool TOOL`
 adapts the existing infrastructure closed-file archive CLI to GChat eligibility.

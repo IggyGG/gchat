@@ -459,6 +459,157 @@
       "sha256": "723e5a7ed3b5ca4e255c6e1f89c5807e1d6584c06b6ceeb8896fff20676bb728"
     }
   ],
+  "capacity_follow_up": {
+    "observed_at": 1792016221,
+    "source_main": "84a17cb01da71fa38de61b37f82e4efbee9a82ab",
+    "scope": "release_storage_and_controller_recovery",
+    "storage": {
+      "claim": "ghost-com/gchat-release-state-hel",
+      "uid": "421763e9-a755-48c5-9a3a-c1b2fae330f5",
+      "old_gib": 256,
+      "new_gib": 272,
+      "healthy_replicas_preserved": 2,
+      "minimum_available_percent": 25,
+      "over_provisioning_percent": 120,
+      "free_bytes_after_controller_qualification": 26445824000,
+      "release_reserve_bytes": 17179869184,
+      "version_checked_online_expansion": true,
+      "original_native_deadlines_preserved": true
+    },
+    "controller": {
+      "source": {
+        "commit": "6bd07cfa2a1837e496df5dad1916bba21b882551",
+        "tree": "66701842614ec9b8d772fc6343910a666b112c14"
+      },
+      "image": "127.0.0.1:30444/ghost/gchat-release@sha256:9c088a6718f04b702ded3e9bd4d21a823aed96542315a2bc327976061b22a735",
+      "intent_id": "aa8583e5635f92c0509716795eed0799aafe6eabc1475ad6ac29d2632747ee50",
+      "original_failed_intent_preserved": "63759ceba6c06dba7fe7363b09c605e078be2b29a7c414a46bc059c18269556c",
+      "provider_run": 38644251865,
+      "provider_attempt": 1,
+      "artifact_id": 11930684331,
+      "artifact_sha256": "961aff3e1b5eacf9b0e28c06c66d935fdd86eeefb28062524e8ed16be6b14ba4",
+      "focused_compaction_tests": 232,
+      "actual_image_tests": 503,
+      "kubernetes_tests": 503,
+      "running_source_files_verified": 271,
+      "inventory_sha256": "8b2bdfde4dd9b0d1babd23de4927fec6e9b8650404106d824504316e4daa32d9",
+      "deployment_state": "deployed",
+      "full_canary_passed": true,
+      "canary_receipt_sha256": "8c4bd8a92255b6485ead08779cba640ef3ca880b41a82ed79e89bc8688b1ff78"
+    },
+    "source_mirror": {
+      "quota_reset_at": 1792014964,
+      "automatic_post_reset_success_at": 1792015016,
+      "audited_mirroring_preserved": true
+    },
+    "apple": {
+      "observation_at": 1792015824,
+      "state": "IN_REVIEW",
+      "includes_france": true,
+      "next_poll_at": 1792016741,
+      "stage": "prerequisite",
+      "original_submit_request": "8c189f2f3291195d3e2f58fed2b96461522e8f4c13474ec55792ca93e24a712e",
+      "original_no_upload_sha256": "b67375077984807520b93764e87ce7ff447480104f5af87de13023ef70c85d3e",
+      "uploaded": false,
+      "submitted": false,
+      "publication_budget_paused": true,
+      "published": false
+    },
+    "ui_delivery": {
+      "id": "5cd20d425e49b9f474486384adf689d562783ace699d54f62ed41374257daa88",
+      "state": "partially_published",
+      "fulfilled_count": 3,
+      "required_count": 7,
+      "published_containing_change": {
+        "linux-x86_64": "0.1.223",
+        "android": "1238",
+        "sdk": "0.1.222"
+      },
+      "older_public_desktops": {
+        "macos-aarch64": "0.1.176",
+        "macos-x86_64": "0.1.176",
+        "windows-x86_64": "0.1.176"
+      },
+      "ios_published": false
+    },
+    "remaining_blockers": [
+      {
+        "candidate": "ebedfae868bcce6b408b649d4f8755f23bdb4b00b3ebaac86d0e88c7d9d934a9",
+        "platforms": ["linux-x86_64", "macos-aarch64", "macos-x86_64", "windows-x86_64", "android", "ios"],
+        "owner": "IggyGG",
+        "reason": "Original native build window expired while storage was unavailable.",
+        "original_started_at": 1791999966,
+        "original_deadline_at": 1792003566,
+        "next_action": "Qualify a new immutable source-containing successor with the required native corrections; reconcile original requests without resetting their deadlines."
+      },
+      {
+        "platform": "sdk",
+        "owner": "IggyGG",
+        "reason": "Resumed collection found a hash mismatch; two consumers overlapped on the same unverified partial.",
+        "original_run": 38587602758,
+        "artifact_id": 11917160927,
+        "expected_sha256": "5cdaf524f50617a6b90cc775de684d1de68a57abdb0aad3b4be9e0c94b08b01e",
+        "retained_partial_sha256": "f73d971d1dc0b4d56447fd1eb5892e41f7c9f9f6a1fe8f1358b1947a1042f56b",
+        "next_action": "Preserve the failed bytes; qualify serialized collection and reconcile the same immutable artifact. Existing public SDK 0.1.222 remains available."
+      }
+    ],
+    "code_comparison": {
+      "path": "borgbackup/borg:src/borg/testsuite/archiver/compact_cmd_test.py",
+      "cosine": 0.7218,
+      "rerank": 0.26635,
+      "conclusion": "Broad archival-test similarity only; the local fixture deterministically replaces an inode and verifies all unaffected bytes and original receipts."
+    },
+    "evidence": [
+      {
+        "path": "test-evidence/release-capacity-followup/volume-expansion-before.json",
+        "sha256": "434285e16fe144e4063decb94ac840186273da3327041a9405571f59828dbb87"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/volume-expanded.json",
+        "sha256": "5e9c462f7b61e5bd24db9394e92edc75aba1c0c4570d7de4badc224bcc5143fb"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/physical-capacity-after.json",
+        "sha256": "88c0535281aea2bafd92b028ecab68aa3417aea9322e4d9834be97f2e8973e7d"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/compaction-fixture-tests.log",
+        "sha256": "4d717e78cd34a8131bfa73ef69d1cc9edbcaf34e7c49312c701c85802057fd17"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/corrected-controller-and-review.json",
+        "sha256": "548811d7199e4aaa79b875b068e9210f0eb54ed1cecfb378cb7e0caf21f0ee9e"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/live-post-repair-controls.json",
+        "sha256": "fdad9124897941d931952e33b927ac85ecbd6febe924e5436b191985aa42f0e9"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/apple-observation-continuing.json",
+        "sha256": "dd13a4155cfb65f252fc22f62bf5595eedc9264b4ada579176eb5a8bb6f19a4b"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/independent-source-binding.json",
+        "sha256": "0c1323b394a9fc993573faa82c1ea805a9d2b2983de8ceba634486d3ad3e5506"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/unchanged-original-deadlines.json",
+        "sha256": "05b1dd457835d7d06f2f4544822500138c7814eb804ace54d52e559c2c4fb32e"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/final-status.json",
+        "sha256": "1c4995f00b4cfce41b59c27682c809a56495cde6bab5e603a09fa8a64731ef39"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/sdk-collection-attempts.json",
+        "sha256": "34f258bdecb73df6f75c1c901adb2cdc8d172302b06a1d2f9c818ee3828d8c7f"
+      },
+      {
+        "path": "test-evidence/release-capacity-followup/sdk-archive-framing.json",
+        "sha256": "4a4e57a4f7e78d715052e764030f2ae847212b521388b784117f760cbbd80d88"
+      }
+    ]
+  },
   "code_comparison": [
     {
       "path": "enso-org/enso:tools/performance/engine-benchmarks/bench_tool/gh.py",

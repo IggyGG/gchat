@@ -17,8 +17,14 @@ fixture now atomically replaces the victim with a distinct inode, deterministica
 testing the intended path-replacement race. It still requires the original guard
 message and now additionally checks unchanged canonical/sibling bytes, native
 archive and receipt, plus temporary-link cleanup. Production guards are unchanged.
-All32 compaction controls plus200 repetitions pass (232tests,6.410s). The corrected
-source must pass the normal actual-image/Kubernetes qualification before activation.
+All 32 compaction controls plus 200 repetitions pass (232 tests, 6.410s). Corrected
+source 6bd07cf subsequently passed 503 actual-image and 503 Kubernetes checks;
+normal deployment and the full production canary passed. All 271 running files
+match the source inventory. The live 272 GiB release claim has 24.63 GiB free after
+qualification, above its unchanged 16 GiB reserve. Fresh Apple IN_REVIEW evidence
+and the next GET schedule are retained; original no-upload proof and native build
+deadlines are unchanged. This repairs capacity/controller operation, not the
+remaining native source failures or an all-platform publication claim.
 
 F5 / deployed follow-through audit, 2026-10-14: sourceca310e6 passed503 checks in
 both its actual CI image and Kubernetes image, then the normal production canary.
