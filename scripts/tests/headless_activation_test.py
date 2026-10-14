@@ -88,6 +88,26 @@ class ActivationTests(unittest.TestCase):
         self.assertEqual(self.activate()['state'], 'activated')
         self.assertEqual(sum(call.args[0] == 'try-restart' for call in self.action.call_args_list), 1)
 
+    def test_transient_new_process_permission_does_not_fail_completed_restart(self):
+        self.process.side_effect = [self.before, self.before, PermissionError('proc transition'),
+                                    self.after, self.after]
+        result = self.activate()
+        self.assertEqual(result['state'], 'activated')
+        self.assertEqual(result['after'], self.after)
+        self.assertEqual(sum(call.args[0] == 'try-restart' for call in self.action.call_args_list), 1)
+        self.assertEqual(json.loads(self.marker.read_text()), result)
+
+    def test_persistent_unreadable_process_times_out_without_restarting_again(self):
+        self.process.side_effect = [self.before, self.before, PermissionError('still private')]
+        with patch.object(helper.time, 'monotonic', side_effect=[0, 1, 31]):
+            result = self.activate()
+        self.assertEqual(result['state'], 'failed')
+        self.assertIn('did not remain active', result['reason'])
+        self.assertIn('restart_requested_at', result)
+        self.process.side_effect = None
+        self.assertEqual(self.activate()['state'], 'suppressed')
+        self.assertEqual(sum(call.args[0] == 'try-restart' for call in self.action.call_args_list), 1)
+
     def test_lost_prepare_response_is_not_a_restart_permission(self):
         self.lease.prepare.side_effect = OSError('interrupted')
         self.assertEqual(self.activate()['state'], 'failed')
@@ -215,6 +235,14 @@ class ExecutableTests(unittest.TestCase):
              patch.object(helper.time, 'sleep'):
             self.assertEqual(helper.wait_running(package, 1), new)
         self.assertEqual(process.call_count, 6)
+
+    def test_unreadable_observation_breaks_the_stable_process_sequence(self):
+        package = {'path': '/usr/bin/gchat', 'sha256': 'new'}
+        new = {**package, 'pid': 2}
+        with patch.object(helper, 'process', side_effect=[new, PermissionError('proc transition'), new, new]) as process, \
+             patch.object(helper.time, 'sleep'):
+            self.assertEqual(helper.wait_running(package, 1), new)
+        self.assertEqual(process.call_count, 4)
 
 
 @unittest.skipUnless(sys.platform == 'linux', 'Linux kernel-owned maintenance socket')

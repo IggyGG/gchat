@@ -14,6 +14,35 @@ the installed activation helper matches the qualified source. The
 records this cutover; the broader lifecycle requirements below retain their own
 acceptance scope.
 
+Installed follow-up, 2026-10-14: the normal package/activation timers advanced the
+workstation to signed0.1.216, containing GComs9e889b7's channel-recovery fairness
+repair. The public DEB, existing-key signature and both executable hashes were
+independently verified. The actual packaged host preserves the same identity,
+partition, eleven memberships, all202 recorded messages and165 cache files.
+A fresh current-state backup after this automatic migration contains201 files
+and135,111,879bytes, copied with the host stopped and profile/launch locks held.
+Both timers and the service were restored afterward. This is a post-migration
+backup, separate from the stopped pre-migration backup taken for0.1.214.
+
+The automatic0.1.216 activation receipt recorded `PermissionError` after its
+restart request, although the new matching process subsequently ran normally.
+The original receipt remains failed. The process observer now treats an
+unreadable `/proc` observation like a disappearing process: it breaks the stable
+observation pair and waits within the original30-second deadline. It still needs
+two consecutive matching PID/path/hash observations; persistent unreadability
+fails and preserves the one-attempt restart guard. Three causal controls fail
+on the previous helper, and all35 activation/input controls pass after the fix.
+This qualifies the observer correction in source; it does not relabel the old
+activation receipt or complete the outstanding live delivery/lifecycle gates.
+
+Retained observer checks: `activation-proc-permission-before-1` and
+`activation-proc-permission-after-1` under the durable-host private evidence root.
+Before/after code comparison found generic process polling in
+`GarageGames/Qt:qt-5/qtwebkit/Tools/Scripts/webkitpy/common/system/executive.py`
+(cosine0.6502/rerank0.0230 before;0.6500/0.0255 after). It checks process presence;
+this helper additionally binds the exact executable and requires a stable pair.
+No implementation was copied, and the index did not identify a close match.
+
 An instance with retained component ownership must reopen through its configured
 host. A desktop launch previously depended entirely on `--fleet-config`; when its
 managed daemon was stopped and the shortcut omitted that argument, a personal

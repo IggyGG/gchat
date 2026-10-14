@@ -1,3 +1,11 @@
+F5 / durable-host, 2026-10-14: signed0.1.216 is installed and its packaged host
+is independently verified against the public artifact. All202 recorded messages,
+eleven memberships and retained cache survive its normal automatic update and a
+subsequent stopped-backup/restart. The updater's original post-restart
+PermissionError observation remains failed; its bounded observer correction
+passes35 focused controls, including three causal cases. Live peer/file/fleet and
+remaining installed lifecycle acceptance continue. See [the current contract](docs/DURABLE_HOST.md).
+
 F5 / durable-host, 2026-10-13: source repair qualified; signed deployment and
 installed acceptance remain in progress. Owner-private host registration, bounded
 managed cold start, kernel PID/UID plus instance/configuration binding, and

@@ -1,3 +1,12 @@
+F5 activation process observation, 2026-10-14: transient `/proc` PermissionError
+after a single restart must break the stable observation pair, then permit success
+only after two consecutive exact PID/path/hash observations. Persistent denial
+must expire the original30-second deadline and suppress another restart. The
+three new controls fail on the old helper; all35 activation/input checks pass
+after the correction. Preserve the actual0.1.216 failed activation receipt and
+separately verify installed/running bytes and retained state. Qualified helper
+installation and native lifecycle completion retain their own evidence scope.
+
 F5 / durable-host, 2026-10-13: run the causal
 `retained_fleet_reopen_recovers_without_launcher_arguments` integration test against
 baseline and repaired paired sources. Registration and startup controls must reject
