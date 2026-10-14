@@ -132,6 +132,14 @@ receipts are in `docs/evidence/release-follow-through-20261014/`.
 
 ### Approved cold native archives
 
+The release-state claim is272GiB after the2026-10-14 capacity follow-up. Free
+space on a backing node does not automatically enlarge the claim's filesystem.
+The256→272GiB online expansion checked both existing healthy replicas against
+the unchanged25% minimum-free and120% scheduling policies before its version-
+checked PVC update. The mounted filesystem then reported29.16GiB free, above
+the unchanged16GiB release reserve. The hourly verified S3 archive continues;
+this capacity change does not reset candidate deadlines or authorize retries.
+
 `release_compaction.py --state /state --archive-native --archive-tool TOOL`
 adapts the existing infrastructure closed-file archive CLI to GChat eligibility.
 The default uploads and independently restores/verifies; `--retire-archived`
