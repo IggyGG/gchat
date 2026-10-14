@@ -134,5 +134,30 @@
       "conclusion": "Generic backup-lock tests; no close implementation. Nonblocking owner locking and archive-required retention are directly regression-tested."
     }
   },
+  "native_path_qualification_20261014": {
+    "original_mac_runs": [38488672438, 38488673252],
+    "original_failure": "EILSEQ92 at fixture create_dir_all, before host-registration code",
+    "all_platforms": "Unicode and spaces in real saved-host reopen and credential rotation",
+    "unix": "lossless raw-byte LocalPath JSON roundtrip",
+    "linux": "real non-UTF-8 profile-directory reopen",
+    "linux_registration_cases_passed": 8,
+    "ignored_cases": 0,
+    "format_passed": true,
+    "strict_core_all_target_clippy_passed": true,
+    "canonical_lockfiles_unchanged": true,
+    "source_unchanged_after_private_lock_preparation": true,
+    "gcoms": "712d671d3cde2e012c99196a0c73a788c8efbfbb",
+    "fixture_sha256": "81354608a603eef3bd3cf8a1f445179d9e7ab1e1c1a2f3736bcff2a8ce76a85b",
+    "receipt_sha256": "bb2e6ab484d38b5902b6d4ad1a1511e589c67f5b8e3103916261dad3f5eea70e",
+    "private_lock_sha256": "41253cd8f92ef08fc6ecb02f4e3024ca39afe68e6f7363612639d728024efe89",
+    "test_log_sha256": "44ca4c8014c808f01a36f0fd54d0538885f0534e5d82ad28255078675867e423",
+    "clippy_log_sha256": "023efdc314750e5f072aa3c7e04ac4569509a17ef5b0fb4ac12ef475570d454d",
+    "first_private_lock_audit_failure_retained": true,
+    "new_mac_native_gate": "pending",
+    "code_comparison": {
+      "before": "gramistella/stitch:tests/non_utf8_filenames_unix.rs, cosine0.6744/rerank0.9713, fetched Linux-native filesystem scope",
+      "after": "chipsenkbeil/typed-path:src/native.rs, cosine0.7457/rerank0.9939, generic platform-native encodings"
+    }
+  },
   "remaining": "See installed.json; source and isolated proofs do not qualify signed release, live delivery, installed migration or final operational acceptance."
 }
