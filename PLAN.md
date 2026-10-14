@@ -79,6 +79,17 @@ surface exact unittest identifiers. Bounded artifact GETs retain a source/hash-
 bound prefix across timeout and resume only the exact remaining range; they do
 not dispatch another native build or reset its original deadlines.
 
+The recovery controller's original run38571491447 failed inside image
+qualification and retained no failure artifact. Reproducing its read-only,
+noexec scratch environment exposed two new fake-CLI fixtures trying to execute
+scratch files. Both causal failures are retained. The fixtures now invoke their
+owned source through Python while preserving real pipes, exit/timeout handling,
+argv and byte assertions. All53 provider controls pass on Python3.12 with the
+original noexec mount and without site-packages. Failed controller qualification
+now uploads a separately named failure artifact; only a successful run can create
+the qualified bundle consumed by deployment. Actual successor-image qualification
+remains required.
+
 The live classifier bootstrap exposed a retained rollback-snapshot collision:
 successive controller images shared one native release's first before-image.
 New activations now freeze an inventory-revision worker directory with their

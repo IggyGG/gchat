@@ -90,7 +90,6 @@ class NativeRunBindingTests(unittest.TestCase):
         api.assert_called_once_with('actions/runs/123')
         self.assertEqual((self.root / 'run.json').read_bytes(), before)
 
-    @unittest.skipUnless(os.name == 'posix', 'controller gh fixture requires a POSIX executable')
     def test_original_completed_artifact_resumes_legacy_partial_without_redispatch(self):
         import io
         self.discover()
@@ -115,7 +114,14 @@ if expected not in sys.argv:
 header = 'HTTP/1.1 206 Partial Content\\r\\nContent-Length: %d\\r\\nContent-Range: bytes %d-%d/%d\\r\\n\\r\\n' % (len(data)-offset, offset, len(data)-1, len(data))
 sys.stdout.buffer.write(header.encode() + data[offset:])
 ''')
-        executable.chmod(0o700)
+        executable.chmod(0o600)
+        real_popen = subprocess.Popen
+        def fixture_transport(command, *args, **kwargs):
+            self.assertEqual(command[0], 'gh')
+            # The qualified image deliberately mounts scratch noexec. Invoke
+            # this owned source fixture with Python, retaining the real pipe,
+            # process exit and exact gh arguments used by the downloader.
+            return real_popen([sys.executable, '-S', str(executable), *command[1:]], *args, **kwargs)
         completed = {**self.run, 'status': 'completed', 'conclusion': 'success'}
         artifact = {'id': 456, 'name': self.target, 'expired': False,
                     'digest': 'sha256:' + hashlib.sha256(data).hexdigest(), 'size_in_bytes': len(data),
@@ -124,7 +130,7 @@ sys.stdout.buffer.write(header.encode() + data[offset:])
                            'run_attempt': 1, 'head_sha': self.run['head_sha'], 'status': 'completed', 'conclusion': 'success'}]}
         with patch('release_jobs.gh', side_effect=[completed, checks, {'artifacts': [artifact]}]) as api, \
              patch('release_provider.github_log_options', return_value=[]), \
-             patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}):
+             patch('release_provider.subprocess.Popen', side_effect=fixture_transport):
             result = self.collect()
         self.assertEqual((self.root / 'native.zip').read_bytes(), data)
         self.assertEqual((self.root / 'native.zip').stat().st_mode & 0o777, 0o600)
@@ -658,7 +664,6 @@ class ArtifactDownloadTests(unittest.TestCase):
             self.call()
         self.assertEqual(self.partial.read_bytes(), self.payload[:100])
 
-    @unittest.skipUnless(os.name == 'posix', 'controller gh fixture requires a POSIX executable')
     def test_real_timeout_reaps_transport_and_keeps_its_last_partial_buffer(self):
         response = self.response(body=self.payload[:50000])
         (self.root / 'response').write_bytes(response)
@@ -669,13 +674,14 @@ sys.stdout.buffer.write(Path(__file__).with_name('response').read_bytes())
 sys.stdout.buffer.flush()
 time.sleep(30)
 ''')
-        executable.chmod(0o700)
+        executable.chmod(0o600)
         original = subprocess.Popen
         processes = []
-        def spawn(*args, **kwargs):
-            process = original(*args, **kwargs); processes.append(process); return process
-        with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}), \
-             patch('release_provider.subprocess.Popen', side_effect=spawn), \
+        def spawn(command, *args, **kwargs):
+            self.assertEqual(command[0], 'gh')
+            process = original([sys.executable, '-S', str(executable), *command[1:]], *args, **kwargs)
+            processes.append(process); return process
+        with patch('release_provider.subprocess.Popen', side_effect=spawn), \
              self.assertRaises(subprocess.TimeoutExpired):
             self.call(timeout=.3)
         self.assertEqual(len(processes), 1)

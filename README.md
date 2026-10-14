@@ -1043,3 +1043,9 @@ the build host. Native failure follow-ups identify the original test/job and kee
 their earlier snapshots when the diagnostic worker changes. Interrupted immutable
 artifact downloads retain their verified request binding and resume the exact
 remaining byte range under the original collection timeout.
+
+Controller qualification keeps scratch non-executable. Its fake transport
+fixtures run through the Python interpreter and still exercise actual child
+processes and bounded pipes. Failed image checks retain a separately named
+failure artifact, while deployment continues to require the successful,
+source-bound controller bundle.
