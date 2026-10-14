@@ -63,6 +63,11 @@ controller-only bootstrap for the pending cross-platform follow-through rollout.
 
 ## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
 
+Native CI explicitly runs the provider contract without site-packages, then the
+full signing/network suite with its declared cryptography dependency. This real
+qualification-input correction follows ordinary source discovery into a new
+immutable all-platform candidate; the original221 failures remain authoritative.
+
 Live source1a10269 is qualified and deployed, including the seven-target delivery
 projection, stage fingerprints, owned tasks and notification consumer. UI214 is
 honestly partial: Linux217, Android1231 and SDK220 contain the change; old public

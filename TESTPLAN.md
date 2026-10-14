@@ -8,6 +8,18 @@ Private source overrides are resolved before locked qualification; preserve both
 canonical lockfiles and record the derived lock. New Mac native results remain
 the platform acceptance gate.
 
+F5 / native provider boundary, 2026-10-14: `scripts/ci.py` now runs the provider
+contract suite with site-packages disabled before the complete Python suite.
+Real cryptographic signing checks retain their declared dependency in the full
+suite. This stricter native qualification input creates a new immutable candidate
+through ordinary discovery; failed221 receipts are retained, not retried with a
+different source label. The provider/no-site controls and the complete suite are
+qualified separately as recorded below. The final committed recovery modules
+pass1,195 Python tests with one existing Windows DACL skip (120.014s), and the
+native provider boundary passes53 tests with site-packages disabled (4.906s).
+Exact committed hashes match the full-suite snapshot. These source results do
+not replace qualification of the recovery image or the original signed artifact.
+
 F5 / portable provider and retained downloads, 2026-10-14: run the provider,
 failure and coordinator controls with `python3 -S`; all122 pass. A subprocess
 without site-packages reproduces the actual native-runner HTTP-fixture boundary.

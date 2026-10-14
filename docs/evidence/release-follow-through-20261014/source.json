@@ -5,7 +5,17 @@
   "implementation_commit": "6654fbba84d92c7f33e845db8061075eff1761c9",
   "feature_branch": "agent/release-follow-through-235635c9",
   "classifier_bootstrap_main_commit": "21d068a02563495c1ff8b24fa2faccadbcbfe18d",
-  "runtime_features_deployed": false,
+  "runtime_features_deployed": true,
+  "runtime_feature_deployment": {
+    "source": "1a10269fbca65d8216e18cf8d2303224c903d25a",
+    "image": "sha256:df21964b98c72ccc97433b87b5285ec3c52f671d936f36a8176b45d82fe0fc66",
+    "image_and_kubernetes_tests_each": 482,
+    "running_source_files_verified": 271,
+    "matching_healthy_infrastructure_targets": 17,
+    "immediate_rollback_image": "sha256:9303bdc53d6cfb7e82680084c251b34155c57559ce0ecdaebc254558d0efc151",
+    "legacy_rollback_evidence_preserved": true,
+    "observation_sha256": "862046881363a1a4a4ecbac094b97ac249d6fa791979462ff3323ed877fe2309"
+  },
   "all_platform_publication_complete": false,
   "validation": {
     "full_python_checkpoint": {
@@ -58,7 +68,7 @@
     ],
     "provider_operations": "Read-only original-run/job/artifact collection; no native dispatch or retry was requested by these probes."
   },
-  "activation_blocker": {
+  "original_activation_blocker": {
     "state": "waiting_storage",
     "free_bytes_observed": 12737363968,
     "required_free_bytes": 17179869184,
@@ -84,6 +94,22 @@
     {"reference": "enso-org/enso:tools/performance/engine-benchmarks/bench_tool/gh.py", "cosine": 0.7378, "rerank": 0.9801, "comparison": "Same argv-based gh transport; this implementation bounds private output and deadlines and preserves mutation request identity."},
     {"reference": "openclaw/openclaw:scripts/full-release-validation-policy.mjs", "cosine": 0.6943, "rerank": 0.0314, "comparison": "No close publication-proof implementation; local guards require ledger-confirmed source/platform-bound availability and the latest store observation."}
   ],
+  "retained_artifact_recovery_source": {
+    "commit": "c25f13a4b0522f70093c69a02d7ea39f8e35a9be",
+    "causal_original_collection_failed": true,
+    "affected_module_tests_passed": 153,
+    "full_python_tests_passed": 1195,
+    "full_python_existing_skips": 1,
+    "full_python_seconds": 120.014,
+    "full_python_log_sha256": "3be32f9de69560c34fa3fbadedffbabf9dde3f894520a0554569c4f1e2aa0d7e",
+    "committed_code_matches_tested_hashes": true,
+    "native_provider_without_site_packages_passed": 53,
+    "native_collection_timeout_seconds": 600,
+    "controller_collection_timeout_seconds": 900,
+    "original_request_ids_and_failure_records_preserved": true,
+    "actual_recovery_image_activation": "pending",
+    "code_comparison": "Generic artifact transport/publication only: openclaw/openclaw:scripts/release-ci-summary.mjs cosine0.6394/rerank0.1163. This implementation additionally binds immutable artifact metadata, validates exact byte ranges and final SHA256, preserves partial progress, and refuses changed framing or source identity."
+  },
   "remaining_definition_of_done": [
     "Qualified classifier and feature controller image activation through the normal source-bound deployment path",
     "Installed policy configuration and source-mirror notification consumer verification",

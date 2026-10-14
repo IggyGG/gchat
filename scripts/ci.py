@@ -47,6 +47,9 @@ if args.gcoms:
 def run(args):
     subprocess.run(args,cwd=root,check=True)
 run([sys.executable,'scripts/check-source.py'])
+# Exercise the provider contract without optional transport packages. The full
+# signing/network suite below still uses its declared cryptography dependency.
+run([sys.executable,'-S','-m','unittest','discover','-s','scripts/tests','-p','release_provider_test.py'])
 run([sys.executable,'-m','unittest','discover','-s','scripts/tests','-p','*_test.py'])
 if sys.platform=='win32':
     run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','RemoteSigned',
