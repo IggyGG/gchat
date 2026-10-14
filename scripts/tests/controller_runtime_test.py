@@ -15,6 +15,20 @@ from release_pair import canonical
 
 
 class ControllerRuntimeTests(unittest.TestCase):
+    def test_source_bound_successor_can_add_suites_but_never_drop_original_gates(self):
+        source = {'commit': 'a' * 40, 'tree': 'b' * 40}
+        proof = {'schema': 1, 'passed': True, 'source': source, 'source_unchanged': True,
+                 'production_controller_revision_tested': True, 'tests': 1000,
+                 'source_files_verified': 1000, 'suites': [*runtime.SUITES, 'new_qualified_check'],
+                 'inventory_sha256': 'c' * 64, 'configuration_digest': 'd' * 64}
+        runtime.validate(proof, source, 'd' * 64)
+        for suites in ([*runtime.SUITES[1:], 'new_qualified_check'],
+                       [*runtime.SUITES, runtime.SUITES[0]], [*runtime.SUITES, '../other']):
+            with self.subTest(suites=suites[-1]), self.assertRaises(ValueError):
+                runtime.validate({**proof, 'suites': suites}, source, 'd' * 64)
+        with self.assertRaises(ValueError):
+            runtime.validate(proof, {**source, 'commit': 'e' * 40}, 'd' * 64, historical=True)
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

@@ -42,6 +42,11 @@ Release operations repaired, 2026-10-05: controller `7c0db5c` is active after 25
 
 # GChat
 
+Controller qualification accepts additional source-bound test suites while keeping
+every baseline gate mandatory. Historical hash-pinned overlays retain their exact
+source/image evidence. This compatibility bootstrap allows follow-through checks
+to be added through the ordinary qualified controller update path.
+
 Release ledger archival supports `backup_archive_required: true` on the POSIX
 controller. It retains closed daily snapshots for the verified archive worker and
 coordinates rotation with that worker's lock. Enable it with qualified off-site

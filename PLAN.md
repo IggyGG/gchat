@@ -48,6 +48,11 @@ F5 release simplification, 2026-10-07: implemented shared production relay/fixtu
 
 Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrastructure targets; Linux, Windows, ARM Mac and SDK 0.1.167 are published. Controller-only qualification, persistent provider polling/cooldowns and explicit Intel-only unchanged-runtime deployment provenance are under validation. Android 1182 observation resumes its accepted submission; iOS 1.1.82 still requires Apple encryption approval. Intel cold-member recovery now uses the final durable checkpoint, with a separate native diagnostic. No new chat API or wire version is introduced. Source implementation does not itself claim activation or store availability.
 
+Controller qualification compatibility, 2026-10-14: retain the full baseline suite
+floor while allowing a source-bound successor to add checks. Missing, duplicate or
+unsafe suite identities and changed source/image bindings still fail. This is a
+controller-only bootstrap for the pending cross-platform follow-through rollout.
+
 ## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
 
 In progress: bootstrap exact reviewed documentation/controller input paths, then

@@ -79,6 +79,11 @@ Routine publication now verifies the native build, signatures, permissions, star
 
 ## Cross-platform follow-through qualification (2026-10-14)
 
+The controller-runtime compatibility control must accept an exact-source proof
+with added test suites and reject a removed baseline gate, duplicate/unsafe suite
+identity, changed source or changed configuration. New-image generation still runs
+its entire declared suite list with zero skips before producing a passing proof.
+
 Run `release_inputs_test.py` for exact reviewed IRC UX documents/receipts and
 controller-only helpers. Unknown evidence, scripts, workflows, signing and runtime
 inputs must still invalidate artifacts. Bootstrap the classifier in the actual
