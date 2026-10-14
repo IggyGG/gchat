@@ -57,6 +57,15 @@ class FailureTests(unittest.TestCase):
         self.assertEqual(failure.failed_checks(text), ['LifecycleTests.GChatLifecycleTests testProfileBackgroundAndReopen',
             'android_release_cluster_test', 'chat_service::host_registration::tests::native_paths'])
 
+    def test_timestamped_and_nested_unittest_failures_expose_only_identifiers(self):
+        name = 'release_provider_test.ProviderTests.test_store_request_keeps_unknown_commit_and_never_reuploads_after_quota'
+        text = ('2026-10-14T11:23:58.3097989Z ERROR: test_store_request (' + name + ')\n'
+                'FAIL: test_fixture (controller_runtime_test.RuntimeTests.test_failure.<locals>.Failed.test_bad)\n'
+                'ERROR: test_secret (module.Tests.test_secret password=private)\n'
+                'private-token=do-not-publish')
+        self.assertEqual(failure.failed_checks(text), [name])
+        self.assertEqual(failure.failed_checks('ERROR: test_store_request (' + name + ')\n'), [name])
+
     def test_bound_logs_are_immutable_reused_and_tampering_is_rejected(self):
         report, ref = self.diagnose()
         self.assertTrue(report['native_retry_eligible'])

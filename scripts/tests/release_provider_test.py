@@ -90,6 +90,47 @@ class NativeRunBindingTests(unittest.TestCase):
         api.assert_called_once_with('actions/runs/123')
         self.assertEqual((self.root / 'run.json').read_bytes(), before)
 
+    @unittest.skipUnless(os.name == 'posix', 'controller gh fixture requires a POSIX executable')
+    def test_original_completed_artifact_resumes_legacy_partial_without_redispatch(self):
+        import io
+        self.discover()
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, 'w') as bundle:
+            bundle.writestr('original-evidence.txt', 'original protected native artifact')
+        data = payload.getvalue()
+        offset = len(data) // 2
+        (self.root / 'payload').write_bytes(data)
+        partial = self.root / 'native.partial'
+        partial.write_bytes(b'HTTP/1.1 200 OK\r\nContent-Length: ' + str(len(data)).encode()
+                            + b'\r\n\r\n' + data[:offset])
+        partial.chmod(0o644)  # The original collector's real default mode.
+        executable = self.root / 'gh'
+        executable.write_text('#!' + sys.executable + '\n' + '''import sys
+from pathlib import Path
+data = Path(__file__).with_name('payload').read_bytes()
+offset = len(data) // 2
+expected = 'Range: bytes=' + str(offset) + '-' + str(len(data)-1)
+if expected not in sys.argv:
+    raise SystemExit('original full transfer cannot finish; retained prefix must be resumed')
+header = 'HTTP/1.1 206 Partial Content\\r\\nContent-Length: %d\\r\\nContent-Range: bytes %d-%d/%d\\r\\n\\r\\n' % (len(data)-offset, offset, len(data)-1, len(data))
+sys.stdout.buffer.write(header.encode() + data[offset:])
+''')
+        executable.chmod(0o700)
+        completed = {**self.run, 'status': 'completed', 'conclusion': 'success'}
+        artifact = {'id': 456, 'name': self.target, 'expired': False,
+                    'digest': 'sha256:' + hashlib.sha256(data).hexdigest(), 'size_in_bytes': len(data),
+                    'workflow_run': {'id': 123, 'head_sha': self.run['head_sha']}}
+        checks = {'jobs': [{'id': 789, 'name': 'macos (macos-x86_64)', 'run_id': 123,
+                           'run_attempt': 1, 'head_sha': self.run['head_sha'], 'status': 'completed', 'conclusion': 'success'}]}
+        with patch('release_jobs.gh', side_effect=[completed, checks, {'artifacts': [artifact]}]) as api, \
+             patch('release_provider.github_log_options', return_value=[]), \
+             patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}):
+            result = self.collect()
+        self.assertEqual((self.root / 'native.zip').read_bytes(), data)
+        self.assertEqual((self.root / 'native.zip').stat().st_mode & 0o777, 0o600)
+        self.assertEqual(result['external_id'], '123')
+        self.assertTrue(all(c.kwargs.get('method', 'GET') == 'GET' for c in api.call_args_list))
+
     def test_changed_pinned_provider_identity_is_rejected_without_rebinding(self):
         self.discover()
         before = (self.root / 'run.json').read_bytes()
@@ -455,6 +496,32 @@ class ProviderTests(unittest.TestCase):
         response.json.return_value = {'error': {'status': 'PERMISSION_DENIED', 'message': 'Denied'}}
         with self.assertRaises(ProviderError): api.request('GET', '/tracks/production/releases')
 
+    def test_mocked_store_transport_is_portable_without_site_packages(self):
+        # Native desktop runners deliberately use the standard-library tooling
+        # gate. Controller-only HTTP dependencies belong to real API factories.
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join([
+            str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parents[1])]))
+        result = subprocess.run([sys.executable, '-S', '-m', 'unittest',
+            'release_provider_test.ProviderTests.test_store_request_keeps_unknown_commit_and_never_reuploads_after_quota'],
+            cwd=self.root, env=env, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_only_injected_transport_errors_are_transient_and_redacted(self):
+        from release_stores import Provider, ProviderError
+        session = Mock()
+        api = Provider(session, 'https://api.appstoreconnect.apple.com',
+                       connection_errors=(TimeoutError, ConnectionError))
+        for error in (TimeoutError('private token'), ConnectionError('private URL')):
+            session.request.side_effect = error
+            with self.assertRaises(ProviderError) as failed:
+                api.request('POST', '/original-request')
+            self.assertTrue(failed.exception.transient)
+            self.assertNotIn('private', str(failed.exception))
+            self.assertIs(failed.exception.__cause__, error)
+        session.request.side_effect = ValueError('code failure')
+        with self.assertRaisesRegex(ValueError, 'code failure'):
+            api.request('POST', '/original-request')
+
     def test_external_review_freshness_matches_poll_and_quota_without_claiming_new_observation(self):
         with patch('release_provider.time.time', return_value=1000):
             provider.defer_effect(self.root, 'release', 'ios', 'submit', 'same', 'apple', 900)
@@ -472,6 +539,212 @@ class ProviderTests(unittest.TestCase):
             self.assertTrue(provider.quota_waiting(self.root, 'release', 'ios'))
         with patch('release_provider.time.time', return_value=5621):
             self.assertFalse(provider.external_wait_fresh(self.root, 'release', 'ios', 'submit', 'same', 1000))
+
+
+class ArtifactDownloadTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.partial = self.root / 'archive.partial'
+        self.payload = b'PK\x03\x04' + bytes(range(256)) * 400
+        self.digest = hashlib.sha256(self.payload).hexdigest()
+        environment = patch.dict(os.environ, {'GCHAT_RELEASE_PROVIDER_STATE': str(self.root / 'providers')})
+        environment.start(); self.addCleanup(environment.stop)
+        options = patch('release_provider.github_log_options', return_value=[])
+        options.start(); self.addCleanup(options.stop)
+
+    def call(self, **changes):
+        args = dict(repo='IggyGG/gchat', partial=self.partial, size=len(self.payload),
+                    sha256=self.digest, timeout=7)
+        args.update(changes)
+        return provider.github_artifact('actions/artifacts/456/zip', **args)
+
+    def retained(self, data):
+        self.partial.write_bytes(data); self.partial.chmod(0o600)
+
+    def response(self, start=0, *, status=None, range_value=None, extra='', body=None):
+        status = status or (206 if start else 200)
+        header = f'HTTP/1.1 {status} fixture\r\nContent-Length: {len(self.payload)-start}\r\n'
+        if start:
+            header += 'Content-Range: ' + (range_value or f'bytes {start}-{len(self.payload)-1}/{len(self.payload)}') + '\r\n'
+        return (header + extra + '\r\n').encode() + (self.payload[start:] if body is None else body)
+
+    def test_timeout_retains_progress_then_one_exact_range_finishes_original_bytes(self):
+        offset = 50000
+        commands = []
+        def first(command, stream, maximum, timeout):
+            commands.append(command)
+            self.assertEqual(timeout, 7)
+            self.assertEqual(maximum, len(self.payload) + 65536)
+            stream.write(self.response(body=self.payload[:offset]))
+            raise subprocess.TimeoutExpired(command, timeout)
+        with patch('release_provider.bounded_diagnostic_download', side_effect=first), \
+             self.assertRaises(subprocess.TimeoutExpired):
+            self.call()
+        self.assertEqual(self.partial.read_bytes(), self.payload[:offset])
+        binding = self.partial.with_name('archive.partial.download.json').read_bytes()
+        def second(command, stream, maximum, timeout):
+            commands.append(command)
+            self.assertIn(f'Range: bytes={offset}-{len(self.payload)-1}', command)
+            self.assertEqual(timeout, 7)
+            self.assertEqual(maximum, len(self.payload) - offset + 65536)
+            stream.write(self.response(offset))
+        with patch('release_provider.bounded_diagnostic_download', side_effect=second):
+            self.call()
+        self.assertEqual(len(commands), 2)
+        self.assertEqual(self.partial.read_bytes(), self.payload)
+        self.assertEqual(self.partial.with_name('archive.partial.download.json').read_bytes(), binding)
+
+    def test_ignored_wrong_or_duplicate_ranges_preserve_the_original_prefix(self):
+        offset = 200
+        prefix = self.payload[:offset]
+        for response in (self.response(offset, status=200),
+                         self.response(offset, range_value=f'bytes 0-{len(self.payload)-1}/{len(self.payload)}'),
+                         self.response(offset, extra='Content-Range: bytes 1-2/3\r\n'),
+                         self.response(offset, extra='Content-Encoding: gzip\r\n'),
+                         self.response(offset, body=self.payload[offset:]+b'extra')):
+            with self.subTest(response=response[:100]):
+                self.retained(prefix)
+                with patch('release_provider.bounded_diagnostic_download',
+                           side_effect=lambda command, stream, maximum, timeout: stream.write(response)), \
+                     self.assertRaises(ValueError):
+                    self.call()
+                self.assertEqual(self.partial.read_bytes(), prefix)
+
+    def test_quota_keeps_prior_bytes_and_survives_a_failed_cli_exit(self):
+        prefix = self.payload[:100]
+        self.retained(prefix)
+        response = b'HTTP/1.1 403 forbidden\r\nX-RateLimit-Remaining: 0\r\n\r\n{"message":"API rate limit exceeded"}'
+        def quota(command, stream, maximum, timeout):
+            stream.write(response)
+            raise subprocess.CalledProcessError(1, command)
+        with patch('release_provider.bounded_diagnostic_download', side_effect=quota), \
+             self.assertRaises(provider.ProviderWait):
+            self.call()
+        self.assertEqual(self.partial.read_bytes(), prefix)
+        self.assertIsNotNone(provider.cooldown(self.root / 'providers', 'github'))
+
+    def test_changed_binding_and_corrupt_complete_data_never_publish_or_restart(self):
+        self.retained(self.payload)
+        with patch('release_provider.bounded_diagnostic_download') as transport:
+            self.call()
+            with self.assertRaisesRegex(ValueError, 'another immutable request'):
+                self.call(sha256='0' * 64)
+            transport.assert_not_called()
+        self.retained(b'x' * len(self.payload))
+        with patch('release_provider.bounded_diagnostic_download') as transport, \
+             self.assertRaisesRegex(ValueError, 'digest differs'):
+            self.call()
+        transport.assert_not_called()
+        self.assertEqual(self.partial.read_bytes(), b'x' * len(self.payload))
+
+    def test_known_provider_unavailability_keeps_prefix_and_unknown_status_stays_blocked(self):
+        prefix = self.payload[:100]
+        self.retained(prefix)
+        for status in (503, 403):
+            def unavailable(command, stream, maximum, timeout):
+                stream.write(f'HTTP/1.1 {status} unavailable\r\n\r\n'.encode())
+                raise subprocess.CalledProcessError(1, command)
+            with patch('release_provider.bounded_diagnostic_download', side_effect=unavailable), \
+                 self.assertRaises(ConnectionError if status == 503 else subprocess.CalledProcessError):
+                self.call()
+            self.assertEqual(self.partial.read_bytes(), prefix)
+
+    def test_incomplete_success_is_not_an_authenticated_artifact(self):
+        with patch('release_provider.bounded_diagnostic_download',
+                   side_effect=lambda command, stream, maximum, timeout:
+                       stream.write(self.response(body=self.payload[:100]))), \
+             self.assertRaises(ConnectionError):
+            self.call()
+        self.assertEqual(self.partial.read_bytes(), self.payload[:100])
+
+    @unittest.skipUnless(os.name == 'posix', 'controller gh fixture requires a POSIX executable')
+    def test_real_timeout_reaps_transport_and_keeps_its_last_partial_buffer(self):
+        response = self.response(body=self.payload[:50000])
+        (self.root / 'response').write_bytes(response)
+        executable = self.root / 'gh'
+        executable.write_text('#!' + sys.executable + '\n' + '''import sys,time
+from pathlib import Path
+sys.stdout.buffer.write(Path(__file__).with_name('response').read_bytes())
+sys.stdout.buffer.flush()
+time.sleep(30)
+''')
+        executable.chmod(0o700)
+        original = subprocess.Popen
+        processes = []
+        def spawn(*args, **kwargs):
+            process = original(*args, **kwargs); processes.append(process); return process
+        with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}), \
+             patch('release_provider.subprocess.Popen', side_effect=spawn), \
+             self.assertRaises(subprocess.TimeoutExpired):
+            self.call(timeout=.3)
+        self.assertEqual(len(processes), 1)
+        self.assertIsNotNone(processes[0].poll())
+        self.assertEqual(self.partial.read_bytes(), self.payload[:50000])
+
+    def test_invalid_legacy_framing_preserves_failed_transport_without_a_request(self):
+        original = b'HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nPK'
+        self.retained(original)
+        with patch('release_provider.bounded_diagnostic_download') as transport, \
+             self.assertRaisesRegex(ValueError, 'length differs'):
+            self.call()
+        transport.assert_not_called()
+        self.assertEqual(self.partial.read_bytes(), original)
+
+    def test_body_header_separator_bytes_are_not_consumed_as_transport_headers(self):
+        self.payload = b'PK\x03\x04compressed\r\n\r\narchive\n\nbytes'
+        self.digest = hashlib.sha256(self.payload).hexdigest()
+        response = (f'HTTP/1.1 200 OK\nContent-Length: {len(self.payload)}\n\n'.encode()
+                    + self.payload)
+        with patch('release_provider.bounded_diagnostic_download',
+                   side_effect=lambda command, stream, maximum, timeout: stream.write(response)):
+            self.call()
+        self.assertEqual(self.partial.read_bytes(), self.payload)
+        legacy = self.root / 'legacy.partial'
+        def run(command, *, stdout, **kwargs):
+            stdout.write(response)
+            return Mock(returncode=0)
+        with legacy.open('wb') as stream, patch('release_provider.subprocess.run', side_effect=run):
+            provider.github_download('actions/artifacts/456/zip', repo='IggyGG/gchat', stream=stream, timeout=7)
+        self.assertEqual(legacy.read_bytes(), self.payload)
+
+    @unittest.skipUnless(os.name == 'posix', 'controller private-file semantics')
+    def test_symlinks_and_shared_inodes_are_not_mutated(self):
+        other = self.root / 'protected'; other.write_bytes(b'keep'); other.chmod(0o600)
+        self.partial.symlink_to(other)
+        with self.assertRaisesRegex(ValueError, 'symlink'):
+            self.call()
+        self.partial.unlink(); os.link(other, self.partial)
+        with self.assertRaisesRegex(ValueError, 'ownership'):
+            self.call()
+        self.assertEqual(other.read_bytes(), b'keep')
+
+    @unittest.skipUnless(os.name == 'posix', 'controller private-file semantics')
+    def test_legacy_read_permissions_narrow_but_writable_or_executable_prefixes_refuse(self):
+        self.retained(self.payload)
+        self.partial.chmod(0o644)
+        with patch('release_provider.bounded_diagnostic_download') as transport:
+            self.call()
+            transport.assert_not_called()
+        self.assertEqual(self.partial.stat().st_mode & 0o777, 0o600)
+        self.partial.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, 'bound artifact permissions changed'):
+            self.call()
+        for mode in (0o622, 0o660, 0o700, 0o601):
+            self.partial.chmod(mode)
+            with self.subTest(mode=oct(mode)), self.assertRaisesRegex(ValueError, 'ownership'):
+                self.call()
+            self.assertEqual(self.partial.read_bytes(), self.payload)
+            self.assertEqual(self.partial.stat().st_mode & 0o777, mode)
+
+    @unittest.skipUnless(os.name == 'posix', 'controller private-file semantics')
+    def test_untrusted_writable_partial_is_neither_accepted_nor_changed(self):
+        self.retained(b'keep')
+        self.partial.chmod(0o666)
+        with self.assertRaisesRegex(ValueError, 'ownership'):
+            self.call()
+        self.assertEqual(self.partial.read_bytes(), b'keep')
+        self.assertEqual(self.partial.stat().st_mode & 0o777, 0o666)
 
 
 class ControllerPollingTests(unittest.TestCase):

@@ -104,6 +104,20 @@ failure reports, native attempts, provider IDs and original deadlines remain
 retained. Explicit reviewed retained-artifact recovery registrations keep their
 existing separate verification gates.
 
+An updated diagnostic worker produces a new read-only snapshot for the original
+run/attempt, preserving its earlier report and native failure. Python unittest
+identifiers are shown alongside Rust and XCTest identifiers; log arguments remain
+private. Provider fixtures can run without optional HTTP packages: Google/Apple
+factories supply the actual transport exception types used for transient errors.
+
+Completed native/controller artifacts may resume their original immutable GET
+after a transport timeout. The collector retains a private prefix bound to the
+repository, artifact ID, total length and SHA-256; the provider must honor the
+exact remaining range and byte encoding. It checks the complete hash before
+extraction. Failed transport identities, original worker logs and request clocks
+remain retained. Every invocation performs at most one bounded GET; it cannot
+redispatch a workflow, repair a corrupt complete artifact or change its source.
+
 The reviewed IRC UX documentation/receipt paths are qualification-only inputs.
 Unknown files, actual runtime/build/signing/native workflow inputs still invalidate
 their artifacts. Classifier rollout reproduces both original input inventories

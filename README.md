@@ -1037,3 +1037,9 @@ Controller maintenance retains each inventory revision's activation and rollback
 evidence separately, including successive controller-only updates to one native
 release. The independent watchdog follows the same frozen activation directory;
 rollout qualification includes the immediate-predecessor rollback regression.
+
+Portable provider fixtures do not depend on optional HTTP packages installed on
+the build host. Native failure follow-ups identify the original test/job and keep
+their earlier snapshots when the diagnostic worker changes. Interrupted immutable
+artifact downloads retain their verified request binding and resume the exact
+remaining byte range under the original collection timeout.

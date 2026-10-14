@@ -426,10 +426,12 @@ class Coordinator:
         effect_kind = stage
         if stage == 'diagnose':
             from release_failure import diagnostic_identity
-            effect_kind = 'diagnose-' + diagnostic_identity(self.state, manifest, platform)
+            binding = [diagnostic_identity(self.state, manifest, platform), self.worker_revision(platform, stage)]
+            effect_kind = 'diagnose-' + hashlib.sha256(canonical(binding)).hexdigest()
             # Finish an owned diagnostic execution even if it just discovered
-            # the legacy run identity. A later native attempt gets a new read-
-            # only snapshot; neither snapshot can rearm the original build.
+            # the legacy run identity. A later native attempt or qualified
+            # diagnostic correction gets a new read-only snapshot; neither
+            # snapshot can rearm the original build.
             for key, item in self.running_workers.items():
                 if (item['release_id'], item['platform'], item['stage']) == (manifest['release_id'], platform, stage):
                     effect_kind = self.ledger.db.execute('SELECT kind FROM effects WHERE id=?', (key,)).fetchone()[0]
