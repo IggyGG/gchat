@@ -8,6 +8,46 @@ from release_ledger import Ledger
 from release_signatures import verify
 
 class MaintenanceTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'posix', 'archive worker requires POSIX locking')
+    def test_archive_required_preserves_every_unarchived_daily_snapshot(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);ledger=Ledger(root/'ledger.sqlite')
+            try:
+                directory=root/'backups';directory.mkdir()
+                originals={}
+                for day in range(1,9):
+                    path=directory/f'202001{day:02d}T010000Z.sqlite'
+                    with closing(sqlite3.connect(path)) as destination:ledger.db.backup(destination)
+                    originals[path.name]=hashlib.sha256(path.read_bytes()).hexdigest()
+                maintain(root,ledger,{'backup_archive_required':True})
+                self.assertEqual(len(list(directory.glob('*.sqlite'))),9)
+                for name,digest in originals.items():self.assertEqual(hashlib.sha256((directory/name).read_bytes()).hexdigest(),digest)
+                self.assertTrue((root/'maintenance.json').is_file())
+            finally:ledger.close()
+
+    @unittest.skipUnless(os.name == 'posix', 'archive worker requires POSIX locking')
+    def test_archive_required_defers_daily_rotation_while_archive_owner_holds_lock(self):
+        import fcntl
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);ledger=Ledger(root/'ledger.sqlite')
+            try:
+                with (root/'.cluster-archive.lock').open('a') as lock:
+                    fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    maintain(root,ledger,{'backup_archive_required':True})
+                    self.assertFalse((root/'maintenance.json').exists())
+                maintain(root,ledger,{'backup_archive_required':True})
+                self.assertTrue((root/'maintenance.json').is_file())
+            finally:ledger.close()
+
+    def test_archive_required_rejects_misspelled_policy_value(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);ledger=Ledger(root/'ledger.sqlite')
+            try:
+                with self.assertRaisesRegex(ValueError,'backup_archive_required'):
+                    maintain(root,ledger,{'backup_archive_required':'true'})
+                self.assertFalse((root/'maintenance.json').exists())
+            finally:ledger.close()
+
     def test_daily_database_backup_is_consistent_and_never_removes_job_evidence(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);ledger=Ledger(root/'ledger.sqlite')

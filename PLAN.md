@@ -1,3 +1,11 @@
+F5 / release backup retention, 2026-10-14: the optional
+`backup_archive_required` policy preserves completed daily snapshots until the
+verified archive owner retires them. Producer rotation shares its nonblocking
+lock with archival. Three controls fail on the old producer; all25 maintenance,
+controller and input controls pass after the repair. The corresponding tf-infra
+archive adapter is landed; actual archive/restore and qualified controller-policy
+activation remain operational gates. [Source proof](docs/evidence/durable-host/source.json).
+
 F5 / durable-host, 2026-10-14: signed0.1.216 is installed and its packaged host
 is independently verified against the public artifact. All202 recorded messages,
 eleven memberships and retained cache survive its normal automatic update and a
@@ -39,6 +47,11 @@ Candidate167 follow-up, 2026-10-07: both native Linux qualifications and the pro
 F5 release simplification, 2026-10-07: implemented shared production relay/fixture artifacts, retained desktop/CLI packaging, trusted-main compiler caching and bounded same-workflow failed-job retries. Source/run/toolchain/hash checks and final infrastructure schema remain compatible with the deployed controller. Independent setup is parallel and shared-owner admissions follow round-robin order; relay restart readiness is bounded while delivery timing continues. All 1,043 Python controls pass with five existing skips; 407 controller controls and source/contract audits also pass. Hosted qualification and managed activation remain explicit gates. See [source validation](docs/evidence/release-simplification-20261007/source-validation.json). Original candidate166 restart-race evidence is retained in `test-evidence/candidate166-discovery-20261007/`; current validation is in `test-evidence/release-simplification-20261007/`.
 
 Release completion, 2026-10-07: candidate 162 remains deployed on all 17 infrastructure targets; Linux, Windows, ARM Mac and SDK 0.1.167 are published. Controller-only qualification, persistent provider polling/cooldowns and explicit Intel-only unchanged-runtime deployment provenance are under validation. Android 1182 observation resumes its accepted submission; iOS 1.1.82 still requires Apple encryption approval. Intel cold-member recovery now uses the final durable checkpoint, with a separate native diagnostic. No new chat API or wire version is introduced. Source implementation does not itself claim activation or store availability.
+
+Controller qualification compatibility, 2026-10-14: retain the full baseline suite
+floor while allowing a source-bound successor to add checks. Missing, duplicate or
+unsafe suite identities and changed source/image bindings still fail. This is a
+controller-only bootstrap for the pending cross-platform follow-through rollout.
 
 ## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
 

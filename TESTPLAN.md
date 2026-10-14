@@ -1,3 +1,11 @@
+F5 / archive-required snapshots, 2026-10-14: run `release_maintenance_test.py`.
+Require every older snapshot to survive until verified archival, daily rotation
+to defer under the archive owner's real kernel lock, and invalid policy types to
+fail before writing a backup marker. Preserve native SQLite integrity and APT
+signature refresh controls. All5 cases pass, alongside18 controller and2 input
+checks. Before enabling the production policy, verify its loaded source, the
+separate bounded archive worker, independent key recovery and scheduled alerts.
+
 F5 activation process observation, 2026-10-14: transient `/proc` PermissionError
 after a single restart must break the stable observation pair, then permit success
 only after two consecutive exact PID/path/hash observations. Persistent denial
@@ -70,6 +78,11 @@ Routine releases: push `main`; the source mirror and Kubernetes coordinator buil
 Routine publication now verifies the native build, signatures, permissions, startup lifecycle and eight fresh matching relays. Full mobile GUI upgrade/rollback/history/file journeys run separately with `python3 scripts/release.py qualify --platform android` or `ios`; they do not gate routine upload and never become passes from a build or upload. Routine work has a persistent 60-minute active budget, one transient retry and one-minute source settlement; external review pauses its budget. Native dependencies and compiler outputs are cached, while signed artifacts and every source binding are verified.
 
 ## Cross-platform follow-through qualification (2026-10-14)
+
+The controller-runtime compatibility control must accept an exact-source proof
+with added test suites and reject a removed baseline gate, duplicate/unsafe suite
+identity, changed source or changed configuration. New-image generation still runs
+its entire declared suite list with zero skips before producing a passing proof.
 
 Run `release_inputs_test.py` for exact reviewed IRC UX documents/receipts and
 controller-only helpers. Unknown evidence, scripts, workflows, signing and runtime

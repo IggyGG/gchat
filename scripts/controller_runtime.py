@@ -12,7 +12,9 @@ import unittest
 from release_pair import canonical
 
 
-SUITES = (
+# Stable qualification floor for already hash-pinned historical overlays.
+# New images may add checks, but may not drop any baseline gate.
+BASELINE_SUITES = (
     'release_minutes_test', 'release_provider_test', 'release_stores_test', 'release_store_worker_test',
     'release_worker_identity_test', 'release_failure_test', 'release_delivery_test',
     'release_controller_test', 'release_controller_qualification_test',
@@ -27,6 +29,7 @@ SUITES = (
     'release_ios_versions_test', 'release_prepare_test', 'release_compaction_test',
     'controller_runtime_test', 'infrastructure_build_test',
 )
+SUITES = BASELINE_SUITES
 MINIMUM_TESTS = 101
 
 
@@ -104,14 +107,18 @@ def qualify(image, root, source, configuration, output):
     return proof
 
 
-def validate(proof, source, configuration):
+def validate(proof, source, configuration, *, historical=False):
+    required = BASELINE_SUITES if historical else SUITES
+    suites = proof.get('suites')
     if (proof.get('schema') != 1 or proof.get('passed') is not True
             or proof.get('source') != source or proof.get('source_unchanged') is not True
             or proof.get('production_controller_revision_tested') is not True
-            or proof.get('suites') != list(SUITES)
+            or not isinstance(suites, list) or not 1 <= len(suites) <= 64
+            or any(not isinstance(name, str) or not re.fullmatch('[A-Za-z0-9_]{1,100}', name) for name in suites)
+            or len(set(suites)) != len(suites) or not set(required) <= set(suites)
             or not isinstance(proof.get('tests'), int) or proof['tests'] < MINIMUM_TESTS
             or not isinstance(proof.get('source_files_verified'), int)
-            or proof['source_files_verified'] < len(SUITES)
+            or proof['source_files_verified'] < len(suites)
             or not re.fullmatch(r'[0-9a-f]{64}', str(proof.get('inventory_sha256', '')))
             or proof.get('configuration_digest') != configuration):
         raise ValueError('controller runtime qualification does not bind the retained image')
