@@ -256,7 +256,10 @@ def wait_running(package, old_pid):
     while time.monotonic() < deadline:
         try:
             current = process()
-        except FileNotFoundError:  # A starting process may exit between show and /proc.
+        except (FileNotFoundError, PermissionError):
+            # During startup /proc may disappear or temporarily be unreadable.
+            # Neither is a verified observation: reset the stable pair below
+            # and keep the same deadline, PID/path/hash checks and restart intent.
             current = None
         if (current and current['pid'] != old_pid and current['path'] == package['path']
                 and current['sha256'] == package['sha256']):
