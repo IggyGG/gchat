@@ -64,7 +64,7 @@ path test, Windows tooling imports, iOS lifecycle assertion and SDK registry DNS
 
 Native build archival now uses the existing encrypted Hetzner S3 closed-file
 archive CLI (`triform.closed-file-archive/v1`). GChat selects only older completed
-build ZIPs, keeps current/latest/forty recent candidates and pending operator work
+build ZIPs older than one day, keeps current/latest/forty recent candidates and pending operator work
 online, verifies an independent restored ZIP against the original native receipt,
 then permits exact-file retirement. Logs, receipts and extracted artifacts remain
 local. A cold pointer records the pinned archive manifest and restoration receipt;

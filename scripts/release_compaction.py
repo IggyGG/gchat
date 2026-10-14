@@ -48,12 +48,14 @@ def cold_native_plan(state, keep_recent=40, maximum_files=64):
     with closing(sqlite3.connect((state / 'ledger.sqlite').as_uri() + '?mode=ro', uri=True)) as db:
         db.row_factory = sqlite3.Row
         protected = protected_archive_releases(state, db, keep_recent)
-        rows = db.execute("""SELECT c.seq,c.id,c.manifest,p.platform,e.id AS work,e.evidence FROM candidates c
+        rows = db.execute("""SELECT c.seq,c.id,c.created,c.manifest,p.platform,p.state,p.resume_state,e.id AS work,e.evidence FROM candidates c
             JOIN platforms p ON p.candidate=c.id JOIN effects e ON e.candidate=c.id AND e.platform=p.platform
-            WHERE p.state='available' AND e.kind='build' AND e.state='confirmed' ORDER BY c.seq""").fetchall()
+            WHERE (p.state IN ('available','superseded','verified') OR (p.state='blocked' AND p.resume_state='verified'))
+            AND e.kind='build' AND e.state='confirmed' ORDER BY c.seq""").fetchall()
+        if len(rows) > 4096: raise ValueError('native archive candidate inventory exceeds bound')
         selected = []
         for row in rows:
-            if row['id'] in protected: continue
+            if row['id'] in protected or time.time() - row['created'] < 86400: continue
             if not re.fullmatch('[0-9a-f]{64}', row['work']): raise ValueError('invalid archive effect identity')
             work = state / 'jobs' / row['work']; path = work / 'native.zip'
             if not path.is_file() or path.is_symlink(): continue
@@ -61,6 +63,15 @@ def cold_native_plan(state, keep_recent=40, maximum_files=64):
             if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
                     or not 16 * 1024 ** 2 <= before.st_size <= 2 * 1024 ** 3): continue
             manifest = json.loads(row['manifest'])
+            # Old verified application releases wait for their own deployment;
+            # once a newer deployment owns the fleet they cannot publish
+            # automatically. Keep independently publishable/baseline releases
+            # and all store submissions hot.
+            if row['state'] in ('verified', 'blocked') and (not manifest['policy'].get('deployment_required') or manifest.get('deployment_baseline')):
+                continue
+            if row['state'] == 'blocked':
+                recovery = state / 'recovery' / row['id'] / (row['platform'] + '.json')
+                if recovery.is_file() and checked_metadata(recovery, 65536)[0].get('transient'): continue
             report, (receipt_sha, _) = checked_metadata(work / 'receipt.json', 2 * 1024 ** 2)
             expected = {'schema': 1, 'release_id': row['id'], 'sources': manifest['sources'],
                         'platform': row['platform'], 'stage': 'build', 'passed': True, 'source_unchanged': True}
@@ -72,8 +83,7 @@ def cold_native_plan(state, keep_recent=40, maximum_files=64):
                 'platform': row['platform'], 'request_id': row['work'], 'receipt_sha256': row['evidence'],
                 'source': 'jobs/' + row['work'] + '/native.zip', 'source_sha256': refs[0]['sha256'],
                 'source_bytes': before.st_size, 'source_identity': list(identity(before))})
-            if len(selected) >= maximum_files: break
-    return selected
+    return sorted(selected, key=lambda item: item['source_bytes'], reverse=True)[:maximum_files]
 
 
 def archive_tool(tool, action, state, receipt, *, source=None, destination=None, maximum_bytes=2 * 1024 ** 3):

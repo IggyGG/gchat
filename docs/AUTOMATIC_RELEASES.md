@@ -125,7 +125,10 @@ additionally permits retirement after a fresh ownership check. The default batch
 target is 20 GiB, at most 64 files of at most 2 GiB each. Forty recent candidates,
 every advertised latest candidate, selected/owned deployment, active worker and
 pending operator request stay online. Only completed, ledger-confirmed native
-build ZIPs are selected. Every other source, journal, log and extraction stays local.
+build ZIPs older than one day are selected. Old completed builds awaiting an
+obsolete deployment or blocked after verification may move to cold storage;
+running verification/publication, store requests and transient recovery stay hot.
+Every other source, journal, log and extraction stays local.
 
 The archive tool supplies the existing GHOSTBACKUP1 encryption, S3 byte/plaintext
 readback, remote manifests, exact-inode retirement and interrupted-retirement

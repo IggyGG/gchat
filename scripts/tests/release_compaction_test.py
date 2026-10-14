@@ -24,7 +24,11 @@ class ColdNativeProducerTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.ledger = Ledger(self.root / 'ledger.sqlite'); self.addCleanup(self.ledger.close)
         manifests = [candidate(n) for n in range(1, 43)]
-        for manifest in manifests: self.ledger.add(manifest)
+        for manifest in manifests:
+            manifest['policy']['deployment_required'] = True
+            manifest['release_id'] = hashlib.sha256(canonical({k: v for k, v in manifest.items() if k != 'release_id'})).hexdigest()
+        with patch('release_ledger.time.time', return_value=1):
+            for manifest in manifests: self.ledger.add(manifest)
         self.manifest = manifests[0]; self.platform = 'linux-x86_64'
         self.request = self.ledger.effect(self.manifest['release_id'], self.platform, 'build')['id']
         self.work = self.root / 'jobs' / self.request; self.work.mkdir(parents=True)
@@ -58,7 +62,25 @@ class ColdNativeProducerTests(unittest.TestCase):
     def test_only_old_available_builds_are_selected_and_pending_work_is_protected(self):
         plan = compactor.cold_native_plan(self.root)
         self.assertEqual([p['request_id'] for p in plan], [self.request])
+        with patch('release_compaction.time.time', return_value=2):
+            self.assertEqual(compactor.cold_native_plan(self.root), [])
         compactor.atomic_json(self.root / 'control/incoming/operator.json', {'release_id': self.manifest['release_id']})
+        self.assertEqual(compactor.cold_native_plan(self.root), [])
+
+    def test_inactive_completed_build_can_archive_but_active_or_unknown_submissions_cannot(self):
+        # Seed alternative historical platform states around the same immutable
+        # passing build; these are fixture rows, never production transitions.
+        for state, resume, eligible in [('verified', None, True), ('blocked', 'verified', True),
+                ('superseded', None, True), ('building', None, False), ('verifying', None, False),
+                ('publishing', None, False), ('submitting', None, False), ('in_review', None, False),
+                ('blocked', 'submitting', False), ('blocked', 'processing', False)]:
+            with self.subTest(state=state, resume=resume):
+                self.ledger.db.execute('UPDATE platforms SET state=?,resume_state=? WHERE candidate=? AND platform=?',
+                                       (state, resume, self.manifest['release_id'], self.platform))
+                self.assertEqual(bool(compactor.cold_native_plan(self.root)), eligible)
+        self.ledger.db.execute("UPDATE platforms SET state='blocked',resume_state='verified' WHERE candidate=? AND platform=?",
+                               (self.manifest['release_id'], self.platform))
+        compactor.atomic_json(self.root / 'recovery' / self.manifest['release_id'] / (self.platform + '.json'), {'transient': True})
         self.assertEqual(compactor.cold_native_plan(self.root), [])
 
     def test_verified_native_restore_precedes_retirement_and_keeps_all_other_evidence(self):
