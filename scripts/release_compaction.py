@@ -80,7 +80,12 @@ def archive_tool(tool, action, state, receipt, *, source=None, destination=None,
     argv = [sys.executable, str(tool), action, '--root', str(state), '--receipt', str(receipt)]
     if source: argv += ['--source', source, '--owner', 'gchat-native-builds', '--maximum-bytes', str(maximum_bytes)]
     if destination: argv += ['--destination', str(destination)]
-    result = subprocess.run(argv, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1800)
+    result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1800)
+    if result.returncode:
+        detail = receipt.parent / (action + '-' + uuid.uuid4().hex + '.log')
+        with detail.open('xb') as stream:
+            os.chmod(detail, 0o600); stream.write(result.stderr[:65536])
+        result.check_returncode()
     if len(result.stdout) > 65536: raise ValueError('archive tool response exceeds bound')
     return json.loads(result.stdout)
 
@@ -144,6 +149,7 @@ def archive_cold_native(state, tool, *, retire=False, target_bytes=20 * 1024 ** 
             results.append(result)
             atomic_json(directory / 'result.json', result)
         report = {'schema': 1, 'original_bytes_retained': True, 'reclaimed_bytes': reclaimed,
+                  'target_reclaimed_bytes': target_bytes, 'target_met': reclaimed >= target_bytes,
                   'keep_recent_candidates': keep_recent, 'completed_at': int(time.time()), 'objects': results}
         atomic_json(root / ('batch-' + str(time.time_ns()) + '.json'), report)
     return report
