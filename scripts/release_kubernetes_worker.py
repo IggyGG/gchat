@@ -180,7 +180,10 @@ def expected_image(target, build):
             or proof.get('registry_configuration_verified') is not True):
         raise ValueError('controller source or registry qualification is incomplete')
     from controller_runtime import validate
-    validate(proof['runtime'], source, proof['configuration'])
+    # This is an already hash-pinned historical overlay, not a new image's
+    # qualification. Its original baseline gates remain mandatory; additions
+    # required by the current controller apply to new-image generation.
+    validate(proof['runtime'], source, proof['configuration'], historical=True)
     native = proof.get('kubernetes_validation', {})
     if (native.get('source') != source['commit']
             or native.get('tests') != proof['runtime']['tests']

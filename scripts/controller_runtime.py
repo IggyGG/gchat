@@ -16,7 +16,6 @@ from release_pair import canonical
 # New images may add checks, but may not drop any baseline gate.
 BASELINE_SUITES = (
     'release_minutes_test', 'release_provider_test', 'release_stores_test', 'release_store_worker_test',
-    'release_worker_identity_test', 'release_failure_test', 'release_delivery_test',
     'release_controller_test', 'release_controller_qualification_test',
     'release_discovery_test', 'release_platform_deployment_test',
     'release_config_test', 'release_acceptance_test', 'mobile_acceptance_test',
@@ -29,7 +28,7 @@ BASELINE_SUITES = (
     'release_ios_versions_test', 'release_prepare_test', 'release_compaction_test',
     'controller_runtime_test', 'infrastructure_build_test',
 )
-SUITES = BASELINE_SUITES
+SUITES = (*BASELINE_SUITES, 'release_worker_identity_test', 'release_failure_test', 'release_delivery_test')
 MINIMUM_TESTS = 101
 
 

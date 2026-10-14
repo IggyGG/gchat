@@ -15,6 +15,18 @@ from release_pair import canonical
 
 
 class ControllerRuntimeTests(unittest.TestCase):
+    def test_historical_overlay_keeps_original_gates_but_cannot_qualify_new_image(self):
+        source = {'commit': 'a' * 40, 'tree': 'b' * 40}
+        proof = {'schema': 1, 'passed': True, 'source': source, 'source_unchanged': True,
+                 'production_controller_revision_tested': True, 'tests': 1000,
+                 'source_files_verified': 1000, 'suites': list(runtime.BASELINE_SUITES),
+                 'inventory_sha256': 'c' * 64, 'configuration_digest': 'd' * 64}
+        runtime.validate(proof, source, 'd' * 64, historical=True)
+        with patch.object(runtime, 'SUITES', (*runtime.BASELINE_SUITES, 'new_required_check')):
+            with self.assertRaises(ValueError): runtime.validate(proof, source, 'd' * 64)
+        with self.assertRaises(ValueError):
+            runtime.validate({**proof, 'suites': list(runtime.BASELINE_SUITES[1:])}, source, 'd' * 64, historical=True)
+
     def test_source_bound_successor_can_add_suites_but_never_drop_original_gates(self):
         source = {'commit': 'a' * 40, 'tree': 'b' * 40}
         proof = {'schema': 1, 'passed': True, 'source': source, 'source_unchanged': True,
