@@ -620,6 +620,7 @@ class Coordinator:
         for row in rows:
             previous = row['candidate']
             if any(item['release_id'] == previous and item['platform'] == 'ios'
+                   and item.get('stage') != 'prerequisite'
                    for item in self.running_workers.values()):
                 continue
             evidence = unsubmitted_ios_wait(self.state, self.ledger, previous)
@@ -651,6 +652,13 @@ class Coordinator:
                 publication = self.state / 'publication-runs' / release / (platform + '.json')
                 if minutes and publication.is_file():
                     budget(self.state, manifest, platform, state, paused=True, phase='publication')
+                if (platform == 'ios' and state == 'submitting'
+                        and 'prerequisite' in self.config['workers'][platform]):
+                    # A newer deployment cannot stop observing Apple's external
+                    # declaration for the original retained request. This stage
+                    # is GET-only, even after approval; submission stays gated.
+                    stage = 'prerequisite'
+                    self.execute(manifest, platform, stage)
                 return
             if minutes and platform != 'sdk':
                 if state == 'queued':

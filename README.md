@@ -1044,3 +1044,8 @@ fixtures run through the Python interpreter and still exercise actual child
 processes and bounded pipes. Failed image checks retain a separately named
 failure artifact, while deployment continues to require the successful,
 source-bound controller bundle.
+
+Apple encryption review keeps being observed when a newer deployment is selected.
+That retained-request poll is read-only: approval alone cannot upload, submit or
+publish the app. Status uses the newest bound review observation while retaining
+the original no-upload proof and publication budget.

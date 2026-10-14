@@ -55,6 +55,13 @@ controller-only bootstrap for the pending cross-platform follow-through rollout.
 
 ## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
 
+The deployed audit found Apple's retained encryption observation still at
+1791900633 after the selected deployment advanced. Retained iOS submissions now
+continue their GET-only prerequisite polling while publication stays gated and
+its active budget stays paused. Fresh status selects the latest source-bound
+review observation; historical no-upload evidence stays unchanged. A read-only
+poll cannot pin a safe successor or recreate a missing Apple upload binding.
+
 Live source1a10269 is qualified and deployed, including the seven-target delivery
 projection, stage fingerprints, owned tasks and notification consumer. UI214 is
 honestly partial: Linux217, Android1231 and SDK220 contain the change; old public

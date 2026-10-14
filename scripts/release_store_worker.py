@@ -131,6 +131,8 @@ def main():
     else:
         binding=work/'apple-build.json'
         if not binding.exists():
+            if stage == 'observe':
+                raise ValueError('Original Apple build binding is missing; read-only observation cannot upload')
             build,reason=ios_build(api,config,manifest,job(a.state,manifest,'ios','build'),work)
             if build is None:
                 if reason=='Apple encryption declaration is still awaiting approval':
