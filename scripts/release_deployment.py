@@ -42,6 +42,17 @@ def inventory(config):
     return targets
 
 
+def work_directory(directory, target, item):
+    """Retain the exact activation's rollback state across inventory revisions."""
+    work = directory / target['id']
+    revision = item.get('work_revision')
+    if revision is not None:
+        if not isinstance(revision, str) or not re.fullmatch('[0-9a-f]{64}', revision):
+            raise ValueError('invalid deployment worker revision')
+        work = work / 'revisions' / revision
+    return work
+
+
 def invoke(target, stage, manifest, directory, previous=None):
     directory.mkdir(parents=True, exist_ok=True)
     source = directory / 'candidate.json'
@@ -56,8 +67,9 @@ def invoke(target, stage, manifest, directory, previous=None):
     env = dict(os.environ, GCHAT_RELEASE_MANIFEST=str(source),
                GCHAT_DEPLOYMENT_TARGET=str(spec), GCHAT_DEPLOYMENT_STAGE=stage,
                GCHAT_DEPLOYMENT_RECEIPT=str(output), GCHAT_DEPLOYMENT_PREVIOUS=str(prior))
-    if directory.parent.name == manifest['release_id'] and directory.parent.parent.name == 'deployment':
-        write(directory.parent / 'progress.json', {'target': target['id'], 'stage': stage,
+    base = directory.parent.parent if directory.parent.name == 'revisions' else directory
+    if base.parent.name == manifest['release_id'] and base.parent.parent.name == 'deployment':
+        write(base.parent / 'progress.json', {'target': target['id'], 'stage': stage,
               'started_at': int(time.time()), 'deadline_at': int(time.time()) + target.get('timeout', 120)})
     with (directory / (stage + '-' + stamp + '.log')).open('xb') as stream:
         result = subprocess.run(target['workers'][stage], env=env, stdout=stream,
@@ -274,9 +286,10 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                         continue
                     if now < item.get('retry_at', 0): return False
                     item['retry_at'] = now + 60
-                    proof = worker(target, 'rollback', manifest, directory / target['id'], item['previous'])
+                    work = work_directory(directory, target, item)
+                    proof = worker(target, 'rollback', manifest, work, item['previous'])
                     if proof is not None:
-                        observed = worker(target, 'observe', manifest, directory / target['id'])
+                        observed = worker(target, 'observe', manifest, work)
                         if observed is None or not observed.get('healthy'):
                             return False
                         item['observed'] = observed
@@ -290,7 +303,8 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
             report['state'] = 'deploying'
             observations = {}
             for target in targets:
-                proof = worker(target, 'observe', manifest, directory / target['id'])
+                item = report['targets'].get(target['id'], {})
+                proof = worker(target, 'observe', manifest, work_directory(directory, target, item))
                 if proof is None:
                     return False
                 observations[target['id']] = proof
@@ -330,12 +344,18 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                 return not recovery  # A controller repair cannot publish the blocked application.
             target = unhealthy[0] if unhealthy else pending[0]
             item = report['targets'][target['id']]
-            work = directory / target['id']
+            work = work_directory(directory, target, item)
             if item.get('state') != 'activating':
+                # A controller overlay can change the image without changing the
+                # native release. Never reuse that release's first before-image.
+                # Preparation is repeatable in the new inventory's directory;
+                # commit its pointer only with the durable activation intent.
+                work = work_directory(directory, target, {'work_revision': report['revision']})
                 prepared = worker(target, 'prepare', manifest, work)
                 if prepared is None:
                     return False
                 item.update(state='activating', started_at=now, previous=observations[target['id']], prepared=prepared,
+                            work_revision=report['revision'],
                             mutation_needed=not observations[target['id']]['matches'])
                 write(journal, report)  # activation intent precedes the external effect
             if now - item['started_at'] > target.get('activation_deadline_seconds', 900):
@@ -362,7 +382,7 @@ def reconcile(state, manifest, config, worker=invoke, now=None):
                         item['state'] = 'check_failed'
                         continue
                     try:
-                        rollback = worker(target, 'rollback', manifest, directory / target['id'], item['previous'])
+                        rollback = worker(target, 'rollback', manifest, work_directory(directory, target, item), item['previous'])
                         item['state'] = 'rolled_back' if rollback else 'rollback_pending'
                     except (ValueError, KeyError, OSError, subprocess.SubprocessError):
                         item['state'] = 'rollback_failed'
