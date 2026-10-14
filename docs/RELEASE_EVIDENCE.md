@@ -1,9 +1,14 @@
 # Developer-preview qualification
 
 The release targets are **Linux x86_64, Windows x86_64, macOS x86_64, and macOS
-aarch64**. Windows uses a native MSVC VM; macOS uses GitHub-hosted workers.
-The local Mac is unavailable. Historical results are retained but do not qualify
-new source commits. Current-protocol candidates have additional application,
+aarch64**. The owner's local Apple Silicon Mac and Windows 11 x64 machine are
+reachable through the existing `macbuild` and `winbuild` SSH aliases. Use private,
+source-bound test directories and the pinned toolchains for native diagnosis and
+qualification; preserve installed applications, profiles and unrelated work.
+GitHub-hosted workers remain available for the signed release pipeline and native
+Intel Mac qualification. Rosetta execution is recorded separately from a physical
+Intel host. Historical results are retained but do not qualify new source commits.
+Current-protocol candidates have additional application,
 fleet, installed-network and privacy requirements described below.
 
 Forgejo remains authoritative. GitHub mirrors source and signed release assets.

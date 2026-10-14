@@ -610,6 +610,69 @@
       }
     ]
   },
+  "local_native_follow_up": {
+    "date": "2026-10-15",
+    "scope": "native Python qualification tooling; not signed installer qualification",
+    "gcoms_source": {
+      "commit": "85611e48df2587d678c72301dad6ebd12ace9a1c",
+      "tree": "4c4c0e10d7b42ffa20c0415769ab5337077cf980"
+    },
+    "gcoms_baseline": "665d95e402bd62bface577cd80493aba608bc2df",
+    "gchat_snapshot": "69ff596b2f6e25b10d8a40f1e6e253d51a2d87cd",
+    "tested_patch_sha256": "04740d91376b804e287838ef8faac3cd4e675e8206b42254e2d94dd5359acf47",
+    "hosts": {
+      "mac": {
+        "physical": true,
+        "platform": "macOS 26.3 Apple Silicon",
+        "python": "3.12.12",
+        "rosetta_present": true,
+        "physical_intel_qualification_claimed": false,
+        "baseline": {"tests": 465, "failures": 1, "errors": 5, "skipped": 1},
+        "corrected": {"tests": 466, "passed": 463, "skipped": 3, "seconds": 37.99},
+        "excluded": {"Linux SO_PEERCRED maintenance socket": 2, "Linux Forgejo procfs hook": 1},
+        "receipt_sha256": "be0b7322a5e3346523ab86e787f14f4e77815ee488c182680bfb17bda39c80e0",
+        "log_sha256": "1806d679570715f55ec41db298eca84650bcd1500b7fb6d1517df52dec6d1359"
+      },
+      "windows": {
+        "physical": true,
+        "platform": "Windows 11 Pro x64 26300.9711",
+        "python": "3.13.15",
+        "msvc_available": true,
+        "baseline": {"tests": 279, "errors": 11, "skipped": 53},
+        "corrected": {"tests": 279, "passed": 216, "skipped": 63, "seconds": 46.354},
+        "excluded": {
+          "POSIX Android deployment orchestration modules": 11,
+          "Linux namespace controller": 43,
+          "POSIX validation worker": 5,
+          "Apple/Linux selectable-pipe fixtures": 3,
+          "unprivileged Windows symlink creation": 1
+        },
+        "receipt_sha256": "d78d231b51bcb06f7d07c9e7b205d8d92c7f9e097b5272bd5ecd1e1da2e61569",
+        "log_sha256": "149623eece3976552b9836ad50e936d84a6dad445c2cde73ccbe7df4715af53b"
+      },
+      "linux": {
+        "corrected": {"tests": 466, "passed": 466, "skipped": 0, "seconds": 180.96},
+        "posix_android_cases_executed": 198,
+        "harness_notification_cancelled_after_completed_receipt": true,
+        "receipt_sha256": "1c91cfb6a26cb643a747bf4500eb9ec2093bb2d2c66e6537f5019f9f844f6eab",
+        "log_sha256": "18169d9f4be9c9d8ebc6481418d76d44b089d5c133d1cd75ad8ff599da5a02d4"
+      }
+    },
+    "original_failures_retained": true,
+    "source_unchanged_during_tests": true,
+    "production_profiles_and_services_preserved": true,
+    "native_sdk_application_and_signing_gates_preserved": true,
+    "all_platform_publication_claimed": false,
+    "next_action": "Publish the corrected source pair through the audited mirror and qualify a new immutable native candidate; do not reset release 224's expired requests.",
+    "owner": "IggyGG",
+    "private_evidence_directory": "test-evidence/release-local-native/",
+    "code_comparison": {
+      "path": "mifos/head:resources/scripts/githooks/ciabot.bash",
+      "cosine": 0.6922,
+      "rerank": 0.524542,
+      "conclusion": "Broad post-receive structure only. This correction pins C locale for the explicit ASCII guard; actual native before/after controls are decisive."
+    }
+  },
   "code_comparison": [
     {
       "path": "enso-org/enso:tools/performance/engine-benchmarks/bench_tool/gh.py",

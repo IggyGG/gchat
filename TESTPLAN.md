@@ -1,3 +1,14 @@
+F5 / physical native hosts, 2026-10-15: the owner's Apple Silicon Mac and Windows
+11 x64 hosts reproduce the retained GComs qualification failures. Source85611e4
+then passes the complete Python gate: Linux466/466, Mac463 plus3 Linux-only
+exclusions, Windows216 plus63 explicitly inventoried exclusions. All198 POSIX
+Android orchestration cases run on Linux; no native SDK/app/signing gate is
+disabled. Original failures, exact source bundles, final patch and log hashes are
+retained. The Linux job completed and saved exit0 before the OpenCode restart
+cancelled its notification, so it was reconciled rather than rerun. Local source
+checks do not themselves publish desktop installers. See the native follow-up in
+`docs/evidence/release-follow-through-20261014/deployed.json`.
+
 F5 / retained fleet socket recovery, 2026-10-14: the old source fails the extended
 `fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_lock` case
 on an abandoned Unix socket. The repair passes all4 fleet integration cases and3

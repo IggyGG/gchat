@@ -5,11 +5,12 @@ Local Forgejo is authoritative. Public GitHub mirrors are `IggyGG/gcoms` and
 The initial version is 0.1.0, explicitly labeled developer preview.
 
 Targets are Linux x86_64, Windows 11 x86_64 with native MSVC, and macOS Apple
-Silicon/Intel on GitHub-hosted runners. Every advertised installer must be signed;
+Silicon/Intel. The local Apple Silicon Mac and Windows 11 machine are available
+for source-bound native checks; the existing hosted workers retain their release
+and signing roles, including native Intel Mac coverage. Every advertised installer must be signed;
 The owner selected self-signed **Gh0st** preview signatures. Public CA trust and
 Apple notarization are not claimed; native installer acceptance must include the
-resulting trust prompts. See GChat’s `docs/PREVIEW_SIGNING.md`. The unavailable local Mac
-is not required. A target is qualified only by evidence for its actual release
+resulting trust prompts. See GChat’s `docs/PREVIEW_SIGNING.md`. A target is qualified only by evidence for its actual release
 source and artifacts, not by historical development builds.
 
 `release/publication.json` records public mirror URLs separately from private
