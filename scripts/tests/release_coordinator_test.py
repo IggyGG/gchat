@@ -104,6 +104,40 @@ class CoordinatorTests(unittest.TestCase):
         self.assertTrue(all(log.closed for log in logs))
         self.assertEqual(c.ledger.db.execute("SELECT COUNT(*) FROM effects WHERE state='confirmed'").fetchone()[0], 0)
 
+    def test_corrected_diagnostics_get_a_new_snapshot_without_rearming_native_build(self):
+        from unittest.mock import Mock
+        recipe = {'run': ['read-only-diagnostics'], 'reconcile': ['read-only-diagnostics']}
+        config = {'nonblocking_workers': True, 'workers': {'android': {'diagnose': recipe}}}
+        c = Coordinator(self.root, config)
+        self.addCleanup(lambda: c.ledger.close())
+        release = c.ledger.add(self.manifest)
+        c.ledger.transition(release, 'android', 'building')
+        c.ledger.transition(release, 'android', 'blocked', reason='original failure')
+        native = c.ledger.effect(release, 'android', 'build')
+        process = Mock(returncode=0); process.poll.return_value = None
+        with patch('release_coordinator.subprocess.Popen', return_value=process) as launch:
+            self.assertIsNone(c.execute(self.manifest, 'android', 'diagnose'))
+            first = dict(c.ledger.db.execute("SELECT * FROM effects WHERE kind LIKE 'diagnose-%'").fetchone())
+            self.receipt(self.root / 'jobs' / first['id'], stage='diagnose')
+            original = (self.root / 'jobs' / first['id'] / 'receipt.json').read_bytes()
+            process.poll.return_value = 0
+            self.assertIsNotNone(c.execute(self.manifest, 'android', 'diagnose'))
+            c.ledger.close(); c = Coordinator(self.root, config)
+            self.assertIsNotNone(c.execute(self.manifest, 'android', 'diagnose'))
+            self.assertEqual(launch.call_count, 1)
+            c.config['workers']['android']['diagnose'] = {**recipe, 'run': ['corrected-read-only-diagnostics']}
+            process.poll.return_value = None
+            self.assertIsNone(c.execute(self.manifest, 'android', 'diagnose'))
+            self.assertEqual(launch.call_count, 2)
+            records = list(c.ledger.db.execute("SELECT * FROM effects WHERE kind LIKE 'diagnose-%'"))
+            second = next(dict(r) for r in records if r['id'] != first['id'])
+            self.receipt(self.root / 'jobs' / second['id'], stage='diagnose')
+            process.poll.return_value = 0
+            self.assertIsNotNone(c.execute(self.manifest, 'android', 'diagnose'))
+            self.assertEqual((self.root / 'jobs' / first['id'] / 'receipt.json').read_bytes(), original)
+            self.assertEqual(c.ledger.effect(release, 'android', 'build'), native)
+            self.assertEqual(c.ledger.target(release, 'android')['state'], 'blocked')
+
     def test_mobile_native_checks_finish_before_store_serialization_and_prerequisite_is_read_only(self):
         for platform in ('ios','android'):
             for waiting in ('submitting','processing','in_review','blocked'):

@@ -1,3 +1,19 @@
+F5 / portable provider and retained downloads, 2026-10-14: run the provider,
+failure and coordinator controls with `python3 -S`; all122 pass. A subprocess
+without site-packages reproduces the actual native-runner HTTP-fixture boundary.
+Only injected transport exception classes become transient; arbitrary code errors
+propagate. Re-diagnosis after a worker correction gets a new read-only snapshot
+while preserving the original native effect and blocked result. Named unittest
+checks are extracted from raw and timestamped logs without publishing arguments.
+Artifact controls exercise an actual timed-out CLI, exact resumed byte range,
+quota/503 preservation, ignored/duplicate framing, full hash verification,
+original failed transport identity, private legacy-file migration and refusal of
+symlinks, shared or writable inodes. The full signing/network suite retains its
+declared cryptography dependency. All1,195 full Python controls pass in130.322s
+with unchanged source, one existing Windows-only DACL skip, and a verified4GiB
+cgroup ceiling (200.7MiB measured peak). Do not substitute an address-space cap
+for the RAM ceiling: the JVM reserves more virtual space for real signing tests.
+
 F5 / controller rollout generations, 2026-10-14: all 58 deployment, watchdog,
 controller and Kubernetes-worker controls pass with a 4 GiB memory limit. The
 causal regression runs the real Kubernetes before-image guard for two qualified

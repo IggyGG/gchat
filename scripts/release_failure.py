@@ -91,9 +91,11 @@ def read_json(path, limit=65536):
 
 def failed_checks(text):
     """Expose bounded code identifiers, never arbitrary log lines or arguments."""
+    text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
     patterns = (r'---- ([A-Za-z_][A-Za-z0-9_:]{0,199}) stdout ----',
-                r'Failed to import test module: ([A-Za-z_][A-Za-z0-9_.]{0,199})',
-                r'error: -\[([A-Za-z_][A-Za-z0-9_.]{0,99} [A-Za-z_][A-Za-z0-9_]{0,99})\] :')
+                 r'Failed to import test module: ([A-Za-z_][A-Za-z0-9_.]{0,199})',
+                 r'error: -\[([A-Za-z_][A-Za-z0-9_.]{0,99} [A-Za-z_][A-Za-z0-9_]{0,99})\] :',
+                 r'(?m)^(?:\d{4}-\d{2}-\d{2}T[0-9:.]+Z )?(?:FAIL|ERROR): [A-Za-z_][A-Za-z0-9_]{0,199} \(([A-Za-z_][A-Za-z0-9_.]{0,199})\)[ \t]*$')
     return sorted({name for pattern in patterns for name in re.findall(pattern, text)})[:8]
 
 

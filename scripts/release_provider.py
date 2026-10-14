@@ -332,7 +332,10 @@ def github_download(path, *, repo, stream, timeout, private_diagnostic=False, ma
         offset, status, headers = 0, 0, {}
         while prefix[offset:].startswith(b'HTTP/'):
             remaining = prefix[offset:]
-            separator = b'\r\n\r\n' if b'\r\n\r\n' in remaining else b'\n\n'
+            separator = min((value for value in (b'\r\n\r\n', b'\n\n') if value in remaining),
+                            key=remaining.index, default=None)
+            if separator is None:
+                raise ValueError('provider archive response headers exceed bound')
             head, found, _ = remaining.partition(separator)
             if not found:
                 raise ValueError('provider archive response headers exceed bound')
@@ -353,6 +356,141 @@ def github_download(path, *, repo, stream, timeout, private_diagnostic=False, ma
                 stream.write(chunk)
             stream.truncate(); stream.flush()
     reset_after_success('github')
+
+
+def artifact_response(stream, start, total, *, requested, path=None, partial=None):
+    """Validate one bounded HTTP response and remove only its transport headers."""
+    from email.parser import BytesHeaderParser
+    import re
+    stream.flush()
+    end = stream.seek(0, os.SEEK_END)
+    stream.seek(start)
+    prefix = stream.read(65536)
+    offset, status, headers = 0, None, None
+    while prefix[offset:].startswith(b'HTTP/'):
+        rest = prefix[offset:]
+        separator = min((value for value in (b'\r\n\r\n', b'\n\n') if value in rest),
+                        key=rest.index, default=None)
+        if separator is None: raise ValueError('artifact response headers exceed bound')
+        head, found, _ = rest.partition(separator)
+        if not found: raise ValueError('artifact response headers exceed bound')
+        lines = head.splitlines()
+        if not re.fullmatch(rb'HTTP/[0-9.]+ [0-9]{3}(?: .*)?', lines[0]):
+            raise ValueError('artifact response status is invalid')
+        status = int(lines[0].split()[1])
+        headers = BytesHeaderParser().parsebytes(b'\n'.join(lines[1:]) + b'\n\n')
+        for name in ('Content-Length', 'Content-Range', 'Content-Encoding'):
+            if len(headers.get_all(name, [])) > 1:
+                raise ValueError('artifact response has duplicate framing')
+        offset += len(head) + len(separator)
+    if status is None: raise ValueError('artifact response has no complete HTTP header')
+    if requested:
+        try: body = json.loads(prefix[offset:]) if status >= 400 else None
+        except (ValueError, UnicodeDecodeError): body = None
+        classify('github', 'GET', path, status,
+                 {name.lower(): value for name, value in headers.items()}, body)
+        if status in (502, 503, 504):
+            raise ConnectionError('Artifact provider temporarily unavailable; reconcile the original artifact')
+    wanted = 206 if start else 200
+    if status != wanted: raise ValueError('artifact response did not honor its byte range')
+    remaining = total - start
+    if headers.get('Content-Encoding', 'identity').lower() != 'identity':
+        raise ValueError('artifact response changed its byte encoding')
+    length = headers.get('Content-Length')
+    if length is not None and (not length.isdecimal() or int(length) != remaining):
+        raise ValueError('artifact response length differs from immutable metadata')
+    if start and headers.get('Content-Range') != f'bytes {start}-{total-1}/{total}':
+        raise ValueError('artifact response range differs from immutable metadata')
+    body_bytes = end - start - offset
+    if not 0 <= body_bytes <= remaining:
+        raise ValueError('artifact response exceeded its byte bound')
+    # Record the original legacy transport identity before normalizing it. Never
+    # relabel its failed worker log or replace the original request/deadline.
+    if not requested:
+        stream.seek(0)
+        original = hashlib.file_digest(stream, 'sha256').hexdigest()
+        evidence = partial.with_name(partial.name + '.legacy-' + original + '.json')
+        value = {'schema': 1, 'transport_sha256': original, 'transport_bytes': end,
+                 'header_bytes': offset, 'payload_bytes': body_bytes, 'expected_bytes': total}
+        previous = read(evidence)
+        if previous is not None and previous != value:
+            raise ValueError('legacy artifact migration evidence changed')
+        if previous is None: atomic(evidence, value)
+    read_at, write_at = start + offset, start
+    while read_at < end:
+        stream.seek(read_at)
+        chunk = stream.read(min(1024 * 1024, end - read_at))
+        if not chunk: raise ValueError('artifact response changed while normalizing')
+        stream.seek(write_at); stream.write(chunk)
+        read_at += len(chunk); write_at += len(chunk)
+    stream.truncate(write_at); stream.flush(); os.fsync(stream.fileno())
+    return write_at
+
+
+def github_artifact(path, *, repo, partial, size, sha256, timeout):
+    """One resumable GET for an immutable artifact; no dispatch or hidden retry."""
+    import re
+    import stat
+    if (not re.fullmatch(r'actions/artifacts/[1-9][0-9]*/zip', path)
+            or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repo)
+            or type(size) is not int or not 0 < size <= 12 * 1024**3
+            or not re.fullmatch('[0-9a-f]{64}', sha256) or not 0 < timeout <= 900):
+        raise ValueError('invalid immutable artifact request')
+    partial = Path(partial)
+    binding = {'schema': 1, 'repo': repo, 'path': path, 'bytes': size, 'sha256': sha256}
+    with locked(partial.with_name(partial.name + '.download.lock')):
+        journal = partial.with_name(partial.name + '.download.json')
+        retained = read(journal)
+        if retained is not None and retained != binding:
+            raise ValueError('partial artifact belongs to another immutable request')
+        if partial.is_symlink(): raise ValueError('partial artifact is a symlink')
+        fd = os.open(partial, os.O_CREAT | os.O_RDWR | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+        with os.fdopen(fd, 'r+b') as stream:
+            info = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                    or info.st_size > size + 65536
+                    or (os.name == 'posix' and (info.st_uid != os.geteuid() or info.st_mode & 0o133))):
+                raise ValueError('partial artifact ownership, type or bound differs')
+            if os.name == 'posix' and info.st_mode & 0o044:
+                # Legacy collectors created owner-written 0644 partials. Narrow
+                # their read permissions on this verified, unshared inode;
+                # never accept a group/world-writable or executable prefix.
+                if retained is not None: raise ValueError('bound artifact permissions changed')
+                os.fchmod(stream.fileno(), 0o600)
+            if retained is None: atomic(journal, binding)
+            prefix = stream.read(5)
+            if prefix.startswith(b'HTTP/'):
+                # The original failed transport hash survives normalization.
+                artifact_response(stream, 0, size, requested=False, partial=partial)
+            stream.seek(0, os.SEEK_END)
+            start = stream.tell()
+            if start > size: raise ValueError('partial artifact exceeds immutable length')
+            if start < size:
+                before_request('github')
+                command = ['gh', 'api', '--include', *github_log_options()]
+                if start: command += ['--header', f'Range: bytes={start}-{size-1}']
+                command += ['repos/' + repo + '/' + path]
+                failure = None
+                try:
+                    bounded_diagnostic_download(command, stream, size - start + 65536, timeout)
+                except (OSError, ValueError, subprocess.SubprocessError) as error:
+                    failure = error
+                try:
+                    artifact_response(stream, start, size, requested=True, path=path)
+                except Exception as response_error:
+                    stream.seek(start); stream.truncate(); stream.flush()
+                    if failure and not isinstance(response_error, (ProviderWait, ConnectionError)): raise failure
+                    raise
+                if failure: raise failure
+                reset_after_success('github')
+            stream.seek(0, os.SEEK_END)
+            if stream.tell() != size: raise ConnectionError('artifact response ended before its immutable length')
+            stream.seek(0)
+            if hashlib.file_digest(stream, 'sha256').hexdigest() != sha256:
+                raise ValueError('resumed artifact digest differs from immutable metadata')
+            current = partial.lstat()
+            if current.st_dev != info.st_dev or current.st_ino != info.st_ino:
+                raise ValueError('partial artifact path changed during collection')
 
 
 def bounded_diagnostic_download(command, stream, maximum, timeout):

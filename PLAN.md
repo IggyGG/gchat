@@ -55,6 +55,17 @@ controller-only bootstrap for the pending cross-platform follow-through rollout.
 
 ## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
 
+Live source1a10269 is qualified and deployed, including the seven-target delivery
+projection, stage fingerprints, owned tasks and notification consumer. UI214 is
+honestly partial: Linux217, Android1231 and SDK220 contain the change; old public
+Mac/Windows176 do not. Current native logs exposed the optional `requests` import
+in an injected-session test. Production factories now supply transport exception
+types, keeping the portable contract independent of controller-only packages.
+Qualified diagnostic corrections re-read retained logs into a new snapshot and
+surface exact unittest identifiers. Bounded artifact GETs retain a source/hash-
+bound prefix across timeout and resume only the exact remaining range; they do
+not dispatch another native build or reset its original deadlines.
+
 The live classifier bootstrap exposed a retained rollback-snapshot collision:
 successive controller images shared one native release's first before-image.
 New activations now freeze an inventory-revision worker directory with their

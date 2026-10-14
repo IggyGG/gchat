@@ -161,7 +161,7 @@ def deployment_config(state, manifest, config):
 def collect(intent, work):
     """One dispatch; immutable provider archive, no retry on ambiguous outcome."""
     from release_jobs import extract, REPO
-    from release_provider import github, github_download
+    from release_provider import github, github_artifact
     def gh(path, **kwargs): return github(path, repo=REPO, **kwargs)
     marker, run_path = work / 'dispatch.json', work / 'run.json'
     run = gh(f'actions/runs/{read(run_path)["id"]}') if run_path.exists() else None
@@ -206,8 +206,8 @@ def collect(intent, work):
     archive = work / 'provider.zip'
     if not archive.exists():
         partial = work / 'provider.zip.partial'
-        with partial.open('wb') as stream:
-            github_download(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, stream=stream, timeout=900)
+        github_artifact(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, partial=partial,
+                        size=artifact['size_in_bytes'], sha256=artifact['digest'].removeprefix('sha256:'), timeout=900)
         if 'sha256:' + sha(partial) != artifact['digest']:
             raise ValueError('controller provider archive digest differs')
         os.replace(partial, archive)

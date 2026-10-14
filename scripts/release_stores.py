@@ -23,17 +23,17 @@ class ProviderError(RuntimeError):
 
 
 class Provider:
-    def __init__(self, session, base):
+    def __init__(self, session, base, *, connection_errors=()):
         self.session, self.base = session, base
+        self.connection_errors = connection_errors
         self.provider = 'play' if 'androidpublisher.googleapis.com' in base else 'apple'
 
     def request(self, method, path, **kwargs):
         from release_provider import before_request, classify, reset_after_success
         before_request(self.provider)
-        import requests
         try:
             response = self.session.request(method, self.base + path, timeout=(15, 120), **kwargs)
-        except (requests.Timeout, requests.ConnectionError) as error:
+        except self.connection_errors as error:
             raise ProviderError('Provider connection unavailable; reconcile the original request', transient=True) from error
         if not response.ok:
             try:
@@ -66,7 +66,8 @@ def google(config):
                             transient=response.status_code in (502, 503, 504))
     session = requests.Session()
     session.headers['Authorization'] = 'Bearer ' + response.json()['access_token']
-    return Provider(session, 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/' + config['package'])
+    return Provider(session, 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/' + config['package'],
+                    connection_errors=(requests.Timeout, requests.ConnectionError))
 
 
 def apple(config):
@@ -76,7 +77,8 @@ def apple(config):
                         'aud': 'appstoreconnect-v1'}, Path(config['key']).read_text(), algorithm='ES256',
                        headers={'kid': config['key_id'], 'typ': 'JWT'})
     session = requests.Session(); session.headers['Authorization'] = 'Bearer ' + token
-    return Provider(session, 'https://api.appstoreconnect.apple.com')
+    return Provider(session, 'https://api.appstoreconnect.apple.com',
+                    connection_errors=(requests.Timeout, requests.ConnectionError))
 
 
 def google_state(releases, code, track='production'):

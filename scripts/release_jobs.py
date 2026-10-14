@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Dispatch once and reconcile exact-source GitHub workers by durable request ID."""
-from release_provider import github_download, locked
+from release_provider import github_artifact, locked
 import argparse
 import base64
 import hashlib
@@ -379,8 +379,8 @@ def collect(manifest, target, work, request_id, reconcile=False):
     archive = work / 'native.zip'
     if not archive.exists():
         partial = work / 'native.partial'
-        with partial.open('wb') as stream:
-            github_download(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, stream=stream, timeout=600)
+        github_artifact(f'actions/artifacts/{artifact["id"]}/zip', repo=REPO, partial=partial,
+                        size=artifact['size_in_bytes'], sha256=digest.removeprefix('sha256:'), timeout=600)
         with partial.open('rb') as stream: actual = hashlib.file_digest(stream, 'sha256').hexdigest()
         if 'sha256:' + actual != digest: raise ValueError('native artifact download hash mismatch')
         os.replace(partial, archive)
