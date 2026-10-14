@@ -1,3 +1,16 @@
+F5 / deployed follow-through audit, 2026-10-14: sourceca310e6 passed503 checks in
+both its actual CI image and Kubernetes image, then the normal production canary.
+All271 running files match. A new source handoff schedules all seven targets, and
+the UI214 obligation remains partial3/7 across the subsequent controller restart.
+Four desktop public payloads were freshly streamed, hashed and minisign-verified;
+all12 SDK archives (919,085,581bytes) match their retained public hashes. Android's
+latest confirmed lifecycle receipt is PUBLISHED. The resumed Apple GET is fresh
+IN_REVIEW, not uploaded/submitted/available. Notification re-consumption is
+up_to_date without duplicate alerts. Original219 bytes were recovered from the
+same request/run/hash, preserving its failed transport and source pair. Detailed
+source/test/run/configuration evidence is in
+`docs/evidence/release-follow-through-20261014/deployed.json`.
+
 F5 / native path fixtures, 2026-10-14: the actual supported filesystem path test
 uses Unicode and spaces on all platforms. Every Unix build also tests raw-byte
 path reference serialization. Linux additionally creates and reopens the real

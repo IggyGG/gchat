@@ -1054,3 +1054,10 @@ Apple encryption review keeps being observed when a newer deployment is selected
 That retained-request poll is read-only: approval alone cannot upload, submit or
 publish the app. Status uses the newest bound review observation while retaining
 the original no-upload proof and publication budget.
+
+Automatic follow-through is deployed as controller `ca310e6`: seven-platform
+delivery records, source-bound diagnostics, bounded recovery, owned follow-ups and
+desktop notices are active. The IRC alignment delivery is still **3/7 published**
+at this checkpoint. Linux217, Android1231 and SDK222 contain it; both Macs and
+Windows still advertise176, and no iOS availability is confirmed. Use live
+`release.py status` for subsequent progress. [Deployment and publication evidence](docs/evidence/release-follow-through-20261014/deployed.json).

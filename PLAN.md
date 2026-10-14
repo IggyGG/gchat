@@ -63,6 +63,17 @@ controller-only bootstrap for the pending cross-platform follow-through rollout.
 
 ## F5 — automatic cross-platform delivery follow-through (OC, 2026-10-14)
 
+Implementation activation is verified: controllerca310e6, image2ce36f3f..., all271
+source files,503 actual-image and503 Kubernetes controls, and the normal production
+canary. Its real Apple observation is fresh IN_REVIEW (including France), with the
+original submission, no-upload proof and paused clock retained. All1,201 Python
+controls and160 targeted store controls pass. Native223 was automatically created
+with all seven targets; healthy SDK publication and four retained delivery records
+survive controller restarts. The UI rollout remains partial3/7: a Windows portable
+tooling blocker is owned byIggyGG, native successors continue, and Apple approval
+remains external. See the source-bound deployed receipt; this is implementation
+completion, not an all-platform publication claim.
+
 Native CI explicitly runs the provider contract without site-packages, then the
 full signing/network suite with its declared cryptography dependency. This real
 qualification-input correction follows ordinary source discovery into a new

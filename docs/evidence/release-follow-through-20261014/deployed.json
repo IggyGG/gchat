@@ -1,0 +1,482 @@
+{
+  "schema": 1,
+  "scope": "automatic_cross_platform_publication_follow_through",
+  "observed_at": 1791994154,
+  "source_main": "ac7a6ba4d638d0795c30517f6d0e5b214f9c7a8e",
+  "implementation_deployed": true,
+  "all_platform_rollout_complete": false,
+  "controller": {
+    "source": {
+      "commit": "ca310e6361c44d656044c84c0116f539d2e0a8b0",
+      "tree": "0dc7fc7b4d6fbf8b86d807f62a151761bc4fed7a"
+    },
+    "image": "127.0.0.1:30444/ghost/gchat-release@sha256:2ce36f3fe77bdde9218b7917b89336d3cf1d7714bec29fa5d36c4ac4b9dc4ba5",
+    "intent": "471459709fdb845f1af68228e3366ed17f783a2be1716713764e2f0b248f9a86",
+    "running_source_files_verified": 271,
+    "actual_image_tests": 503,
+    "kubernetes_tests": 503,
+    "deployment_state": "deployed"
+  },
+  "validation": {
+    "full_python_tests": 1201,
+    "existing_windows_dacl_skips": 1,
+    "affected_store_controls": 160,
+    "qualified_source_unchanged": true
+  },
+  "configuration": {
+    "sha256": "9219a32f8ba8c391c54235116166cef8942dc7fecbf88bf2642797153a612389",
+    "delivery_tracking": {
+      "owner": "IggyGG",
+      "successor_policy": "source-descendant-or-reviewed-equivalent-v1"
+    },
+    "native_retry_policy": "native-transient-v1",
+    "maximum_workers": 8,
+    "minimum_free_bytes": 17179869184,
+    "diagnose_platforms": [
+      "android",
+      "ios",
+      "linux-x86_64",
+      "macos-aarch64",
+      "macos-x86_64",
+      "sdk",
+      "windows-x86_64"
+    ],
+    "worker_identity": {
+      "schema": 2,
+      "source": "ca310e6361c44d656044c84c0116f539d2e0a8b0",
+      "stale_override_ignored": true
+    }
+  },
+  "delivery": {
+    "id": "5cd20d425e49b9f474486384adf689d562783ace699d54f62ed41374257daa88",
+    "state": "partially_published",
+    "required_platforms": [
+      "linux-x86_64",
+      "macos-aarch64",
+      "macos-x86_64",
+      "windows-x86_64",
+      "android",
+      "ios",
+      "sdk"
+    ],
+    "fulfilled_count": 3,
+    "targets": [
+      {
+        "platform": "linux-x86_64",
+        "state": "published",
+        "milestone": "published",
+        "candidate": "78b2d97a0d6ba7375400248ec829f68999aa70d56c761b6c1e3c5f67945bd0c3",
+        "candidate_version": "0.1.217",
+        "published_contains_change": true,
+        "fulfilled": true,
+        "owner": "IggyGG",
+        "next_action": "Published with verified source-containing public availability.",
+        "task_id": null,
+        "published": {
+          "release_id": "78b2d97a0d6ba7375400248ec829f68999aa70d56c761b6c1e3c5f67945bd0c3",
+          "version": "0.1.217",
+          "sources": {
+            "gchat": {
+              "commit": "073ebb16bf97d7702e7f503e517f1b8f96556902",
+              "tree": "596bc130f3d2febb2a8e42a3d2bf8ea7500b2ff6"
+            },
+            "gcoms": {
+              "commit": "9e889b7c17702ebbe365f8c34eb42f1c4fe7193b",
+              "tree": "9826801d0ab0f14dc09f3795ec373e4165df73e7"
+            }
+          },
+          "receipt_sha256": "530a64c89320eca65c46c07e97ab6af18413312ab01f667167ee9804778f5274",
+          "effect_id": "5ddb8ae7a10374836754d1f12924f39bb165065941bab4ac8a19e36bad38cea5"
+        },
+        "fulfillment": {
+          "effect_id": "5ddb8ae7a10374836754d1f12924f39bb165065941bab4ac8a19e36bad38cea5",
+          "receipt_sha256": "530a64c89320eca65c46c07e97ab6af18413312ab01f667167ee9804778f5274",
+          "release_id": "78b2d97a0d6ba7375400248ec829f68999aa70d56c761b6c1e3c5f67945bd0c3",
+          "sources": {
+            "gchat": {
+              "commit": "073ebb16bf97d7702e7f503e517f1b8f96556902",
+              "tree": "596bc130f3d2febb2a8e42a3d2bf8ea7500b2ff6"
+            },
+            "gcoms": {
+              "commit": "9e889b7c17702ebbe365f8c34eb42f1c4fe7193b",
+              "tree": "9826801d0ab0f14dc09f3795ec373e4165df73e7"
+            }
+          },
+          "stage": "publish",
+          "version": "0.1.217"
+        }
+      },
+      {
+        "platform": "macos-aarch64",
+        "state": "building",
+        "milestone": "building",
+        "candidate": "b9065ff947586e0e9c6bdb96fe27633caab8e4ae416d1c6cb4669e3420f78125",
+        "candidate_version": "0.1.223",
+        "published_contains_change": false,
+        "fulfilled": false,
+        "owner": "IggyGG",
+        "next_action": "Continue the original qualified release automatically.",
+        "task_id": null,
+        "published": {
+          "release_id": "cafb4646f7bbf8040a2a2f9d9e848a53a9fb8ce66addd67d97246739a6af85e5",
+          "version": "0.1.176",
+          "sources": {
+            "gchat": {
+              "commit": "29d8b692168ea9835867954708146394a110c68a",
+              "tree": "a978edbf719a136843dadffc3c72a4f97e690f11"
+            },
+            "gcoms": {
+              "commit": "55aa58ccf2ed9a478e911d368a7444523386a413",
+              "tree": "6cc42b32c57447b7e479a525ce1bdaa316fcecdd"
+            }
+          },
+          "receipt_sha256": "90d694037507a46cb3f8647e153dd4ef87b5eba095737da93aae004cabe09920",
+          "effect_id": "77ef46efcfc162cf78697ac1abdc85be483fe8b4cc84a7d3a78b2d13ef2e397f"
+        }
+      },
+      {
+        "platform": "macos-x86_64",
+        "state": "building",
+        "milestone": "building",
+        "candidate": "b9065ff947586e0e9c6bdb96fe27633caab8e4ae416d1c6cb4669e3420f78125",
+        "candidate_version": "0.1.223",
+        "published_contains_change": false,
+        "fulfilled": false,
+        "owner": "IggyGG",
+        "next_action": "Continue the original qualified release automatically.",
+        "task_id": null,
+        "published": {
+          "release_id": "cafb4646f7bbf8040a2a2f9d9e848a53a9fb8ce66addd67d97246739a6af85e5",
+          "version": "0.1.176",
+          "sources": {
+            "gchat": {
+              "commit": "29d8b692168ea9835867954708146394a110c68a",
+              "tree": "a978edbf719a136843dadffc3c72a4f97e690f11"
+            },
+            "gcoms": {
+              "commit": "55aa58ccf2ed9a478e911d368a7444523386a413",
+              "tree": "6cc42b32c57447b7e479a525ce1bdaa316fcecdd"
+            }
+          },
+          "receipt_sha256": "5afd9ab27a6ca6e83ff48c8ed5b7d68b1ab85e7df1bdef537fd3198675562bd6",
+          "effect_id": "1e9f713f43d6cd5077593b64c10aecfea9d4b782922eb55bd21711c66b9c987d"
+        }
+      },
+      {
+        "platform": "windows-x86_64",
+        "state": "blocked",
+        "milestone": "blocked",
+        "candidate": "b9065ff947586e0e9c6bdb96fe27633caab8e4ae416d1c6cb4669e3420f78125",
+        "candidate_version": "0.1.223",
+        "published_contains_change": false,
+        "fulfilled": false,
+        "owner": "IggyGG",
+        "next_action": "Guard POSIX-only fcntl imports in portable native tooling, then publish a source-corrected candidate.",
+        "task_id": "1eeaee525ca69db8293bb578c007359d95393ce836659d1e0163fa91fe1a36bf",
+        "published": {
+          "release_id": "cafb4646f7bbf8040a2a2f9d9e848a53a9fb8ce66addd67d97246739a6af85e5",
+          "version": "0.1.176",
+          "sources": {
+            "gchat": {
+              "commit": "29d8b692168ea9835867954708146394a110c68a",
+              "tree": "a978edbf719a136843dadffc3c72a4f97e690f11"
+            },
+            "gcoms": {
+              "commit": "55aa58ccf2ed9a478e911d368a7444523386a413",
+              "tree": "6cc42b32c57447b7e479a525ce1bdaa316fcecdd"
+            }
+          },
+          "receipt_sha256": "1a5c94c88f6c13ed80bcaf272a347e1f7a73d1485472de41a6a6da2c89ebd9eb",
+          "effect_id": "c52d9f2316f7c3a3a430d313389f58e389b9694e7b028c30277ec9713d01c398"
+        },
+        "diagnostics": [
+          {
+            "artifact_evidence": [],
+            "category": "code",
+            "code": "native_posix_import",
+            "diagnostics_pending": false,
+            "evidence_sha256": "1c9abd660e7bedd237070a2077742c7e120d7972816abf9b48a62214e68862e3",
+            "failed_checks": [
+              "android_release_build_job_test",
+              "android_release_catalogue_test",
+              "android_release_cluster_test",
+              "android_release_kubernetes_test",
+              "android_release_lab_context_test",
+              "android_release_lab_provision_test",
+              "android_release_lab_test",
+              "android_release_outbox_test"
+            ],
+            "jobs": [
+              {
+                "attempt": 1,
+                "code": "native_posix_import",
+                "job_id": 115933552480,
+                "log_sha256": "9657391c63abb0a41802dddd8988e07f44053cfd9f754e65ac613413adb5685c",
+                "name": "windows",
+                "step": "Qualify GComs source provenance and portable tooling before native compilation"
+              }
+            ],
+            "repo": "IggyGG/gchat",
+            "run_attempt": 1,
+            "run_id": 38587571762
+          }
+        ]
+      },
+      {
+        "platform": "android",
+        "state": "published",
+        "milestone": "published",
+        "candidate": "d805599b8556f95c485ffe8f0fad7ae10dd7ed6cf727343ad43fdc4b27266783",
+        "candidate_version": "1231",
+        "published_contains_change": true,
+        "fulfilled": true,
+        "owner": "IggyGG",
+        "next_action": "Published with verified source-containing public availability.",
+        "task_id": null,
+        "published": {
+          "release_id": "d805599b8556f95c485ffe8f0fad7ae10dd7ed6cf727343ad43fdc4b27266783",
+          "version": "1231",
+          "sources": {
+            "gchat": {
+              "commit": "64180bf3ed9998866535de521e96412813f8732d",
+              "tree": "b5fdf2b61a11a59df5b40d1b9bd68b43059bb387"
+            },
+            "gcoms": {
+              "commit": "9e889b7c17702ebbe365f8c34eb42f1c4fe7193b",
+              "tree": "9826801d0ab0f14dc09f3795ec373e4165df73e7"
+            }
+          },
+          "receipt_sha256": "8121cb1498a4d892dc9e60a284e8b6edbc630b30c9eb9416e4b053dc208608f2",
+          "effect_id": "b4d1a1fef6fe0c9a2441bbdf091a5814fcc83249000eb945a4d8b64a2de13ddb"
+        },
+        "fulfillment": {
+          "effect_id": "b4d1a1fef6fe0c9a2441bbdf091a5814fcc83249000eb945a4d8b64a2de13ddb",
+          "receipt_sha256": "8121cb1498a4d892dc9e60a284e8b6edbc630b30c9eb9416e4b053dc208608f2",
+          "release_id": "d805599b8556f95c485ffe8f0fad7ae10dd7ed6cf727343ad43fdc4b27266783",
+          "sources": {
+            "gchat": {
+              "commit": "64180bf3ed9998866535de521e96412813f8732d",
+              "tree": "b5fdf2b61a11a59df5b40d1b9bd68b43059bb387"
+            },
+            "gcoms": {
+              "commit": "9e889b7c17702ebbe365f8c34eb42f1c4fe7193b",
+              "tree": "9826801d0ab0f14dc09f3795ec373e4165df73e7"
+            }
+          },
+          "stage": "observe",
+          "version": "1231"
+        }
+      },
+      {
+        "platform": "ios",
+        "state": "verified",
+        "milestone": "qualified",
+        "candidate": "62023a951592c2e1b6bc5bbe94c471c115fdbe2d36d4d09081073ad804d88d37",
+        "candidate_version": "1.2.36",
+        "published_contains_change": false,
+        "fulfilled": false,
+        "owner": "IggyGG",
+        "next_action": "Continue the original qualified release automatically.",
+        "task_id": null,
+        "published": {
+          "release_id": null,
+          "version": null,
+          "sources": null,
+          "receipt_sha256": null,
+          "effect_id": null
+        }
+      },
+      {
+        "platform": "sdk",
+        "state": "published",
+        "milestone": "published",
+        "candidate": "3c92eabaecbd5089fa567f2eec6df7f6ae5ca3c0e650beb661257ad6166eb54d",
+        "candidate_version": "0.1.222",
+        "published_contains_change": true,
+        "fulfilled": true,
+        "owner": "IggyGG",
+        "next_action": "Published with verified source-containing public availability.",
+        "task_id": null,
+        "published": {
+          "release_id": "3c92eabaecbd5089fa567f2eec6df7f6ae5ca3c0e650beb661257ad6166eb54d",
+          "version": "0.1.222",
+          "sources": {
+            "gchat": {
+              "commit": "0b4ffa92b2c61b44e91d72035f1c6ba718d90614",
+              "tree": "19a5f14a5c1e241b0a65f6fc4d145979f6cd0d73"
+            },
+            "gcoms": {
+              "commit": "712d671d3cde2e012c99196a0c73a788c8efbfbb",
+              "tree": "1209b598ce7c5ea87fa9b8851bf0c1d0db64185d"
+            }
+          },
+          "receipt_sha256": "52feff06028baa9a4c796f9db49cced45fcd3a2bd45fb9bf692d51fdd0cd1b07",
+          "effect_id": "1e7c4557b229f8033582db8076d10fc5ec739c1481f8236701c32e272cb77e61"
+        },
+        "fulfillment": {
+          "effect_id": "1e7c4557b229f8033582db8076d10fc5ec739c1481f8236701c32e272cb77e61",
+          "receipt_sha256": "52feff06028baa9a4c796f9db49cced45fcd3a2bd45fb9bf692d51fdd0cd1b07",
+          "release_id": "3c92eabaecbd5089fa567f2eec6df7f6ae5ca3c0e650beb661257ad6166eb54d",
+          "sources": {
+            "gchat": {
+              "commit": "0b4ffa92b2c61b44e91d72035f1c6ba718d90614",
+              "tree": "19a5f14a5c1e241b0a65f6fc4d145979f6cd0d73"
+            },
+            "gcoms": {
+              "commit": "712d671d3cde2e012c99196a0c73a788c8efbfbb",
+              "tree": "1209b598ce7c5ea87fa9b8851bf0c1d0db64185d"
+            }
+          },
+          "stage": "publish",
+          "version": "0.1.222"
+        }
+      }
+    ]
+  },
+  "store_review": {
+    "kind": "apple_encryption_prerequisite",
+    "observation": {
+      "request_id": "efc5495200893e9a379ae4a3f13096cdec6d283dd9786fbbf5071ead8c59d4e8",
+      "sha256": "2cc23a3837c572c3ca30c32e6f2d5b95c999579ad7911aeb9523c159def48b01",
+      "at": 1791993267,
+      "declaration": "670c5156-d5db-40f6-a137-3417dae28965",
+      "includes_france": true,
+      "release_id": "3099978be1c39128f93ba60acd90452c85b1cf7d4aee8e69ff1ab1c87350addd",
+      "schema": 1,
+      "sources": {
+        "gchat": {
+          "commit": "9a5141e444f814dd2db558688ad7267a85f783fe",
+          "tree": "23fdb6dbd0035703ff85fa45cfe4e805779e564f"
+        },
+        "gcoms": {
+          "commit": "1ab416bc59d9b73f131163a9a2d268a50e7e2e00",
+          "tree": "b711e45831ba2338b66224d3014e181e5253afa9"
+        }
+      },
+      "state": "IN_REVIEW"
+    },
+    "approval_is_not_publication": true,
+    "original_submission_unchanged": true,
+    "uploaded": false,
+    "submitted": false,
+    "next_poll_at": 1791994183
+  },
+  "notifications": {
+    "journal_state": "accepted",
+    "sequence": 6182,
+    "repeat_consumption": {
+      "state": "up_to_date",
+      "sequence": 6182
+    }
+  },
+  "retention": {
+    "verified_cold_archives": 56,
+    "reclaimed_bytes": 21628866560,
+    "independent_post_retirement_restore": true
+  },
+  "retained_artifact_recovery": {
+    "request_id": "260774b075c0c9b7202d7d7453f5f1104151dfeef336984b2e412cdb82f51c3e",
+    "original_run_id": 38533142371,
+    "archive_bytes": 966902644,
+    "archive_sha256": "726e2d23451be0f5531a9cf80beadfa35f154899c6b8993e0971dd1fd91c849c",
+    "original_sources": {
+      "gchat": {
+        "commit": "94735762e27437d987e97f47e83f521b690ad9ca",
+        "tree": "1634d40720e43ef07919fa84acc765f5bca15dd0"
+      },
+      "gcoms": {
+        "commit": "712d671d3cde2e012c99196a0c73a788c8efbfbb",
+        "tree": "1209b598ce7c5ea87fa9b8851bf0c1d0db64185d"
+      }
+    },
+    "original_transport": [
+      {
+        "expected_bytes": 966902644,
+        "header_bytes": 1040,
+        "payload_bytes": 897581056,
+        "schema": 1,
+        "transport_bytes": 897582096,
+        "transport_sha256": "7dbec88c2ff6d105a0a3a5b0efdafd9ca8669e1c5daa44a89fc330687f4a4a77"
+      }
+    ],
+    "publication_claimed": false
+  },
+  "evidence": [
+    {
+      "path": "test-evidence/release-follow-through/store-observer-activation.json",
+      "sha256": "b37fc7a96f21ec50341a3cf2bd36d20579fdf8a828b9a67d98809675dd8a704e"
+    },
+    {
+      "path": "test-evidence/release-follow-through/store-observation-source.json",
+      "sha256": "9a69809ff47367a5836e34c023d4fa4915bf6f33d92faabb8c6dbd24eb28d666"
+    },
+    {
+      "path": "test-evidence/release-follow-through/store-observation-full.log",
+      "sha256": "4ecc6b966a19295bb4df8c6efaf31ff535765237aca2c3d77e975414e91bb144"
+    },
+    {
+      "path": "test-evidence/release-follow-through/store-observation-focused-final.log",
+      "sha256": "b4eedd28764a72dd88192e235387f50c28ca3b86e59ca812168c85c1ecb0fc7b"
+    },
+    {
+      "path": "test-evidence/release-follow-through/live-publication-audit.json",
+      "sha256": "f2ff3c2fb0a0c814a636388d6e05c3c25d4805117013b125324d69c0ab8ddd8d"
+    },
+    {
+      "path": "test-evidence/release-follow-through/notifier-live-audit.json",
+      "sha256": "480815ac18d6c688c331f5d759594d4aefb4df1d80669163ac075e3049b58348"
+    },
+    {
+      "path": "test-evidence/release-follow-through/public-desktops-verified.json",
+      "sha256": "809c296c62dee9941ff600bd98a6801f2f39cc231b63b96c868dd7c21878864f"
+    },
+    {
+      "path": "test-evidence/release-follow-through/sdk-public-index-audit.json",
+      "sha256": "b863e9dfebf08b6e8a08196ff5494c29a2857ba78aa9fd10caedb477a7f85eaa"
+    },
+    {
+      "path": "test-evidence/release-follow-through/android-availability-audit.json",
+      "sha256": "61047d84b01bec415de972181cc4b523e9cb49531cd3fb2bcb7c5a90ca96c388"
+    },
+    {
+      "path": "test-evidence/release-follow-through/completed-cold-archive-audit.json",
+      "sha256": "cb63fa830b12f6f6140f28da1032a7bfd657585840fd2bb51dab0060cf677f8e"
+    },
+    {
+      "path": "test-evidence/release-follow-through/post-retirement-restore.json",
+      "sha256": "8da51b42ba0e7b1539c07fce2a43151873fe97e437b8e9a9d3031588856d740c"
+    },
+    {
+      "path": "test-evidence/release-follow-through/recovered-original219.json",
+      "sha256": "849d31ca50aad1ed7c318af03669e1c142b331617ccec397c19546d9b4c69f54"
+    },
+    {
+      "path": "test-evidence/release-follow-through/final-runtime-and-store-audit.json",
+      "sha256": "7da58ee6288d4a01edfcc2e9ddba0e184b8a4383e507da00d2bae92b31fd9840"
+    },
+    {
+      "path": "test-evidence/release-follow-through/sdk-public-bytes.json",
+      "sha256": "723e5a7ed3b5ca4e255c6e1f89c5807e1d6584c06b6ceeb8896fff20676bb728"
+    }
+  ],
+  "code_comparison": [
+    {
+      "path": "enso-org/enso:tools/performance/engine-benchmarks/bench_tool/gh.py",
+      "cosine": 0.7378,
+      "rerank": 0.9801,
+      "conclusion": "Comparable gh transport; this implementation bounds private evidence and preserves original requests."
+    },
+    {
+      "path": "pulp/pulpcore:pulpcore/responses.py",
+      "cosine": 0.7712,
+      "rerank": 0.8687,
+      "conclusion": "Comparable range/length contract; this client additionally pins immutable request identity and complete SHA-256."
+    },
+    {
+      "path": "firebase/fastlane-plugin-firebase_app_distribution:lib/fastlane/plugin/firebase_app_distribution/actions/firebase_app_distribution_action.rb",
+      "cosine": 0.6326,
+      "rerank": 0,
+      "conclusion": "No close retained-review handoff implementation; local causal and boundary controls are decisive."
+    }
+  ]
+}
