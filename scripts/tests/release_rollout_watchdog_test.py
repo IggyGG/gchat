@@ -63,17 +63,34 @@ class WatchdogTests(unittest.TestCase):
         self.assertEqual(self.calls, ['rollback'])
 
     def test_revised_controller_recovers_its_own_retained_directory(self):
+        import hashlib
+        import time
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from release_deployment import invoke
         revision = 'd' * 64
         self.report['targets']['controller']['work_revision'] = revision
+        self.target['workers'] = {stage: ['worker'] for stage in ('observe', 'rollback')}
         atomic_json(self.directory / 'journal.json', self.report)
         revised = self.work / 'revisions' / revision
         atomic_json(revised / 'candidate.json', self.manifest)
         # A stale first-generation before-image is deliberately retained.
         atomic_json(self.work / 'kubernetes-before.json', {'images': {'coordinator': 'old-unrelated'}})
-        def revised_worker(target, stage, manifest, work, previous=None):
-            self.assertEqual(work, revised)
-            return self.worker(target, stage, manifest, work, previous)
-        self.assertTrue(watchdog.recover(self.root, worker=revised_worker, now=230))
+        def worker_process(argv, *, env, **kwargs):
+            output = Path(env['GCHAT_DEPLOYMENT_RECEIPT'])
+            self.assertEqual(output.parent, revised)
+            stage = env['GCHAT_DEPLOYMENT_STAGE']
+            evidence = output.with_suffix('.evidence.json')
+            atomic_json(evidence, {'stage': stage})
+            value = {'schema': 1, 'target': 'controller', 'stage': stage,
+                     'release_id': self.manifest['release_id'], 'sources': self.manifest['sources'],
+                     'observed_at': int(time.time()), 'passed': True,
+                     'healthy': False, 'matches': True, 'running': {'image': 'successor'},
+                     'evidence': [{'path': evidence.name, 'sha256': hashlib.sha256(evidence.read_bytes()).hexdigest()}]}
+            atomic_json(output, value)
+            return SimpleNamespace(returncode=0)
+        with patch('release_deployment.subprocess.run', side_effect=worker_process):
+            self.assertTrue(watchdog.recover(self.root, worker=invoke, now=230))
         self.assertEqual(json.loads((self.work / 'kubernetes-before.json').read_text()),
                          {'images': {'coordinator': 'old-unrelated'}})
 
