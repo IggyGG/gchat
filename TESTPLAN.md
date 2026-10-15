@@ -1,3 +1,14 @@
+F5 / combined startup and channel recovery, 2026-10-15: the exact paired source
+checks pass 11 registration/four fleet/three ownership/four actual-daemon cases
+and strict Clippy. Preserve the original full-CI browser failure: its trace shows
+24 loopback module loads aborted by ERR_NETWORK_CHANGED before rendering. Rerun
+both unchanged browser suites in an isolated loopback namespace, then all remaining
+native commands against the same frozen source. Both 122-case browser suites,
+all 26 desktop library tests, the native release build, generated contracts and
+both dependency audits now pass with original source/derived inputs unchanged.
+Do not relabel the first failure.
+Require fresh signed qualification and the complete installed acceptance matrix.
+
 F5 / Linux SDK execution allocation,2026-10-15: retain the entire SDK scripts/ci.py
 gate, including2000 sequential sends to three genuinely stopped fixture nodes.
 The original229 test passed after3613seconds; native execution was cancelled at

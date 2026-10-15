@@ -1,3 +1,15 @@
+F5 / combined personal and route-bridge qualification, 2026-10-15: exact
+547690e/8ae7cb5 passes 11 registration, four fleet, three endpoint-ownership and
+four actual-daemon tests plus strict core/Tui Clippy. The SDK passes 476 node
+tests, strict checks, legacy compilation and source inventory. An unsigned
+95e1ca8/d481f72 build preserves one current228 clone through upgrade, rollback and
+forward recovery, including all 205 message digests, 23 operations and scoped fleet
+status. Both 122-case browser suites, all 26 desktop tests and every remaining
+native/build/generated/dependency command pass on the same frozen source. The
+original browser network-change failure remains failed. The full relay campaign,
+signed publication and installed acceptance remain required. Original failures
+are retained. [Evidence](docs/evidence/durable-host/source.json).
+
 F5 / Linux SDK native allocation,2026-10-15: original229 SDK job116537979015
 reached120minutes during released-facade compilation after its unchanged real
 unreachable-member test passed in3613seconds. Allocate150minutes to that SDK job
@@ -12,7 +24,7 @@ runtime old-fail/new-pass test,10 registration controls,4fleet,3ownership and4re
 daemon cases plus strict core/Tui Clippy pass. Additive first fleet/service adoption
 preserves intended provisioning; existing bindings and other recipe fields cannot
 change. A further service-isolation case and desktop plain/invitation test join
-the full source gate. Mobile keeps its app-owned in-process configuration.
+the completed source gate. Mobile keeps its app-owned in-process configuration.
 Candidate229's separate full relay campaign failed and remains retained; diagnose it
 before the next combined qualified successor. Full goal remains in progress.
 

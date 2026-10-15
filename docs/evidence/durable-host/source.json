@@ -1,5 +1,71 @@
 {
   "schema": 1,
+  "combined_personal_and_route_bridge_20261015": {
+    "paired_sources": {
+      "gchat": "547690e29535a15035187ee6371fcfd4120dccee",
+      "gcoms": "8ae7cb58a560709d4882c00a46f3064b6d5faef6"
+    },
+    "paired_checks": {
+      "passed": true,
+      "source_unchanged": true,
+      "registration": 11,
+      "fleet": 4,
+      "endpoint_ownership": 3,
+      "actual_daemon_lifecycle": 4,
+      "strict_core_tui_all_target_clippy": true,
+      "seconds": 1337.5637738319929,
+      "receipt_sha256": "b5111a845b31bae8da96e339495259d877028ab7c0b95a75d05148028ac87127"
+    },
+    "sdk_source": {
+      "node_passed": 476,
+      "existing_ignored": 2,
+      "strict_clippy_legacy_compile_format_inventory": true,
+      "composed_receipt_sha256": "8102b6a32f0d37ffcaa2b3178e7c3ad49766b5c35817e8fbc8d202342fac0888",
+      "original_failures": "First full run retained a forward-queue positional assertion; corrected exact-ID assertion passed. Second aggregate retained its metadata-free snapshot inventory failure; exact committed checkout inventory passed separately."
+    },
+    "unsigned_retained_state_compatibility": {
+      "gchat": "95e1ca80c15a090071250315e17efff958a411b6",
+      "gcoms": "d481f72792da7c7c81abe5f23eeef7f43d7ea30c",
+      "binary_sha256": "f277c88f84e02a999644b40989de5d046bda659eaaec0959564d2d7bc51fb713",
+      "phases": ["signed228", "candidate", "signed228_current_state_rollback", "candidate_forward"],
+      "passed": true,
+      "backup_copied_once": true,
+      "network_isolated": true,
+      "message_digests": 205,
+      "operations": 23,
+      "same_identity_memberships_logical_cache": true,
+      "scoped_fleet_status_and_ungranted_health_refusal": true,
+      "seconds": 33.61730004599667,
+      "receipt_sha256": "ed03fa247c4a940202c5eba78fef6f1a8fb4e7d0ec31e051e8cc38dbc273c4ca"
+    },
+    "personal_full_ci_failure": {
+      "gchat": "95e1ca80c15a090071250315e17efff958a411b6",
+      "gcoms": "e4288d3c20e34f45fa44fed1b2caa9d44e56ed4f",
+      "python_cases": 1204,
+      "dependency_free_provider_cases": 53,
+      "workspace_rust_clippy_and_released_consumer_passed": true,
+      "chromium": {"passed": 121, "failed": 1},
+      "cause": "24 loopback module requests aborted with ERR_NETWORK_CHANGED before rendering; original screenshot and trace retained. No UI assertion or deadline changed.",
+      "trace_sha256": "0293ff45d4ef31d9298a5a6e8a2429f9d03a27b1e515fc94ad95137561bed4de",
+      "remaining_exact_native_gates": "Passed both browser suites in an isolated loopback namespace, followed by every remaining desktop/build/deny command on the original frozen input. Original failed full-CI receipt remains unchanged."
+    },
+    "remaining_native_commands": {
+      "passed": true,
+      "source_and_derived_inputs_unchanged": true,
+      "chromium": 122,
+      "webkit": 122,
+      "desktop_library_tests": 26,
+      "ui_unit_tests_in_original_ci": 78,
+      "frontend_build_website_generated_contracts_notices": true,
+      "desktop_format_check_tests_and_release_build": true,
+      "workspace_and_desktop_dependency_audits": true,
+      "seconds": 2807.935935251997,
+      "receipt_sha256": "d3ace8683586cadfa6b2be61d0b53f8ac0e082838d8aa3cabad3e69c7d2f3bad",
+      "scope": "Composed with preceding successful steps of original frozen95e1ca8/e4288d3 CI; paired547690e/8ae7cb5 runtime checks separately pass. Final normal signed native qualification remains required."
+    },
+    "signed_successor_qualified": false,
+    "installed_final_acceptance_complete": false
+  },
   "linux_sdk_native_allocation_20261015": {
     "original_run": 38768527832,
     "original_job": 116537979015,
@@ -28,7 +94,7 @@
       "seconds": 708.4099301440001,
       "receipt_sha256": "49b3af8c1f793b40ac347ccc0383645edea19a1cf01ed9d9874ed98a74656cd9"
     },
-    "additional_coverage_pending_full_gate": [
+    "additional_coverage_completed": [
       "first-service adoption cannot change other carrier/network/socket/provider fields",
       "old personal profile migrates through its explicit installation configuration",
       "plain and invitation desktop startup retain a saved legacy carrier"
@@ -46,7 +112,8 @@
       "content_fetched": true,
       "assessment": "Generic registration model; no equivalent guarded adoption implementation. Local recipe carries public references, with runtime ownership and direct causal/negative coverage."
     },
-    "full_source_qualification_complete": false,
+    "full_source_qualification_complete": true,
+    "qualification_disposition": "All required source commands passed on the original frozen inputs across the retained initial CI and remainder receipts; both original harness/browser failures remain failed. Combined new SDK pair passes focused lifecycle/strict checks separately.",
     "signed_successor_qualified": false,
     "private_evidence_root": "/run/media/user/SSD-2/retained/ghost/durable-host-20261012"
   },
