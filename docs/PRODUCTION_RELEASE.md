@@ -47,6 +47,13 @@ Delivery, authentication, persistence, signatures and rollback remain mandatory.
 
 ## Large-file qualification
 
+The current 16 MiB gate is defined in `release/automation/policy.json` and
+`AUTOMATIC_RELEASES.md`: 360 seconds from original acceptance through exact exported
+SHA-256, within a 600-second whole journey. Interruption, same-operation resume,
+retained identity/history, authenticated recipient ACKs and rollback remain
+required. The dated 180-second results below retain their original scope and
+outcomes; the newer allocation does not relabel any old failure.
+
 Mac 0.1.44 remains blocked by the 16 MiB interrupted-transfer deadline. The
 2026-09-29 retained Apple-silicon diagnostic used the original signed installer
 without rebuilding it. Both authenticated message ACKs passed and reopening
@@ -78,6 +85,12 @@ mandatory. A smaller-file pass does not relabel either large-file failure.
 Production status does not mean traffic-analysis resistance is qualified. The four profile-22 comparisons (idle/chat and matched bulk/mixed, for time windows and connection observations) are improvement targets, not release vetoes. Existing unfavorable/calibration reports remain retained. Further work includes reducing observable activity and volume differences, establishing repeatable whole-client measurements across startup, DNS/HTTPS bootstrap, protected catalog access, reconnect/reopen and connection lifetimes, and measuring adverse-link behavior without pooled-relay substitutions. No <=0.55 claim is made.
 
 ## Data and protocol selection
+
+For a registered saved desktop instance, ordinary icon/CLI/invitation startup
+resolves its owner-private `chat.host.json`; repeated carrier or fleet arguments
+are not required. Initial migration is derived from the explicit installation
+configuration and cannot change an existing identity/component partition. See
+`DURABLE_HOST.md` for managed-service association, startup errors and recovery.
 
 The current source selects GC/2 profile 46: real traffic is immediately eligible and padded interactive cover uses independent random 10–10,000 ms opportunities, skipping an opportunity when real data was sent on that outgoing channel since the previous one. This is not equivalent to constant-rate traffic-analysis protection. The authenticated carrier endpoint can distinguish cover records after TLS decryption; link cover does not make real traffic invisible to that endpoint. Existing profile-22 artifacts and receipts retain their original scope. Relays must support 46 before selecting it in clients; older binaries may reject the saved policy, so rollback needs a compatible build or tested state-preserving migration. Start the desktop with `gchat-desktop --gc2-carrier`; use a separate `--home` for an existing legacy installation. Existing legacy profiles are not silently converted, reset or overwritten. Authentication, exact retained outboxes, signed capabilities and expiry checks remain enforced. The production relays retain their identity/TLS keys; current bootstrap credentials are generated from those identities, never converted from legacy authority.
 

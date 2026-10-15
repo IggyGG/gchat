@@ -258,7 +258,9 @@ Full history pagination, memberships, identity/partition and operation states ar
 compared separately from encrypted-file hashes. Exercise recovery in a network
 namespace with only loopback, explicitly relocate only the clone's registration,
 and keep it disconnected from the live network. The dated installed receipt binds
-the successful223 stopped backup and isolated restoration.
+the current 0.1.228 stopped backup and isolated restoration (all 205 message digests,
+memberships, 23 operation records and logical cache), alongside earlier recovery
+points. Take another fresh complete set before the final candidate installation.
 
 For a state-preserving rollback, retain failure evidence, checkpoint/stop the
 candidate and open its **current state** with the tested compatible predecessor
