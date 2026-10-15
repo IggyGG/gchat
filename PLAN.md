@@ -1984,4 +1984,4 @@ Only a source-bound terminal deployment with no rollout owner, active mutation,
 pending/failed rollback or operator rollback can yield. Original artifacts,
 platform/effect state, deadlines and already dispatched requests remain retained.
 Controller image qualification and deployment are tracked separately from source
-checks in `docs/evidence/durable-host/failed-deployment-flight.json`.
+checks in `docs/evidence/durable-host/source.json`.
