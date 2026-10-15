@@ -1,3 +1,12 @@
+F5 / fleet status scope, 2026-10-15: installed228 now authenticates the intended
+fleet component after endpoint recovery, but its SDK machine allowlist omits the
+existing `IdentityRead` runtime-status request. The paired regression reproduces
+`PermissionDenied`; the scoped companion correction passes status after credential
+rotation and stale endpoint recovery while refusing unregistered clients, Health
+and profile administration. All4fleet/3ownership/3actual-daemon cases,86SDK tests
+and strict checks pass. Signed successor acceptance remains required.
+[Source evidence](docs/evidence/durable-host/source.json).
+
 F5 / native fixture follow-up, 2026-10-15: Linux226 built production binaries but
 failed one browser history assertion. The fixture changed server-side history
 immediately before a keypress, before the UI's asynchronous snapshot arrived.

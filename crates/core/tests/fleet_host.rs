@@ -196,20 +196,29 @@ async fn fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_l
     ));
     let old = attach(&socket, &credentials).await;
     assert_eq!(old.identity().safety_number, safety);
+    old.runtime_status()
+        .await
+        .expect("registered identity-read component can inspect runtime status");
     assert!(
         SdkClient::connect(&socket, "unregistered", vec![Capability::IdentityRead])
             .await
             .is_err()
     );
-    assert!(old
-        .shell_request(gcoms::sdk::shell::ShellRequest::Health)
-        .await
-        .is_err());
+    assert!(matches!(
+        old.shell_request(gcoms::sdk::shell::ShellRequest::Health)
+            .await,
+        Err(gcoms::sdk::SdkError::PermissionDenied)
+    ));
+    assert!(matches!(
+        old.persist_profile().await,
+        Err(gcoms::sdk::SdkError::PermissionDenied)
+    ));
 
     fleet.registry.components[0].credentials.token = [8; 32];
     save(&path, &fleet);
     let current = attach(&socket, &fleet.registry.components[0].credentials).await;
     assert_eq!(current.identity().safety_number, safety);
+    current.runtime_status().await.unwrap();
     assert!(old.refresh_identity().await.is_err());
     assert!(
         matches!(request(&host, Request::Lock).await, Response::Instance { instance } if instance.locked)
@@ -276,6 +285,7 @@ async fn fleet_attachment_preserves_identity_reloads_credentials_and_drains_on_l
             attached.refresh_identity().await.unwrap().safety_number,
             safety
         );
+        attached.runtime_status().await.unwrap();
         drop(attached);
         recovered.flush().await.unwrap();
     }

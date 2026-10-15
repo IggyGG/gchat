@@ -1,3 +1,12 @@
+F5 / fleet runtime status, 2026-10-15: the existing retained-profile fleet test
+now calls `runtime_status` through its authenticated IdentityRead-only connection,
+then requires exact PermissionDenied for ungranted shell Health and profile
+persistence. It repeats status after credential rotation and stale socket recovery.
+The former SDK allowlist fails this causal control; all4fleet/3ownership/3native
+daemon cases and strict core/Tui checks pass with the one-operation companion fix.
+All86SDK tests and strict SDK Clippy pass. Final signed/installed scope acceptance
+is separately required. See `docs/evidence/durable-host/source.json`.
+
 F5 / native226 follow-up, 2026-10-15: keep the original Linux browser failure and
 Windows1201-test failure. The caret/history test must use history from the initial
 restored snapshot and preserve exact suffix completion, no-send selection,
