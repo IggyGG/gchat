@@ -26,11 +26,45 @@
       "after": {"path": "openclaw/openclaw:scripts/full-release-validation-policy.mjs", "cosine": 0.5565, "rerank": 0.016917846148039584},
       "assessment": "No close implementation; direct causal/negative state and ownership coverage."
     },
-    "controller_image_qualified": false,
-    "controller_installed": false,
+    "controller_image_qualified": true,
+    "controller_installed": true,
+    "deployment": {
+      "source": "147e8a18d55dcf5d319e2c8a543d06fa113e0ba2",
+      "intent": "71973afb114c5f7791f1d37411e0a896af83f6d911c51bcb5bfe88c3d532a37b",
+      "image": "sha256:bee812766b3674db9db533f39ef83b703baf0d78f386e4f991a448cd800d1984",
+      "actual_image_tests": 506, "kubernetes_tests": 506, "loaded_source_files_verified": 271,
+      "ordinary_network_canary_passed": true,
+      "qualification_audit_sha256": "62a450cea090f3494a9651b727c4db8d41d0be118ae5dc2589eca98411585001",
+      "installed_audit_sha256": "c8663f852389c98817aeecab48885298c66fc3cebbecfa256f8851c88e02757d",
+      "original_failed_deployment_journal_unchanged_sha256": "ce4a25b2bf0bcebe1b60a73d4d6fecd5d338aba8e05cc2fff898bbf9f9866f0b",
+      "expired_acceptance_cleanup": "Original Windows request/run38682596782 was reconciled and revoked normally; its old result correctly failed freshness without a new dispatch or grant.",
+      "successor_229_original_build_budget": {"started_at": 1792081376, "deadline_at": 1792084976, "paused_seconds": 0},
+      "successor_original_clocks_receipt_sha256": "568bb2ad34e190bc79a0edb3ea0f3af8586c4eec69dfefa911c7885afcd23142"
+    },
     "private_evidence_root": "/run/media/user/SSD-2/retained/ghost/durable-host-20261012"
   },
   "date": "2026-10-13",
+  "retained_candidate_acceptance_20261015": {
+    "scope": "Unsigned repaired executable against one network-isolated current228 backup clone; final signed installation and live network acceptance remain required",
+    "sources": {"gchat": "ba53e90c31d75ed35fcb30955db0f0d5632bc13a", "gcoms": "e4288d3c20e34f45fa44fed1b2caa9d44e56ed4f"},
+    "candidate_sha256": "a046fea347be915a83e6aa48cc0921ae78f601c5aad90381662ee5e11c7fd8e5",
+    "same_current_state_phases": ["signed228", "candidate", "rollback228", "forward-candidate"],
+    "passed": true,
+    "conversations_each_phase": 11, "message_digests_each_phase": 205, "operations_each_phase": 23,
+    "same_identity_memberships_and_logical_cache": true,
+    "backup_copied_once_no_intermediate_restore": true,
+    "scoped_fleet_runtime_status_and_ungranted_health_refusal_in_both_candidate_phases": true,
+    "all_processes_stopped_orderly": true,
+    "rollback_seconds": 26.791557405987987,
+    "rollback_receipt_sha256": "6b9775c05ebe46ef05069e61e913b6f39b410cdb10d0de3401f19991792dfde7",
+    "offline_start_with_normal_production_providers": {
+      "passed": true, "external_interfaces": 0, "network_bootstrap_disabled": false,
+      "local_readiness_seconds": 4.856340870988788,
+      "network_state": "connecting", "history_and_identity_available": true,
+      "receipt_sha256": "2277cae50acaf2cbc491bbb008d8915280b48ba10de2e6e372e4039e61706c96"
+    },
+    "preserved_harness_failure": "Initial driver incorrectly required signed build metadata on an unsigned candidate; the corrected driver still requires signed228 metadata and binds the candidate by its frozen source/build receipt."
+  },
   "scope": "Durable scoped-host source and isolated lifecycle qualification",
   "release_qualified": false,
   "installed_acceptance_passed": false,

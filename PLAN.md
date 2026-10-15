@@ -1,3 +1,14 @@
+F5 / release admission recovery,2026-10-15: controller147e8a1 is live as bee812...
+after582 source,506 actual-image and506 Kubernetes checks plus the ordinary network
+canary. All271 loaded source hashes match; the original failed228deployment journal
+is byte-identical. Its completed Windows request was reconciled and cleaned, with
+the stale result still refused. Successor229 entered native builds on its original
+budget beginning1792081376, without resetting any request or clock. Separately,
+an isolated current228 clone survives repaired-source upgrade/rollback/forward with
+all205message digests/23operations, scoped fleet status and offline local readiness
+in4.856seconds using normal production provider configuration. Signed successor
+and installed live journey remain in progress. [Evidence](docs/evidence/durable-host/source.json).
+
 F5 / combined retained-host recovery, 2026-10-15: the exact GChat515bafd/GComs6e42e84
 pair passes4fleet,3ownership and3actual-daemon lifecycle cases plus strict core/Tui
 Clippy. The companion fixes deferred owner-announcement accumulation, queued POST

@@ -72,6 +72,14 @@ failure journal, platform/effect state, worker requests and all deadlines. It
 does not qualify or publish the old candidate, abandon a rollback, or replay a
 failed action. New source still takes the full normal qualification path.
 
+The228case is verified in production: controller147e8a1/imagebee812... passed506
+actual-image and506 Kubernetes checks plus the ordinary network canary; all271
+loaded source hashes match. The original failed fleet journal remains unchanged.
+A completed Windows acceptance request first needed its normal reconciliation and
+grant cleanup. Its old result still failed freshness and no new request or grant
+was issued. Successor229 then started its original native requests. Its build
+budget begins at active-flight admission, not at initial candidate discovery.
+
 Every platform retains native run, attempt, job and failed-step identities. Failed
 job logs are private, hash-bound and bounded to 4 MiB; unavailable or truncated
 logs remain explicitly incomplete. The `diagnose` worker only reads the original

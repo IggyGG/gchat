@@ -1,3 +1,14 @@
+F5 / retained current-state native acceptance,2026-10-15: the optimized unsigned
+ba53e90/e4288d3 CLI reopens one current228 clone through signed228 -> candidate ->
+signed228 -> candidate. All205 full message digests,23operations, memberships,
+identity and logical cache remain equal, with no intermediate backup restoration.
+Both candidate phases authenticate the intended fleet component's status and refuse
+ungranted Health. A separate real network namespace test retains normal production
+provider URLs and bootstrap selection: local state opens in4.856seconds while
+network status reports connecting. No production profile joins the namespace's
+absent external network. The exact final signed artifact still requires acceptance.
+See `docs/evidence/durable-host/source.json`.
+
 F5 / final retained-host source pair, 2026-10-15: qualify the fleet-status regression
 with all companion recovery fixes together. GChat515bafd/GComs6e42e84 passes4fleet,
 3endpoint ownership,3actual-daemon lifecycle and strict core/Tui Clippy. The SDK's
