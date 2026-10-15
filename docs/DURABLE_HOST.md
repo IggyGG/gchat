@@ -113,22 +113,31 @@ refusal was correct. Host selection was not retained.
 
 ## Startup association
 
-After a successful scoped unlock, the host publishes an owner-private, versioned
+After a successful desktop runtime unlock, the host publishes an owner-private, versioned
 `chat.host.json` beside the archive. It binds the existing instance ID, native
 profile/archive/socket paths, carrier/network selection, fleet configuration
 reference and public component partition. A managed daemon learns its exact Linux
 user unit from its own process association. Passphrases and component tokens are
 not copied into this registration.
 
-First publication is atomic and no-clobber. Reopening restores omitted fleet and
+First publication is atomic and no-clobber. This also preserves standalone
+personal carrier and network choices before a later argument-free launch or
+update. An older personal profile migrates after opening once with its explicit
+existing installation configuration. Reopening restores omitted fleet and
 service arguments; explicit conflicting options refuse. Credential rotation may
 change tokens and permissions within the existing authenticated component IPC
 contract without changing the retained identity or routing partition. A changed
 identity, partition, instance or host recipe needs explicit configuration repair.
+Intentional first fleet/service adoption can fill an absent binding only while
+all other recipe fields remain equal. Validation is read-only; atomic replacement
+waits for the runtime to authenticate and exclusively own the profile. An existing
+fleet partition or service cannot be replaced or downgraded through this path.
 
 Desktop entries select the saved instance (for example with `--home`). The saved
-instance owns its host association. Personal instances without a registration keep
-the existing startup path.
+instance owns its host association. A personal desktop recipe explicitly records
+no fleet and no managed service for the standalone path. Mobile hosts remain
+in-process with app-owned configuration; desktop absolute-path recipes are not
+introduced into OS-relocatable mobile data containers.
 
 ## Attachment and lifecycle
 

@@ -241,10 +241,26 @@ impl Registration {
 
     fn check(&self, config: &InstanceConfig) -> Result<(), String> {
         self.binds(config)?;
-        if Self::from_config(config, &self.instance)? != *self {
+        let next = Self::from_config(config, &self.instance)?;
+        if !self.permits_adoption(&next) {
             return Err("Startup configuration conflicts with this identity's registered host. Restore the registered configuration before reconnecting.".into());
         }
         Ok(())
+    }
+
+    /// Explicit installation configuration may add the first scoped host or
+    /// managed service. It cannot replace an existing binding or any saved
+    /// profile/carrier/network choice. Publication still waits for runtime
+    /// identity authentication and exclusive profile ownership.
+    fn permits_adoption(&self, next: &Self) -> bool {
+        let mut expected = self.clone();
+        if expected.fleet.is_none() {
+            expected.fleet = next.fleet.clone();
+        }
+        if expected.service.is_none() {
+            expected.service = next.service.clone();
+        }
+        expected == *next
     }
 
     fn capability(&self) -> Result<String, String> {
@@ -329,7 +345,12 @@ pub(super) fn publish(
     instance: &str,
     binding: &str,
 ) -> Result<(), String> {
-    if config.fleet_config.is_none() && config.managed_service.is_none() {
+    // Mobile owns its host in-process, with no desktop launcher/service recipe.
+    // Its OS may relocate the application data container during an upgrade.
+    if cfg!(any(target_os = "android", target_os = "ios"))
+        && config.fleet_config.is_none()
+        && config.managed_service.is_none()
+    {
         return Ok(());
     }
     let registration = Registration::from_config(config, instance)?;
@@ -337,18 +358,22 @@ pub(super) fn publish(
     if registration.capability()? != binding {
         return Err("The host configuration changed during startup. Restore its registered identity and component partition before reconnecting.".into());
     }
-    if let Some(previous) = read(config)? {
-        return previous.check(config);
+    let previous = read(config)?;
+    if let Some(previous) = &previous {
+        previous.check(config)?;
+        if previous == &registration {
+            return Ok(());
+        }
     }
     let bytes = serde_json::to_vec_pretty(&registration).map_err(|e| e.to_string())?;
     if bytes.len() as u64 > LIMIT {
         return Err("Host registration exceeds its size limit".into());
     }
-    match crate::store::atomic_write(&path(config), &bytes, true) {
+    match crate::store::atomic_write(&path(config), &bytes, previous.is_none()) {
         Ok(()) => Ok(()),
         Err(error) => match read(config)? {
-            Some(previous) => previous.check(config),
-            None => Err(error),
+            Some(current) if current == registration => Ok(()),
+            _ => Err(error),
         },
     }
 }

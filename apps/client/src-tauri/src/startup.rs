@@ -84,6 +84,49 @@ where
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn saved_personal_carrier_is_used_for_plain_and_invitation_launches() {
+        use gchat_api::{Request, RequestEnvelope, Response, VERSION};
+        use gchat_core::chat_service::{host::InstanceHost, ChatEndpoint};
+        let home = tempfile::tempdir().unwrap();
+        gchat_core::private_fs::make_private(home.path(), true).unwrap();
+        let mut config = InstanceConfig::from_home(Some(home.path())).unwrap();
+        config.local_fixture = true;
+        config.gc2_carrier = false;
+        config.listen = "127.0.0.1:0".parse().unwrap();
+        config.network_recovery = false;
+        config.relay_urls.clear();
+        let host = InstanceHost::new(config).unwrap();
+        let response = host
+            .dispatch(RequestEnvelope {
+                version: VERSION,
+                instance_id: Some(host.instance_id().into()),
+                request: Request::Unlock {
+                    passphrase: "saved-personal-fixture".into(),
+                    create: true,
+                },
+            })
+            .await
+            .response;
+        assert!(matches!(response, Response::Snapshot { .. }));
+        host.flush().await.unwrap();
+        drop(host);
+        for invitation in [None, Some("gcoms://join#GCIR1-fixture")] {
+            let mut args = vec!["gchat-desktop", "--home", home.path().to_str().unwrap()];
+            if let Some(invitation) = invitation {
+                args.push(invitation);
+            }
+            let selected = configuration(args).unwrap();
+            assert!(selected.has_registered_host().unwrap());
+            assert!(
+                !selected.gc2_carrier,
+                "an official carrier default cannot replace the saved personal choice"
+            );
+            assert!(selected.local_fixture && !selected.network_recovery);
+            assert!(selected.fleet_config.is_none() && selected.managed_service.is_none());
+        }
+    }
+
     #[test]
     fn invitation_launch_retains_carrier_and_is_not_provisioning() {
         for link in ["gcoms://join#GCI1-fixture", "gcoms://join#GCIR1-fixture"] {

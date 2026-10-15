@@ -1,5 +1,44 @@
 {
   "schema": 1,
+  "standalone_personal_registration_20261015": {
+    "scope": "Persist desktop personal carrier/network/path choices; permit only additive first fleet/service adoption after runtime authentication",
+    "causal_test": "standalone_personal_cold_launch_uses_saved_configuration_without_flags",
+    "causal_before": {
+      "failed_as_expected": true,
+      "error": "actual personal runtime must publish its saved host recipe",
+      "source_unchanged": true,
+      "seconds": 124.85603640400223,
+      "receipt_sha256": "785b4521d597833385f394f9c2debbc24457a096b9ab976ae85d4e29dfb997a2"
+    },
+    "focused_after": {
+      "passed": true, "registration_controls": 10, "fleet_integration": 4,
+      "fleet_endpoint_ownership": 3, "actual_daemon_lifecycle": 4,
+      "strict_core_tui_all_target_clippy": true, "source_unchanged": true,
+      "seconds": 708.4099301440001,
+      "receipt_sha256": "49b3af8c1f793b40ac347ccc0383645edea19a1cf01ed9d9874ed98a74656cd9"
+    },
+    "additional_coverage_pending_full_gate": [
+      "first-service adoption cannot change other carrier/network/socket/provider fields",
+      "old personal profile migrates through its explicit installation configuration",
+      "plain and invitation desktop startup retain a saved legacy carrier"
+    ],
+    "guards": ["publication only after runtime identity authentication and profile ownership",
+      "existing fleet/partition/service cannot be replaced or downgraded",
+      "other saved fields must match during first adoption",
+      "atomic owner-private bounded recipe", "idempotent equal publication",
+      "create-race fallback requires exact equality"],
+    "mobile": "existing app-owned in-process configuration retained; no absolute desktop recipe in relocatable mobile containers",
+    "code_comparison": {
+      "path": "hoppscotch/hoppscotch:packages/hoppscotch-agent/src-tauri/src/model.rs",
+      "before_cosine": 0.5792, "before_rerank": 0.1809832722631792,
+      "after_cosine": 0.6415, "after_rerank": 0.3527011860640153,
+      "content_fetched": true,
+      "assessment": "Generic registration model; no equivalent guarded adoption implementation. Local recipe carries public references, with runtime ownership and direct causal/negative coverage."
+    },
+    "full_source_qualification_complete": false,
+    "signed_successor_qualified": false,
+    "private_evidence_root": "/run/media/user/SSD-2/retained/ghost/durable-host-20261012"
+  },
   "closed_failed_deployment_flight_20261015": {
     "base": "45314aac0267e758d8f6745bec609c1a116433db",
     "production_blocked_release": "35bb1454e369570e069dd0e3e3c2d677ba61cbd4c299bb8cfcaade228cf181ca",

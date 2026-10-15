@@ -75,6 +75,72 @@ async fn fixture(home: &Path) -> (InstanceConfig, String) {
     (config, safety)
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn standalone_personal_cold_launch_uses_saved_configuration_without_flags() {
+    let dir = tempfile::tempdir().unwrap();
+    gchat_core::private_fs::make_private(dir.path(), true).unwrap();
+    let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    config.local_fixture = true;
+    config.gc2_carrier = false;
+    config.listen = "127.0.0.1:0".parse().unwrap();
+    config.network_recovery = false;
+    config.relay_urls.clear();
+    let personal = InstanceHost::new(config.clone()).unwrap();
+    let original = unlock(&personal, true).await.instance;
+    personal.flush().await.unwrap();
+    drop(personal);
+
+    // Older standalone versions did not save a recipe. Opening that same
+    // retained profile once with its explicit installation settings migrates it.
+    let registration_path = config.archive.with_extension("host.json");
+    if registration_path.exists() {
+        std::fs::remove_file(registration_path).unwrap();
+    }
+    let migrated = InstanceHost::new(config.clone()).unwrap();
+    let retained = unlock(&migrated, false).await.instance;
+    assert_eq!(retained.id, original.id);
+    assert_eq!(retained.safety_number, original.safety_number);
+    migrated.flush().await.unwrap();
+    drop(migrated);
+
+    let selected = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    assert!(
+        selected.has_registered_host().unwrap(),
+        "actual personal runtime must publish its saved host recipe"
+    );
+    assert!(selected.local_fixture && !selected.network_recovery && !selected.gc2_carrier);
+    assert_eq!(selected.listen, config.listen);
+    assert!(selected.fleet_config.is_none() && selected.managed_service.is_none());
+    let registration = std::fs::read(config.archive.with_extension("host.json")).unwrap();
+    let executable = Path::new(env!("CARGO_BIN_EXE_gchat"));
+    let client = ensure_running_checked(&selected, executable, true)
+        .await
+        .unwrap();
+    let worker = Worker {
+        endpoint: selected.chat_endpoint(),
+        pid: server_pid(&selected.chat_endpoint()).unwrap(),
+    };
+    let Response::Snapshot { snapshot } = client
+        .request(Request::Unlock {
+            passphrase: SECRET.into(),
+            create: false,
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("personal retained daemon unlock");
+    };
+    assert_eq!(snapshot.instance.id, original.id);
+    assert_eq!(snapshot.instance.safety_number, original.safety_number);
+    client.request(Request::Disconnect).await.unwrap();
+    drop(client);
+    worker.stop().await;
+    assert_eq!(
+        std::fs::read(config.archive.with_extension("host.json")).unwrap(),
+        registration
+    );
+}
+
 fn server_pid(endpoint: &Path) -> Option<i32> {
     let stream = std::os::unix::net::UnixStream::connect(endpoint).ok()?;
     stream.set_nonblocking(true).ok()?;
