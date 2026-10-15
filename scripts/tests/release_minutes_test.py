@@ -134,6 +134,57 @@ class MinutesTests(unittest.TestCase):
             'state': 'blocked', 'release_id': first, 'sources': self.manifest['sources']})
         self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
 
+    def failed_deployment_flight(self):
+        first, second = self.native_failure_flight()
+        self.controller.ledger.db.execute("UPDATE platforms SET state='verified' WHERE candidate=?", (first,))
+        self.controller.ledger.db.execute("UPDATE platforms SET state='available' WHERE candidate=? AND platform='linux-x86_64'", (first,))
+        manifest = self.controller.ledger.manifest(first)
+        journal = self.root / 'deployment' / first / 'journal.json'
+        atomic_json(journal, {'schema': 1, 'release_id': first, 'sources': manifest['sources'],
+            'state': 'blocked', 'targets': {'relay-1': {'state': 'deployed'},
+                'controller': {'state': 'deployed'}}})
+        return first, second, journal
+
+    def test_closed_failed_deployment_releases_flight_without_rewriting_any_outcome(self):
+        first, second, journal = self.failed_deployment_flight()
+        effect = self.controller.ledger.effect(first, 'windows-x86_64', 'acceptance')
+        atomic_json(self.root / 'jobs' / effect['id'] / 'attempted.json', {'request_id': effect['id']})
+        before = [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM platforms WHERE candidate=?', (first,))]
+        effects = [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM effects WHERE candidate=?', (first,))]
+        original = journal.read_bytes()
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], second)
+        self.assertEqual(journal.read_bytes(), original)
+        self.assertEqual(before, [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM platforms WHERE candidate=?', (first,))])
+        self.assertEqual(effects, [dict(row) for row in self.controller.ledger.db.execute('SELECT * FROM effects WHERE candidate=?', (first,))])
+        self.controller.config['single_flight'] = True
+        self.assertTrue(can_execute(self.controller, first, 'windows-x86_64', 'acceptance', 'acceptance'))
+
+    def test_failed_deployment_escape_preserves_live_rollout_and_rollback_ownership(self):
+        first, _, journal = self.failed_deployment_flight()
+        original = json.loads(journal.read_text())
+        for busy in ('activating', 'rollback_pending', 'rollback_failed'):
+            value = json.loads(json.dumps(original))
+            value['targets']['relay-1']['state'] = busy
+            atomic_json(journal, value)
+            self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+        atomic_json(journal, original)
+        atomic_json(self.root / 'deployment/owner.json', {'release_id': first})
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+
+    def test_failed_deployment_escape_requires_bound_sources_terminal_state_and_policy(self):
+        first, _, journal = self.failed_deployment_flight()
+        original = json.loads(journal.read_text())
+        for update in ({'release_id': 'f' * 64}, {'sources': {}}, {'state': 'deploying'},
+                       {'operator_rollback': True}, {'schema': 2}):
+            atomic_json(journal, {**original, **update})
+            self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+        atomic_json(journal, original)
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=False)['active'], first)
+        manifest = self.controller.ledger.manifest(first)
+        manifest['policy']['deployment_required'] = False
+        self.controller.ledger.db.execute('UPDATE candidates SET manifest=? WHERE id=?', (json.dumps(manifest), first))
+        self.assertEqual(select(self.root, self.controller.ledger, minutes=True)['active'], first)
+
     def native_failure_flight(self, *, deployment_required=True, resume_state='building'):
         from release_pair import canonical
         manifest = candidate(2)
