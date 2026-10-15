@@ -9,6 +9,13 @@ Run all32 compaction and18 controller controls on POSIX; all50 pass without skip
 Only the five cluster cold-archive cases and one actual POSIX deployment-lock case
 are excluded on Windows, matching their runtime scope. All other Windows Python,
 application/native, filesystem, signing and installed gates remain required.
+The physical Windows source suite completes1201cases/1045passed/156skipped in
+222.727seconds with unchanged sources. Its extra four local tool exclusions
+(three Java signing, one GPG PATH) are explicit and do not qualify hosted signing.
+Two original harness failures are retained: excessively nested temporary paths
+and missing retained historical Git objects. Native CI already imports the latter;
+the local run uses its exact published tag and a temporary short path alias, removed
+after the test, without changing system path limits or production guards.
 See the source/host receipts in `docs/evidence/durable-host/installed.json`.
 
 F5 / physical native hosts, 2026-10-15: the owner's Apple Silicon Mac and Windows

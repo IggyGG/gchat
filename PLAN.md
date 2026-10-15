@@ -6,8 +6,10 @@ initial readiness preserves the exact editing assertions even with later snapsho
 held; five Chromium and five WebKit repetitions, all78 UI units,122 Chromium and
 122 WebKit cases, frontend checks and production build pass. Windows226 separately
 exposed six POSIX coordinator/archive controls missing the platform boundary used
-by adjacent tests. All50 affected Linux controls run and pass; native Windows
-qualification is recorded separately. Normal signed successor and installed
+by adjacent tests. All50 affected Linux controls run and pass; the physical
+Windows Python suite passes1045 tests with156 explicit exclusions, including
+four missing local signing-tool checks that remain required on the hosted gate.
+Normal signed successor and installed
 acceptance remain required. [Evidence](docs/evidence/durable-host/installed.json).
 
 F5 / fleet endpoint recovery, 2026-10-14: actual signed217 attachment exposed a
