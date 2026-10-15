@@ -1,5 +1,28 @@
 {
   "schema": 1,
+  "full_local_route_bridge_campaign_20261015": {
+    "passed": true,
+    "sources": {"gchat": "95e1ca80c15a090071250315e17efff958a411b6", "gcoms": "d481f72792da7c7c81abe5f23eeef7f43d7ea30c"},
+    "preflight_clients": 2,
+    "preflight_seconds": 86.55999163800152,
+    "clients": 64,
+    "load_seconds": 1800,
+    "observed_seconds": 1800.155315031996,
+    "attempts": 720,
+    "authenticated_commands": 720,
+    "recipient_observations": 11340,
+    "application_refusals": 0,
+    "relay_refusals": 0,
+    "recipient_p95_seconds": 4.553294804005418,
+    "relay_restart": true,
+    "file_bytes": 5235248,
+    "file_sha256": "3a504f60c577fcd86196f64735823a0765c81b3eb7aaaa4d72645b4f82f10c2b",
+    "all_children_stopped_no_residuals": true,
+    "all_referenced_hashes_independently_verified": true,
+    "receipt_sha256": "4c4d4522dec9652a41d4415ec5a0b5fc45b59c18844cc7b8a9cb3c4e0ed91c4f",
+    "independent_audit_sha256": "2783a9f22a19d964c56ba378a56f2bd21034ed570c5d56891c67b4ec97391e06",
+    "scope": "Exact local unsigned executables and original full workload; normal230 provider/signing qualification and16MiB installed file acceptance remain separate. Original229710/720 failure is unchanged."
+  },
   "combined_personal_and_route_bridge_20261015": {
     "paired_sources": {
       "gchat": "547690e29535a15035187ee6371fcfd4120dccee",

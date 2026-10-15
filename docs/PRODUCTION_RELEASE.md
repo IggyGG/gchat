@@ -48,9 +48,9 @@ Delivery, authentication, persistence, signatures and rollback remain mandatory.
 ## Large-file qualification
 
 The current 16 MiB gate is defined in `release/automation/policy.json` and
-`AUTOMATIC_RELEASES.md`: 360 seconds from original acceptance through exact exported
-SHA-256, within a 600-second whole journey. Interruption, same-operation resume,
-retained identity/history, authenticated recipient ACKs and rollback remain
+`AUTOMATIC_RELEASES.md`: 360 seconds from original acceptance through interruption
+and completion, within a 600-second whole journey. Exact export SHA-256,
+same-operation resume, retained identity/history, authenticated recipient ACKs and rollback remain
 required. The dated 180-second results below retain their original scope and
 outcomes; the newer allocation does not relabel any old failure.
 

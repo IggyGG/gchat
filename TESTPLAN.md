@@ -1,3 +1,11 @@
+F5 / full relay evidence, 2026-10-15: local95e1ca8/d481f72 passes the original
+two-client preflight and complete64-client/1800-second workload:720/720 authenticated
+commands,zero refusals,4.553-second p95,relay restart and exact5,235,248-byte export.
+An independent audit rechecks all referenced files, every delivered-event record,
+all11,340 recipient observations and the computed p95. Original229 failures remain
+failed. Require normal signed-source/artifact qualification and the separate16 MiB
+installed interrupted transfer within360-second completion/600-second total bounds.
+
 F5 / combined startup and channel recovery, 2026-10-15: the exact paired source
 checks pass 11 registration/four fleet/three ownership/four actual-daemon cases
 and strict Clippy. Preserve the original full-CI browser failure: its trace shows

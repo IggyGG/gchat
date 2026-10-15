@@ -1,3 +1,11 @@
+F5 / full local route-bridge campaign, 2026-10-15: two-client preflight and the
+complete 64-client/1800-second workload pass with 720/720 authenticated commands,
+11,340 recipient observations, zero refusals, 4.553-second p95, relay restart and
+exact file export. All source/artifact/evidence hashes and cleanup were audited.
+The normal signed 0.1.230 pipeline is qualifying frozen155e348/e89d4e3, based on
+main9f0e5e9/e89d4e3. Preserve that candidate and all original clocks. The local
+5,235,248-byte workload is separate from required16 MiB installed acceptance.
+
 F5 / combined personal and route-bridge qualification, 2026-10-15: exact
 547690e/8ae7cb5 passes 11 registration, four fleet, three endpoint-ownership and
 four actual-daemon tests plus strict core/Tui Clippy. The SDK passes 476 node
