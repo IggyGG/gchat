@@ -6,6 +6,19 @@ Verify original run/source/hash evidence and normal same-run qualification/signi
 guards. File360/600seconds, full64-client1800seconds and all delivery/latency/refusal
 thresholds remain unchanged. A larger build allocation never qualifies old failure.
 
+F5 / personal recipe persistence,2026-10-15: require the actual standalone
+personal runtime to save its recipe and the real daemon to reopen the same
+identity without launcher flags. Simulate old-profile migration by removing only
+the owned fixture's recipe and reopening with its explicit installation settings.
+Verify carrier, network reference, socket and idempotent publication. First
+fleet/service adoption may only fill previously absent bindings after runtime
+authentication; wrong binding, changed existing scope/service and simultaneous
+carrier/network/path changes must fail without replacing metadata. Desktop plain
+and invitation startup must preserve a saved legacy carrier despite the official
+default. Run the existing fleet/concurrent/crash/ownership controls, strict checks,
+full workspace and desktop source gate. Preserve the original missing-companion
+driver failure separately from the124.856second causal old-runtime failure.
+
 F5 / retained current-state native acceptance,2026-10-15: the optimized unsigned
 ba53e90/e4288d3 CLI reopens one current228 clone through signed228 -> candidate ->
 signed228 -> candidate. All205 full message digests,23operations, memberships,

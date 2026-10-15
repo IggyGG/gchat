@@ -5,6 +5,14 @@ two-hour limit during released-facade compilation. Every test, signing requireme
 and product delivery/file/relay acceptance deadline remains required. Original229
 is still failed; the next immutable candidate must qualify normally.
 
+F5 personal startup follow-up,2026-10-15: standalone desktop profiles now retain
+their carrier, network and path choices in the same private host recipe. The real
+personal-runtime regression fails old publication; focused registration and
+existing fleet/daemon checks pass. Intentional first fleet/service adoption remains
+possible only with the other saved choices unchanged and runtime ownership verified.
+Full source/desktop qualification and a signed successor remain required.
+See [startup association](docs/DURABLE_HOST.md#startup-association).
+
 F5 retained-host recovery, 2026-10-15: saved-instance host selection, authenticated
 fleet status and the combined GComs recovery fixes pass source/native checks.
 Signed0.1.228 is independently verified and its fresh stopped backup restores all

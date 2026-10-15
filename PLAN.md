@@ -5,6 +5,17 @@ only, retaining the complete test suite and product qualification thresholds.
 Original229 also failed full relay delivery710/720 and remains failed. A corrected
 immutable source pair and fresh complete qualification are required.
 
+F5 / personal startup follow-up,2026-10-15: the final audit found that publication
+skipped standalone personal profiles. An argument-free desktop could therefore
+replace its saved carrier/network choice with current defaults. The real personal
+runtime old-fail/new-pass test,10 registration controls,4fleet,3ownership and4real
+daemon cases plus strict core/Tui Clippy pass. Additive first fleet/service adoption
+preserves intended provisioning; existing bindings and other recipe fields cannot
+change. A further service-isolation case and desktop plain/invitation test join
+the full source gate. Mobile keeps its app-owned in-process configuration.
+Candidate229's separate full relay campaign failed and remains retained; diagnose it
+before the next combined qualified successor. Full goal remains in progress.
+
 F5 / release admission recovery,2026-10-15: controller147e8a1 is live as bee812...
 after582 source,506 actual-image and506 Kubernetes checks plus the ordinary network
 canary. All271 loaded source hashes match; the original failed228deployment journal

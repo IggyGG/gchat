@@ -46,6 +46,126 @@ fn save_fleet(config: &InstanceConfig, fleet: &FleetConfig) {
     .unwrap();
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[test]
+fn standalone_personal_registration_retains_carrier_network_and_paths() {
+    let dir = tempfile::tempdir().unwrap();
+    private_fs::make_private(dir.path(), true).unwrap();
+    let mut config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    config.gc2_carrier = true;
+    config.network_recovery = false;
+    config.relay_urls.clear();
+    config.protocol_socket = dir.path().join("personal endpoint.sock");
+    config.network_config = Some(dir.path().join("signed network.json"));
+    let instance = instance_metadata(&config.archive).unwrap().id;
+    let binding = capability(&config, &instance).unwrap();
+    publish(&config, &instance, &binding).unwrap();
+    let selected = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    assert!(
+        selected.has_registered_host().unwrap(),
+        "saved personal selection must not depend on launcher flags"
+    );
+    assert!(selected.gc2_carrier);
+    assert!(!selected.network_recovery);
+    assert_eq!(selected.network_config, config.network_config);
+    assert_eq!(selected.protocol_socket, config.protocol_socket);
+    assert!(selected.fleet_config.is_none() && selected.managed_service.is_none());
+    let before = std::fs::read(path(&selected)).unwrap();
+    publish(&selected, &instance, &binding).unwrap();
+    assert_eq!(std::fs::read(path(&selected)).unwrap(), before);
+    let mut conflict = selected;
+    conflict.network_recovery = true;
+    assert!(resolve(&mut conflict).is_err());
+    assert_eq!(std::fs::read(path(&config)).unwrap(), before);
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[test]
+fn personal_adoption_only_adds_first_scope_and_service_after_successful_publication() {
+    let dir = tempfile::tempdir().unwrap();
+    let (scoped, fleet, instance) = fixture(dir.path());
+    let mut personal = scoped.clone();
+    personal.fleet_config = None;
+    personal.managed_service = None;
+    let before = Registration::from_config(&personal, &instance).unwrap();
+    crate::store::atomic_write(
+        &path(&personal),
+        &serde_json::to_vec(&before).unwrap(),
+        false,
+    )
+    .unwrap();
+    let original = std::fs::read(path(&personal)).unwrap();
+    let mut intended = scoped.clone();
+    resolve(&mut intended).unwrap();
+    assert_eq!(
+        std::fs::read(path(&personal)).unwrap(),
+        original,
+        "validation cannot publish before runtime authentication"
+    );
+    assert!(publish(&intended, &instance, "wrong verified binding").is_err());
+    assert_eq!(std::fs::read(path(&personal)).unwrap(), original);
+    let binding = capability(&intended, &instance).unwrap();
+    publish(&intended, &instance, &binding).unwrap();
+    let selected = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    assert_eq!(selected.fleet_config, scoped.fleet_config);
+    assert_eq!(selected.managed_service, scoped.managed_service);
+    let adopted = std::fs::read(path(&selected)).unwrap();
+    publish(&selected, &instance, &binding).unwrap();
+    assert_eq!(std::fs::read(path(&selected)).unwrap(), adopted);
+    let mut changed = selected.clone();
+    changed.managed_service = Some("gchat-another-host.service".into());
+    assert!(resolve(&mut changed).is_err());
+    let mut different = fleet;
+    different.registry.components[0].credentials.component_id = [3; 16];
+    save_fleet(&selected, &different);
+    assert!(resolve(&mut changed).is_err());
+    assert_eq!(std::fs::read(path(&selected)).unwrap(), adopted);
+    let mut downgrade = Registration::from_config(&personal, &instance).unwrap();
+    let current: Registration = serde_json::from_slice(&adopted).unwrap();
+    assert!(!current.permits_adoption(&downgrade));
+    downgrade.fleet = current.fleet.clone();
+    assert!(!current.permits_adoption(&downgrade));
+    let mut unrelated = before.clone();
+    unrelated.gc2_carrier = !before.gc2_carrier;
+    assert!(!before.permits_adoption(&unrelated));
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[test]
+fn first_service_adoption_preserves_every_other_personal_host_choice() {
+    let dir = tempfile::tempdir().unwrap();
+    private_fs::make_private(dir.path(), true).unwrap();
+    let config = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    let instance = instance_metadata(&config.archive).unwrap().id;
+    publish(&config, &instance, &capability(&config, &instance).unwrap()).unwrap();
+    let before = std::fs::read(path(&config)).unwrap();
+    for field in 0..4 {
+        let mut different = config.clone();
+        different.managed_service = Some("gchat-personal.service".into());
+        match field {
+            0 => different.network_recovery = !config.network_recovery,
+            1 => different.gc2_carrier = !config.gc2_carrier,
+            2 => different.protocol_socket = dir.path().join("another.sock"),
+            _ => different.relay_urls.push("https://another.example/".into()),
+        }
+        assert!(resolve(&mut different).is_err());
+        assert_eq!(std::fs::read(path(&config)).unwrap(), before);
+    }
+    let mut managed = config;
+    managed.managed_service = Some("gchat-personal.service".into());
+    resolve(&mut managed).unwrap();
+    assert_eq!(std::fs::read(path(&managed)).unwrap(), before);
+    publish(
+        &managed,
+        &instance,
+        &capability(&managed, &instance).unwrap(),
+    )
+    .unwrap();
+    let selected = InstanceConfig::from_home(Some(dir.path())).unwrap();
+    assert_eq!(selected.managed_service, managed.managed_service);
+    assert!(selected.fleet_config.is_none());
+}
+
 #[test]
 fn registration_restores_host_and_allows_credentials_to_rotate_without_rebinding() {
     let dir = tempfile::tempdir().unwrap();
