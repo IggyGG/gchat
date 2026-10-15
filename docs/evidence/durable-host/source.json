@@ -35,11 +35,22 @@
     "probe_sha256": "a85636b1afa5309b5445db65d46c42bb313850b598e9911a2afd30f169987657",
     "signed_host_sha256": "18e10601ffee0e0f5a26caae24b78cb198bf5bd8e9810eb75ebbf216b23b30f2",
     "fixture_path_has_spaces": true,
-    "failed_service": {"exec_status": 1, "error_code": "host_unavailable", "seconds": 30.026228232003632},
-    "active_service_without_endpoint": {"service_active": true, "error_code": "host_unavailable", "seconds": 30.029686132009374},
+    "failed_service": {
+      "exec_status": 1,
+      "error_code": "host_unavailable",
+      "seconds": 30.026228232003632
+    },
+    "active_service_without_endpoint": {
+      "service_active": true,
+      "error_code": "host_unavailable",
+      "seconds": 30.029686132009374
+    },
     "existing_30_second_deadline_preserved": true,
     "profile_bytes_unchanged_during_both_failures": true,
-    "correct_service_recovery": {"same_identity": true, "seconds": 1.2469684730021982},
+    "correct_service_recovery": {
+      "same_identity": true,
+      "seconds": 1.2469684730021982
+    },
     "production_profile_modified": false,
     "owned_fixture_cleanup_complete": true,
     "total_seconds": 67.57630489600706,
@@ -47,7 +58,12 @@
     "driver_sha256": "d2b1a376d540c223c1f6247c0b959b53d0efc2f13f62260be34595c0bf95480f",
     "private_evidence": "startup-failures-1792026401",
     "earlier_failed_fixture_retained": "startup-failures-1792026235: both refusal controls passed, but the harness incorrectly retained --create on recovery; the existing-profile guard correctly refused it",
-    "code_comparison": {"path": "openclaw/openclaw:scripts/e2e/lib/upgrade-survivor/systemd-fixture.mjs", "cosine": 0.6715, "rerank": 0.18981571461174035, "conclusion": "Generic controlled-unit fixture. Local acceptance additionally binds exact executable/probe hashes, verifies unchanged profile bytes and preserves the original startup deadline."}
+    "code_comparison": {
+      "path": "openclaw/openclaw:scripts/e2e/lib/upgrade-survivor/systemd-fixture.mjs",
+      "cosine": 0.6715,
+      "rerank": 0.18981571461174035,
+      "conclusion": "Generic controlled-unit fixture. Local acceptance additionally binds exact executable/probe hashes, verifies unchanged profile bytes and preserves the original startup deadline."
+    }
   },
   "implementation_commits": [
     "11f7549e70c252bc193ddec150179dab346574f1",
@@ -131,15 +147,26 @@
   },
   "separate_namespace_checks": {
     "binary_sha256": "16563d40286ee8c217481973e2f3d4c75d53bae59c8763ea2a91ed9c6fe6b675",
-    "registry_isolation_and_reopen": { "passed": true, "seconds": 73.18580199000007 },
-    "combined_invitation_chat_file_and_reopen": { "passed": true, "seconds": 214.94515452199994 },
+    "registry_isolation_and_reopen": {
+      "passed": true,
+      "seconds": 73.18580199000007
+    },
+    "combined_invitation_chat_file_and_reopen": {
+      "passed": true,
+      "seconds": 214.94515452199994
+    },
     "host_namespace_and_interfaces_unchanged": true,
     "idle_cpu_measurement": "existing separate measurement; not claimed by the functional gate"
   },
   "offline_retained_state_rollback": {
     "network_isolated": true,
     "passed": true,
-    "phases": ["baseline", "upgrade", "rollback-current-state", "forward-current-state"],
+    "phases": [
+      "baseline",
+      "upgrade",
+      "rollback-current-state",
+      "forward-current-state"
+    ],
     "same_instance_and_identity_each_phase": true,
     "conversations_each_phase": 9,
     "verified_message_ids_each_phase": 196,
@@ -180,7 +207,10 @@
     }
   },
   "native_path_qualification_20261014": {
-    "original_mac_runs": [38488672438, 38488673252],
+    "original_mac_runs": [
+      38488672438,
+      38488673252
+    ],
     "original_failure": "EILSEQ92 at fixture create_dir_all, before host-registration code",
     "all_platforms": "Unicode and spaces in real saved-host reopen and credential rotation",
     "unix": "lossless raw-byte LocalPath JSON roundtrip",
@@ -235,5 +265,42 @@
     "signed_successor_qualified": false,
     "installed_recovery_verified": false
   },
-  "remaining": "See installed.json; source and isolated proofs do not qualify signed release, live delivery, installed migration or final operational acceptance."
+  "remaining": "See installed.json; source and isolated proofs do not qualify signed release, live delivery, installed migration or final operational acceptance.",
+  "combined_retained_recovery_20261015": {
+    "sources": {
+      "gchat": "515bafd00438fa8456a2987fd645c6d18c9ab0b4",
+      "gcoms": "6e42e8466eddf434e0dc8c09e85ad7e696e9ec4a"
+    },
+    "node_passed": 474,
+    "node_existing_ignored": 2,
+    "strict_node_all_target_clippy": true,
+    "legacy_client_persist_compile": true,
+    "formatting": true,
+    "node_receipt_sha256": "0f9caa9efaf78613c05ebd0c58052afce76b283d2492410e6f1ef9e3d3c4419f",
+    "node_log_sha256": "cdb3f3e7ef30106ea21b9ddc7550cfccfb9c3ea0b4357ada311dbf58e8a4277b",
+    "node_seconds": 824.15787129401,
+    "paired_fleet": 4,
+    "paired_ownership": 3,
+    "paired_actual_daemon": 3,
+    "paired_strict_core_tui_clippy": true,
+    "paired_receipt_sha256": "cb41bc47fe4174b38372c2b9fb91265c2ff97534a7c2d46503e7be524deaea1f",
+    "paired_seconds": 887.2640163090255,
+    "source_unchanged": true,
+    "source_l0": {
+      "gcoms": 1204,
+      "gchat": 923
+    },
+    "transport_passed": 79,
+    "transport_existing_ignored": 4,
+    "native_tls_suites": 10,
+    "native_tls_tests": 40,
+    "retained_input_rehearsal_sha256": "e99c27d8d54cfb6436d547f78caf22df271d3e2a9a988c347cd35b9a9dec079b",
+    "sdk_receipts": [
+      "gcoms:docs/evidence/durable-host-20261015/fleet-runtime-status.json",
+      "gcoms:docs/evidence/durable-host-20261015/deferred-route-controls.json",
+      "gcoms:docs/evidence/durable-host-20261015/dial-cooldown.json",
+      "gcoms:docs/evidence/durable-host-20261015/materialized-dispatch.json"
+    ],
+    "normal_signed_release_and_installed_acceptance_pending": true
+  }
 }

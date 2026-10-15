@@ -1,3 +1,15 @@
+F5 / combined retained-host recovery, 2026-10-15: the exact GChat515bafd/GComs6e42e84
+pair passes4fleet,3ownership and3actual-daemon lifecycle cases plus strict core/Tui
+Clippy. The companion fixes deferred owner-announcement accumulation, queued POST
+loss during a known dial cooldown and fresh-send overtaking of materialized work.
+All474node,79transport and40native TLS checks pass with causal before failures,
+unchanged deadlines/limits and strict checks. Isolated retained228 input exercises
+transactional retirement of143 obsolete controls while keeping channel state.
+The fresh228 backup restores205message digests/23operations; four earlier completed
+operations have proven seven-day expiry. Normal signed successor and final installed
+delivery/files/fleet/reboot acceptance remain required.
+[Source](docs/evidence/durable-host/source.json), [installed](docs/evidence/durable-host/installed.json).
+
 F5 / fleet status scope, 2026-10-15: installed228 now authenticates the intended
 fleet component after endpoint recovery, but its SDK machine allowlist omits the
 existing `IdentityRead` runtime-status request. The paired regression reproduces

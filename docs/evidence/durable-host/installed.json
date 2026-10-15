@@ -1,39 +1,38 @@
 {
   "schema": 1,
-  "status": "awaiting_qualified_subscription_and_fleet_recovery",
+  "status": "awaiting_qualified_combined_recovery",
   "scope": "Qualified signed successor and actual installed production instance",
-  "observed_at": 1792021215,
+  "observed_at": 1792076794,
   "previous_observation": {
-    "commit": "7ba736967bd44431ef52c8b607a7aa5b69d52d6b",
+    "commit": "515bafd00438fa8456a2987fd645c6d18c9ab0b4",
     "path": "docs/evidence/durable-host/installed.json",
-    "status": "awaiting_qualified_fleet_endpoint_recovery",
-    "release_id": "78b2d97a0d6ba7375400248ec829f68999aa70d56c761b6c1e3c5f67945bd0c3"
+    "status": "awaiting_qualified_subscription_and_fleet_recovery",
+    "release_id": "b9065ff947586e0e9c6bdb96fe27633caab8e4ae416d1c6cb4669e3420f78125"
   },
   "current_installation": {
-    "binary_files_observed_at": 1792021076,
-    "logical_state_observed_at": 1792021030,
-    "release_id": "b9065ff947586e0e9c6bdb96fe27633caab8e4ae416d1c6cb4669e3420f78125",
-    "desktop_package_version": "0.1.223",
-    "host_version": "0.1.223",
-    "gchat": "2b9edb6e0f67bf984b7c6153e8c206b0dec4a1a5",
-    "gcoms": "665d95e402bd62bface577cd80493aba608bc2df",
-    "host_sha256": "18e10601ffee0e0f5a26caae24b78cb198bf5bd8e9810eb75ebbf216b23b30f2",
-    "desktop_sha256": "eea6517565aacbc106ae01a37ae7446aafe27e6deeb1ac361caa50bcd5a9c0f8",
-    "public_package_sha256": "b15b6f5b60a40ae8591a0722dcbc54a2a42f560244fbe0b8425eb56ac17f03ee",
-    "public_package_receipt_sha256": "663b4b7977bbe362a0dafe04033f9b7fd3752c682ff2b07e6d16cec8632b0f99",
+    "binary_files_observed_at": 1792071374,
+    "logical_state_observed_at": 1792071122,
+    "release_id": "35bb1454e369570e069dd0e3e3c2d677ba61cbd4c299bb8cfcaade228cf181ca",
+    "desktop_package_version": "0.1.228",
+    "host_version": "0.1.228",
+    "gchat": "24568232ee77d58413a76a7077e7e836ee73a1ba",
+    "gcoms": "84699a1718fb3952ce8c5e05dc70b92bf0a53554",
+    "host_sha256": "8405a2ab7c70b86ed302dd17d55ae996338d47675691f8773314c10037f53946",
+    "desktop_sha256": "f9b473fe1d3d83718af3b4c47a690762d585fdc98551ffd118a8f2b247699419",
+    "public_package_sha256": "e088502bc18fcbb0ab2af9a8f67005f10b7e43206b39d01f94b9571c021e99a1",
+    "public_package_receipt_sha256": "b65255ae26b0c7058f2b046abdd10e0d31d55afb7d261350070f59051b9da25d",
     "existing_installed_key_signature_verified": true,
     "host_running": true,
     "managed_registration_present": true,
     "identity_and_fleet_partition_preserved": true,
     "conversations": 11,
-    "fully_paginated_messages": 204,
+    "fully_paginated_messages": 205,
     "operation_records": 23,
     "desktop_reopened_through_production_entry": true,
     "running_desktop_and_host_match_qualified_executables": true,
     "all_recorded_memberships_message_digests_and_operations_preserved_after_backup_restart": true,
-    "fleet_endpoint": "blocked_by_stale_socket",
-    "fleet_failure_last_observed_at": 1791994553,
-    "fleet_failure_confirmed_by_startup_journal_and_connection_refusal": true,
+    "fleet_endpoint": "authenticated_identity_succeeds_runtime_status_denied_by_sdk_allowlist",
+    "fleet_failure_last_observed_at": 1792064111,
     "production_stale_socket_manually_removed": false,
     "final_installed_fleet_acceptance_passed": false
   },
@@ -44,53 +43,70 @@
     "authenticated_expiry_at": "2026-10-14T02:00:47Z",
     "exact_deletion_actor": "not established",
     "independent_backup_recovery_bytes": 41988496,
-    "independent_recovery_sha256": "6412b38b74fe096509cfdf0d18aa6983cee95fb185624638613694fb1705b4e7"
+    "independent_recovery_sha256": "6412b38b74fe096509cfdf0d18aa6983cee95fb185624638613694fb1705b4e7",
+    "logical_backup_restart_comparison": {
+      "passed": true,
+      "files": 0,
+      "used_bytes": 0,
+      "quota_bytes": 10737418240,
+      "retention_days": 7,
+      "receipt_sha256": "3b46da7c24e6bcfb0acd8dde8a7f8f9d9a08c90de1826f9afe8b7ab660506814",
+      "encrypted_metadata_raw_hash_changes_with_nonce": true
+    }
   },
   "fresh_consistent_backup": {
-    "label": "gchat-current-223-1792020993",
-    "files": 39,
-    "bytes": 106662221,
+    "label": "gchat-current-228-1792070996",
+    "files": 40,
+    "bytes": 103642282,
     "orderly_checkpoint_shutdown_and_profile_locks": true,
-    "receipt_sha256": "283a197d581e1cfc2810ca6132177944b1028d6e1b39d9f70d306e8bf1a60e56",
+    "receipt_sha256": "7397ae965c863b2bb3fe086f44173e41b61f3a9a060ce55805ece873419c9ad8",
     "service_and_update_timers_restored": true,
     "old_lease_refused_replacement_pid": true,
     "fresh_maintenance_heartbeat_and_detach_confirmed": true,
-    "continuity_receipt_sha256": "9708b3f70c5785b3ce371890a59ef1b463a8e58944efe3b4e394419738696ca5",
+    "continuity_receipt_sha256": "a329053a22c8578ff3baada640583a08a5eb18aa853423f72599264219605d4a",
     "prior_refusals_retained": "Open desktop precheck and still-live 45-second view lease both deferred before stopping the host; explicit user approval and natural lease expiry preceded the successful backup."
   },
   "isolated_restore": {
     "passed": true,
-    "signed_binary_version": "0.1.223",
+    "signed_binary_version": "0.1.228",
     "network_namespace_isolated": true,
     "external_interfaces": 0,
     "same_identity": true,
     "conversations": 11,
-    "exact_message_digests": 204,
+    "exact_message_digests": 205,
     "operation_records": 23,
     "original_registration_preserved_and_clone_explicitly_relocated": true,
-    "seconds": 15.543617931005429,
-    "receipt_sha256": "3d224ace0c7df26d002ad97dd348c30df728a5afcf5ac7ec5cb27c7ac186b007",
+    "seconds": 10.88656737699057,
+    "receipt_sha256": "b07855feaf97ad4d35d1442efba54313015cfd476c082d299e0909b7c20f760d",
     "is_current_state_rollback": false
   },
   "authenticated_delivery": {
-    "version": "0.1.223",
+    "version": "0.1.228",
     "passed": false,
-    "sender_and_recipient_match_qualified_bytes": true,
     "original_stage_seconds": 300,
-    "observed_total_seconds": 303.91621183700045,
-    "failure": "original authenticated-delivery deadline",
-    "test_peer_stopped": true,
+    "original_failed_receipt_sha256": "1835169eb106f76fc7b903bf247252bb925de19043ea63c6159e4555296bbefa",
+    "sender_and_recipient_match_qualified_bytes": true,
     "resubmitted": false,
-    "source_repair": "gcoms acbe008ce1f49441d69d91a154bc249c97a535f7 reserves finite credit across bounded subscription shards; installed resolution remains unqualified"
+    "test_peer_stopped": true,
+    "later_retained_message_exact_delivery_and_ack": {
+      "passed": true,
+      "normal_authenticated_route_repair_sha256": "cad8c324ff172870d935ffc2673db630e478dab2e1983c23e7a056f656ebd1e4",
+      "read_only_observation_sha256": "4c2feef39302f71ab647f847868c9eb4cb37b0cfaacd326b2bbe431e390d666c",
+      "new_application_submissions": 0,
+      "original_timed_failure_preserved": true
+    },
+    "fresh_bidirectional_offline_once_and_file_journey_pending": true
   },
   "successor": {
-    "version": "0.1.226",
-    "release_id": "d6e0ed8d52131a29a174fcbf9acba8928150cb5d33161a4d1a56bac834e26109",
-    "gchat": "43338a2724f61bce47cced488c7092ca0fca9b50",
-    "gcoms": "acbe008ce1f49441d69d91a154bc249c97a535f7",
-    "original_linux_provider_run": 38654742705,
-    "attempt": 1,
-    "status": "Linux blocked by original browser history fixture race; Windows blocked by POSIX-only coordinator/archive tests; original requests retained"
+    "status": "combined repair source qualified; normal immutable signed successor pending",
+    "tested_sources": {
+      "gchat": "515bafd00438fa8456a2987fd645c6d18c9ab0b4",
+      "gcoms": "6e42e8466eddf434e0dc8c09e85ad7e696e9ec4a"
+    },
+    "fleet_status_fix": true,
+    "deferred_routing_controls": true,
+    "known_dial_cooldown_wait": true,
+    "materialized_dispatch_order": true
   },
   "native_fixture_corrections": {
     "browser_original_run": 38654742705,
@@ -132,7 +148,10 @@
       "passed_tests": 1045,
       "skipped": 156,
       "new_posix_exclusions": 6,
-      "additional_local_tool_exclusions": {"Java signing tools": 3, "GnuPG absent from the test PATH": 1},
+      "additional_local_tool_exclusions": {
+        "Java signing tools": 3,
+        "GnuPG absent from the test PATH": 1
+      },
       "hosted_native_signing_checks_remain_required": true,
       "source_unchanged": true,
       "patch_sha256": "cb4db466e6880293108499d16fcf9f1d6646725d876df1446b569027fe303d93",
@@ -144,8 +163,17 @@
       "scratch_alias_and_directory_removed": true
     },
     "code_comparison": {
-      "before": {"path": "rocketchat/rocket.chat:apps/meteor/tests/e2e/message-composer-history.spec.ts", "cosine": 0.7404, "rerank": 0.995753364036628, "content_fetched": true},
-      "after": {"path": "rocketchat/rocket.chat:apps/meteor/client/lib/composerHistory.spec.ts", "cosine": 0.7246, "rerank": 0.3067362475886696},
+      "before": {
+        "path": "rocketchat/rocket.chat:apps/meteor/tests/e2e/message-composer-history.spec.ts",
+        "cosine": 0.7404,
+        "rerank": 0.995753364036628,
+        "content_fetched": true
+      },
+      "after": {
+        "path": "rocketchat/rocket.chat:apps/meteor/client/lib/composerHistory.spec.ts",
+        "cosine": 0.7246,
+        "rerank": 0.3067362475886696
+      },
       "conclusion": "Comparable keyboard/history assertions. The local fixture additionally binds initial snapshot readiness and tests later snapshot delay; no code copied."
     }
   },
@@ -153,13 +181,114 @@
   "original_launch_configuration": "The effective per-user production desktop override selected the saved home without fleet configuration; the historical writer is not established.",
   "installed_acceptance_passed": false,
   "remaining": [
-    "normal signed successor qualification and publication including subscription capacity and fleet endpoint recovery",
+    "normal signed successor qualification and publication including fleet status, deferred controls, dial cooldown and ordered dispatch",
     "matched installed desktop and host plus retained-profile cold startup",
     "authenticated bidirectional delivery and once-only offline recovery on the qualified pair",
     "16 MiB interrupted-file recovery with exact hash and original 360/600-second bounds",
     "actual authenticated scoped fleet operation",
     "complete installed lifecycle and current-state rollback/forward recovery",
-    "agreed login/reboot window and post-reboot icon/invitation acceptance",
+    "user-performed logout/login/reboot after readiness notice and actual postboot icon/invitation acceptance",
     "final operational manifest and owned fixture cleanup"
-  ]
+  ],
+  "historical_223_and_failed_226": {
+    "current_installation": {
+      "binary_files_observed_at": 1792021076,
+      "logical_state_observed_at": 1792021030,
+      "release_id": "b9065ff947586e0e9c6bdb96fe27633caab8e4ae416d1c6cb4669e3420f78125",
+      "desktop_package_version": "0.1.223",
+      "host_version": "0.1.223",
+      "gchat": "2b9edb6e0f67bf984b7c6153e8c206b0dec4a1a5",
+      "gcoms": "665d95e402bd62bface577cd80493aba608bc2df",
+      "host_sha256": "18e10601ffee0e0f5a26caae24b78cb198bf5bd8e9810eb75ebbf216b23b30f2",
+      "desktop_sha256": "eea6517565aacbc106ae01a37ae7446aafe27e6deeb1ac361caa50bcd5a9c0f8",
+      "public_package_sha256": "b15b6f5b60a40ae8591a0722dcbc54a2a42f560244fbe0b8425eb56ac17f03ee",
+      "public_package_receipt_sha256": "663b4b7977bbe362a0dafe04033f9b7fd3752c682ff2b07e6d16cec8632b0f99",
+      "existing_installed_key_signature_verified": true,
+      "host_running": true,
+      "managed_registration_present": true,
+      "identity_and_fleet_partition_preserved": true,
+      "conversations": 11,
+      "fully_paginated_messages": 204,
+      "operation_records": 23,
+      "desktop_reopened_through_production_entry": true,
+      "running_desktop_and_host_match_qualified_executables": true,
+      "all_recorded_memberships_message_digests_and_operations_preserved_after_backup_restart": true,
+      "fleet_endpoint": "blocked_by_stale_socket",
+      "fleet_failure_last_observed_at": 1791994553,
+      "fleet_failure_confirmed_by_startup_journal_and_connection_refusal": true,
+      "production_stale_socket_manually_removed": false,
+      "final_installed_fleet_acceptance_passed": false
+    },
+    "fresh_consistent_backup": {
+      "label": "gchat-current-223-1792020993",
+      "files": 39,
+      "bytes": 106662221,
+      "orderly_checkpoint_shutdown_and_profile_locks": true,
+      "receipt_sha256": "283a197d581e1cfc2810ca6132177944b1028d6e1b39d9f70d306e8bf1a60e56",
+      "service_and_update_timers_restored": true,
+      "old_lease_refused_replacement_pid": true,
+      "fresh_maintenance_heartbeat_and_detach_confirmed": true,
+      "continuity_receipt_sha256": "9708b3f70c5785b3ce371890a59ef1b463a8e58944efe3b4e394419738696ca5",
+      "prior_refusals_retained": "Open desktop precheck and still-live 45-second view lease both deferred before stopping the host; explicit user approval and natural lease expiry preceded the successful backup."
+    },
+    "isolated_restore": {
+      "passed": true,
+      "signed_binary_version": "0.1.223",
+      "network_namespace_isolated": true,
+      "external_interfaces": 0,
+      "same_identity": true,
+      "conversations": 11,
+      "exact_message_digests": 204,
+      "operation_records": 23,
+      "original_registration_preserved_and_clone_explicitly_relocated": true,
+      "seconds": 15.543617931005429,
+      "receipt_sha256": "3d224ace0c7df26d002ad97dd348c30df728a5afcf5ac7ec5cb27c7ac186b007",
+      "is_current_state_rollback": false
+    },
+    "authenticated_delivery": {
+      "version": "0.1.223",
+      "passed": false,
+      "sender_and_recipient_match_qualified_bytes": true,
+      "original_stage_seconds": 300,
+      "observed_total_seconds": 303.91621183700045,
+      "failure": "original authenticated-delivery deadline",
+      "test_peer_stopped": true,
+      "resubmitted": false,
+      "source_repair": "gcoms acbe008ce1f49441d69d91a154bc249c97a535f7 reserves finite credit across bounded subscription shards; installed resolution remains unqualified"
+    },
+    "successor": {
+      "version": "0.1.226",
+      "release_id": "d6e0ed8d52131a29a174fcbf9acba8928150cb5d33161a4d1a56bac834e26109",
+      "gchat": "43338a2724f61bce47cced488c7092ca0fca9b50",
+      "gcoms": "acbe008ce1f49441d69d91a154bc249c97a535f7",
+      "original_linux_provider_run": 38654742705,
+      "attempt": 1,
+      "status": "Linux blocked by original browser history fixture race; Windows blocked by POSIX-only coordinator/archive tests; original requests retained"
+    }
+  },
+  "qualified_228_linux": {
+    "all_seven_stages_and_evidence_hashes_verified": true,
+    "source_receipts_sha256": "28688492084e50ebb2173d94b112e8f30a2dfd5c85f461197affb824abb1e917",
+    "independent_signature_and_install_sha256": "b65255ae26b0c7058f2b046abdd10e0d31d55afb7d261350070f59051b9da25d",
+    "global_deployment_followup": "Subsequent read-only relay3 SSH observe exited255; original ValueError/worker traceback retained. No active rollout/rollback at failure; final successor requires normal deployment proof."
+  },
+  "completed_operation_expiry": {
+    "removed": 4,
+    "all_completed": true,
+    "seven_day_deadlines": [
+      1792028602,
+      1792031636,
+      1792031637,
+      1792032651
+    ],
+    "first_observed_absence": 1792064072,
+    "network_isolated_original_archive_inspection": true,
+    "encrypted_input_unchanged": true,
+    "receipt_sha256": "0797c0e4cf0bdb577a2d49c2747b0004d2188cee11b2d43f582656872ee61ee3"
+  },
+  "manual_login_reboot_choice": {
+    "user_performs_manually_after_agent_readiness_notice": true,
+    "agent_must_not_reboot": true,
+    "readiness_not_yet_reached": true
+  }
 }

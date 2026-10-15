@@ -3,6 +3,25 @@
 Status: source and isolated lifecycle qualification passed; signed release and
 installed acceptance remain in progress (F5 / durable-host).
 
+Latest follow-up, 2026-10-15: signed0.1.228 has independently verified source-bound
+Linux qualification receipts, package signature and matching running CLI/desktop.
+Its fresh stopped backup and isolated restoration preserve the same identity,
+memberships,205message digests and23operations. The encrypted cache metadata uses
+fresh nonces; logical snapshot comparison verifies its unchanged empty-cache/config
+state. Four completed operations missing from an earlier snapshot reached their
+exact seven-day retention deadlines; retained encrypted evidence confirms this.
+
+The original228delivery deadline remains failed. Normal authenticated reconnect
+imports later deliver that exact queued message and its recipient ACK without
+resubmission. Source diagnosis also found obsolete deferred owner announcements,
+POSTs discarded during a known dial cooldown, and a dispatch race after deferred
+frames were already materialized. The combined SDK fixes pass474node,79transport
+and40native TLS checks, plus the exact GChat fleet/ownership/daemon integration.
+The intended fleet component's existing IdentityRead runtime-status operation now
+passes its causal scoped test, while shell/profile administration remain denied.
+These source results require the normal signed successor and fresh installed
+functional/lifecycle acceptance before closeout. [Source evidence](evidence/durable-host/source.json).
+
 Installed follow-up, 2026-10-15: signed0.1.223's public package and both running
 executables match independently verified receipts. After an approved normal
 desktop close, the owner maintenance contract deferred until its existing view

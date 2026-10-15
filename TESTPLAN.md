@@ -1,3 +1,13 @@
+F5 / final retained-host source pair, 2026-10-15: qualify the fleet-status regression
+with all companion recovery fixes together. GChat515bafd/GComs6e42e84 passes4fleet,
+3endpoint ownership,3actual-daemon lifecycle and strict core/Tui Clippy. The SDK's
+causal cooldown and materialized-dispatch controls fail former code;79transport,
+474node and ten complete four-case native TLS suites pass, with original deadlines
+and explicit existing exclusions. Require the retained-input isolated constructor
+rehearsal and exact current-state backup/restore. Final normal source/native release
+gates, signed artifacts and installed acceptance remain separate requirements.
+See `docs/evidence/durable-host/source.json` and the linked SDK receipts.
+
 F5 / fleet runtime status, 2026-10-15: the existing retained-profile fleet test
 now calls `runtime_status` through its authenticated IdentityRead-only connection,
 then requires exact PermissionDenied for ungranted shell Health and profile
