@@ -1526,3 +1526,13 @@ covered receipt transport and the unchanged five-second small-room live target.
 The two-client harness records cleanup independently of correctness and timing.
 An exceptional journey must attempt every owned process; a stop failure remains
 an explicit cleanup failure and nonzero exit, never a successful final receipt.
+
+F5 closed deployment flight,2026-10-15: require the former selector to fail
+`test_closed_failed_deployment_releases_flight_without_rewriting_any_outcome`.
+Verify exact old journal/platform/effect bytes and continued reconciliation of an
+already dispatched acceptance. Refuse release while rollout ownership, activation,
+pending/failed rollback or operator rollback remains; reject changed source,
+candidate/schema binding, nonterminal state and absent deployment/minutes policy.
+Run all release-tool controls and actual-image/Kubernetes controller qualification
+before activation. Retain the source-run umask077 fixture failure; ordinary native
+CI's022 umask is required by unrelated file-permission compaction fixtures.

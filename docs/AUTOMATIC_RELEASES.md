@@ -64,6 +64,14 @@ The notification process receives desktop-session variables, never provider keys
 
 ### Failure evidence and bounded recovery
 
+A source-bound terminal deployment failure can release the routine build flight
+after its rollout owner has exited and all mutations/rollbacks have settled.
+Verified sibling artifacts may still await that failed deployment; they cannot
+pin a repaired successor indefinitely. The selector preserves the original
+failure journal, platform/effect state, worker requests and all deadlines. It
+does not qualify or publish the old candidate, abandon a rollback, or replay a
+failed action. New source still takes the full normal qualification path.
+
 Every platform retains native run, attempt, job and failed-step identities. Failed
 job logs are private, hash-bound and bounded to 4 MiB; unavailable or truncated
 logs remain explicitly incomplete. The `diagnose` worker only reads the original

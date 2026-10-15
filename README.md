@@ -1069,3 +1069,9 @@ desktop notices are active. The IRC alignment delivery is still **3/7 published*
 at this checkpoint. Linux217, Android1231 and SDK222 contain it; both Macs and
 Windows still advertise176, and no iOS availability is confirmed. Use live
 `release.py status` for subsequent progress. [Deployment and publication evidence](docs/evidence/release-follow-through-20261014/deployed.json).
+
+F5 closed deployment scheduling,2026-10-15: an exact source-bound blocked
+deployment can release the routine build flight after its rollout owner and every
+mutation/rollback have settled. Its original failure, artifact and dispatched
+worker receipts remain unchanged. This prevents verified sibling platforms from
+pinning a repaired successor indefinitely. See [release operation](docs/AUTOMATIC_RELEASES.md).

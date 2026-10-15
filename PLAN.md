@@ -1976,3 +1976,12 @@ corrected to 16,384. The 12-CPU, 64 GiB and six-hour limits, original timing
 targets, application/harness hashes and protocol checks are unchanged. This is
 an explicitly retained environment correction, not a 500-member acceptance:
 `docs/evidence/irc-hosted-capacity-20260930/capacity-500-02-task-ceiling.json`.
+
+F5 closed deployment scheduling,2026-10-15 (OC): selected228 suffered a read-only
+relay SSH failure after Linux publication, leaving verified siblings waiting and
+blocking the repaired229application flight. The causal test fails old scheduling.
+Only a source-bound terminal deployment with no rollout owner, active mutation,
+pending/failed rollback or operator rollback can yield. Original artifacts,
+platform/effect state, deadlines and already dispatched requests remain retained.
+Controller image qualification and deployment are tracked separately from source
+checks in `docs/evidence/durable-host/failed-deployment-flight.json`.

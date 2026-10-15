@@ -151,6 +151,26 @@ def select(state, ledger, minutes=False):
                 and ledger.manifest(active)['policy'].get('deployment_required') is True
                 and owner.get('release_id') != active):
             terminal = True
+        # A terminal deployment failure also strands otherwise verified native
+        # siblings. Admit a successor only after the old rollout has released
+        # ownership and every mutation/rollback has a settled disposition.
+        # Its failed journal, artifacts, clocks and dispatched requests remain
+        # authoritative; this changes scheduling ownership, never qualification.
+        journal = state / 'deployment' / active / 'journal.json'
+        deployment = json.loads(journal.read_text()) if journal.is_file() else {}
+        manifest = ledger.manifest(active)
+        if (manifest['policy'].get('deployment_required') is True
+                and deployment.get('schema') == 1
+                and deployment.get('release_id') == active
+                and deployment.get('sources') == manifest['sources']
+                and deployment.get('state') == 'blocked'
+                and not deployment.get('operator_rollback')
+                and isinstance(deployment.get('targets'), dict)
+                and deployment['targets']
+                and not any(item.get('state') in {'activating', 'rollback_pending', 'rollback_failed'}
+                            for item in deployment['targets'].values())
+                and owner.get('release_id') != active):
+            terminal = True
     if active is None or terminal or internal_complete(ledger, active, state):
         active = waiting[0] if waiting else active
         waiting = [release for release in waiting if release != active]
