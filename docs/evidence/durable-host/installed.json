@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "status": "awaiting_qualified_combined_recovery",
+  "status": "qualified230_installed_final_lifecycle_in_progress",
   "scope": "Qualified signed successor and actual installed production instance",
-  "observed_at": 1792076794,
+  "observed_at": 1792107264,
   "previous_observation": {
     "commit": "515bafd00438fa8456a2987fd645c6d18c9ab0b4",
     "path": "docs/evidence/durable-host/installed.json",
@@ -10,6 +10,108 @@
     "release_id": "b9065ff947586e0e9c6bdb96fe27633caab8e4ae416d1c6cb4669e3420f78125"
   },
   "current_installation": {
+    "release_id": "fea3bf5945f157b26dc5f8af1421f33186140a1c7afeab49fdacdcf484deb3be",
+    "desktop_package_version": "0.1.230",
+    "host_version": "0.1.230",
+    "gchat": "155e348e49a1ec2e2335fa3e98948f75a287341d",
+    "gcoms": "e89d4e3e486c12fce05b692014bf11a4d805008a",
+    "host_sha256": "c6e00b06c3a796b99a8641c38615d1951a46801a9cc62dfba3cd7eff17b4c752",
+    "desktop_sha256": "f2eafba0e80cdc879d37a36693e6d2d192125053d711b7d20d913b76b01b5477",
+    "public_package_sha256": "a4573e9a95e9316742716e2acc2a240950b22fec8622228b98633c766cedf8b5",
+    "public_package_bytes": 40658260,
+    "public_package_receipt_sha256": "ba1c624b54acc5aef8277cb3b2460df14c3b54ed408472bd70ef5362f762ba02",
+    "existing_installed_key_signature_verified": true,
+    "all_seven_linux_qualification_stages_independently_verified": true,
+    "source_receipts_sha256": "fd1f263aa4df13665037caf0df3fdb9ce4fc264b3e54e452e26332b0801b76ad",
+    "running_desktop_and_host_match_qualified_executables": true,
+    "minimal_icon_uses_only_saved_home": true,
+    "canonical_service_directly_uses_packaged_executable": true,
+    "same_identity_and_component_partition": true,
+    "conversations": 11,
+    "fully_paginated_messages_after_live_tests": 209,
+    "operation_records_after_live_tests": 25,
+    "live_bidirectional_and_offline_once": {
+      "passed": true,
+      "exact_recipient_contents_and_authenticated_acknowledgments": true,
+      "offline_submission_count": 1,
+      "visible_duplicates": 0,
+      "seconds": 14.139604389,
+      "receipt_sha256": "45a7c8c5686cc4bfa2f3c13519fd5b5d5274d33f40676c5fbf2a3dd61329d9af"
+    },
+    "interrupted_file": {
+      "passed": true,
+      "bytes": 16777216,
+      "completion_seconds": 130.360867902,
+      "whole_journey_seconds": 166.166967762,
+      "pieces_retained_bytes": 524288,
+      "abrupt_stop_only_disposable_recipient": true,
+      "exact_export_after_reopen": true,
+      "sha256": "765346bf6454d437446419dcde22eaabacc3585166b141de75abc3f34fb10544",
+      "receipt_sha256": "5545ba436cc6036ab6fc0f841382ca0662fdf859eeb6e01a16b0fd760113163b"
+    },
+    "scoped_fleet": {
+      "authenticated_identity_read_and_runtime_status": true,
+      "identity_pin_matches": true,
+      "ungranted_health_refused": true,
+      "receipt_sha256": "b172ac90a80345b640d487a47d9328bd4c03b91ada9886fedfa1fe76ad8ba113"
+    },
+    "canonical_update_activation": {
+      "normal_signed_package_update_service": true,
+      "old_host_and_view_kept_running_during_install": true,
+      "deferred_for_real_open_view": true,
+      "normal_view_close_and_45_second_lease": true,
+      "ordinary_checkpoint_and_one_service_restart": true,
+      "deferred_receipt_sha256": "276f06cc95a718e9ee61a51c7e878159ae92b587f9d15c67dcc3c568184588b9",
+      "activated_receipt_sha256": "cf3ab376c81645fec08c162b46fbd9b26c5f8c4ef12f579bd342f5900b23b7ed",
+      "identity_history_memberships_operations_preserved": true,
+      "continuity_receipt_sha256": "7886b17cb2c7b156bc8a5a32467d09e315ebd36ca1faabd7e370f0ada5652237"
+    },
+    "configuration_migration": {
+      "all_original_config_files_retained": 13,
+      "hash_matching_retired_execstart_overrides": 8,
+      "canonical_replacements": 3,
+      "diagnostic_dropins_retained": 2,
+      "memory_policy_and_unattended_unlock_reference_preserved": true,
+      "registration_bytes_unchanged": true,
+      "inverse_journal_sha256": "ea7ff42c91c3d0bda8500890d6c3fc3c0f6f489c4cea56d4b216761b0e513eeb"
+    },
+    "simultaneous_cold_minimal_launches": {
+      "passed": true,
+      "desktop_views": 2,
+      "profile_owners": 1,
+      "same_identity_and_rendered_workspaces": true,
+      "seconds": 28.271830017,
+      "receipt_sha256": "76e406e08b12b7bfee817b9aa997a130999f924b9a9b4bb9b360724b80fe74a4",
+      "original_observer_failure_retained": "capture-pipe launcher timeout; corrected regular-file output leaves both original launcher clocks bounded"
+    },
+    "post_live_current_state_rollback": {
+      "passed": true,
+      "phases": ["signed230", "signed228", "signed230"],
+      "network_isolated": true,
+      "backup_copied_once": true,
+      "restore_between_versions": false,
+      "same_identity_memberships_and_full_message_digests": 209,
+      "operation_records": 25,
+      "exact_16_mib_export_in_each_phase": true,
+      "seconds": 66.474885918,
+      "receipt_sha256": "e89a0335e3d81f606026c09df25f2a508ab482b2ef1a60c6d276c4615918921b",
+      "backup_receipt_sha256": "3a29bb9c1e016820a0b9cd63b8c70f2de18f248e20699efc5a3876b635bdfbef"
+    },
+    "signed_offline_cold_restore": {
+      "passed": true,
+      "production_bootstrap_selection_retained": true,
+      "external_interfaces": 0,
+      "local_readiness_seconds": 6.661814498,
+      "network_state": "connecting",
+      "message_digests": 209,
+      "operation_records": 25,
+      "cached_files": 1,
+      "receipt_sha256": "9ce7f9d4f5e08711415aac724c72428a803272ba6d489d4df81bbfb086e25a17"
+    },
+    "update_timers": "temporarily held stopped for acceptance; original enabled/active states retained for restoration",
+    "manual_logout_login_reboot": "pending user action after readiness handoff"
+  },
+  "historical_228_installation": {
     "binary_files_observed_at": 1792071374,
     "logical_state_observed_at": 1792071122,
     "release_id": "35bb1454e369570e069dd0e3e3c2d677ba61cbd4c299bb8cfcaade228cf181ca",
@@ -36,7 +138,7 @@
     "production_stale_socket_manually_removed": false,
     "final_installed_fleet_acceptance_passed": false
   },
-  "cache_disposition": {
+  "historical_cache_expiry_disposition": {
     "remaining_files": 2,
     "expired_files": 163,
     "configured_retention_days": 7,
@@ -54,7 +156,7 @@
       "encrypted_metadata_raw_hash_changes_with_nonce": true
     }
   },
-  "fresh_consistent_backup": {
+  "historical_228_consistent_backup": {
     "label": "gchat-current-228-1792070996",
     "files": 40,
     "bytes": 103642282,
@@ -66,7 +168,7 @@
     "continuity_receipt_sha256": "a329053a22c8578ff3baada640583a08a5eb18aa853423f72599264219605d4a",
     "prior_refusals_retained": "Open desktop precheck and still-live 45-second view lease both deferred before stopping the host; explicit user approval and natural lease expiry preceded the successful backup."
   },
-  "isolated_restore": {
+  "historical_228_isolated_restore": {
     "passed": true,
     "signed_binary_version": "0.1.228",
     "network_namespace_isolated": true,
@@ -80,7 +182,7 @@
     "receipt_sha256": "b07855feaf97ad4d35d1442efba54313015cfd476c082d299e0909b7c20f760d",
     "is_current_state_rollback": false
   },
-  "authenticated_delivery": {
+  "historical_228_authenticated_delivery": {
     "version": "0.1.228",
     "passed": false,
     "original_stage_seconds": 300,
@@ -97,7 +199,7 @@
     },
     "fresh_bidirectional_offline_once_and_file_journey_pending": true
   },
-  "successor": {
+  "historical_combined_successor_preparation": {
     "status": "combined repair source qualified; normal immutable signed successor pending",
     "tested_sources": {
       "gchat": "515bafd00438fa8456a2987fd645c6d18c9ab0b4",
@@ -181,13 +283,10 @@
   "original_launch_configuration": "The effective per-user production desktop override selected the saved home without fleet configuration; the historical writer is not established.",
   "installed_acceptance_passed": false,
   "remaining": [
-    "normal signed successor qualification and publication including fleet status, deferred controls, dial cooldown and ordered dispatch",
-    "matched installed desktop and host plus retained-profile cold startup",
-    "authenticated bidirectional delivery and once-only offline recovery on the qualified pair",
-    "16 MiB interrupted-file recovery with exact hash and original 360/600-second bounds",
-    "actual authenticated scoped fleet operation",
-    "complete installed lifecycle and current-state rollback/forward recovery",
+    "finish installed cold/warm invitation review, lock/unlock and scoped network loss/recovery",
+    "post-lifecycle live delivery and complete logical continuity audit",
     "user-performed logout/login/reboot after readiness notice and actual postboot icon/invitation acceptance",
+    "restore held update timers and verify backup/updater integration",
     "final operational manifest and owned fixture cleanup"
   ],
   "historical_223_and_failed_226": {

@@ -1,7 +1,26 @@
 # Durable per-instance host startup
 
-Status: source and isolated lifecycle qualification passed; signed release and
-installed acceptance remain in progress (F5 / durable-host).
+Status: qualified signed Linux0.1.230 is installed; final installed lifecycle
+acceptance remains in progress (F5 / durable-host).
+
+Latest follow-up, 2026-10-16: frozen155e348/e89d4e3 passes both complete native
+gates and the formal64-client/30-minute campaign,720/720 authenticated deliveries,
+zero refusals and1.340s p95. All seven publication receipts and the public package's
+existing-key signature/hashes are independently verified. Canonical configuration
+now invokes the packaged host directly; the icon supplies only its saved home.
+Eight exact obsolete command overrides are retired with original bytes and an
+inverse journal retained. Unattended unlock, diagnostics and memory policy remain.
+
+The normal signed update kept old processes running, deferred activation for an
+actual open view, then checkpointed and restarted once after its normal close.
+Both new executables match the same release. Designated-peer bidirectional ACKs,
+offline-once delivery and scoped fleet status pass. The16MiB interrupted transfer
+completes in130.361s (166.167s whole journey), with exact export after reopening.
+Two simultaneous cold minimal-icon views attach to one profile owner. A stopped
+post-live backup preserves209 message digests and25operation records; one isolated
+copy survives signed230->228->230, exporting the exact16MiB file in every phase.
+Actual invitation/lock/network checks and user-manual logout/login/reboot remain
+separate requirements. [Current installed evidence](evidence/durable-host/installed.json).
 
 Latest follow-up, 2026-10-15: signed0.1.228 has independently verified source-bound
 Linux qualification receipts, package signature and matching running CLI/desktop.

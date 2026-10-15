@@ -1,3 +1,12 @@
+F5 signed recovery, 2026-10-16: qualified Linux **0.1.230** is installed through
+the normal signed package and managed activation services. The minimal icon uses
+the saved host recipe; two simultaneous cold views converge on one managed owner.
+Exact bidirectional ACKs, offline-once delivery, scoped fleet status and the16MiB
+interrupted transfer pass. A current-state230->228->230 rehearsal preserves209
+message digests,25operations and the exact file in every phase. Final invitation,
+lock/network and user-performed login/reboot acceptance remain tracked in
+[installed evidence](docs/evidence/durable-host/installed.json).
+
 F5 Linux SDK qualification allocation, 2026-10-15: the native SDK job has a bounded
 150-minute execution allocation. The original229 job passed the hour-long real
 unreachable-member stress case and subsequent checks but reached its former

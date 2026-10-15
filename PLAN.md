@@ -1,3 +1,14 @@
+F5 / signed230 workstation migration, 2026-10-16: all normal Linux native/signing,
+full relay and live compatibility gates pass for155e348/e89d4e3; publication and
+public package/signature hashes are independently verified. Installed desktop and
+host match the same package. Canonical configuration retires eight exact old
+ExecStart overrides, preserves all original bytes, and keeps diagnostic/memory/
+unlock settings. Real open-view defer then ordinary checkpoint/activation pass.
+Live messages/ACKs/offline-once,16MiB interrupted file130.361s/166.167s, scoped fleet
+operation, simultaneous cold views and current-state signed rollback all pass.
+Final invitation/lock/network, manual logout/login/reboot, timer restoration and
+completion manifest remain. [Evidence](docs/evidence/durable-host/installed.json).
+
 F5 / full local route-bridge campaign, 2026-10-15: two-client preflight and the
 complete 64-client/1800-second workload pass with 720/720 authenticated commands,
 11,340 recipient observations, zero refusals, 4.553-second p95, relay restart and

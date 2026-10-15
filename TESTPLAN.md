@@ -1,3 +1,16 @@
+F5 / exact signed230 installed acceptance, 2026-10-16: independently verify all
+seven normal Linux receipts, native inputs and published DEB/signature. The actual
+228->230 package update keeps old processes alive; canonical managed activation
+must defer for a real view, then checkpoint/restart once after normal close/lease.
+Two minimal cold icon launches pass with one owner and both rendered workspaces
+in28.272s. Designated-peer exact contents/ACKs/offline-once pass14.140s; interrupted
+16MiB completion130.361s, whole journey166.167s, exact export after reopen. Isolated
+signed230->228->230 on one current-state copy preserves209message digests,
+25operations/memberships and exact16MiB export in each phase. Offline signed local
+startup opens in6.662s while reporting connecting. Finish actual invitation review,
+lock/network recovery, post-lifecycle delivery and user-manual logout/login/reboot.
+Original observer failures remain retained. [Evidence](docs/evidence/durable-host/installed.json).
+
 F5 / full relay evidence, 2026-10-15: local95e1ca8/d481f72 passes the original
 two-client preflight and complete64-client/1800-second workload:720/720 authenticated
 commands,zero refusals,4.553-second p95,relay restart and exact5,235,248-byte export.
