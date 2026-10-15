@@ -3,6 +3,26 @@
 Status: source and isolated lifecycle qualification passed; signed release and
 installed acceptance remain in progress (F5 / durable-host).
 
+Installed follow-up, 2026-10-15: signed0.1.223's public package and both running
+executables match independently verified receipts. After an approved normal
+desktop close, the owner maintenance contract deferred until its existing view
+lease expired, then allowed a stopped backup of39files/106,662,221bytes. The
+service and both update timers were restored, and the production desktop entry
+reopened the matching release. All204 message digests,23 operation records,
+memberships and identity/partition remained exact. A network-isolated clone of
+that fresh backup restored the same complete logical state in15.544seconds.
+
+The designated-peer223 delivery trial still failed its original300-second stage
+and remains failed. A real TLS/H2 regression then exposed long-lived subscriptions
+consuming all of a pooled connection's stream capacity, blocking finite recovery
+controls. GComs `acbe008` reserves that credit and uses bounded same-route/class
+subscription shards;76transport controls, four TLS/restart journeys and strict
+checks pass. Normal immutable successor226 includes this repair and the fleet
+endpoint repair below. Its Linux native gate subsequently failed a browser-fixture
+history race; the original failure remains retained. The corrected fixture passes
+the full Chromium/WebKit matrix. Signed successor qualification and the installed
+journey remain required. [Installed and recovery evidence](evidence/durable-host/installed.json).
+
 Installed follow-up, 2026-10-14: the currently observed signed0.1.217 host retains
 the same identity, eleven conversations,203 fully paginated message digests and22
 operation records. Its fresh stopped backup contains39 regular files and

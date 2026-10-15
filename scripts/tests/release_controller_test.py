@@ -212,6 +212,7 @@ class ControllerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'qualification changed'):
                 controller.deployment_config(root, candidate(), original)
 
+    @unittest.skipUnless(os.name == 'posix', 'the deployment coordinator uses POSIX fleet ownership locks')
     def test_blocked_controller_repair_uses_canary_and_rollback_without_rewriting_fleet(self):
         from release_deployment import reconcile
         for fail in (False, True):

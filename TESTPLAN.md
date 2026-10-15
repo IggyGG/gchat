@@ -1,3 +1,16 @@
+F5 / native226 follow-up, 2026-10-15: keep the original Linux browser failure and
+Windows1201-test failure. The caret/history test must use history from the initial
+restored snapshot and preserve exact suffix completion, no-send selection,
+middle-caret editing, edge recall and saved-draft restoration while later snapshots
+are held. The former mid-test history mutation fails that causal delay control.
+Five Chromium and five WebKit repetitions pass; full78 unit/122 Chromium/122 WebKit
+checks, both Svelte checks and production build pass with exact226npm archives.
+Run all32 compaction and18 controller controls on POSIX; all50 pass without skips.
+Only the five cluster cold-archive cases and one actual POSIX deployment-lock case
+are excluded on Windows, matching their runtime scope. All other Windows Python,
+application/native, filesystem, signing and installed gates remain required.
+See the source/host receipts in `docs/evidence/durable-host/installed.json`.
+
 F5 / physical native hosts, 2026-10-15: the owner's Apple Silicon Mac and Windows
 11 x64 hosts reproduce the retained GComs qualification failures. Source85611e4
 then passes the complete Python gate: Linux466/466, Mac463 plus3 Linux-only

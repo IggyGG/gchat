@@ -87,7 +87,7 @@ test('routine activity is grouped, full identities expand and uncertain sends ha
 });
 
 test('caret completion preserves suffix, keyboard selection does not send and history respects editing', async ({ page }) => {
-  await ready(page);
+  await ready(page, '?input-history');
   await input(page).fill('hello Ad today');
   await input(page).evaluate((el:HTMLTextAreaElement) => el.setSelectionRange(8,8));
   await input(page).press('Tab'); await expect(input(page)).toHaveValue('hello Ada today');
@@ -98,7 +98,9 @@ test('caret completion preserves suffix, keyboard selection does not send and hi
   await input(page).press('Tab'); await input(page).press('Enter');
   await expect(input(page)).toHaveValue('Alan: ');
   expect(await page.evaluate(() => (window as any).fixture.requests.filter((r:any)=>r.kind==='submit').length)).toBe(0);
-  await page.evaluate(() => (window as any).fixture.setInputHistory([{conversation:'channel/general',text:'previous input'}]));
+  // History must be in the initial restored snapshot before testing keystrokes.
+  // Subsequent snapshots may stall without changing those editing semantics.
+  await page.evaluate(() => (window as any).fixture.holdSnapshots());
   await input(page).fill('keep this draft');
   await input(page).evaluate((el:HTMLTextAreaElement) => el.setSelectionRange(4,4));
   await input(page).press('ArrowUp'); await expect(input(page)).toHaveValue('keep this draft');

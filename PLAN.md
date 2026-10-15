@@ -1,3 +1,15 @@
+F5 / native fixture follow-up, 2026-10-15: Linux226 built production binaries but
+failed one browser history assertion. The fixture changed server-side history
+immediately before a keypress, before the UI's asynchronous snapshot arrived.
+Holding that snapshot reproduces the original failure. Seeding history before
+initial readiness preserves the exact editing assertions even with later snapshots
+held; five Chromium and five WebKit repetitions, all78 UI units,122 Chromium and
+122 WebKit cases, frontend checks and production build pass. Windows226 separately
+exposed six POSIX coordinator/archive controls missing the platform boundary used
+by adjacent tests. All50 affected Linux controls run and pass; native Windows
+qualification is recorded separately. Normal signed successor and installed
+acceptance remain required. [Evidence](docs/evidence/durable-host/installed.json).
+
 F5 / fleet endpoint recovery, 2026-10-14: actual signed217 attachment exposed a
 stale fleet socket after restart while chat remained available. The same retained
 profile regression fails the old source with `IPC socket already exists`. Fleet

@@ -16,6 +16,7 @@ from release_pair import canonical
 import release_compaction as compactor
 
 
+@unittest.skipUnless(os.name == 'posix', 'the cluster archive producer requires POSIX locks, descriptors and allocated-block accounting')
 class ColdNativeProducerTests(unittest.TestCase):
     def setUp(self):
         from release_automation_test import candidate

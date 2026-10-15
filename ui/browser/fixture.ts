@@ -32,7 +32,8 @@ const commands: CommandSpec[] = ['help', 'lock', 'disconnect', 'quit', 'join', '
 let state: NetworkState = parameters.has('fresh') ? 'invitation_required' : 'connected';
 let revision = 1;
 let activity: import('../src/api').Activity[] = [];
-let inputHistory: import('../src/api').InputHistoryEntry[] = [];
+let inputHistory: import('../src/api').InputHistoryEntry[] = parameters.has('input-history')
+  ? [{ conversation:'channel/general', text:'previous input' }] : [];
 let sendOutcome = 'ok';
 let historyWindow = 0, repeatHistoryCursor = false;
 let archiveBlocked = parameters.has('archive-blocked');
