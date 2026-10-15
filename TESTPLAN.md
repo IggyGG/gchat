@@ -1,3 +1,11 @@
+F5 / Linux SDK execution allocation,2026-10-15: retain the entire SDK scripts/ci.py
+gate, including2000 sequential sends to three genuinely stopped fixture nodes.
+The original229 test passed after3613seconds; native execution was cancelled at
+120minutes during later compilation. The SDK workflow job now permits150minutes.
+Verify original run/source/hash evidence and normal same-run qualification/signing
+guards. File360/600seconds, full64-client1800seconds and all delivery/latency/refusal
+thresholds remain unchanged. A larger build allocation never qualifies old failure.
+
 F5 / retained current-state native acceptance,2026-10-15: the optimized unsigned
 ba53e90/e4288d3 CLI reopens one current228 clone through signed228 -> candidate ->
 signed228 -> candidate. All205 full message digests,23operations, memberships,

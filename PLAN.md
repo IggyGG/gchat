@@ -1,3 +1,10 @@
+F5 / Linux SDK native allocation,2026-10-15: original229 SDK job116537979015
+reached120minutes during released-facade compilation after its unchanged real
+unreachable-member test passed in3613seconds. Allocate150minutes to that SDK job
+only, retaining the complete test suite and product qualification thresholds.
+Original229 also failed full relay delivery710/720 and remains failed. A corrected
+immutable source pair and fresh complete qualification are required.
+
 F5 / release admission recovery,2026-10-15: controller147e8a1 is live as bee812...
 after582 source,506 actual-image and506 Kubernetes checks plus the ordinary network
 canary. All271 loaded source hashes match; the original failed228deployment journal

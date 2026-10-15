@@ -256,7 +256,9 @@ jobs:
           if-no-files-found: error
   qualify-gcoms:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    # The unchanged sequential unreachable-member test includes real transport
+    # cooldowns (~60 minutes); leave bounded time for every remaining SDK gate.
+    timeout-minutes: 150
     outputs:
       artifact_id: ${{ steps.evidence.outputs.artifact-id }}
       artifact_sha256: ${{ steps.evidence.outputs.artifact-digest }}

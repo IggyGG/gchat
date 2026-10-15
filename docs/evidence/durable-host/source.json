@@ -1,5 +1,16 @@
 {
   "schema": 1,
+  "linux_sdk_native_allocation_20261015": {
+    "original_run": 38768527832,
+    "original_job": 116537979015,
+    "attempt": 1,
+    "original_conclusion": "cancelled",
+    "original_log_sha256": "8d41700e7c9e7b9f084830f9d21152fb630200cc9ec531911c795594ca050f43",
+    "observation": "The unchanged real unreachable-member stress case passed in3613seconds; all remaining native tests, docs, strict Clippy, RPC and consumer packaging completed. The job reached120minutes during released-facade compilation.",
+    "change": "qualify-gcoms job execution allocation120to150minutes for the next immutable candidate",
+    "preserved": ["complete SDK gate", "same-run source/artifact/signature binding", "original failed release and clocks", "all product delivery/file/relay acceptance thresholds"],
+    "status": "configuration_checked_fresh_native_execution_pending"
+  },
   "closed_failed_deployment_flight_20261015": {
     "base": "45314aac0267e758d8f6745bec609c1a116433db",
     "production_blocked_release": "35bb1454e369570e069dd0e3e3c2d677ba61cbd4c299bb8cfcaade228cf181ca",

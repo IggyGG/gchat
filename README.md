@@ -1,3 +1,10 @@
+F5 Linux SDK qualification allocation, 2026-10-15: the native SDK job has a bounded
+150-minute execution allocation. The original229 job passed the hour-long real
+unreachable-member stress case and subsequent checks but reached its former
+two-hour limit during released-facade compilation. Every test, signing requirement
+and product delivery/file/relay acceptance deadline remains required. Original229
+is still failed; the next immutable candidate must qualify normally.
+
 F5 retained-host recovery, 2026-10-15: saved-instance host selection, authenticated
 fleet status and the combined GComs recovery fixes pass source/native checks.
 Signed0.1.228 is independently verified and its fresh stopped backup restores all
