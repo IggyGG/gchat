@@ -18,6 +18,15 @@ the local run uses its exact published tag and a temporary short path alias, rem
 after the test, without changing system path limits or production guards.
 See the source/host receipts in `docs/evidence/durable-host/installed.json`.
 
+F5 / actual startup failure boundaries, 2026-10-15: the current source startup
+probe and signed223 daemon exercise an owned disposable user unit with a home
+containing spaces. An exit1 service and an active service that never exposes its
+endpoint both return `host_unavailable` at the unchanged30-second bound while all
+profile bytes remain exact. Restoring the registered daemon recovers the same
+identity in1.247seconds; all owned resources are removed. The prior fixture's
+incorrect recovery `--create` invocation remains a failed receipt. See
+`docs/evidence/durable-host/source.json`; production profiles were not faulted.
+
 F5 / physical native hosts, 2026-10-15: the owner's Apple Silicon Mac and Windows
 11 x64 hosts reproduce the retained GComs qualification failures. Source85611e4
 then passes the complete Python gate: Linux466/466, Mac463 plus3 Linux-only

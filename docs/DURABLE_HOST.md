@@ -171,6 +171,77 @@ arrival, lock/unlock, restart, login/reboot, messaging, files, fleet attachment,
 and canonical installed update cycle have real receipts. Qualification progress
 and failure dispositions will be recorded in `docs/evidence/durable-host/`.
 
+## Operator procedures for the registered workstation
+
+The production home is `$HOME/.local/share/gchat-production`; its private
+`chat.host.json` selects `gchat-fleet-host.service` and references the protected
+fleet configuration under `$HOME/.local/state/gchat-fleet/`. Keep credential and
+unattended-unlock files private. The following status commands were exercised
+against the signed223 installation:
+
+```sh
+gchat --home "$HOME/.local/share/gchat-production" paths
+systemctl --user status gchat-fleet-host.service
+systemctl --user show gchat-fleet-host.service -p MainPID -p ActiveState -p NRestarts
+systemctl --user status gchat-headless-activate.timer gchat-hub-backup.timer
+systemctl status gchat-package-update.timer
+sha256sum /usr/bin/gchat /usr/bin/gchat-desktop
+```
+
+Start the exact registered unit with `systemctl --user start
+gchat-fleet-host.service`, or open the saved production icon. Close a view to
+leave receiving active. `/lock` hides the archive in every view while receiving
+continues; `/quit` intentionally disconnects the instance. Before a planned stop,
+obtain the existing authenticated maintenance readiness and use `systemctl --user
+stop gchat-fleet-host.service` for orderly checkpoint/shutdown.
+
+Use these diagnostic distinctions:
+
+- `host_unavailable`: inspect unit state and the bounded user-service journal.
+- `host_configuration`: restore the protected registered recipe/configuration.
+- `host_mismatch`: compare selected home, instance/partition, registered unit,
+  actual MainPID and build. Repair the conflicting owner through orderly lifecycle.
+- Locked protocol/archive: use normal unlock after verifying host association.
+- Local workspace ready/network recovering: inspect routing separately. A connected
+  indicator does not establish recipient delivery or authenticated acknowledgment.
+- API incompatibility: use the same qualified package/dependency pair for both
+  components and verify their actual running executable hashes.
+
+The package timer installs signed packages; headless activation defers while a
+view or admitted operation is active. A closed view's retained lease expires after
+45seconds. Uncertain activations retain their one-attempt receipt under
+`$HOME/.local/state/gchat-headless-activation/`; reconcile that receipt before any
+manual recovery rather than issuing an unrecorded second restart.
+
+The installed `gchat-hub-backup.service` retains a legacy daily **live file-copy**
+set under `$HOME/.local/state/gchat-fleet/backups/`. Its script explicitly does not
+claim a transactionally consistent multi-file checkpoint. Deployment preparation
+uses a separate complete stopped recovery set, including registration, every
+profile/archive/cache file, fleet configuration, effective unit/drop-ins and both
+compatible executables. Preserve the original daily copy and the complete set.
+
+The tested complete-backup sequence closes the desktop normally, excludes running
+package/activation jobs, holds package/launch locks, obtains the existing owner
+maintenance lease, requires `ready`, orderly-stops the registered service, locks
+the remaining profile files, then copies/hash-readbacks/fsyncs the private set.
+It finally starts the same service, verifies stable matching executable observations,
+restores previous timer states, verifies fresh attachment and reopens the icon.
+Full history pagination, memberships, identity/partition and operation states are
+compared separately from encrypted-file hashes. Exercise recovery in a network
+namespace with only loopback, explicitly relocate only the clone's registration,
+and keep it disconnected from the live network. The dated installed receipt binds
+the successful223 stopped backup and isolated restoration.
+
+For a state-preserving rollback, retain failure evidence, checkpoint/stop the
+candidate and open its **current state** with the tested compatible predecessor
+and exact retained service configuration. Restoring an older backup is a distinct
+recovery operation that can discard newer state. Keep the prior signed package,
+detached signature, build/dependency receipt and exact unit/drop-ins available.
+The final repaired release still requires its own current-state rollback receipt.
+Logout/login and reboot acceptance require an agreed maintenance window covering
+other active workstation work. The final manifest must identify each performed
+acceptance row, actual running hashes and the verified rollback set.
+
 ## Implementation comparison
 
 After-write peer-binding comparison:

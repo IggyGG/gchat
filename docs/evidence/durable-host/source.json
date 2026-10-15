@@ -4,6 +4,30 @@
   "scope": "Durable scoped-host source and isolated lifecycle qualification",
   "release_qualified": false,
   "installed_acceptance_passed": false,
+  "native_startup_failure_acceptance_20261015": {
+    "passed": true,
+    "scope": "disposable real user service and profile; current source startup probe against signed223 host",
+    "probe_sources": {
+      "gchat": "4f2d4095c6189726c61079a16ffc00c367082659",
+      "gcoms": "acbe008ce1f49441d69d91a154bc249c97a535f7"
+    },
+    "probe_sha256": "a85636b1afa5309b5445db65d46c42bb313850b598e9911a2afd30f169987657",
+    "signed_host_sha256": "18e10601ffee0e0f5a26caae24b78cb198bf5bd8e9810eb75ebbf216b23b30f2",
+    "fixture_path_has_spaces": true,
+    "failed_service": {"exec_status": 1, "error_code": "host_unavailable", "seconds": 30.026228232003632},
+    "active_service_without_endpoint": {"service_active": true, "error_code": "host_unavailable", "seconds": 30.029686132009374},
+    "existing_30_second_deadline_preserved": true,
+    "profile_bytes_unchanged_during_both_failures": true,
+    "correct_service_recovery": {"same_identity": true, "seconds": 1.2469684730021982},
+    "production_profile_modified": false,
+    "owned_fixture_cleanup_complete": true,
+    "total_seconds": 67.57630489600706,
+    "receipt_sha256": "274bd7ebc6b0c5817ae79f64d9144912df2951da232715f658060ed68421eef3",
+    "driver_sha256": "d2b1a376d540c223c1f6247c0b959b53d0efc2f13f62260be34595c0bf95480f",
+    "private_evidence": "startup-failures-1792026401",
+    "earlier_failed_fixture_retained": "startup-failures-1792026235: both refusal controls passed, but the harness incorrectly retained --create on recovery; the existing-profile guard correctly refused it",
+    "code_comparison": {"path": "openclaw/openclaw:scripts/e2e/lib/upgrade-survivor/systemd-fixture.mjs", "cosine": 0.6715, "rerank": 0.18981571461174035, "conclusion": "Generic controlled-unit fixture. Local acceptance additionally binds exact executable/probe hashes, verifies unchanged profile bytes and preserves the original startup deadline."}
+  },
   "implementation_commits": [
     "11f7549e70c252bc193ddec150179dab346574f1",
     "c0888029ab08b384454129caa3557f55b4970f32",
