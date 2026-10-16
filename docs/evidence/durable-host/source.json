@@ -1,5 +1,110 @@
 {
   "schema": 1,
+  "desktop_attachment_deadline_20261016": {
+    "status": "causal_before_full_paired_and_actual_native_after_passed_signed_successor_pending",
+    "source": "e77352339a28b4543abae9843217e9c1f1de1118",
+    "gcoms": "7af9c1250b08fe4459921d9d1b85368ff45e4ca9",
+    "mechanism": "Desktop client-mutex contention previously preceded the core host-start timeout. Heartbeat, startup update and renderer attempts could serialize multiple30second waits before a repair retry started.",
+    "repair": "One30second deadline covers mutex acquisition, configuration/service activation and validated attachment. Admitted user requests execute afterward, outside this deadline; no uncertain mutation is replayed.",
+    "causal_before": {
+      "source": "d12d952e9b4fbb272badf0f0ba2893230f4ba844",
+      "failed_as_expected": true,
+      "actual_attachment_mutex_held": true,
+      "outer_guard_seconds": 31,
+      "required_attachment_seconds": 30,
+      "causal_tests_failed": 1,
+      "update_activation_control_passed": 1,
+      "paused_time_only_in_unit_test": true,
+      "source_unchanged": true,
+      "receipt_sha256": "0d50fbc1bf4331c00e9755a18baa1909179c64428f7d58c59a8a087f56301818"
+    },
+    "original_real_native_failure": {
+      "source": "c4c1e268c9574cc607e65acd84cca417696026eb",
+      "disposable_local_only_profile": true,
+      "actual_gui_and_registered_service": true,
+      "service_active_without_application_endpoint": true,
+      "rendered_error_seconds": 60.866884590,
+      "repair_retry_readiness_30_second_limit_failed": true,
+      "retained_profile_bytes_unchanged_before_repair": true,
+      "fixture_removed": true
+    },
+    "focused_after": {
+      "passed": true,
+      "desktop_library_tests": 30,
+      "strict_all_target_desktop_clippy": true,
+      "format_and_regenerated_dependency_notices": true,
+      "source_unchanged": true,
+      "seconds": 219.021089449,
+      "receipt_sha256": "0c72abbdaeb8dcb310db017ffb725db8d10ddeceda57fc7cdcf9916667aec6af"
+    },
+    "full_paired_native_ci": {
+      "passed": true,
+      "entrypoint": "scripts/ci.py --gcoms EXACT_COMPANION --provenance-output RETAINED_PATH",
+      "workspace_rust_passes": 241,
+      "existing_rust_ignored": 3,
+      "released_client_passes": 1,
+      "python_cases": 1204,
+      "existing_python_skips": 1,
+      "provider_cases": 53,
+      "ui_unit_passes": 80,
+      "chromium_passes": 124,
+      "desktop_library_passes": 30,
+      "format_strict_workspace_clippy_generated_source_build_dependency_gates": true,
+      "source_unchanged": true,
+      "seconds": 2883.856094926,
+      "receipt_sha256": "b807cab00871da479b341bf037768b2772065e0691adf978b5515fa93672343c",
+      "log_sha256": "4880a3b3a49718453ac8198cc1f75bae164a48d58491a01e896c2b282b178e61",
+      "unsigned_cli_sha256": "68981e11253ecf1f215650b5c31a618795cbc5fc62bed74e3cb8b450ae9d93b4",
+      "unsigned_gui_sha256": "1c96dd09919c8c272fcfde8b4625eb290e0b5cebebadd51d93eaf0b9c6f958ef"
+    },
+    "unchanged_webkit_evidence": {
+      "passed": true,
+      "tests": 124,
+      "source": "c4c1e268c9574cc607e65acd84cca417696026eb",
+      "frontend_package_fixture_and_dependency_inputs_unchanged": true,
+      "log_sha256": "a70bccabcfa62d5848c7d402cd6af572e1dcb4e88e816ecaec641a06ddecf8dc"
+    },
+    "actual_native_after": {
+      "passed": true,
+      "actual_source_bound_cli_and_gui": true,
+      "native_controls_visible_and_showing": true,
+      "no_identity_entry_or_workspace_before_repair": true,
+      "retained_regular_profile_bytes_unchanged_during_fault": true,
+      "same_view_retry_starts_exact_registered_service": true,
+      "same_identity_full_history_and_registration_after_repair": true,
+      "all_disposable_units_and_profiles_removed": true,
+      "production_profile_accessed": false,
+      "cases": [
+        {"case": "active_service_without_application_endpoint", "rendered_error_seconds": 30.897875144, "repair_readiness_seconds": 10.925581210, "host_budget_seconds": 30, "rendered_observation_seconds": 35, "code": "host_unavailable", "receipt_sha256": "96d7ebf8d1c88438787198ca690b132eb03b7c192c7a7a17164e87fe3c18fc69"},
+        {"case": "registered_service_missing", "rendered_error_seconds": 1.005478707, "repair_readiness_seconds": 11.032824855, "load_state": "not-found", "code": "host_unavailable", "receipt_sha256": "5cd98064a85f0be5814d20829c128a94eddd7cae67cd1210136beb4be5e5847a"},
+        {"case": "registered_fleet_configuration_missing", "rendered_error_seconds": 1.002009502, "repair_readiness_seconds": 11.139819858, "code": "host_configuration", "receipt_sha256": "be5b94a42989c1596cc958e4e4831d8ee85de2b8012454fea83d60a4f221e159"}
+      ]
+    },
+    "delayed_start_positive_control": {
+      "passed": true,
+      "original_service_delay_seconds": 22,
+      "original_local_readiness_bound_seconds": 30,
+      "local_readiness_seconds": 23.883216469,
+      "receipt_sha256": "678ef36b669a6fd03b402ce6db731b6aae8ecd1009da62451dd25c34bcd8f495",
+      "original_observation_seconds": 105,
+      "one_host_same_gui_and_identity": true,
+      "rendered_update_check_timeout_without_restart_action": true,
+      "normal_production_cli_build_command": ["cargo", "build", "--locked", "--release", "-p", "gchat-tui", "--features", "gc2-carrier"],
+      "optimized_cli_sha256": "9a788965c49e76866e09a4c76f37e97876b09bada50f671e042c9cedea754096",
+      "optimized_cli_build_receipt_sha256": "05a6dccea3013ff64f9a2153af0db3baff0fafae86ecc3004c3f31d0c8df0331",
+      "exact_full_ci_source_and_dependency_binding_verified": true,
+      "unsigned_fixture_not_an_installation": true,
+      "original_observer_failures_retained": ["unoptimized debug host plus22s delay exceeded the unchanged30s readiness bound", "unsigned fixture correctly omitted optional BuildInfo; corrected observer still requires explicit build identity for signed installations"]
+    },
+    "dependency_change": "Enable test-util on the existing Tokio dev dependency for deterministic deadline/cancellation controls; no new package or production clock change.",
+    "post_qualification_edit": "Documentation and one comment clarify that attachment can activate its managed service; executable Rust tokens are unchanged from e773523.",
+    "preserved": ["instance/configuration/capability/kernel-owner validation", "single cached client", "immediate update-activation refusal", "core30second service-start bound", "operation journalling and mutation semantics"],
+    "comparison": {
+      "before": {"repo_path": "Beneficial-AI-Foundation/libsignal_with_deps:rust/bridge/shared/types/src/net/chat.rs", "cosine": 0.6664, "rerank": 0.015040, "fetched": true},
+      "after": {"repo_path": "colinmarc/magic-mirror:mm-client-common/src/lib.rs", "cosine": 0.6460, "rerank": 0.003721, "fetched": true},
+      "assessment": "Generic connection locks and later request deadlines, not a close whole-attachment wrapper. The actual mutex causal test independently verifies the required boundary. No implementation copied."
+    }
+  },
   "read_only_host_diagnostics_20261016": {
     "status": "all_required_paired_commands_and_actual_native_inspection_passed_signed_successor_pending",
     "source": "77dc8cd00a61defda1710c5cfc35407d1f06d104",

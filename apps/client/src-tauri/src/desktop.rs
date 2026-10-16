@@ -51,7 +51,7 @@ pub(super) async fn attached(state: &tauri::State<'_, Attachment>) -> Result<Cha
 async fn attached_checked(state: &Attachment) -> Result<ChatClient, ChatError> {
     // Background heartbeats/update checks share this attachment with the view.
     // Its startup budget includes their mutex queue, not just the host probe.
-    // User requests run only after this read-only attachment has completed.
+    // User requests run only after this attachment has completed.
     tokio::time::timeout(std::time::Duration::from_secs(30), attach_once(state))
         .await
         .map_err(|_| ChatError {

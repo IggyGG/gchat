@@ -1,3 +1,18 @@
+F5 / desktop contention is inside the startup deadline, 2026-10-16: hold the actual
+Attachment client mutex and require host_unavailable by30seconds, inside an external
+31-second test guard. No instance/client may be published and the timed-out queue
+slot must be released. Preserve immediate update-activation refusal even with the
+lock held. The old code causally fails; all30desktop tests/strict Clippy/full paired
+CI pass after the fix. Real native CLI/GUI acceptance exercises an active unit with
+no endpoint, a missing unit and a missing fleet file. Require a visible exact error
+and retry action, no identity creation/data view, unchanged retained files, then
+same-view repair to the same identity/history/registration. The stalled host attempt
+keeps30seconds; native rendering/observation has5seconds additional allowance.
+Actual error30.898s/retry10.926s pass. Keep the valid22-second delayed-start positive
+control and105-second one-host observation. Its source CLI uses the normal optimized
+production command with exact paired CI inputs; the slower debug fixture failure
+remains failed. Signed-installation binding and final boot/lifecycle checks follow.
+
 F5 / read-only local host diagnostics, 2026-10-16: a real retained fleet profile
 with a registered unavailable service must report that association, instance and
 build fields without starting or unlocking. Repeat with its fleet file missing;

@@ -1,3 +1,14 @@
+F5 / whole desktop attachment budget, 2026-10-16: e773523 wraps the shared-client
+mutex wait and host establishment in one30-second deadline. The causal actual-mutex
+test fails the previous code; all30desktop tests, strict Clippy and full paired CI
+pass. Native old code showed its stalled-service error after60.867s and missed the
+30-second repair retry. New actual CLI/GUI shows that error after30.898s, recovers
+the same identity/history in10.926s and preserves profile bytes while unavailable.
+Missing service/fleet native repair cases also pass with visible actionable errors.
+The valid22-second delayed start opens in23.883s and remains one host/GUI for105s.
+Publish the corrected successor;234 contains diagnostics but predates this deadline
+repair. Source/installed evidence remains separately bound; manual boot is pending.
+
 F5 / local host diagnostic completion, 2026-10-16: implement bounded read-only
 `gchat paths --json` inspection of the selected instance, registered host mode and
 service state, client/host build bindings, local lock/readiness and sanitized error

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "qualified233_installed_lifecycle_passed_diagnostic_successor_and_manual_boot_pending",
+  "status": "qualified233_installed_lifecycle_passed_diagnostic_deadline_successor_and_manual_boot_pending",
   "scope": "Qualified signed successor and actual installed production instance",
   "observed_at": 1792155507,
   "previous_observation": {
@@ -143,7 +143,9 @@
       "actual_workstation_rendered_evidence_separate": true
     },
     "manual_login_reboot": "not yet performed; user will act after final diagnostic installation readiness notice",
-    "read_only_diagnostic_followup_installed": false
+    "read_only_diagnostic_followup_installed": false,
+    "whole_attachment_deadline_followup_installed": false,
+    "deadline_followup_evidence": "The source-bound native stalled-service fixture exposed client-lock wait outside the startup budget. e773523 passes the causal/full/native after checks; its signed installed successor is still required."
   },
   "historical_230_installation": {
     "release_id": "fea3bf5945f157b26dc5f8af1421f33186140a1c7afeab49fdacdcf484deb3be",
@@ -474,7 +476,7 @@
   "original_launch_configuration": "The effective per-user production desktop override selected the saved home without fleet configuration; the historical writer is not established.",
   "installed_acceptance_passed": false,
   "remaining": [
-    "publish and qualify the read-only local diagnostic followup, then install its exact signed successor",
+    "publish and qualify the combined read-only diagnostic and whole-attachment deadline followups, then install their exact signed successor",
     "bind the final successor to its own required installed/live/file/lifecycle receipts and complete operation-map rollback",
     "post-final-lifecycle live delivery and complete logical continuity audit",
     "user-performed logout/login/reboot after readiness notice and actual postboot icon/invitation acceptance",

@@ -1,7 +1,20 @@
 # Durable per-instance host startup
 
 Status: qualified signed Linux0.1.233 is installed; the final read-only diagnostic
-successor and manual login/reboot acceptance remain in progress (F5 / durable-host).
+and whole-attachment deadline successor, plus manual login/reboot acceptance, remain
+in progress (F5 / durable-host).
+
+Native failure/recovery qualification exposed a desktop-only timeout gap: background
+heartbeat/update attempts held the shared client lock outside the core's30-second
+startup budget. The repaired desktop includes lock contention, service activation
+and validated attachment in one30-second deadline. User operations run afterward;
+their effects and journal reconciliation are not cancelled or replayed by this timer.
+The real mutex regression fails old code and passes the fix, with all30desktop
+tests, strict checks and full paired CI passing. Actual native stalled-service error
+visibility improves from60.867s to30.898s and repaired retry completes in10.926s.
+Missing service/fleet cases also preserve all retained bytes and recover the same
+identity/history. The valid22-second startup delay still opens in23.883s and retains
+one host/view through105seconds. These source fixtures are separate from signing.
 
 The actual233 desktop/host match the independently verified signed package and
 source pair. Normal update/defer/checkpoint activation, recipient ACKs/offline-once,
@@ -242,7 +255,9 @@ The capability is a local configuration consistency check, not a network credent
 or a substitute for owner-only IPC authentication.
 
 Startup serializes launch decisions using a private per-instance file lock and a
-30-second overall deadline. Managed instances start their exact registered user
+30-second overall deadline. The desktop also includes its shared-client mutex wait
+inside that budget, so background attachment attempts cannot add a hidden interval
+before the view starts waiting for its host. Managed instances start their exact registered user
 service; standalone instances use the existing detached-worker path. Local
 readiness and network recovery have separate status. An incompatible responding
 endpoint is a configuration error, not permission to start another profile owner.

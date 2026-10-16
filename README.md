@@ -1,3 +1,15 @@
+F5 whole desktop attachment deadline, 2026-10-16: native stalled-service acceptance
+found background requests holding the shared client lock outside the host's30-second
+budget. A real mutex regression fails old code; the deadline now includes that
+contention and all attachment establishment. User mutations execute afterward.
+All30desktop tests/strict Clippy and the full paired gate pass. Actual native
+missing-service, missing-fleet and stalled-service repair journeys preserve identity,
+history and registration; the stalled error appears in30.898s and repair takes10.926s.
+The original22-second delayed-start/105-second stable-host control also passes using
+the normal optimized CLI build. Tokio's existing test-only clock utility is enabled;
+no production clock or dependency package changes. Signed successor qualification
+and final installed/manual boot acceptance remain required.
+
 F5 signed233 installed acceptance, 2026-10-16: the normal signed updater and
 canonical managed activation now run matching0.1.233 desktop/host binaries.
 Recipient contents/authenticated ACKs, offline-once recovery, fresh16MiB interrupted
