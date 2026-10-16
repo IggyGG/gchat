@@ -1,3 +1,11 @@
+F5 / read-only local host diagnostics, 2026-10-16: a real retained fleet profile
+with a registered unavailable service must report that association, instance and
+build fields without starting or unlocking. Repeat with its fleet file missing;
+retain the same identity/service reference and sanitized configuration error.
+Compare every retained regular file before/after, require bounded completion and
+exclude credential/pin contents from output. Also cover fresh/malformed/private
+metadata and wrong/live host handshakes before publishing this follow-up.
+
 F5 / distinguish membership and message acknowledgments, 2026-10-16: require
 membership commit settlement and zero unconfirmed messages for CURRENT recipients
 before the next admission. Retained messages for explicitly revoked members are

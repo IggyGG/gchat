@@ -75,6 +75,87 @@ async fn fixture(home: &Path) -> (InstanceConfig, String) {
     (config, safety)
 }
 
+fn retained_files(home: &Path) -> std::collections::BTreeMap<PathBuf, Vec<u8>> {
+    let mut files = std::collections::BTreeMap::new();
+    let mut pending = vec![home.to_path_buf()];
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(directory).unwrap() {
+            let entry = entry.unwrap();
+            let kind = entry.file_type().unwrap();
+            if kind.is_dir() {
+                pending.push(entry.path());
+            } else if kind.is_file() {
+                files.insert(
+                    entry.path().strip_prefix(home).unwrap().to_path_buf(),
+                    std::fs::read(entry.path()).unwrap(),
+                );
+            }
+        }
+    }
+    files
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn registered_host_diagnostics_are_read_only_before_unlock_or_service_start() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("retained fleet λ");
+    std::fs::create_dir(&home).unwrap();
+    let (mut config, _) = fixture(&home).await;
+    config.managed_service = Some(format!("gchat-diagnostic-{}.service", std::process::id()));
+    let host = InstanceHost::new(config.clone()).unwrap();
+    let identity = unlock(&host, false).await.instance;
+    host.flush().await.unwrap();
+    drop(host);
+
+    for missing_fleet in [false, true] {
+        if missing_fleet {
+            std::fs::remove_file(config.fleet_config.as_ref().unwrap()).unwrap();
+        }
+        let before = retained_files(&home);
+        let output = tokio::time::timeout(
+            Duration::from_secs(10),
+            tokio::process::Command::new(env!("CARGO_BIN_EXE_gchat"))
+                .args(["--home"])
+                .arg(&home)
+                .args(["paths", "--json"])
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .expect("read-only diagnostics must be bounded")
+        .unwrap();
+        assert!(
+            output.status.success(),
+            "saved-host diagnostic record unavailable: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["instance_id"], identity.id);
+        assert_eq!(
+            report["managed_service"].as_str(),
+            config.managed_service.as_deref()
+        );
+        assert_eq!(report["mode"], "managed_fleet");
+        assert_eq!(report["local_ready"], false);
+        assert_eq!(
+            report["error_code"],
+            if missing_fleet {
+                "host_configuration"
+            } else {
+                "host_unavailable"
+            }
+        );
+        assert!(report.get("service_status").is_some());
+        assert!(report.get("client_build").is_some());
+        assert!(report.get("host_build").is_some());
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(!text.contains(SECRET) && !text.contains("\"token\""));
+        assert!(!text.contains("\"safetyNumber\""));
+        assert_eq!(retained_files(&home), before);
+        assert!(server_pid(&config.chat_endpoint()).is_none());
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn standalone_personal_cold_launch_uses_saved_configuration_without_flags() {
     let dir = tempfile::tempdir().unwrap();

@@ -1,3 +1,9 @@
+F5 local host diagnostics, 2026-10-16: the final audit found that `gchat paths`
+still describes the legacy standalone fallback and omits the saved service/build
+association. A native read-only diagnostic regression is under development; it
+must inspect a stopped retained fleet instance, including missing configuration,
+without starting a service, unlocking or changing retained bytes.
+
 F5 membership qualification, 2026-10-16: original232 failed an unlabeled ACK
 wait in the recovery fixture. Membership readiness now observes the authenticated
 commit and current recipients' pending-message state, rather than accepting an
