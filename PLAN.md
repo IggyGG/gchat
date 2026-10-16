@@ -5,8 +5,11 @@ fixture reproduces a second managed host PID with no newer package, using a fres
 local-only identity and22-second service delay. Source eligibility and fresh native
 APT validation now prevent unverified/current targets from stopping a host.
 80UI,124tests in each browser engine,28desktop tests and strict Clippy pass.
-Keep original failures; complete full paired CI/native after-proof, publish the
-corrected successor and repeat final installed startup/update acceptance.
+Full normal paired CI passes2803.685s. The actual new GUI keeps one host/identity
+through the original105-second delayed-start observation and exposes the check
+timeout without a restart action. Publish the corrected successor and repeat final
+installed startup/update acceptance. Release storage requests288Gi on its existing
+PVC; actual expansion must satisfy the unchanged Longhorn capacity/reserve policy.
 
 F5 / signed230 workstation migration, 2026-10-16: all normal Linux native/signing,
 full relay and live compatibility gates pass for155e348/e89d4e3; publication and

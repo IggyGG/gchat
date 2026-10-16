@@ -7,7 +7,7 @@ spec:
   storageClassName: triform-replicated-hel
   resources:
     requests:
-      storage: 272Gi
+      storage: 288Gi
 ---
 apiVersion: apps/v1
 kind: Deployment

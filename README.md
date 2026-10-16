@@ -4,8 +4,10 @@ deferred-check/verified-update ambiguity. A real disposable managed host delayed
 check times out. The source now retains explicit installation eligibility, gates
 both UI actions and native installation, and rechecks Debian state before shutdown.
 The causal unit test fails old code;80UI units,124Chromium/124WebKit tests,
-28desktop tests and strict desktop Clippy pass. Full paired CI, native after-proof
-and a signed successor remain required before final installed closeout.
+28desktop tests and strict desktop Clippy pass. Full paired CI also passes; the
+actual new GUI retains one host beyond the original105-second observation, shows
+the timeout without a restart action and preserves identity. Signed successor
+and installed closeout remain required.
 
 F5 signed recovery, 2026-10-16: qualified Linux **0.1.230** is installed through
 the normal signed package and managed activation services. The minimal icon uses

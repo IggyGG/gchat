@@ -8,7 +8,9 @@ twice in the causal case; the actual signed230 GUI restarts a disposable local-o
 managed host after a22-second cold-start delay. New source passes80units,
 124Chromium/124WebKit cases,28desktop tests and strict desktop Clippy. Require a
 native after-run with the same original delays and a stable host/view beyond the
-idle interval, followed by full signed successor and installed lifecycle gates.
+idle interval. This actual after-run passes105seconds with one host, same identity
+and rendered timeout/no Restart action. Full paired native CI also passes. Full
+signed successor and installed lifecycle gates remain required.
 
 F5 / exact signed230 installed acceptance, 2026-10-16: independently verify all
 seven normal Linux receipts, native inputs and published DEB/signature. The actual

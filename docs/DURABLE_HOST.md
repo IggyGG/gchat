@@ -12,8 +12,10 @@ eligibility. Deferred installation can retain a verified target; a deferred chec
 cannot create one. Both the rendered action and idle controller use this distinction,
 and the native installer rechecks the current Debian package/host before shutdown.
 Existing signatures, other-view/defer/checkpoint rules and the30-second host-start
-deadline remain. Full paired/native-after/signed successor qualification is pending;
-the successful230 messaging/file receipts do not close this startup requirement.
+deadline remain. Full paired CI and the actual native after-case pass with one
+stable host and view through the original105-second delayed-start observation.
+Signed successor qualification is pending; the successful230 messaging/file
+receipts do not close this startup requirement.
 
 Latest follow-up, 2026-10-16: frozen155e348/e89d4e3 passes both complete native
 gates and the formal64-client/30-minute campaign,720/720 authenticated deliveries,
