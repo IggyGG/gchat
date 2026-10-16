@@ -1,10 +1,25 @@
+F5 signed233 installed acceptance, 2026-10-16: the normal signed updater and
+canonical managed activation now run matching0.1.233 desktop/host binaries.
+Recipient contents/authenticated ACKs, offline-once recovery, fresh16MiB interrupted
+transfer128.294s/165.046s, scoped fleet status, cold/concurrent startup, invitations,
+lock/unlock and network recovery pass. The actual packaged GUI also passes the
+105-second delayed-start update regression. One current-state233->230->233 clone
+preserves217fullmessage digests, all147durableoperation-record hashes, memberships,
+cache and exact file exports. The private UI snapshot is a30-operation window;
+full-map evidence is separate. Final diagnostic release and manual login/reboot
+remain required. See [installed evidence](docs/evidence/durable-host/installed.json).
+
 F5 local host diagnostics, 2026-10-16: the final audit found that `gchat paths`
 still described the legacy standalone fallback and omitted the saved service/build
 association. `gchat paths --json` now inspects the selected instance, saved service,
 service state, build bindings and lock/readiness with sanitized errors. The actual
 stopped/missing-config CLI regression fails old code and passes the repair; six
-read-only/IPC/property controls and strict core/TUI/API Clippy also pass. Full paired
-and signed qualification remain required. Inspection never starts or unlocks a host.
+read-only/IPC/property controls and strict core/TUI/API Clippy also pass. All paired
+CI commands now pass across the exact-input continuation after a retained build-quota
+failure:241workspace Rust, one released-client,80UI,124Chromium/124WebKit and28desktop
+tests, strict checks/build/generated/dependency gates. Actual read-only inspection
+of the installed233 host reports its correct association/build without restarting.
+Signed qualification remains required. Inspection never starts or unlocks a host.
 
 F5 membership qualification, 2026-10-16: original232 failed an unlabeled ACK
 wait in the recovery fixture. Membership readiness now observes the authenticated

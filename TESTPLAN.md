@@ -7,7 +7,24 @@ exclude credential/pin contents from output. The actual CLI old-fail/new-pass,
 locked/wrong live host, fresh/malformed/oversized metadata, native byte paths,
 three-second stalled handshake and property/allowlist controls pass. Inspect-only
 handshakes must never create `.handles`; ordinary attachment retains its original
-API/version/instance/capability/kernel-owner checks. Full paired gate remains required.
+API/version/instance/capability/kernel-owner checks. All paired commands now pass on
+c4c1e26/7af9c125, including241workspace Rust tests, released-client compatibility,
+80UI/124Chromium/124WebKit/28desktop checks, strict Clippy and generated/build/dependency
+gates. Retain the original quota failure; the remainder must use the official
+path-independent dependency identity and verify each checkout's absolute Cargo
+configuration. Actual running233 host inspection also passes. Normal signing and
+final installed diagnostic acceptance remain required.
+
+F5 / signed233 installed lifecycle, 2026-10-16: the actual package now passes
+live ACK/offline-once,16MiB interruption/hash, fleet scope, cold/concurrent icon,
+warm/cold link review, lock/unlock and network recovery. A disposable actual233 GUI
+passes the original22-second service-delay/105-second stable-host regression.
+The fresh stopped233 set survives one-copy233->230->233 with217fullmessage digests,
+147complete durableoperation-record hashes,128piecehashes and exact16MiB exports.
+Do not use the30-row UI operation window as a full pending-operation inventory;
+inspect and hash the complete encrypted operation map in isolation, respecting
+typed RPC completion over legacy responses. Do not infer final manual login/reboot
+or the pending diagnostic successor from these233 receipts.
 
 F5 / distinguish membership and message acknowledgments, 2026-10-16: require
 membership commit settlement and zero unconfirmed messages for CURRENT recipients

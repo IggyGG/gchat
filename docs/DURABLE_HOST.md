@@ -1,7 +1,17 @@
 # Durable per-instance host startup
 
-Status: qualified signed Linux0.1.230 is installed; final installed lifecycle
-acceptance remains in progress (F5 / durable-host).
+Status: qualified signed Linux0.1.233 is installed; the final read-only diagnostic
+successor and manual login/reboot acceptance remain in progress (F5 / durable-host).
+
+The actual233 desktop/host match the independently verified signed package and
+source pair. Normal update/defer/checkpoint activation, recipient ACKs/offline-once,
+16MiB interrupted file128.294s/165.046s, scoped fleet operation, cold/concurrent
+icons, invitation review, lock/unlock and network recovery pass. Its packaged GUI
+also passes the original delayed-start update regression. A fresh stopped backup
+preserves217fullmessage digests and all147durableoperation-record hashes through
+one-copy233->230->233; every phase exports the exact file and verifies128piecehashes.
+The visible operation list is a30-row recent window, so complete journal hashing
+is separate; typed RPC completion remains authoritative over legacy responses.
 
 ### Read-only local diagnostics
 
@@ -25,8 +35,12 @@ included. JSON command success means an observation was produced: inspect
 delivery is a separate requirement even when local readiness succeeds.
 
 The causal CLI, six focused controls and strict core/TUI/API checks pass in source.
-This diagnostic follow-up still needs full paired and signed-release qualification;
-the installed230 package predates it.
+All normal paired CI commands now pass with unchanged effective dependencies,
+including both124-case browser matrices and the actual native builds. The original
+build-quota failure is retained alongside its exact-input64GiB continuation.
+Actual inspection of the running233 host reports the correct instance, service
+state and build in0.112seconds without restart. This diagnostic follow-up still
+needs signed-release qualification; the installed233 package predates it.
 
 Additional230 acceptance passes actual cold/warm invitation review, rendered
 lock/unlock with fleet pause/resume, and exact-host network loss/recovery while

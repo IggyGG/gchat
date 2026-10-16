@@ -5,7 +5,23 @@ code. The old path diagnostic misleadingly advertised standalone fallback for a
 stopped managed identity. Actual native stopped/missing-config old-fail/new-pass
 coverage preserves every retained file and performs no start/unlock action. Four
 real IPC/filesystem controls, two property/allowlist controls and strict core/TUI/API
-Clippy pass. Full paired/native validation and signed successor remain pending.
+Clippy pass. All normal paired commands pass on frozen c4c1e26/7af9c125:241workspace
+Rust, one released-client,80UI,124Chromium/124WebKit and28desktop tests, strict
+workspace/desktop Clippy, generated/source/build/dependency checks. The original
+32GiB quota failure remains failed; the64GiB remainder independently verifies
+identical effective paired inputs. Actual CLI inspection of the installed233 host
+passes without restart. Publish this diagnostic successor through normal signing.
+
+F5 / signed233 actual recovery, 2026-10-16: normal package replacement, real-view
+defer and orderly one-restart activation pass with matching qualified desktop/host.
+Fresh bidirectional ACK/offline-once19.181s and interrupted16MiB128.294s/165.046s pass.
+Cold/concurrent minimal launch, warm/cold invitation review, lock/unlock, exact-host
+network recovery and post-network ACKs/file exports pass. The packaged delayed-start
+GUI keeps one host through105seconds. A fresh stopped233 backup and one-copy
+233->230->233 rollback retain217fullmessage digests, all147durableoperation-record
+hashes, memberships,128encryptedpieces and exact file export in every phase. UI
+snapshots show only30recent operations; complete-map proof is separate. The final
+diagnostic installation, timer restoration and user-manual login/reboot remain.
 
 F5 / membership fixture admission barrier, 2026-10-16:232's original GChat native
 gate failed94/95 with an unlabeled authenticated-ACK timeout. The exact failed
