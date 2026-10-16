@@ -1,9 +1,11 @@
 F5 / local host diagnostic completion, 2026-10-16: implement bounded read-only
 `gchat paths --json` inspection of the selected instance, registered host mode and
 service state, client/host build bindings, local lock/readiness and sanitized error
-code. The old path diagnostic misleadingly advertises standalone fallback for a
-stopped managed identity. Native stopped/missing-config old-fail/new-pass coverage
-must preserve all profile bytes and perform no start/unlock action. In progress.
+code. The old path diagnostic misleadingly advertised standalone fallback for a
+stopped managed identity. Actual native stopped/missing-config old-fail/new-pass
+coverage preserves every retained file and performs no start/unlock action. Four
+real IPC/filesystem controls, two property/allowlist controls and strict core/TUI/API
+Clippy pass. Full paired/native validation and signed successor remain pending.
 
 F5 / membership fixture admission barrier, 2026-10-16:232's original GChat native
 gate failed94/95 with an unlabeled authenticated-ACK timeout. The exact failed

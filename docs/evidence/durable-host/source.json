@@ -1,5 +1,42 @@
 {
   "schema": 1,
+  "read_only_host_diagnostics_20261016": {
+    "status": "focused_native_and_strict_clippy_passed_full_paired_gate_pending",
+    "source": "77dc8cd00a61defda1710c5cfc35407d1f06d104",
+    "gcoms": "7af9c1250b08fe4459921d9d1b85368ff45e4ca9",
+    "command": "gchat --home SELECTED_HOME paths --json",
+    "scope": "read-only selected instance/service/build diagnosis; no startup, unlock, attachment handles or wire schema change",
+    "causal_before": {
+      "failed_as_expected": true,
+      "real_retained_fleet_fixture": true,
+      "original_error": "unexpected argument '--json' found",
+      "tests_failed": 1,
+      "source_unchanged": true,
+      "seconds": 146.717124724,
+      "receipt_sha256": "b6ad5424e1d481f310b30fa5256fe5556ae159f2434b1593786009552aa6f2e1"
+    },
+    "focused_after": {
+      "passed": true,
+      "read_only_ipc_metadata_native_path_cases": 4,
+      "service_property_and_unit_allowlist_cases": 2,
+      "actual_cli_stopped_and_missing_fleet_case": 1,
+      "all_retained_fixture_bytes_unchanged": true,
+      "strict_core_tui_api_all_target_clippy": true,
+      "source_unchanged": true,
+      "seconds": 332.715582512,
+      "receipt_sha256": "212a68950a21591cb28fb376862ad0290574ce8cdeaa82e1447d255e3b6c6be1"
+    },
+    "bounds": {"service_query_seconds": 2, "service_output_bytes": 4096, "host_handshake_seconds": 3, "instance_metadata_bytes": 4096},
+    "preserved": ["legacy API negotiation", "instance and host binding", "kernel UID/PID validation", "owner-private instance metadata", "ordinary attachment handles only after validation", "registration and credential rotation behavior"],
+    "comparison": {
+      "before_service": {"repo_path": "servicer-labs/servicer:src/handlers/handle_print_paths.rs", "cosine": 0.7313, "rerank": 0.700818, "fetched": true},
+      "before_metadata": {"repo_path": "SynthLauncher/SynthLauncher:crates/sl-core/src/launcher/instances/mod.rs", "cosine": 0.7094, "rerank": 0.188020, "fetched": true},
+      "before_identity": {"repo_path": "cloudflare/cloudflare-os:packages/gatekeeper-google/src/chat.ts", "cosine": 0.5696, "rerank": 0.360510, "fetched": true, "search_status": "partial corpus fetch errors"},
+      "after_service": {"repo_path": "rgwood/systemctl-tui:src/systemd.rs", "cosine": 0.7814, "rerank": 0.940186, "fetched": true},
+      "after_identity": {"repo_path": "bitwarden/sdk-internal:crates/bitwarden-ipc/src/endpoint.rs", "cosine": 0.6660, "rerank": 0.025265, "fetched": true},
+      "assessment": "Separate read/find from initialization; query explicit user-unit properties; preserve identity/scope checks before allocating attachment state. Endpoint result was generic, not a close handshake counterpart. No implementation copied."
+    }
+  },
   "membership_qualification_barrier_20261016": {
     "scope": "test-only correction; runtime, protocol, ownership, persistence and delivery deadlines unchanged",
     "status": "three_focused_journeys_strict_clippy_and_full_affected_core_passed_signed_successor_pending",

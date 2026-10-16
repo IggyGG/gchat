@@ -3,6 +3,31 @@
 Status: qualified signed Linux0.1.230 is installed; final installed lifecycle
 acceptance remains in progress (F5 / durable-host).
 
+### Read-only local diagnostics
+
+`gchat --home PATH paths --json` inspects the saved instance without starting a
+service, unlocking a profile or opening attachment-handle storage. The ordinary
+`paths` output also shows the registered host association rather than promising
+standalone fallback for a stopped managed identity. The record includes selected
+and registered instance IDs, lossless native path references, personal/fleet mode,
+exact managed service, safe service state/exit fields, client/host build bindings,
+local readiness, archive/protocol lock state and a sanitized error/recovery message.
+Host build and lock fields remain `null` when the matching host cannot be inspected;
+an unsigned development client can also have no release build binding.
+
+The service query is read-only, owner-unit restricted, output-bounded and limited
+to two seconds; the existing local handshake has a separate three-second limit.
+Missing or invalid fleet configuration remains diagnosable through the valid saved
+recipe. Invalid/conflicting registration is reported without probing another
+instance. No credential, public identity pin, conversation or message content is
+included. JSON command success means an observation was produced: inspect
+`local_ready` and `error_code` before treating the host as available. Network
+delivery is a separate requirement even when local readiness succeeds.
+
+The causal CLI, six focused controls and strict core/TUI/API checks pass in source.
+This diagnostic follow-up still needs full paired and signed-release qualification;
+the installed230 package predates it.
+
 Additional230 acceptance passes actual cold/warm invitation review, rendered
 lock/unlock with fleet pause/resume, and exact-host network loss/recovery while
 local history remains accessible. Fresh post-network messages have exact receiving
