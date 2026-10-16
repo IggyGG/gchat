@@ -48,7 +48,7 @@ pub(super) async fn attached(state: &tauri::State<'_, Attachment>) -> Result<Cha
     attached_checked(state).await.map_err(|e| e.to_string())
 }
 
-async fn attached_checked(state: &tauri::State<'_, Attachment>) -> Result<ChatClient, ChatError> {
+async fn attached_checked(state: &Attachment) -> Result<ChatClient, ChatError> {
     if state.updating.load(std::sync::atomic::Ordering::SeqCst) {
         return Err(ChatError {
             code: "unavailable".into(),
@@ -322,4 +322,61 @@ pub fn run() {
         ])
         .run(context)
         .expect("gchat native application");
+}
+
+#[cfg(test)]
+mod attachment_tests {
+    use super::*;
+    use std::sync::{atomic::AtomicBool, OnceLock};
+    use std::time::Duration;
+
+    fn state(updating: bool) -> Attachment {
+        Attachment {
+            client: Mutex::new(None),
+            config: Err(ChatError {
+                code: "host_configuration".into(),
+                message: "This test must not select or start a host".into(),
+            }),
+            instance: OnceLock::new(),
+            updating: AtomicBool::new(updating),
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn attachment_deadline_includes_an_existing_background_waiter() {
+        let state = state(false);
+        let held = state.client.lock().await;
+        let started = tokio::time::Instant::now();
+        let outcome = tokio::time::timeout(Duration::from_secs(31), attached_checked(&state))
+            .await
+            .expect("waiting for a prior attachment must share the 30-second startup deadline");
+        let error = match outcome {
+            Err(error) => error,
+            Ok(_) => panic!("a blocked attachment cannot return a client"),
+        };
+        assert_eq!(error.code, "host_unavailable");
+        assert!(started.elapsed() <= Duration::from_secs(30));
+        assert!(held.is_none() && state.instance.get().is_none());
+        drop(held);
+        assert!(
+            state.client.try_lock().is_ok(),
+            "timed-out waiter must release its queue slot"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn update_activation_refusal_does_not_wait_for_attachment() {
+        let state = state(true);
+        let _held = state.client.lock().await;
+        let started = tokio::time::Instant::now();
+        let outcome = tokio::time::timeout(Duration::from_secs(1), attached_checked(&state))
+            .await
+            .expect("update activation must reject immediately");
+        let error = match outcome {
+            Err(error) => error,
+            Ok(_) => panic!("activation cannot expose a new client"),
+        };
+        assert_eq!(error.code, "unavailable");
+        assert_eq!(started.elapsed(), Duration::ZERO);
+    }
 }
