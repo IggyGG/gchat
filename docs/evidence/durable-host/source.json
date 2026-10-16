@@ -1,5 +1,56 @@
 {
   "schema": 1,
+  "membership_qualification_barrier_20261016": {
+    "scope": "test-only correction; runtime, protocol, ownership, persistence and delivery deadlines unchanged",
+    "status": "three_focused_journeys_strict_clippy_and_full_affected_core_passed_signed_successor_pending",
+    "original_failure": {
+      "release": "0.1.232",
+      "release_id": "e624864bf73c2d6c2a1a273cdaecb91e4dc1c4d0030add0f3ec80135b4c83aa7",
+      "provider_run": 38856582338,
+      "job": 116829295943,
+      "passed": 94,
+      "failed": 1,
+      "existing_ignored": 3,
+      "message": "authenticated message ACK: Elapsed(())",
+      "exact_expired_phase": "not established; the original helper used the same label for three waits",
+      "log_sha256": "fe29068918001286e0626c87712d3b3be8bba3a0848d12f7090c5f69c84c2a6c"
+    },
+    "causal_before": {
+      "failed_as_expected": true,
+      "real_prior_authenticated_message_ack": true,
+      "membership_actually_pending": true,
+      "old_generic_ack_barrier_incorrectly_completed": true,
+      "receipt_sha256": "c09ac9f4c1bbf445ea0d64ced79b607adaeb64c8512499117bbc2fea6510f7a3"
+    },
+    "after": {
+      "passed": true,
+      "real_journeys": 3,
+      "strict_core_all_target_clippy": true,
+      "source_unchanged": true,
+      "seconds": 562.907138983,
+      "receipt_sha256": "0aa346b02546e5c73e7bf81c2c6715760f2ac2f9a87e7e631e74d23d2f66216d"
+    },
+    "full_affected_core": {
+      "passed": true,
+      "command": "cargo test --offline --locked -p gchat-core --all-features --lib -- --test-threads=1",
+      "passed_tests": 95,
+      "existing_ignored": 3,
+      "existing_exclusions": ["combined invitation disconnected-namespace journey", "joined network disconnected-namespace registry", "separate three-minute idle CPU measurement"],
+      "source_unchanged": true,
+      "diagnostic_overlay": null,
+      "test_seconds": 607.70,
+      "total_seconds": 722.601488748,
+      "receipt_sha256": "4377c43fd974a63465f8449fc25738d50b5e81cde68cd7036b0f1572db741eee",
+      "log_sha256": "0e004e6757e302cbf45816b9aeae1c041d05042d4d52b4a3c3210262b26b2b01"
+    },
+    "preserved": ["exact recipient body and specific authenticated application-message ACK", "30-second positive waits", "owner-only recovery", "kick and retained reopen", "revoked recipients' unacknowledged records", "all original failed evidence"],
+    "intermediate_failures": ["membership-only readiness did not wait for current routing-control ACKs before another admission", "total retained-message count incorrectly included deliberately retained revoked recipients"],
+    "comparison": {
+      "before": {"repo_path": "guilderia/backend:crates/delta/src/routes/channels/channel_ack.rs", "cosine": 0.7775, "rerank": 0.340951, "fetched": true},
+      "after": {"repo_path": "hyperledger/iroha:integration_tests/tests/sora_parliament_lifecycle_smoke.rs", "cosine": 0.6509, "rerank": 0.123855, "fetched": true},
+      "assessment": "Compare specific ACK identifiers and separately await authoritative state with a bounded deadline/last observation; no implementation copied."
+    }
+  },
   "startup_update_eligibility_20261016": {
     "scope": "A startup check timeout cannot authorize native or idle installation; Debian state is revalidated before coordinated shutdown",
     "status": "full_paired_ci_and_actual_native_after_passed_signed_successor_pending",

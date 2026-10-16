@@ -195,14 +195,14 @@ mod tests {
         }
         async fn ack(
             events: &mut tokio::sync::mpsc::Receiver<ClientEvent>,
-            expected: Option<gcoms::sdk::MessageId>,
+            expected: gcoms::sdk::MessageId,
         ) {
             tokio::time::timeout(Duration::from_secs(30), async {
                 loop {
                     if let ClientEvent::ChannelDelivered { message_id, .. } =
                         events.recv().await.unwrap()
                     {
-                        if expected.is_none_or(|id| id == message_id) {
+                        if expected == message_id {
                             break;
                         }
                     }
@@ -210,6 +210,34 @@ mod tests {
             })
             .await
             .expect("authenticated message ACK");
+        }
+        async fn membership_ready(owner: &impl gcoms::sdk::GcClient, phase: &str) {
+            // Message ACKs (including background control traffic) do not prove
+            // that the current membership commit has settled. Observe the
+            // authenticated membership state through the public SDK instead.
+            let mut last = None;
+            tokio::time::timeout(Duration::from_secs(30), async {
+                loop {
+                    let status = owner.channel_recovery("recovery", None).await.unwrap();
+                    // Membership mutation also refuses outstanding channel
+                    // messages for current recipients. Revoked recipients'
+                    // retained messages must not be mistaken for delivered ones.
+                    let ready = status.pending_commit.is_none()
+                        && status
+                            .members
+                            .iter()
+                            .all(|member| !member.missing_commit && member.pending_messages == 0);
+                    last = Some(status);
+                    if ready {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+            })
+            .await
+            .unwrap_or_else(|error| {
+                panic!("authenticated membership ACKs phase={phase}: {error:?}; last={last:?}")
+            });
         }
         let owner_runtime = runtime(&home.path().join("owner")).await;
         let service = ChatService::new(
@@ -251,7 +279,16 @@ mod tests {
             .join_channel(join, "recovery", ChannelVisibility::Private, &welcome)
             .await
             .unwrap();
-        ack(&mut owner_events, None).await;
+        membership_ready(&owner, "initial member").await;
+        // Keep an unrelated, genuinely authenticated delivery in owner_events.
+        // It must not satisfy the later pending-membership barrier.
+        let mut proof_events = owner.subscribe_events();
+        let prior_message = owner
+            .send_channel_tracked("recovery", b"earlier authenticated delivery")
+            .await
+            .unwrap();
+        ack(&mut proof_events, prior_message).await;
+        membership_ready(&owner, "prior delivery").await;
         let next = first.prepare_channel_join("stale-second").await.unwrap();
         let next_package = first.channel_key_package(next).await.unwrap();
         drop(first);
@@ -265,6 +302,15 @@ mod tests {
         assert_eq!(
             owner.list_channels().await.unwrap()[0].status,
             ChannelStatus::MembershipPending
+        );
+        assert!(
+            tokio::time::timeout(
+                Duration::from_millis(500),
+                membership_ready(&owner, "offline membership must remain pending")
+            )
+            .await
+            .is_err(),
+            "an unrelated authenticated message ACK must not satisfy pending membership"
         );
         let Response::Output {
             output:
@@ -333,7 +379,7 @@ mod tests {
             .join_channel_invitation(&invitation.link, "replacement", 60)
             .await
             .unwrap();
-        ack(&mut owner_events, None).await;
+        membership_ready(&owner, "replacement member").await;
         let mut received = replacement.subscribe_events();
         let id = owner
             .send_channel_tracked("recovery", b"after recovery with ACK")
@@ -354,7 +400,7 @@ mod tests {
         })
         .await
         .expect("replacement received exact message");
-        ack(&mut owner_events, Some(id)).await;
+        ack(&mut owner_events, id).await;
         assert!(
             replacement
                 .channel_recovery("recovery", None)

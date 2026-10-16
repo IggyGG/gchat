@@ -3,6 +3,17 @@
 Status: qualified signed Linux0.1.230 is installed; final installed lifecycle
 acceptance remains in progress (F5 / durable-host).
 
+Normal successor232 reached native qualification but its recovery fixture failed
+one unlabeled ACK wait. The original log cannot identify which of three waits
+expired. A separate real-peer negative control proves that accepting any message
+ACK is not a valid membership barrier. The test now observes the authenticated
+commit and unconfirmed-message counts for current members. Revoked members' retained
+messages remain unacknowledged; they are not deleted or counted as delivered.
+Exact application message/ACK assertions, authorization and all original deadlines
+remain. Three focused journeys, strict core Clippy and the full affected library
+gate (95passed/3existing explicit exclusions) pass. The signed/installed successor
+still needs its receipts.
+
 The remaining startup/update defect is now causal: a slow local start can exhaust
 the20-second startup update check. Its deferred status previously enabled idle
 activation without a verified newer package. The actual230 GUI reproduces this

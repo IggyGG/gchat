@@ -1,3 +1,12 @@
+F5 membership qualification, 2026-10-16: original232 failed an unlabeled ACK
+wait in the recovery fixture. Membership readiness now observes the authenticated
+commit and current recipients' pending-message state, rather than accepting an
+arbitrary message ACK. A real unrelated prior ACK fails the old barrier; three
+corrected journeys and strict core Clippy pass. Revoked recipients' unacknowledged
+records remain retained. Exact final message contents/ACKs and30-second deadlines
+remain required. The full affected core gate passes95tests with3existing explicit
+exclusions; signed-successor qualification follows.
+
 F5 startup/update follow-up, 2026-10-16: installed230's cold checks exposed a
 deferred-check/verified-update ambiguity. A real disposable managed host delayed
 22seconds makes the packaged GUI restart an already-current host after its startup

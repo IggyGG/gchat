@@ -1,3 +1,13 @@
+F5 / membership fixture admission barrier, 2026-10-16:232's original GChat native
+gate failed94/95 with an unlabeled authenticated-ACK timeout. The exact failed
+phase is not established. A causal real-peer control proves the fixture's generic
+message ACK can incorrectly satisfy pending membership. The test-only correction
+uses public authenticated membership/current-recipient state and retains all
+revoked-message records. Exact body and matching application ACK bounds are unchanged.
+Three corrected journeys plus strict core Clippy pass; original failures stay failed.
+The full affected-core gate passes95tests/3existing exclusions in607.70seconds;
+complete the next immutable signed/installed journey.
+
 F5 / prevent startup-check restart loops, 2026-10-16: signed230 passes the recorded
 message/file/fleet/rollback journeys, but a single slow cold view can incorrectly
 activate an update after the20-second check timeout. The real packaged-GUI causal

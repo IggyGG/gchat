@@ -1,3 +1,16 @@
+F5 / distinguish membership and message acknowledgments, 2026-10-16: require
+membership commit settlement and zero unconfirmed messages for CURRENT recipients
+before the next admission. Retained messages for explicitly revoked members are
+not delivered and must not be erased to pass this barrier. The real fixture queues
+an unrelated authenticated tracked-message ACK, takes its member offline, adds a
+pending leaf, and requires the membership barrier to remain pending. Old ack(None)
+fails this negative control. Three new journeys and strict core Clippy pass; retain
+exact post-recovery recipient bytes, specific message-ID ACK, original30-second
+limits, owner-only recovery authorization, kick and durable reopen assertions.
+Original232's unlabeled failure and both intermediate observer mistakes remain
+retained. Full affected-core passes95tests/3existing explicit exclusions; ordinary
+signed qualification remains required.
+
 F5 / startup update timeout regression, 2026-10-16: a deferred status without a
 verified target must neither offer Restart nor enter native activation. Preserve
 verified busy-install retries and older explicit-ready responses. A new check,
