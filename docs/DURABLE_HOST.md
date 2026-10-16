@@ -3,6 +3,18 @@
 Status: qualified signed Linux0.1.230 is installed; final installed lifecycle
 acceptance remains in progress (F5 / durable-host).
 
+The remaining startup/update defect is now causal: a slow local start can exhaust
+the20-second startup update check. Its deferred status previously enabled idle
+activation without a verified newer package. The actual230 GUI reproduces this
+on a disposable managed instance delayed22seconds, reopening the same package and
+unnecessarily replacing its host. Source status now carries explicit `installable`
+eligibility. Deferred installation can retain a verified target; a deferred check
+cannot create one. Both the rendered action and idle controller use this distinction,
+and the native installer rechecks the current Debian package/host before shutdown.
+Existing signatures, other-view/defer/checkpoint rules and the30-second host-start
+deadline remain. Full paired/native-after/signed successor qualification is pending;
+the successful230 messaging/file receipts do not close this startup requirement.
+
 Latest follow-up, 2026-10-16: frozen155e348/e89d4e3 passes both complete native
 gates and the formal64-client/30-minute campaign,720/720 authenticated deliveries,
 zero refusals and1.340s p95. All seven publication receipts and the public package's

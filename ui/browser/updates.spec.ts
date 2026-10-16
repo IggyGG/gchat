@@ -22,6 +22,28 @@ test('verified ready update has an explicit restart action', async({page})=>{
   await page.getByRole('button',{name:'Restart now'}).click();
   await expect.poll(()=>page.evaluate(()=> (window as any).fixture.updateRestarts())).toBe(1);
 });
+test('a timed-out check exposes recovery without offering or performing a restart',async({page})=>{
+  await page.goto('/?native-shell&updates');
+  await page.evaluate(()=> (window as any).fixture.setUpdate({state:'deferred',installable:false,downloaded:0,
+    message:'Startup update check timed out. GChat will check again in the background.'}));
+  await openUpdates(page);
+  await expect(page.getByRole('dialog',{name:'Application updates'}).getByRole('status')).toHaveText('Startup update check timed out. GChat will check again in the background.');
+  await expect(page.getByRole('button',{name:'Check for updates'})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'Restart now'})).toHaveCount(0);
+  await page.clock.install();
+  await page.clock.fastForward(120_000);
+  await page.clock.runFor(2_001);
+  expect(await page.evaluate(()=> (window as any).fixture.updateRestarts())).toBe(0);
+});
+test('a verified target remains actionable after installation was deferred',async({page})=>{
+  await page.goto('/?native-shell&updates');
+  await page.evaluate(()=> (window as any).fixture.setUpdate({state:'deferred',installable:true,
+    message:'Another GChat window is attached. Close it before restarting.'}));
+  await openUpdates(page);
+  await expect(page.getByRole('button',{name:'Restart now'})).toBeEnabled();
+  await page.getByRole('button',{name:'Restart now'}).click();
+  await expect.poll(()=>page.evaluate(()=> (window as any).fixture.updateRestarts())).toBe(1);
+});
 test('download progress and store-managed updates are visible',async({page})=>{
   await page.goto('/?native-shell&updates');
   await page.evaluate(()=> (window as any).fixture.setUpdate({state:'downloading',downloaded:256,total:1024,message:'Downloading update…'}));

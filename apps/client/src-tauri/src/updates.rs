@@ -14,11 +14,28 @@ const MAX_UPDATE: u64 = 512 * 1024 * 1024;
 #[serde(rename_all = "camelCase")]
 pub(super) struct Status {
     state: String,
+    installable: bool,
     version: Option<String>,
     downloaded: u64,
     total: Option<u64>,
     message: String,
     running: Option<gchat_api::BuildInfo>,
+}
+
+impl Status {
+    fn transition(&mut self, state: &str, message: impl Into<String>) {
+        // A deferred check/download has no verified installation target. Only
+        // an already-ready target may retain eligibility after a busy installer.
+        if state != "deferred" {
+            self.installable = state == "ready";
+        }
+        self.state = state.into();
+        self.message = message.into();
+    }
+
+    fn can_install(&self) -> bool {
+        self.installable && matches!(self.state.as_str(), "ready" | "deferred")
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -123,8 +140,7 @@ fn verify_payload(bytes: &[u8], binding: &Binding, signature: &str) -> Result<()
 fn status(app: &tauri::AppHandle, state: &str, message: impl Into<String>) {
     let updates = app.state::<Updates>();
     let mut value = updates.status.lock().expect("update status");
-    value.state = state.into();
-    value.message = message.into();
+    value.transition(state, message);
 }
 
 #[tauri::command]
@@ -174,11 +190,11 @@ async fn check(app: &tauri::AppHandle) -> Result<(), String> {
     let Ok(_action) = state.action.try_lock() else {
         return Ok(());
     };
+    status(app, "checking", "Checking for updates…");
     if cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none() {
         // Debian owns /usr/bin. Never let an AppImage updater replace it.
         return check_debian(app).await;
     }
-    status(app, "checking", "Checking for updates…");
     let Some(mut update) = app
         .updater_builder()
         .timeout(Duration::from_secs(15))
@@ -377,6 +393,9 @@ pub(super) async fn chat_update_install(app: tauri::AppHandle) -> Result<(), Str
         .action
         .try_lock()
         .map_err(|_| "An update action is already running")?;
+    if !updates.status.lock().expect("update status").can_install() {
+        return Err("No verified update is ready. Check for updates before restarting.".into());
+    }
     // Across separate --home windows there can be more than one GUI process.
     let lock = std::fs::OpenOptions::new()
         .create(true)
@@ -401,7 +420,21 @@ pub(super) async fn chat_update_install(app: tauri::AppHandle) -> Result<(), Str
         std::fs::remove_file(entry.path()).map_err(error)?;
     }
     let result: Result<(), String> = async {
+        status(&app, "checking", "Verifying the update before restarting…");
         if cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none() {
+            // The installed package or running host may have changed since the
+            // UI's check. A same-release or uncertain target cannot stop a host.
+            tokio::time::timeout(Duration::from_secs(20), check_debian(&app))
+                .await
+                .map_err(|_| "Package update verification timed out; no restart was requested")??;
+            if !updates.status.lock().expect("update status").can_install() {
+                return Ok(());
+            }
+            status(
+                &app,
+                "checking",
+                "Verifying the installed release identity…",
+            );
             // Root owns this marker; APT publishes it only after package verification.
             #[cfg(unix)]
             {
@@ -420,6 +453,11 @@ pub(super) async fn chat_update_install(app: tauri::AppHandle) -> Result<(), Str
             if !hex_id(release, 64) {
                 return Err("Invalid installed release identity".into());
             }
+            status(
+                &app,
+                "ready",
+                "Verified package update is ready to activate.",
+            );
             stop_instance(&app, release).await?;
             #[cfg(target_os = "linux")]
             {
@@ -443,6 +481,7 @@ pub(super) async fn chat_update_install(app: tauri::AppHandle) -> Result<(), Str
         }
         let bytes = tokio::fs::read(&staged.path).await.map_err(error)?;
         verify_payload(&bytes, &staged.binding, &staged.update.signature)?;
+        status(&app, "ready", "Verified update is ready to activate.");
         stop_instance(&app, &staged.binding.release_id).await?;
         staged.update.install(bytes).map_err(error)?;
         app.restart();
@@ -602,6 +641,40 @@ fn process_exited(pid: u32) -> Result<bool, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn check_timeout_does_not_authorize_installation() {
+        let mut value = Status::default();
+        value.transition("checking", "checking");
+        value.transition("deferred", "startup check timed out");
+        assert!(!value.can_install());
+        assert_eq!(serde_json::to_value(&value).unwrap()["installable"], false);
+
+        value.transition("ready", "verified target");
+        assert!(value.can_install());
+        value.transition("deferred", "another window is attached");
+        assert!(value.can_install());
+
+        // A new check revokes the former target, including if that check times
+        // out or discovers the running package is already current.
+        value.transition("checking", "rechecking installed bytes");
+        value.transition("deferred", "recheck timed out");
+        assert!(!value.can_install());
+        value.transition("ready", "verified target");
+        value.transition("current", "already running installed release");
+        assert!(!value.can_install());
+    }
+
+    #[test]
+    fn unverified_download_and_failed_verification_cannot_be_retried_as_installation() {
+        let mut value = Status::default();
+        for state in ["downloading", "failed", "manual", "current"] {
+            value.transition("ready", "prior target");
+            value.transition(state, "target not verified");
+            value.transition("deferred", "retry check later");
+            assert!(!value.can_install(), "{state}");
+        }
+    }
+
     #[test]
     fn service_liveness_is_not_inferred_from_a_missing_socket() {
         assert!(!process_exited(std::process::id()).unwrap());

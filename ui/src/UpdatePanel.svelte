@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { NativeShell, UpdateStatus } from './native-shell';
+  import { canInstallUpdate, type NativeShell, type UpdateStatus } from './native-shell';
   let { updates, busy }: { updates?: NativeShell['updates']; busy: boolean } = $props();
   let status = $state<UpdateStatus>();
   let error = $state(''), working = $state(false);
@@ -15,7 +15,7 @@
     return () => { alive = false; clearInterval(timer); };
   });
   async function action(install = false) {
-    if (!updates || working || (install && busy)) return;
+    if (!updates || working || (install && (busy || !canInstallUpdate(status)))) return;
     working = true; error = '';
     try { if (install) await updates.install(); else status = await updates.check(); }
     catch (e) { error = String(e); }
@@ -28,7 +28,7 @@
   {#if status?.state === 'downloading'}<progress aria-label="Update download" max={status.total || 1} value={status.downloaded}></progress>{/if}
   <p>Updates download automatically and activate when GChat is idle. Drafts and current actions delay the restart. Your profile is kept. You may need to unlock it again.</p>
   <button disabled={working || status?.state === 'downloading'} onclick={() => void action()}>Check for updates</button>
-  {#if ['ready', 'deferred'].includes(status?.state ?? '')}<button class="primary" disabled={working || busy} onclick={() => void action(true)}>{working ? 'Preparing restart…' : 'Restart now'}</button>{/if}
+  {#if canInstallUpdate(status)}<button class="primary" disabled={working || busy} onclick={() => void action(true)}>{working ? 'Preparing restart…' : 'Restart now'}</button>{/if}
   {#if busy}<p>Finish or save your draft and wait for current actions before restarting.</p>{/if}
   {#if status?.running}<details><summary>Running build</summary><p>{status.running.version}</p><code>{status.running.releaseId}</code></details>{/if}
 {:else}

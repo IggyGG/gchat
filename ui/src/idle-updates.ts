@@ -1,4 +1,4 @@
-import type { NativeShell } from './native-shell';
+import { canInstallUpdate, type NativeShell } from './native-shell';
 
 // The native installer separately checks other windows and daemon activity.
 // This guard owns only transient UI state, which the daemon cannot observe.
@@ -19,7 +19,7 @@ export class IdleUpdates {
       const status = await updates.status();
       // Input or a new operation can arrive while the native request is pending.
       if (busy() || this.now() - this.quietSince < 30_000) return;
-      if (['ready', 'deferred'].includes(status.state)) {
+      if (canInstallUpdate(status)) {
         this.retryAt = this.now() + 60_000;
         this.activation(true);
         await updates.install();

@@ -6,7 +6,7 @@ import type { DeviceUnlock } from '../src/device-unlock';
 import type { CommandSpec, Conversation, FileInfo, NetworkState, Request, Response, Snapshot } from '../src/api';
 const parameters = new URLSearchParams(location.search);
 let updateRestarts = 0;
-let updateStatus = {state:'ready',version:'0.1.5',downloaded:1024,total:1024,message:'Update ready.'};
+let updateStatus = {state:'ready',installable:true,version:'0.1.5',downloaded:1024,total:1024,message:'Update ready.'};
 const primaryNetwork = 'a'.repeat(64), otherNetwork = 'b'.repeat(64);
 let joinedNetwork = parameters.has('two-networks');
 const presence = new Map<string, boolean>();

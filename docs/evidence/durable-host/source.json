@@ -1,5 +1,33 @@
 {
   "schema": 1,
+  "startup_update_eligibility_20261016": {
+    "scope": "A startup check timeout cannot authorize native or idle installation; Debian state is revalidated before coordinated shutdown",
+    "status": "focused_native_and_full_ui_passed_full_pair_and_native_after_pending",
+    "causal_unit_before": {"unexpected_install_calls": 2, "failed_as_expected": true, "receipt_sha256": "e92742eb7ba422644c522a10ff0b2307701e586dcfecbfc885013eb320c681b2"},
+    "causal_unit_after": {"passed": true, "receipt_sha256": "94f90b6e0c9d442c96a84f932ebf0e62f0c9c4c446eb7cad349629107cfc56bd"},
+    "actual_packaged_gui_before": {
+      "version": "0.1.230",
+      "desktop_sha256": "f2eafba0e80cdc879d37a36693e6d2d192125053d711b7d20d913b76b01b5477",
+      "disposable_local_only_profile": true,
+      "production_profile_or_network_used": false,
+      "service_delay_seconds": 22,
+      "local_readiness_seconds": 23.677703706,
+      "distinct_host_pids": 2,
+      "unexpected_update_restart": true,
+      "seconds": 79.198108719,
+      "unit_and_scratch_removed": true,
+      "receipt_sha256": "437ee17494093c42b15d3179b06f63849ddd9d413810a783dd4981482c9b63ac"
+    },
+    "native_source": {"desktop_tests": 28, "strict_all_target_clippy": true, "source_unchanged": true, "seconds": 228.911015365, "receipt_sha256": "aab2c40a6e9c30b1ef3c287201a78318fbde915c79554de050890b6226c4a3c5", "resource_scope": "1340 verified unchanged dependency notices reused for focused compilation; full packaging regenerates its resources"},
+    "full_ui": {"units": 80, "chromium": 124, "webkit": 124, "checking_and_build": true, "source_unchanged": true, "seconds": 481.599102292, "receipt_sha256": "aff36b29637d235f14d99931926ddd8cfdaa9b2d133a1fabea1a2c720af1db04"},
+    "original_harness_failures_retained": ["vitest absent before source-frozen dependency preparation", "unscoped status locator matched network and update statuses", "focused native build required dependency notice resources"],
+    "code_comparison": {
+      "status": "codematch=unreachable for content/reranking; metadata search returned partial results",
+      "before": {"repo_path": "josh-xt/agixt:ui/src-tauri/src/updater.rs", "cosine": 0.7068, "rerank": null, "content_fetched": false},
+      "after": {"repo_path": "2mawi2/schaltwerk:src-tauri/src/updater.rs", "cosine": 0.77, "rerank": null, "content_fetched": false, "http_status": 503},
+      "assessment": "No counterpart guard claim or code reuse from inaccessible content. Local transition, causal, native and rendered tests provide the evidence."
+    }
+  },
   "qualified_linux230_20261016": {
     "release_id": "fea3bf5945f157b26dc5f8af1421f33186140a1c7afeab49fdacdcf484deb3be",
     "sources": {"gchat": "155e348e49a1ec2e2335fa3e98948f75a287341d", "gcoms": "e89d4e3e486c12fce05b692014bf11a4d805008a"},

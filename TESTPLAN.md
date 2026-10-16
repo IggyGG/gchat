@@ -1,3 +1,15 @@
+F5 / startup update timeout regression, 2026-10-16: a deferred status without a
+verified target must neither offer Restart nor enter native activation. Preserve
+verified busy-install retries and older explicit-ready responses. A new check,
+download, failure or current-package result revokes former eligibility. Native
+installation independently checks eligibility and revalidates Debian package/host
+state before its existing coordinated shutdown. Old idle code attempts installation
+twice in the causal case; the actual signed230 GUI restarts a disposable local-only
+managed host after a22-second cold-start delay. New source passes80units,
+124Chromium/124WebKit cases,28desktop tests and strict desktop Clippy. Require a
+native after-run with the same original delays and a stable host/view beyond the
+idle interval, followed by full signed successor and installed lifecycle gates.
+
 F5 / exact signed230 installed acceptance, 2026-10-16: independently verify all
 seven normal Linux receipts, native inputs and published DEB/signature. The actual
 228->230 package update keeps old processes alive; canonical managed activation

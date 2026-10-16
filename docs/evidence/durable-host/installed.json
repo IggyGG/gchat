@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "qualified230_installed_final_lifecycle_in_progress",
+  "status": "qualified230_installed_startup_update_followup_required",
   "scope": "Qualified signed successor and actual installed production instance",
   "observed_at": 1792107264,
   "previous_observation": {
@@ -283,6 +283,7 @@
   "original_launch_configuration": "The effective per-user production desktop override selected the saved home without fleet configuration; the historical writer is not established.",
   "installed_acceptance_passed": false,
   "remaining": [
+    "qualify and install the startup-update eligibility repair; actual230 slow-start fixture reproduces an unintended same-package restart",
     "finish installed cold/warm invitation review, lock/unlock and scoped network loss/recovery",
     "post-lifecycle live delivery and complete logical continuity audit",
     "user-performed logout/login/reboot after readiness notice and actual postboot icon/invitation acceptance",
