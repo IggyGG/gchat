@@ -34,8 +34,9 @@ in28.272s. Designated-peer exact contents/ACKs/offline-once pass14.140s; interru
 16MiB completion130.361s, whole journey166.167s, exact export after reopen. Isolated
 signed230->228->230 on one current-state copy preserves209message digests,
 25operations/memberships and exact16MiB export in each phase. Offline signed local
-startup opens in6.662s while reporting connecting. Finish actual invitation review,
-lock/network recovery, post-lifecycle delivery and user-manual logout/login/reboot.
+startup opens in6.662s while reporting connecting. Actual invitation review,
+lock/network recovery and post-lifecycle exact ACKs also pass on230. Repeat the
+required journey for the startup/update successor before user-manual logout/login/reboot.
 Original observer failures remain retained. [Evidence](docs/evidence/durable-host/installed.json).
 
 F5 / full relay evidence, 2026-10-15: local95e1ca8/d481f72 passes the original

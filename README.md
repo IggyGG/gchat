@@ -23,8 +23,9 @@ the normal signed package and managed activation services. The minimal icon uses
 the saved host recipe; two simultaneous cold views converge on one managed owner.
 Exact bidirectional ACKs, offline-once delivery, scoped fleet status and the16MiB
 interrupted transfer pass. A current-state230->228->230 rehearsal preserves209
-message digests,25operations and the exact file in every phase. Final invitation,
-lock/network and user-performed login/reboot acceptance remain tracked in
+message digests,25operations and the exact file in every phase. Invitation review,
+lock/unlock, scoped network recovery and fresh post-network ACKs now pass on230.
+The startup/update successor and user-performed login/reboot remain tracked in
 [installed evidence](docs/evidence/durable-host/installed.json).
 
 F5 Linux SDK qualification allocation, 2026-10-15: the native SDK job has a bounded

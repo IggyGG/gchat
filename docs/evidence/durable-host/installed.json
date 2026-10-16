@@ -2,7 +2,7 @@
   "schema": 1,
   "status": "qualified230_installed_startup_update_followup_required",
   "scope": "Qualified signed successor and actual installed production instance",
-  "observed_at": 1792107264,
+  "observed_at": 1792136726,
   "previous_observation": {
     "commit": "515bafd00438fa8456a2987fd645c6d18c9ab0b4",
     "path": "docs/evidence/durable-host/installed.json",
@@ -107,6 +107,61 @@
       "operation_records": 25,
       "cached_files": 1,
       "receipt_sha256": "9ce7f9d4f5e08711415aac724c72428a803272ba6d489d4df81bbfb086e25a17"
+    },
+    "additional_lifecycle": {
+      "invitation_review": {
+        "cold_and_warm_passed": true,
+        "normal_desktop_handler_and_same_instance": true,
+        "join_requested": false,
+        "receipt_sha256": "8a6625ec432b68ecb7efdcfbc131b7b13b88582ca0f0e4998f86a4e29a12332e"
+      },
+      "lock_unlock": {
+        "passed": true,
+        "archive_hidden_history_and_files_refused": true,
+        "protocol_receiving_remained_unlocked": true,
+        "fleet_endpoint_paused_and_scoped_status_restored": true,
+        "same_host_identity_and_registration": true,
+        "rendered_unlock_form_and_restored_workspace": true,
+        "receipt_sha256": "47eee05140e72d3eb41368e586dd96673783cbe182ab480893687d45a016a155"
+      },
+      "network_loss_recovery": {
+        "passed": true,
+        "fault_scope": "exact registered host cgroup only",
+        "matched_packets": 407,
+        "untargeted_https_unaffected": true,
+        "local_history_identity_and_rendered_workspace_preserved": true,
+        "same_host_process": true,
+        "outage_observed_seconds": 192.511601569,
+        "connected_seconds_from_start": 275.059536752,
+        "recovery_within_original_120_second_bound": true,
+        "owned_rule_explicitly_removed": true,
+        "independent_cleanup_backstop_armed_but_not_used": true,
+        "receipt_sha256": "d8df200da4858e261c1a7b20d40aec0a164eff3a463520cf34417db7f2a8f9a4"
+      },
+      "post_network_bidirectional": {
+        "passed": true,
+        "both_exact_recipient_contents_and_authenticated_acknowledgments": true,
+        "seconds": 15.623882301,
+        "routing_configuration_mutated": false,
+        "original_trial_retained": true,
+        "receipt_sha256": "54842b7bf08ccf99b64445199cfe8f85e1728b8d55a7da19bc8ac5775c29c11b"
+      },
+      "logical_state": {
+        "conversations": 11,
+        "full_message_digests": 211,
+        "operation_records": 27,
+        "all_current_operations_complete": true,
+        "logical_files": 1,
+        "retained_piece_hashes": 64,
+        "prior_history_memberships_identity_operations_and_piece_hashes_unchanged": true,
+        "baseline_schema": 2,
+        "full_operation_detail_digests_now_captured": true,
+        "logical_cache_configuration_and_file_digests_now_captured": true,
+        "baseline_sha256": "b576205d853bb6406870fc3d017cc1012582fb29e928071053ad4cb39a2168ba",
+        "post_lifecycle_continuity_receipt_sha256": "237e3bef4e11b6e0a736c7d5c14afea0f87fedc050fd4e305649b3c79ed0259e"
+      },
+      "original_observer_failures_preserved": true,
+      "qualifies_later_successor": false
     },
     "update_timers": "temporarily held stopped for acceptance; original enabled/active states retained for restoration",
     "manual_logout_login_reboot": "pending user action after readiness handoff"

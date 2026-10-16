@@ -3,6 +3,16 @@
 Status: qualified signed Linux0.1.230 is installed; final installed lifecycle
 acceptance remains in progress (F5 / durable-host).
 
+Additional230 acceptance passes actual cold/warm invitation review, rendered
+lock/unlock with fleet pause/resume, and exact-host network loss/recovery while
+local history remains accessible. Fresh post-network messages have exact receiving
+contents and authenticated ACKs in15.624seconds. The latest logical baseline retains
+211message digests,27complete operation records and one16MiB cached file. New baseline
+receipts also hash full protected operation details and logical file/cache metadata;
+only hashes, counts and IDs are retained in evidence. Live peer-discovery counters
+are distinguished from retained cache contents. These230 results do not qualify the
+pending startup/update successor or the user's later login/reboot.
+
 Normal successor232 reached native qualification but its recovery fixture failed
 one unlabeled ACK wait. The original log cannot identify which of three waits
 expired. A separate real-peer negative control proves that accepting any message

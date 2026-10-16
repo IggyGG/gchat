@@ -29,8 +29,10 @@ ExecStart overrides, preserves all original bytes, and keeps diagnostic/memory/
 unlock settings. Real open-view defer then ordinary checkpoint/activation pass.
 Live messages/ACKs/offline-once,16MiB interrupted file130.361s/166.167s, scoped fleet
 operation, simultaneous cold views and current-state signed rollback all pass.
-Final invitation/lock/network, manual logout/login/reboot, timer restoration and
-completion manifest remain. [Evidence](docs/evidence/durable-host/installed.json).
+Invitation/lock/network and post-network exact ACKs now pass on230, with211full
+message digests/27operations retained. The repaired successor needs its own final
+installed journey; manual logout/login/reboot, timer restoration and completion
+manifest remain. [Evidence](docs/evidence/durable-host/installed.json).
 
 F5 / full local route-bridge campaign, 2026-10-15: two-client preflight and the
 complete 64-client/1800-second workload pass with 720/720 authenticated commands,
