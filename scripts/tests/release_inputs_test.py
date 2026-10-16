@@ -88,7 +88,8 @@ class InputTests(unittest.TestCase):
             for path in ('release/downloads.json', 'scripts/website.py',
                          'scripts/release_inventory.py', 'scripts/release_sdk.py',
                          'scripts/release_host_install.py', 'release/automation/kubernetes.yaml',
-                         'release/automation/operations.yaml',
+                          'release/automation/operations.yaml',
+                          'scripts/release_rollout_watchdog.py', 'release/automation/watchdog.yaml',
                          'scripts/macos-package.py', '.github/workflows/macos-package.yml',
                          'scripts/release_macos_recovery.py', 'release/automation/qualification/native-recoveries.json',
                          'scripts/copy-release-registry.py', 'release/automation/registry.yaml',
@@ -117,7 +118,8 @@ class InputTests(unittest.TestCase):
                 after = fingerprints(roots, sources)
                 self.assertEqual(before['artifacts'], after['artifacts'])
                 self.assertNotEqual(before['qualification'], after['qualification'])
-                if path == 'release/automation/operations.yaml':
+                if path in ('release/automation/operations.yaml',
+                            'scripts/release_rollout_watchdog.py', 'release/automation/watchdog.yaml'):
                     self.assertEqual(before['infrastructure'], after['infrastructure'])
                     self.assertNotEqual(before['controller'], after['controller'])
             for project, path in [('gchat', 'new-unclassified-input'),

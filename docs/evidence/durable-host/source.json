@@ -1,5 +1,21 @@
 {
   "schema": 1,
+  "watchdog_input_classification_20261017": {
+    "scope": "Exact controller watchdog script and manifest; classify before publishing the pending-startup repair",
+    "normal_python_tests": 1204,
+    "existing_skips": 1,
+    "source_paths": 924,
+    "stable_api_methods": 18,
+    "optional_api_methods": 3,
+    "api2_fixtures_unchanged": true,
+    "receipt_sha256": "137b4efa04c2ed9d4b18af1d914aac7b6103e62568b4245625d475cced9a4559",
+    "original_environment_failure_retained": "The first local run used a symlinked/long temporary path and restrictive inherited umask. The corrected run uses a short non-symlink private SSD directory and the normal test umask; source/tests unchanged.",
+    "rollout_cause": "Original235 watchdog requested rollback while its correctly configured controller image was pulling. Kubelet recorded normal startup93.505seconds after Pod creation,165seconds into the existing1200second activation deadline.",
+    "node_journal_sha256": "2836a944163b7888c511bb52f70f71819a83ae02971164f7dcacdde25ea6249f",
+    "pending_startup_causal_control_failed_old_code": true,
+    "causal_control_sha256": "4b8fba89bbfe30100d7d11a7e3fee9504064f0438b4fe6f8cf1a5ab4c689249c",
+    "runtime_startup_repair_in_this_change": false
+  },
   "desktop_attachment_deadline_20261016": {
     "status": "causal_before_full_paired_and_actual_native_after_passed_signed_successor_pending",
     "source": "e77352339a28b4543abae9843217e9c1f1de1118",

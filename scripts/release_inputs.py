@@ -125,6 +125,10 @@ CONTROLLER_FILES = frozenset({
     'scripts/release_stores.py', 'scripts/release_store_worker.py',
     'scripts/release_acceptance.py', 'scripts/release_acceptance_delivery.py',
     'scripts/release_deployment_runner.py', 'scripts/release_deployment.py',
+    # Independent controller rollback supervision is operations-only. Qualify
+    # these exact paths before changing its startup policy; native artifacts
+    # and infrastructure executables retain their original source bindings.
+    'scripts/release_rollout_watchdog.py', 'release/automation/watchdog.yaml',
     'scripts/release_inventory.py', 'scripts/release_kubernetes_worker.py',
     'scripts/release_host_worker.py', 'scripts/release_host_install.py',
     'scripts/release_host_serve.py', 'scripts/release_canary_grant.py',

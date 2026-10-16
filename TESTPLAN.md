@@ -1,3 +1,9 @@
+F5 / controller-watchdog source classification, 2026-10-17: changes to the exact
+watchdog script and deployment manifest must change controller/qualification
+inputs while retaining application and native-infrastructure inputs. Unknown
+scripts and manifests remain conservatively native-affecting. Qualify this
+classifier on the actual controller before publishing a startup-policy repair.
+
 F5 / desktop contention is inside the startup deadline, 2026-10-16: hold the actual
 Attachment client mutex and require host_unavailable by30seconds, inside an external
 31-second test guard. No instance/client may be published and the timed-out queue

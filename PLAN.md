@@ -1,3 +1,11 @@
+F5 / release235 controller startup, 2026-10-17: original native Linux and relay
+gates pass, but the independent watchdog rolled the controller back during a
+cold image pull. Retained node journal proves the candidate started normally
+93.505seconds after pod creation; watchdog had already requested rollback.
+First qualify the exact watchdog script/manifest as controller-only inputs,
+then fix pending-startup classification within the existing activation deadline.
+Keep235 artifacts, original rollout failure, request IDs and clocks unchanged.
+
 F5 / whole desktop attachment budget, 2026-10-16: e773523 wraps the shared-client
 mutex wait and host establishment in one30-second deadline. The causal actual-mutex
 test fails the previous code; all30desktop tests, strict Clippy and full paired CI

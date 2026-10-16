@@ -1,3 +1,11 @@
+F5 controller startup qualification, 2026-10-17: original235 deployment rolled
+back while its controller image was still pulling. Independent node logs establish
+normal startup93.505seconds after pod creation. The watchdog script and manifest
+are now explicitly classified as controller-only operations inputs, with tests
+retaining native artifact identity and rejecting unknown script/manifest changes.
+Controller qualification precedes the pending-startup policy repair; the original
+235 package/source pair and failed rollout evidence remain authoritative.
+
 F5 whole desktop attachment deadline, 2026-10-16: native stalled-service acceptance
 found background requests holding the shared client lock outside the host's30-second
 budget. A real mutex regression fails old code; the deadline now includes that

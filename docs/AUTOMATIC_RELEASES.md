@@ -295,6 +295,12 @@ Preparation that has not completed cannot replace the previous rollback pointer;
 in-flight legacy attempts keep their original directory. The matching qualified
 watchdog reads that same pointer, including after a controller crash. Deploy that
 watchdog implementation before the first revision-scoped activation.
+The watchdog script and its CronJob manifest are reviewed controller-only inputs.
+They still require exact-image controller qualification; their changes do not
+reserve a new native application version. Unknown scripts/manifests continue to
+invalidate native inputs. Bootstrap this classification before a watchdog repair
+when the running controller predates it. A successful generic image-pull probe
+does not establish that the controller's actual node already has the image.
 
 Canaries receive expiring bootstrap and invitation-publication scope, zero name
 quota and no server authority. Legacy bootstrap-only grants remain revocable.
