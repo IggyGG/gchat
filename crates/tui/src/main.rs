@@ -57,8 +57,12 @@ enum Command {
     /// (same as `gcd`; uses the same profile and paths).
     Daemon(Box<DaemonArgs>),
     /// Show where your profile and messages live, which relay is in use, and
-    /// whether a background daemon is running.
-    Paths,
+    /// the saved host association, service state and build bindings.
+    Paths {
+        /// Emit a read-only diagnostic record. This does not start or unlock a host.
+        #[arg(long)]
+        json: bool,
+    },
     /// Copy a stopped legacy combined profile into a new instance, preserving its identity.
     Migrate {
         #[arg(long)]
@@ -165,7 +169,7 @@ async fn main() {
             }
             gchat_core::daemon::run(*args).await
         }
-        Some(Command::Paths) => print_paths(&cli.ui).await,
+        Some(Command::Paths { json }) => print_paths(&cli.ui, json).await,
         Some(Command::Network { invitation_file }) => import_network(&cli.ui, &invitation_file),
         Some(Command::Migrate {
             source,
@@ -219,9 +223,17 @@ fn import_network(args: &UiArgs, invitation_file: &std::path::Path) -> Result<()
     Ok(())
 }
 
-async fn print_paths(args: &UiArgs) -> Result<(), String> {
+async fn print_paths(args: &UiArgs, json: bool) -> Result<(), String> {
     let paths = paths::resolve(args.home.as_deref())?;
-    let live = probe_daemon(&paths.socket).await;
+    let diagnostic =
+        gchat_core::chat_service::host_diagnostics::inspect(args.home.as_deref()).await?;
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&diagnostic).map_err(|error| error.to_string())?
+        );
+        return Ok(());
+    }
     println!("data      {}", paths.data_dir.display());
     println!("config    {}", paths.config_dir.display());
     println!("runtime   {}", paths.runtime_dir.display());
@@ -246,24 +258,61 @@ async fn print_paths(args: &UiArgs) -> Result<(), String> {
     println!("outbox    {}", paths.outbox.display());
     println!(
         "socket    {}  {}",
-        paths.socket.display(),
-        if live {
-            "(daemon running: gchat attaches)"
+        diagnostic.protocol_socket,
+        if diagnostic.local_ready {
+            "(matching local chat host is available)"
+        } else if diagnostic.managed_service.is_some() {
+            "(launch uses the registered user service)"
         } else {
-            "(no daemon: gchat hosts the runtime)"
+            "(inspect the selected host configuration before launch)"
         }
     );
-    let relay = relay_source(args)?;
-    match &relay {
-        RelaySource::None if args.no_relay => {
-            println!("relay     saved routing information or an invite (--no-relay)");
+    println!(
+        "instance  {}",
+        diagnostic
+            .instance_id
+            .as_deref()
+            .unwrap_or("not initialized")
+    );
+    println!("host-mode {}", diagnostic.mode);
+    println!(
+        "service   {}",
+        diagnostic
+            .managed_service
+            .as_deref()
+            .unwrap_or("none registered")
+    );
+    println!(
+        "service-state {}",
+        serde_json::to_string(&diagnostic.service_status).map_err(|error| error.to_string())?
+    );
+    println!(
+        "client-build {}",
+        serde_json::to_string(&diagnostic.client_build).map_err(|error| error.to_string())?
+    );
+    println!(
+        "host-build {}",
+        serde_json::to_string(&diagnostic.host_build).map_err(|error| error.to_string())?
+    );
+    println!("host-code {}", diagnostic.error_code.unwrap_or("none"));
+    println!("recovery  {}", diagnostic.recovery);
+    if diagnostic.mode != "unregistered" {
+        println!("relay     selected by the saved host recipe");
+    } else {
+        let relay = relay_source(args)?;
+        match &relay {
+            RelaySource::None if args.no_relay => {
+                println!("relay     saved routing information or an invite (--no-relay)");
+            }
+            RelaySource::None => {
+                println!("relay     not configured");
+                println!(
+                    "          use the GChat network defaults and import a network invitation."
+                );
+            }
+            RelaySource::Card(_) => println!("relay     card file"),
+            RelaySource::Bootstrap(urls) => println!("relay     {}", urls.join(", ")),
         }
-        RelaySource::None => {
-            println!("relay     not configured");
-            println!("          use the GChat network defaults and import a network invitation.");
-        }
-        RelaySource::Card(_) => println!("relay     card file"),
-        RelaySource::Bootstrap(urls) => println!("relay     {}", urls.join(", ")),
     }
     let mut ok = true;
     for (dir, label) in paths.private_dirs() {

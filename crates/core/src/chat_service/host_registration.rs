@@ -1,5 +1,7 @@
 //! Owner-local startup association. This is a host recipe, never an unlock grant.
-use super::{fleet, host::InstanceConfig, instance_metadata};
+#[cfg(test)]
+use super::instance_metadata;
+use super::{fleet, host::InstanceConfig, read_instance_metadata};
 use crate::private_fs;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -211,7 +213,8 @@ impl Registration {
         )?;
         if self.profile != LocalPath::new(&config.profile)?
             || self.archive != LocalPath::new(&config.archive)?
-            || self.instance != instance_metadata(&config.archive)?.id
+            || read_instance_metadata(&config.archive)?
+                .is_none_or(|metadata| self.instance != metadata.id)
         {
             return Err("The saved host registration belongs to another instance".into());
         }
@@ -303,6 +306,38 @@ pub(super) fn defaults(config: &mut InstanceConfig) -> Result<(), String> {
         registration.restore(config)?;
     }
     Ok(())
+}
+
+pub(super) struct Inspection {
+    pub instance: String,
+    pub mode: &'static str,
+    pub service: Option<String>,
+    pub configuration_valid: bool,
+}
+
+/// Keep public association details available when the referenced fleet file is absent.
+/// A conflicting recipe is described, but never used to inspect another endpoint.
+pub(super) fn inspect(config: &mut InstanceConfig) -> Result<Option<Inspection>, String> {
+    let Some(registration) = read(config)? else {
+        return Ok(None);
+    };
+    let mode = match (registration.service.is_some(), registration.fleet.is_some()) {
+        (true, true) => "managed_fleet",
+        (true, false) => "managed_personal",
+        (false, true) => "fleet",
+        (false, false) => "personal",
+    };
+    let configuration_valid = registration.restore(config).is_ok();
+    Ok(Some(Inspection {
+        instance: registration.instance,
+        mode,
+        service: registration.service,
+        configuration_valid,
+    }))
+}
+
+pub(super) fn path_reference(path: &Path) -> Result<serde_json::Value, String> {
+    serde_json::to_value(LocalPath::new(path)?).map_err(|error| error.to_string())
 }
 
 pub(super) fn registered(config: &InstanceConfig) -> Result<bool, String> {

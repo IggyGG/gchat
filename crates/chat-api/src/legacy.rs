@@ -50,6 +50,57 @@ impl ChatClient {
         host_capability: Option<&str>,
         peer: Option<(u32, Option<u32>)>,
     ) -> Result<Self, String> {
+        let (api_version, instance) =
+            Self::inspect_bound(endpoint, expected, host_capability, peer).await?;
+        let mut handle_path = endpoint.as_os_str().to_owned();
+        handle_path.push(".handles");
+        let handles = gcoms::rpc::file_store::FileHandles::open(Path::new(&handle_path))
+            .map_err(|e| e.to_string())?;
+        Ok(Self {
+            endpoint: endpoint.into(),
+            instance: instance.id,
+            api_version,
+            capabilities: instance.capabilities,
+            handles: std::sync::Arc::new(handles),
+        })
+    }
+
+    /// Validate the existing public handshake without allocating attachment files.
+    pub async fn inspect_host(
+        endpoint: &Path,
+        expected: Option<&str>,
+        host_capability: Option<&str>,
+    ) -> Result<InstanceInfo, String> {
+        Self::inspect_bound(endpoint, expected, host_capability, None)
+            .await
+            .map(|(_, instance)| instance)
+    }
+
+    /// Read-only inspection retains the same kernel owner/process binding as attachment.
+    #[cfg(unix)]
+    pub async fn inspect_owned_host(
+        endpoint: &Path,
+        expected: Option<&str>,
+        host_capability: Option<&str>,
+        owner_uid: u32,
+        process_id: Option<u32>,
+    ) -> Result<InstanceInfo, String> {
+        Self::inspect_bound(
+            endpoint,
+            expected,
+            host_capability,
+            Some((owner_uid, process_id)),
+        )
+        .await
+        .map(|(_, instance)| instance)
+    }
+
+    async fn inspect_bound(
+        endpoint: &Path,
+        expected: Option<&str>,
+        host_capability: Option<&str>,
+        peer: Option<(u32, Option<u32>)>,
+    ) -> Result<(u16, InstanceInfo), String> {
         let mut envelope = exchange_bound(
             endpoint,
             &RequestEnvelope {
@@ -84,26 +135,16 @@ impl ChatClient {
         {
             return Err("chat instance or API version does not match this attachment".into());
         }
-        let capabilities = match &envelope.response {
-            Response::Instance { instance } if instance.id == envelope.instance_id => {
-                instance.capabilities.clone()
-            }
+        let instance = match envelope.response {
+            Response::Instance { instance } if instance.id == envelope.instance_id => instance,
             _ => return Err("invalid chat instance handshake".into()),
         };
-        if host_capability.is_some_and(|binding| !capabilities.iter().any(|c| c == binding)) {
+        if host_capability
+            .is_some_and(|binding| !instance.capabilities.iter().any(|c| c == binding))
+        {
             return Err("The running service does not match this identity's registered host. Close its views and restart the registered service with the matching GChat release.".into());
         }
-        let mut handle_path = endpoint.as_os_str().to_owned();
-        handle_path.push(".handles");
-        let handles = gcoms::rpc::file_store::FileHandles::open(Path::new(&handle_path))
-            .map_err(|e| e.to_string())?;
-        Ok(Self {
-            endpoint: endpoint.into(),
-            instance: envelope.instance_id,
-            api_version,
-            capabilities,
-            handles: std::sync::Arc::new(handles),
-        })
+        Ok((api_version, instance))
     }
 
     /// One bounded piece per owner-authenticated local exchange.

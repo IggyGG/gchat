@@ -4,6 +4,7 @@ mod extensions;
 mod files;
 mod fleet;
 pub mod host;
+pub mod host_diagnostics;
 mod host_registration;
 mod host_startup;
 mod host_updates;
@@ -257,23 +258,44 @@ fn query_key(id: ScopedPmId) -> String {
     )
 }
 
+fn read_instance_metadata(archive: &Path) -> Result<Option<InstanceMetadata>, String> {
+    use std::io::Read;
+    let path = archive.with_extension("instance.json");
+    match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.to_string()),
+        Ok(_) => {}
+    }
+    crate::private_fs::validate_private_parent(&path, "chat instance metadata")?;
+    crate::private_fs::validate_private_file(&path, "chat instance metadata")?;
+    let mut bytes = Vec::new();
+    std::fs::File::open(&path)
+        .map_err(|error| error.to_string())?
+        .take(4097)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() > 4096 {
+        return Err("chat instance metadata exceeds bound".into());
+    }
+    let metadata: InstanceMetadata =
+        serde_json::from_slice(&bytes).map_err(|_| "invalid chat instance metadata".to_string())?;
+    if metadata.version != 1
+        || metadata.id.len() != 64
+        || !metadata.id.bytes().all(|c| c.is_ascii_hexdigit())
+    {
+        return Err("invalid chat instance identifier".into());
+    }
+    Ok(Some(metadata))
+}
+
 fn instance_metadata(archive: &Path) -> Result<InstanceMetadata, String> {
     let parent = archive
         .parent()
         .ok_or("chat archive needs a parent directory")?;
     crate::paths::ensure_private_dir(parent, "chat instance")?;
     let metadata_path = archive.with_extension("instance.json");
-    let metadata: InstanceMetadata = if metadata_path.exists() {
-        crate::private_fs::validate_private_file(&metadata_path, "chat instance metadata")?;
-        if std::fs::metadata(&metadata_path)
-            .map_err(|e| e.to_string())?
-            .len()
-            > 4096
-        {
-            return Err("chat instance metadata exceeds bound".into());
-        }
-        serde_json::from_slice(&std::fs::read(&metadata_path).map_err(|e| e.to_string())?)
-            .map_err(|e| format!("invalid chat instance metadata: {e}"))?
+    let metadata: InstanceMetadata = if let Some(metadata) = read_instance_metadata(archive)? {
+        metadata
     } else {
         let metadata = InstanceMetadata {
             version: 1,

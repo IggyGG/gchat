@@ -38,8 +38,15 @@ pub struct InstanceConfig {
 
 impl InstanceConfig {
     pub fn from_home(home: Option<&Path>) -> Result<Self, String> {
+        let mut config = Self::selected(home)?;
+        super::host_registration::defaults(&mut config)?;
+        Ok(config)
+    }
+
+    /// Path selection alone is read-only, including when the saved recipe is broken.
+    pub(super) fn selected(home: Option<&Path>) -> Result<Self, String> {
         let paths = crate::paths::resolve(home)?;
-        let mut config = Self {
+        Ok(Self {
             protocol_backend: crate::runtime::default_backend(),
             profile: paths.profile,
             archive: paths.archive,
@@ -55,9 +62,7 @@ impl InstanceConfig {
             catalog_urls: Vec::new(),
             fleet_config: None,
             managed_service: None,
-        };
-        super::host_registration::defaults(&mut config)?;
-        Ok(config)
+        })
     }
     pub fn chat_endpoint(&self) -> PathBuf {
         super::endpoint_for(&self.protocol_socket)
