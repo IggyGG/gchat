@@ -1,3 +1,14 @@
+F5 qualified235 installed,2026-10-17: the signed Linux desktop and packaged managed
+host now share the repaired a13c326f/7af9c125 pair. All normal release gates and public
+signature/hashes are independently verified. Actual update/two-viewdefer/activation,
+recipient ACK/offline-once, fresh interrupted16MiB, fleet scope, native error/repair,
+cold/concurrent startup, invitation review, lock and network recovery pass. Fresh
+current state preserves223messages/all176durableoperations/192pieces through signed
+235->233->235 rollback. Updater timers are restored. Controller startup repair2b0
+is independently qualified/active and its watchdog's scheduled execution passes.
+The final owner-manual login/reboot and postboot acceptance are still required;
+this is preboot readiness, not a full-completion claim. [Runbook](docs/DURABLE_HOST.md).
+
 F5 controller cold-start recovery, 2026-10-17: the independent watchdog now
 distinguishes pending container creation/readiness from a crashed controller.
 Pending, correctly pinned startup retains its original activation deadline;

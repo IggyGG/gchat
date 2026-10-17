@@ -1,7 +1,16 @@
 {
   "schema": 1,
   "pending_controller_startup_20261017": {
-    "status": "source_verified_awaiting_classification_bootstrap_and_exact_image_qualification",
+    "status": "source_published_exact_controller_image_qualified_and_independent_scheduled_watchdog_passed",
+    "published_commit": "2b0cec9cf7607115c741979655b060d808f9da58",
+    "controller_intent": "099ef3b5ee73636dd2a5fadc2073ae1af313806b801389f606a0eef351ae31fd",
+    "qualified_image": "sha256:77cc49f8f3ffdec01c7ebb5d26a4730e981f748db5a56da87aa7e23749f45a04",
+    "qualification_sha256": "d32e2baab12df2bd5fd038c449c655abbe667a3f40585a1b8a2a26e54f4a6c11",
+    "actual_image_tests": 510,
+    "actual_image_source_files": 271,
+    "actual_image_suites": 31,
+    "normal_scheduled_watchdog_passed": true,
+    "scheduled_watchdog_receipt_sha256": "78a98ad190370663a711ecb633e7a6d0c3ed6bec55d85f5f0d158e9382886b3b",
     "mechanism": "Independent watchdog confused a scheduled pinned cold image pull with failed controller execution after120seconds, despite the original1200second activation budget.",
     "repair": "Expose startup_pending separately from healthy and matching running bytes. Preserve pending startup within its original deadline only; crashes, pull/config errors, mismatches, prior failures and expiry retain rollback.",
     "causal_old_code_failed": true,

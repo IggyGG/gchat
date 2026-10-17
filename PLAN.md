@@ -1,3 +1,15 @@
+F5 / qualified235 installed preboot acceptance,2026-10-17: all seven Linux release
+receipts, original16MiB/360s/600s and64-client1800s gates, public signature and actual
+desktop/host hashes independently verified. Normal update/two-view defer/single
+activation, authenticated bidirectional/offline-once, interrupted16MiB exact export,
+native errors/retry, concurrent cold views, invitations, multiple profiles, lock,
+scoped fleet and network recovery pass. Fresh223message/176operation/192piece state
+survives235->233->235 in74.207s; both updater timers restored. Controller-only2b0
+repair passes510 actual-image tests/271 source files and is active; independent
+watchdog updated to that exact qualified image and its scheduled run passes.
+Only owner-manual login/reboot and corresponding postboot acceptance remain before
+full completion. No reboot is performed by the agent. See installed.json.
+
 F5 / pending controller startup, 2026-10-17: distinguish scheduled, correctly
 pinned, never-failed container creation/readiness from runtime failure. The
 independent watchdog preserves pending startup only within the original recorded

@@ -1,3 +1,15 @@
+F5 / final235 installed matrix,2026-10-17: normal update/defer/checkpoint, actual
+minimal concurrent cold startup, native configuration repair, offline startup,
+two profiles, lock/scope, warm/cold link exact review, network recovery, live ACKs
+and interrupted16MiB all pass. Retain the cold-invitation observer's original
+failure: the existing startup Network surface contained the correct preview but
+the observer required only the hydrated Join-a-channel heading. Corrected acceptance
+requires exact visible network/channel content on either normal surface, no Join,
+sameinstance/build, original readiness budgets; rerun passes. Ordinary launches use
+owned app.slice scopes so test-tool exit cannot kill their GUI. Full current-state
+235->233->235 rollback verifies176 wholeoperation records and192pieces plus223 full
+messages. Actual user-manual login/reboot and postboot delivery remain unproven.
+
 F5 / pending controller startup regression, 2026-10-17: feed a scheduled, pinned
 Pod with ContainerCreating and empty running imageID through the actual observer
 into the watchdog at130seconds. Require no rollback, unchanged intent/clock and

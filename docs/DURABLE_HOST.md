@@ -1,8 +1,33 @@
 # Durable per-instance host startup
 
-Status: qualified signed Linux0.1.233 is installed; the final read-only diagnostic
-and whole-attachment deadline successor, plus manual login/reboot acceptance, remain
-in progress (F5 / durable-host).
+Status,2026-10-17: qualified signed Linux0.1.235 is installed with matching desktop
+and packaged managed host, including read-only diagnostics and the whole-attachment
+deadline. All preboot installed checks pass. The owner will perform logout/login
+and reboot manually after readiness; actual postboot evidence remains required.
+
+The normal signed updater preserved two old views, deferred activation until both
+closed, then checkpointed/restarted once. The saved registration and canonical
+service/launcher remain unchanged; all eight retired override originals are retained.
+Actual235 bidirectional authenticated ACK/offline-once passes15.524s; fresh16MiB
+interruption completes126.913s/161.564s total with exact reopened export. Concurrent
+cold views converge on one owner in22.721s. Cold/warm invitation review validates the
+exact network/channel without joining. Lock/unlock preserves receiving and fleet
+scope; host-only outage displays Reconnecting then Connected in both views, restores
+the same process and delivers fresh ACKs. All three real configuration errors and
+same-view repairs pass, plus two independent profiles and the105s delayed-update
+control. Normal-provider offline cold start opens retained local state in5.606s.
+
+A fresh stopped post-live235 set is independently hash-read-back and restored in a
+loopback-only namespace. One copy survives235->233->235 without an intermediate
+restore, preserving223 fullmessage digests,11 memberships, all176 complete durable
+operations and192 pieces. Every phase exports the same16MiB and authenticates scoped
+fleet status while refusing ungrantedHealth. All197 initially inventoried messages
+and nine original memberships remain exact. The30-row UI window is not a complete
+operation inventory. Both updater timers are restored to their original active,
+enabled states; the existing daily live-copy backup is documented separately from
+the complete consistent stopped recovery set. [Evidence](evidence/durable-host/installed.json).
+
+### Historical source and intermediate-release evidence
 
 Native failure/recovery qualification exposed a desktop-only timeout gap: background
 heartbeat/update attempts held the shared client lock outside the core's30-second
