@@ -1,3 +1,15 @@
+F5 reboot closeout, 2026-10-17: the owner selected `pi-home` for real reboot
+acceptance. The source-matched native ARM64 host recovered its saved identity and
+service before login, retained pending delivery/history/cache, and delivered the
+original queued message once. Fresh authenticated ACKs and exact 16 MiB export
+passed after reboot (302.884 seconds for the file, 419.079 seconds overall).
+Two native TUI views share one owner; fleet boundaries hold. The disposable
+account, grant and services were cleaned after backup verification, preserving
+the Pi's original workloads. This completes the revised goal together with the
+qualified 0.1.235 workstation GUI, lifecycle and rollback evidence. The Pi's
+headless reboot is the owner-selected surrogate; the workstation stayed running.
+[Implementation and scope](docs/DURABLE_HOST.md).
+
 F5 qualified235 installed,2026-10-17: the signed Linux desktop and packaged managed
 host now share the repaired a13c326f/7af9c125 pair. All normal release gates and public
 signature/hashes are independently verified. Actual update/two-viewdefer/activation,

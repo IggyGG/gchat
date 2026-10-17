@@ -1,3 +1,17 @@
+F5 / owner-selected Raspberry Pi reboot completed, 2026-10-17: the exact 0.1.235
+source-pair ARM64 fixture on `pi-home` passes real reboot, existing pinned root
+unlock, and managed user-service autostart before the fixture user's login.
+Identity, history, operations, registration and partial file pieces survive.
+The queued message delivers once; fresh authenticated ACKs pass both ways.
+The reboot-interrupted 16 MiB transfer completes in 302.884 seconds (419.079 seconds
+overall), with the exact hash. Two actual TUI views share one owner; postboot
+open/close and scoped fleet status/refusal pass. The fresh fixture's account,
+grant and services are cleaned, preserving original Pi workloads. The owner
+selected this reboot target instead of the workstation. Together with the actual
+0.1.235 workstation, source, release and rollback receipts, the revised full goal
+is complete. See `docs/evidence/durable-host/installed.json` and the private
+`COMPLETION-MANIFEST.json`.
+
 F5 / qualified235 installed preboot acceptance,2026-10-17: all seven Linux release
 receipts, original16MiB/360s/600s and64-client1800s gates, public signature and actual
 desktop/host hashes independently verified. Normal update/two-view defer/single

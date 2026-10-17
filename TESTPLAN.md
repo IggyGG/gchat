@@ -1,3 +1,18 @@
+F5 / actual 0.1.235 Pi reboot acceptance, 2026-10-17: the owner's chosen surrogate
+`pi-home` runs a native ARM64 build of `a13c326f` / `7af9c125`. Require two actual
+TTY views and one owner with home-only launch; a changed boot ID; user manager and
+registered service active before fixture login; unchanged instance, partition,
+history and operation IDs; retained partial file pieces; the original queued
+message delivered once without resubmission; fresh bidirectional authenticated
+ACKs; exact 16 MiB export; and scoped fleet status with ungranted Health refused.
+PASS: file completion in 302.884 seconds including reboot, 419.079 seconds overall.
+Two postboot views attach in 1.390 seconds; normal close retains the boot-started
+host. Failed helper attempts remain recorded. The managed UI uses Ctrl+Q; helpers
+need their complete import closure. Cleanup waits for the fixture user manager
+to exit before account retirement and verifies all 107 Pi / 91 peer backup-file
+hashes. Workstation GUI evidence retains its separate scope; this is headless Pi
+reboot qualification with an unsigned ARM fixture.
+
 F5 / final235 installed matrix,2026-10-17: normal update/defer/checkpoint, actual
 minimal concurrent cold startup, native configuration repair, offline startup,
 two profiles, lock/scope, warm/cold link exact review, network recovery, live ACKs

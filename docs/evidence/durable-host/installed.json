@@ -1,8 +1,51 @@
 {
   "schema": 1,
-  "status": "qualified235_installed_preboot_acceptance_passed_user_manual_login_reboot_pending",
-  "scope": "Qualified signed successor and actual installed production instance",
-  "observed_at": 1792204284,
+  "status": "qualified235_installed_and_owner_selected_pi_reboot_acceptance_complete",
+  "scope": "Qualified signed Linux installation; owner explicitly selected RaspberryPi reboot/headless login/TUI qualification instead of rebooting the workstation",
+  "observed_at": 1792209189,
+  "owner_selected_pi_reboot": {
+    "passed": true,
+    "role": "pi-home",
+    "architecture": "aarch64",
+    "source_pair": {
+      "gchat": "a13c326fb1586ea298497dfa9fab7eb17831806d",
+      "gcoms": "7af9c1250b08fe4459921d9d1b85368ff45e4ca9"
+    },
+    "arm_binary_sha256": "96abb88429b07976172720ebdd0b22a84fb654d8653aad79f7c20363f4bcd8cd",
+    "arm_build_scope": "Unsigned native qualification fixture from the exact235 source pair; not a published ARM64 release",
+    "real_kernel_boot_change_verified": true,
+    "existing_pinned_encrypted_root_unlock_used": true,
+    "service_and_user_manager_already_running_before_fixture_login": true,
+    "same_saved_identity_and_managed_fleet_registration": true,
+    "same_history_operations_and_partial_cached_file_after_reboot": true,
+    "queued_message_delivered_once_without_resubmission": true,
+    "fresh_postboot_bidirectional_authenticated_acks": true,
+    "file_bytes": 16777216,
+    "verified_bytes_retained_after_reboot": 1048576,
+    "file_sha256": "bde63590987c619b08fd883624289d256f63099ae7789d08ed64d3f9e6a9d14b",
+    "file_completion_seconds_including_reboot": 302.88391944696195,
+    "whole_corrected_journey_seconds": 419.07854054600466,
+    "native_terminal_views": 2,
+    "profile_owners": 1,
+    "cold_terminal_readiness_seconds": 8.631105551990913,
+    "postboot_terminal_readiness_seconds": 1.3897055439999804,
+    "postboot_view_close_kept_original_boot_host": true,
+    "authenticated_fleet_status_and_ungranted_health_refusal": true,
+    "headless_ssh_login_and_native_tui_verified": true,
+    "workstation_graphical_reboot_performed": false,
+    "workstation_gui_acceptance": "Separate actual signed235 installed receipts above/below",
+    "production_profile_copied": false,
+    "fixture_grant_revoked_and_account_services_removed": true,
+    "original_pi_services_configuration_and_health_preserved": true,
+    "fixture_private_backup_bytes": 16931384,
+    "fixture_backup_sha256": "1a1955ebf76f25427b215f12d6983318545ee6457be81246a2b4c1fbad98d72f",
+    "fixture_backup_file_hashes_verified": 107,
+    "peer_backup_files_verified": 91,
+    "final_audit_sha256": "d9a9537c089ccb76303b6a106160b9adfd68b2c5fed6a6f1d28d1c794eb002d5",
+    "actual_reboot_receipt_sha256": "82317cc90c766a6d00fd618d8ee0b31db43527cecd97730bb4365e6509dde081",
+    "cleanup_receipt_sha256": "47ebfaea853963b4c7825e85ef3d28661fb92e1162e295ec1b6de611ca1f5b6c",
+    "failed_harness_observations_retained": "Skeleton .config creation, incomplete helper import closure, wrong legacy Ctrl+C close key, and asynchronous user-manager retirement; corrected observations preserve original identities, operation IDs and failures. No native file/reboot attempt was replayed."
+  },
   "previous_observation": {
     "commit": "08b04f66615e060ab6f766eb7c0b54b9062c49b3",
     "path": "docs/evidence/durable-host/installed.json",
@@ -567,12 +610,8 @@
   },
   "original_inactive_service_reason": "Not established: retained repair proves enabled/inactive, but the bounded original-date journal query returns no records identifying a stop actor or cause.",
   "original_launch_configuration": "The effective per-user production desktop override selected the saved home without fleet configuration; the historical writer is not established.",
-  "installed_acceptance_passed": false,
-  "remaining": [
-    "user-performed logout/login/reboot after readiness notice and actual postboot icon/invitation acceptance",
-    "postboot same-instance/history/cache/operation continuity and authenticated recipient delivery",
-    "final completion audit after actual boot evidence"
-  ],
+  "installed_acceptance_passed": true,
+  "remaining": [],
   "historical_223_and_failed_226": {
     "current_installation": {
       "binary_files_observed_at": 1792021076,
@@ -670,8 +709,10 @@
     "receipt_sha256": "0797c0e4cf0bdb577a2d49c2747b0004d2188cee11b2d43f582656872ee61ee3"
   },
   "manual_login_reboot_choice": {
-    "user_performs_manually_after_agent_readiness_notice": true,
-    "agent_must_not_reboot": true,
-    "readiness_not_yet_reached": true
+    "original_workstation_readiness_issued_and_preserved": true,
+    "superseded_by_owner_request": "Test the reboot on one of the raspberries instead",
+    "agent_must_not_reboot_workstation": true,
+    "authorized_pi_reboot_completed": true,
+    "workstation_reboot_claimed": false
   }
 }

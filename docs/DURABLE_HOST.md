@@ -1,9 +1,24 @@
 # Durable per-instance host startup
 
-Status,2026-10-17: qualified signed Linux0.1.235 is installed with matching desktop
+Status, 2026-10-17: qualified signed Linux 0.1.235 is installed with matching desktop
 and packaged managed host, including read-only diagnostics and the whole-attachment
-deadline. All preboot installed checks pass. The owner will perform logout/login
-and reboot manually after readiness; actual postboot evidence remains required.
+deadline. Installed acceptance is complete with the owner's explicitly selected
+Raspberry Pi reboot surrogate. The workstation stayed running.
+
+The exact 0.1.235 source pair was cross-built for native ARM64 and exercised on `pi-home`
+with a fresh private test identity and managed user service. A real kernel reboot,
+the existing pinned encrypted-root unlock, and service autostart before the test
+user's SSH login all pass. Identity, registration, history, operations and partial
+file pieces survive. The queued message delivers once without resubmission, with
+fresh authenticated messages both ways. The 16 MiB transfer interrupted by reboot
+completes in 302.884 seconds (419.079 seconds overall) and exports the exact SHA-256.
+Two native TUI views
+attach to one owner; postboot open/close retains the original boot-started host.
+Fleet status succeeds within its scope and ungranted Health is refused. This is
+headless login/native-terminal evidence, paired with the actual workstation GUI
+receipts below; the ARM executable is a qualification fixture, not a signed release.
+The test grant/account/services are retired, private backups hash-verified, and
+the Pi's original service configurations and healthy runtime are preserved.
 
 The normal signed updater preserved two old views, deferred activation until both
 closed, then checkpointed/restarted once. The saved registration and canonical
@@ -51,7 +66,7 @@ one-copy233->230->233; every phase exports the exact file and verifies128pieceha
 The visible operation list is a30-row recent window, so complete journal hashing
 is separate; typed RPC completion remains authoritative over legacy responses.
 
-### Read-only local diagnostics
+### Read-only local diagnostics (now included in qualified 0.1.235)
 
 `gchat --home PATH paths --json` inspects the saved instance without starting a
 service, unlocking a profile or opening attachment-handle storage. The ordinary
@@ -76,9 +91,9 @@ The causal CLI, six focused controls and strict core/TUI/API checks pass in sour
 All normal paired CI commands now pass with unchanged effective dependencies,
 including both124-case browser matrices and the actual native builds. The original
 build-quota failure is retained alongside its exact-input64GiB continuation.
-Actual inspection of the running233 host reports the correct instance, service
-state and build in0.112seconds without restart. This diagnostic follow-up still
-needs signed-release qualification; the installed233 package predates it.
+The earlier source inspection of the running 233 host reported the correct
+instance, service state and build in 0.112 seconds without restart. Qualified
+0.1.235 now includes these diagnostics and the installed receipts above.
 
 Additional230 acceptance passes actual cold/warm invitation review, rendered
 lock/unlock with fleet pause/resume, and exact-host network loss/recovery while
