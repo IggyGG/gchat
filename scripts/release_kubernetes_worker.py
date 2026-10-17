@@ -28,6 +28,30 @@ def image_digest(value):
     return match.group(1) if match else None
 
 
+def pod_starting(pod):
+    """Scheduled, never-failed startup is distinct from unhealthy execution."""
+    status = pod.get('status', {})
+    if (status.get('phase') not in ('Pending', 'Running') or not pod.get('spec', {}).get('nodeName')
+            or not any(c.get('type') == 'PodScheduled' and c.get('status') == 'True'
+                       for c in status.get('conditions', []))):
+        return False
+    initial = {c['name'] for c in pod.get('spec', {}).get('initContainers', [])}
+    for container in [*status.get('initContainerStatuses', []), *status.get('containerStatuses', [])]:
+        if container.get('restartCount', 0) != 0 or container.get('lastState'):
+            return False
+        state = container.get('state', {})
+        if 'waiting' in state:
+            if state['waiting'].get('reason') not in ('ContainerCreating', 'PodInitializing'):
+                return False
+        elif 'running' in state:
+            continue
+        elif (container.get('name') in initial and state.get('terminated', {}).get('exitCode') == 0):
+            continue
+        else:
+            return False
+    return True
+
+
 def observe(target, expected):
     current = resource(target)
     if current['spec'].get('replicas', 1) == 0:
@@ -56,7 +80,10 @@ def observe(target, expected):
             matches = matches and image_digest(actual) == image_digest(expected)
             configured_matches = configured_matches and image_digest(configured.get(name, '')) == image_digest(expected)
             images.append({'pod_uid': pod['metadata']['uid'], 'container': name, 'image_id': actual})
+    starting = (not healthy and len(live) == expected_count and bool(configured_matches)
+                and all(pod_starting(pod) for pod in live))
     return {'healthy': healthy, 'matches': bool(matches), 'configured_matches': bool(configured_matches),
+            'startup_pending': starting,
             'running': {'images': images}}
 
 

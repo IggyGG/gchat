@@ -27,12 +27,12 @@ class WatchdogTests(unittest.TestCase):
         atomic_json(self.root / 'deployment/owner.json', {'release_id': self.manifest['release_id']})
         atomic_json(self.directory / 'journal.json', self.report)
         atomic_json(self.work / 'candidate.json', self.manifest)
-        self.calls = []; self.healthy = False; self.complete = True
+        self.calls = []; self.healthy = False; self.complete = True; self.starting = False
 
     def worker(self, target, stage, manifest, work, previous=None):
         self.calls.append(stage)
         self.assertEqual(manifest, self.manifest)
-        if stage == 'observe': return {'healthy': self.healthy, 'matches': True}
+        if stage == 'observe': return {'healthy': self.healthy, 'matches': True, 'startup_pending': self.starting}
         self.assertEqual(stage, 'rollback')
         self.assertEqual(previous, {'old': 'image'})
         self.assertEqual(json.loads((self.directory / 'journal.json').read_text())['targets']['controller']['state'], 'rollback_pending')
@@ -60,6 +60,29 @@ class WatchdogTests(unittest.TestCase):
         self.calls.clear(); self.complete = True
         self.assertFalse(watchdog.recover(self.root, worker=self.worker, now=250))
         self.assertTrue(watchdog.recover(self.root, worker=self.worker, now=291))
+        self.assertEqual(self.calls, ['rollback'])
+
+    def test_pending_cold_start_keeps_original_intent_until_original_deadline(self):
+        self.starting = True
+        original = (self.directory / 'journal.json').read_bytes()
+        for now in (230, 700, 1000):
+            self.assertFalse(watchdog.recover(self.root, worker=self.worker, now=now))
+            self.assertEqual((self.directory / 'journal.json').read_bytes(), original)
+            self.assertTrue((self.root / 'deployment/owner.json').exists())
+        self.assertNotIn('rollback', self.calls)
+        self.calls.clear()
+        self.assertTrue(watchdog.recover(self.root, worker=self.worker, now=1001))
+        self.assertEqual(self.calls, ['observe', 'rollback'])
+        self.assertEqual(json.loads((self.directory / 'journal.json').read_text())['targets']['controller']['started_at'], 100)
+
+    def test_startup_marker_must_be_true_and_cannot_delay_existing_rollback(self):
+        self.starting = 'true'
+        self.assertTrue(watchdog.recover(self.root, worker=self.worker, now=230))
+        self.report['targets']['controller']['state'] = 'rollback_pending'
+        atomic_json(self.directory / 'journal.json', self.report)
+        atomic_json(self.root / 'deployment/owner.json', {'release_id': self.manifest['release_id']})
+        self.starting = True; self.calls.clear()
+        self.assertTrue(watchdog.recover(self.root, worker=self.worker, now=230))
         self.assertEqual(self.calls, ['rollback'])
 
     def test_revised_controller_recovers_its_own_retained_directory(self):

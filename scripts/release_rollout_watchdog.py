@@ -46,7 +46,11 @@ def recover(state, *, worker=invoke, now=None):
             if age < 120: return False
             observed = worker(target, 'observe', manifest, work)
             if observed is None: return False
-            if observed['healthy'] and age <= target.get('activation_deadline_seconds', 900): return False
+            # A cold node may still be pulling the pinned image after the short
+            # watchdog grace. That is not a crashed controller. Preserve its
+            # original deadline; neither observation nor restart renews it.
+            within_deadline = age <= target.get('activation_deadline_seconds', 900)
+            if within_deadline and (observed['healthy'] or observed.get('startup_pending') is True): return False
         # Persist recovery intent before the mutation. The worker itself checks
         # the original workload UID and previous image, and refuses operator drift.
         item.update(state='rollback_pending', retry_at=now + 60)

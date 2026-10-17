@@ -1,5 +1,29 @@
 {
   "schema": 1,
+  "pending_controller_startup_20261017": {
+    "status": "source_verified_awaiting_classification_bootstrap_and_exact_image_qualification",
+    "mechanism": "Independent watchdog confused a scheduled pinned cold image pull with failed controller execution after120seconds, despite the original1200second activation budget.",
+    "repair": "Expose startup_pending separately from healthy and matching running bytes. Preserve pending startup within its original deadline only; crashes, pull/config errors, mismatches, prior failures and expiry retain rollback.",
+    "causal_old_code_failed": true,
+    "causal_after_passed": true,
+    "original_intent_and_clock_preserved": true,
+    "pending_does_not_pass_health": true,
+    "focused_tests": 22,
+    "focused_receipt_sha256": "cac337a7e2b80ebd627ba86f486212c1742876d343c52493820f7ea95e939902",
+    "normal_python_tests": 1208,
+    "existing_skips": 1,
+    "source_paths": 924,
+    "api_contracts_unchanged": true,
+    "source_gate_sha256": "1820ded7a9b140d59f90f39348db9e285452dc0ce0691c7bfdd10177281e353e",
+    "codematch_before": "No close implementation; partial corpus fetches, top unrelated decompiled result cosine0.3605/rerank0.1315.",
+    "codematch_after": {
+      "path": "azkaban/azkaban:azkaban-common/src/main/java/azkaban/executor/container/watch/AzPodStatusExtractor.java",
+      "cosine": 0.7558,
+      "rerank": 0.992611569560882,
+      "content_fetched": true,
+      "assessment": "Similar scheduled/init/app-starting versus prior-container-failure classification. This repair additionally bounds pending status by the original activation clock and exact configured image; no corpus code copied."
+    }
+  },
   "watchdog_input_classification_20261017": {
     "scope": "Exact controller watchdog script and manifest; classify before publishing the pending-startup repair",
     "normal_python_tests": 1204,

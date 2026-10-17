@@ -1,3 +1,13 @@
+F5 / pending controller startup regression, 2026-10-17: feed a scheduled, pinned
+Pod with ContainerCreating and empty running imageID through the actual observer
+into the watchdog at130seconds. Require no rollback, unchanged intent/clock and
+healthy=false/matches=false. It must roll back after the original deadline.
+Cover normal init completion/readiness, crashes/restarts/last failures, pull/config
+errors, unknown status, wrong images, missing scheduling, legacy/malformed markers,
+duplicate observation and an already pending rollback. Existing workload/source/
+revision ownership and rollback guards remain required. Focused22 controls pass;
+original235 node logs establish the same cold-pull failure mechanism.
+
 F5 / controller-watchdog source classification, 2026-10-17: changes to the exact
 watchdog script and deployment manifest must change controller/qualification
 inputs while retaining application and native-infrastructure inputs. Unknown

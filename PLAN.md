@@ -1,3 +1,11 @@
+F5 / pending controller startup, 2026-10-17: distinguish scheduled, correctly
+pinned, never-failed container creation/readiness from runtime failure. The
+independent watchdog preserves pending startup only within the original recorded
+activation deadline; crashes, pull/configuration errors, mismatches and expiry
+still roll back. Actual-observation causal control fails old code and passes the
+repair;7 watchdog and15 Kubernetes-worker controls pass. Qualify and activate the
+repair as a controller-only image after bootstrap classification6236cb6 is active.
+
 F5 / release235 controller startup, 2026-10-17: original native Linux and relay
 gates pass, but the independent watchdog rolled the controller back during a
 cold image pull. Retained node journal proves the candidate started normally

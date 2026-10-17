@@ -1,3 +1,11 @@
+F5 controller cold-start recovery, 2026-10-17: the independent watchdog now
+distinguishes pending container creation/readiness from a crashed controller.
+Pending, correctly pinned startup retains its original activation deadline;
+observations never extend that clock or count pending as healthy. Runtime/pull/
+configuration failures and deadline expiry still recover the previous image.
+The causal old-fail/new-pass and22 focused controls pass; actual-image controller
+qualification and activation follow separately from235 application artifacts.
+
 F5 controller startup qualification, 2026-10-17: original235 deployment rolled
 back while its controller image was still pulling. Independent node logs establish
 normal startup93.505seconds after pod creation. The watchdog script and manifest

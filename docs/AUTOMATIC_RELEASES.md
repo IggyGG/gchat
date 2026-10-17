@@ -301,6 +301,17 @@ reserve a new native application version. Unknown scripts/manifests continue to
 invalidate native inputs. Bootstrap this classification before a watchdog repair
 when the running controller predates it. A successful generic image-pull probe
 does not establish that the controller's actual node already has the image.
+The independent watchdog observes `startup_pending` separately from `healthy`:
+only the exact configured image on scheduled, non-restarted Pods in normal
+ContainerCreating/PodInitializing/first-readiness states can use the remainder
+of its existing activation deadline. Successful init-container termination is
+allowed; application termination, prior crashes, pull/config errors, unknown
+states and image mismatch are not pending startup. Neither repeated observation
+nor a controller restart renews the recorded clock. Once rollback is journalled,
+startup observations cannot cancel it. A pending marker never passes health or
+installed-network qualification. Deploy the newly qualified watchdog image using
+the retained CronJob recipe; keep the previous independent recovery image for
+rollback and retain the original failed rollout revision.
 
 Canaries receive expiring bootstrap and invitation-publication scope, zero name
 quota and no server authority. Legacy bootstrap-only grants remain revocable.

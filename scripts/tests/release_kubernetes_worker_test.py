@@ -144,6 +144,54 @@ class KubernetesWorkerTests(unittest.TestCase):
         report = self.observe()
         self.assertTrue(report['matches']); self.assertFalse(report['healthy'])
 
+    def test_cold_pull_and_first_readiness_are_pending_not_healthy(self):
+        self.pod['spec'] = {'nodeName': 'fixture-node',
+            'containers': [{'name': 'gcnode', 'image': self.image}],
+            'initContainers': [{'name': 'gcnode-keygen', 'image': self.image}]}
+        self.pod['status'] = {'phase': 'Pending', 'conditions': [{'type': 'PodScheduled', 'status': 'True'}],
+            'containerStatuses': [{'name': 'gcnode', 'imageID': '', 'restartCount': 0,
+                                   'state': {'waiting': {'reason': 'ContainerCreating'}}}],
+            'initContainerStatuses': [{'name': 'gcnode-keygen', 'imageID': '', 'restartCount': 0,
+                                       'state': {'waiting': {'reason': 'PodInitializing'}}}]}
+        original = copy.deepcopy(self.pod)
+        report = self.observe()
+        self.assertTrue(report['startup_pending'] and report['configured_matches'])
+        self.assertFalse(report['healthy'] or report['matches'])
+        self.assertEqual(self.pod, original)
+        self.pod['status']['phase'] = 'Running'
+        self.pod['status']['containerStatuses'][0].update(imageID=self.image, state={'running': {}})
+        self.pod['status']['initContainerStatuses'][0].update(imageID=self.image, state={'terminated': {'exitCode': 0}})
+        report = self.observe()
+        self.assertTrue(report['startup_pending'] and report['matches'])
+        self.assertFalse(report['healthy'], 'pending readiness must not qualify application health')
+        self.pod['status']['conditions'].append({'type': 'Ready', 'status': 'True'})
+        self.assertTrue(self.observe()['healthy'])
+        self.assertFalse(self.observe()['startup_pending'])
+
+    def test_errors_restarts_missing_schedule_and_wrong_images_are_not_pending_startup(self):
+        self.pod['spec'] = {'nodeName': 'fixture-node',
+            'containers': [{'name': 'gcnode', 'image': self.image}],
+            'initContainers': [{'name': 'gcnode-keygen', 'image': self.image}]}
+        self.pod['status'] = {'phase': 'Pending', 'conditions': [{'type': 'PodScheduled', 'status': 'True'}],
+            'containerStatuses': [{'name': 'gcnode', 'restartCount': 0,
+                                   'state': {'waiting': {'reason': 'ContainerCreating'}}}]}
+        original = copy.deepcopy(self.pod)
+        for reason in ('CrashLoopBackOff', 'ImagePullBackOff', 'ErrImagePull', 'CreateContainerConfigError', ''):
+            with self.subTest(reason=reason):
+                self.pod = copy.deepcopy(original)
+                self.pod['status']['containerStatuses'][0]['state']['waiting']['reason'] = reason
+                self.assertFalse(self.observe()['startup_pending'])
+        for path, value in [(('status', 'phase'), 'Failed'), (('spec', 'nodeName'), ''),
+                            (('status', 'conditions'), []),
+                            (('status', 'containerStatuses'), [{'name': 'gcnode', 'restartCount': 1, 'state': {'running': {}}}]),
+                            (('status', 'containerStatuses'), [{'name': 'gcnode', 'lastState': {'terminated': {'exitCode': 1}}, 'state': {'running': {}}}]),
+                            (('status', 'containerStatuses'), [{'name': 'gcnode', 'state': {'terminated': {'exitCode': 0}}}]),
+                            (('spec', 'containers'), [{'name': 'gcnode', 'image': 'wrong'}])]:
+            with self.subTest(path=path, value=value):
+                self.pod = copy.deepcopy(original)
+                self.pod[path[0]][path[1]] = value
+                self.assertFalse(self.observe()['startup_pending'])
+
     def test_evicted_configured_image_cannot_qualify_actual_running_image_or_health(self):
         self.pod['spec']={'containers':[{'name':'gcnode','image':self.image}],
                           'initContainers':[{'name':'gcnode-keygen','image':self.image}]}
