@@ -1735,4 +1735,3 @@ provider failure after a successful original, and refusal of changed completion
 proofs. Reusing a recovery-only receipt must never bypass the separate native
 restore required for retirement. Production failure and retry receipts remain
 separate; a partial successful batch is not full history acceptance.
-

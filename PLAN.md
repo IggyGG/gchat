@@ -2241,3 +2241,22 @@ checks pass. New immutable-helper qualification and interrupted-object remote
 reconciliation are next. Public request-fence/classifier adoption, full history
 recovery and continuous retirement remain pending; existing owner work is intact.
 
+CLOUD-OPS-1 / native recovery checkpoint, 2026-10-21T10:51:00Z
+The exact helper source0ca722dc495c and image00112f778279 passed529 actual-image
+controls. Shared adapter tf-infra PR91 loaded through Flux. The interrupted
+ciphertext was authenticated and bound to its original source without another
+upload. Batches02–05 recovered fifteen further original paths after the first
+three: eighteen original infrastructure paths now have native image recovery
+proof. All originals remain; no infrastructure retirement is claimed.
+Separate native compaction verified62 rollback images and207 successful canaries.
+Ten duplicate rollback paths were shared, reclaiming190,074,880bytes; the full
+canary pass reclaimed zero. Every original path and failure was retained.
+Evidence is in the shared implementation directory: gchat-recovery-02 through
+05-complete.log, gchat-rollback-compaction-01-result.json and
+gchat-canary-compaction-01-result.json. Free space remains about13.39GB, below
+the16GiB controller reserve. The selected sequence230 and its owner are unchanged.
+The current helper source also changes a native-infrastructure consumer diagnostic;
+actual fingerprint comparison with selected upstreame59bc319 proves this is not
+yet a controller-only update. Preserve that gate. Next: qualify compatible
+controller request-fence adoption and maintenance headroom before continuous
+retirement; full source publication and seven-day recurrence remain open.
