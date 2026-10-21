@@ -788,6 +788,18 @@ class ColdInfrastructureProducerTests(unittest.TestCase):
         self.assertGreater(second['reclaimed_bytes'], 0)
         self.assertFalse(alias.exists())
 
+    def test_archive_only_receipts_survive_later_hardlink_identity_changes(self):
+        alias = self.native_alias()
+        archived = self.run_archive()
+        receipts = {r['archive_receipt']: (self.root / r['archive_receipt']).read_bytes()
+                    for r in archived['objects']}
+        self.assertEqual(len(receipts), 2)
+        retired = self.run_archive(retire=True)
+        self.assertEqual(len(retired['objects']), 2)
+        self.assertGreater(retired['reclaimed_bytes'], 0)
+        self.assertFalse(self.path.exists()); self.assertFalse(alias.exists())
+        for path, raw in receipts.items(): self.assertEqual((self.root / path).read_bytes(), raw)
+
     def test_unknown_hardlink_holds_every_known_path(self):
         alias = self.native_alias()
         os.link(self.path, self.root / 'operator-owned.tar')

@@ -2217,3 +2217,13 @@ receipts and finds the expected closed paths. No GChat state has been archived
 or retired by this change. Native immutable helper-image qualification is next;
 public controller activation, classifier adoption, scheduled retirement and
 production request-fence adoption remain separate gates.
+
+CLOUD-OPS-1 / archive-only resume correction, 2026-10-21T08:15:44.927305+00:00
+The first immutable helper fc90cf4 passed525 actual-container source/runtime
+checks and was pushed, but production archival has not started. Review of the
+archive-only → retirement sequence found that unlinking one hard link changes
+the survivor's identity after both may already have archived receipts. New
+source retains separate immutable identity generations rather than overwriting
+a receipt or refusing all future recovery.47 focused compaction tests pass,
+including the exact archive-only-then-two-link-retirement regression. The
+corrected immutable image requires its own native source/runtime gate.

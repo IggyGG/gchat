@@ -301,7 +301,11 @@ def archive_cold_infrastructure(state, tool, *, retire=False, maximum_files=4, k
             path = retained_path(state, item['source'])
             before = verify_archived_image(path, item['source_sha256'], item['image_config'])
             if list(identity(before)) != item['source_identity']: raise ValueError('image changed after archive planning')
-            record = root / item['release_id'] / hashlib.sha256(item['source'].encode()).hexdigest()
+            # A prior archive-only pass can have covered both hard links.
+            # After one is retired, the survivor has a new ctime. Preserve the
+            # old receipt and qualify a separate exact-identity generation.
+            generation = hashlib.sha256(json.dumps(item['source_identity']).encode()).hexdigest()
+            record = root / item['release_id'] / hashlib.sha256(item['source'].encode()).hexdigest() / generation
             record.mkdir(parents=True, exist_ok=True, mode=0o700)
             eligibility = record / 'eligibility.json'
             if eligibility.exists() and checked_metadata(eligibility, 65536)[0] != item:
