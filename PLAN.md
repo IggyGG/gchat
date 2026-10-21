@@ -1,3 +1,24 @@
+CLOUD-OPS-1 / release history storage, 2026-10-21T07:13:29.106544+00:00
+
+Owner codex-cloud-ops-20261020; task checkout .worktrees/cloud-storage-retention/gchat,
+branch agent/cloud-storage-retention-20252ffd, base1792dff199310ac6296b7a95a7758a5c85130c57.
+Canonical programme: https://forgejo.triform.dev/triform/tf-infra/src/branch/main/docs/runbooks/cloud-operations-execution.md.
+Scope: exact S3 recovery and continuous producer-qualified retention of completed
+release history, preserving current/recent40, active work, rollback and evidence.
+Native ZIP and daily SQLite adapters already run. Both last hourly passes are
+healthy; native selection is empty, so that schedule does not reclaim accumulated
+controller/infrastructure bundles. Current free space is13,238,829,056bytes, below
+the unchanged16GiB release reserve. No GChat runtime mutation in this checkpoint.
+Plan: bind closed artifacts to original receipts and owner selections, reuse the
+existing encrypted archive primitive/native readback, qualify interrupted/outage/
+concurrent-owner behavior and bounded scratch, then publish/activate a compatible
+archive/restore path. No eligibility is inferred from age or lack of a Pod alone.
+The existing F5/current app publication belongs to its owner and is preserved.
+Acceptance: exact historical restore, measured local release, genuine scheduled
+recurrence, preserved current release health; whole CLOUD-OPS-1 needs seven days.
+Checks/publication/deployment: pending. Next: bounded artifact inventory and native
+consumer/selection review before changing retention.
+
 F5 / owner-selected Raspberry Pi reboot completed, 2026-10-17: the exact 0.1.235
 source-pair ARM64 fixture on `pi-home` passes real reboot, existing pinned root
 unlock, and managed user-service autostart before the fixture user's login.
