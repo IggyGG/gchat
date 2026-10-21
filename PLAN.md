@@ -2349,3 +2349,26 @@ Both direct Kubernetes image export attempts failed transport bounds (timeout,
 then truncated compressed stream); their original logs and partials are retained.
 A native registry read of the same538-test immutable image is preparing the
 controller bundle. None of these local transfer attempts activated an image.
+
+CLOUD-OPS-1 / verified retirement and restoration, 2026-10-21T12:56:00Z
+Two bounded native archive batches retired eight historical paths after fresh
+S3 readback and native recovery, reclaiming4,132,233,216allocated bytes. Original
+bytes remain in S3; ten previously verified historical paths remain local.
+At12:51:09Z the exact original Deployment and all four original schedules were
+restored and ready; selected230 and active overlay099ef3b remained unchanged.
+The restoration receipt records20,748,906,496free bytes and16,319,380free inodes.
+Only after that verification was the automatic restoration timer stopped.
+Evidence: gchat-history-maintenance-01/restoration-verified.json and both native
+batch completion receipts in the retained shared implementation directory.
+
+The added headroom let the original F5 intent6995bc64 finish qualification;
+that intent, its artifacts and original failures remain intact. Native registry
+export03 of sourcec1d91ab passed exact configuration and bundle verification.
+The source-qualified538-test controller is now undergoing the existing native
+controller-only bootstrap in Jobgchat-controller-bootstrap-c1-20261021 (UID
+c0e7a3a3-b4f2-4c8e-9b98-4aa16604120d). It reserves2.5GiB of additional state
+above the unchanged16GiB recovery floor under the existing worker lock, verifies
+committed input identities, and delegates Kubernetes qualification and activation
+to the existing controller path. No application/native release is requested.
+Actual request-fence adoption, remaining historical retirement, recurring producer
+budgets and sustained acceptance remain open; Job creation is not acceptance.
