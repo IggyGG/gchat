@@ -1721,3 +1721,10 @@ candidate/schema binding, nonterminal state and absent deployment/minutes policy
 Run all release-tool controls and actual-image/Kubernetes controller qualification
 before activation. Retain the source-run umask077 fixture failure; ordinary native
 CI's022 umask is required by unrelated file-permission compaction fixtures.
+
+CLOUD-OPS-1 hard-link archive controls: verify separate original-path receipts,
+zero reclaimed allocation until the final link, resumable next-pass identity,
+unknown-alias and changed-source-metadata holds, and exclusion of new operator
+request admission by the archive lease. Qualify the actual immutable helper
+image before bounded operational use; source tests do not install the request
+fence in a running controller.

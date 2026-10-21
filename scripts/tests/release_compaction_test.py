@@ -616,10 +616,6 @@ class CanaryCompactionTests(unittest.TestCase):
         self.assertNotEqual((first / 'package.deb').stat().st_ino, (second / 'package.deb').stat().st_ino)
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 @unittest.skipUnless(os.name == 'posix', 'archive ownership uses POSIX locks')
 class ColdInfrastructureProducerTests(unittest.TestCase):
     def setUp(self):
@@ -664,12 +660,16 @@ class ColdInfrastructureProducerTests(unittest.TestCase):
             self.assertEqual(kwargs['owner'], 'gchat-infrastructure-builds')
             compactor.atomic_json(receipt, {'format': 'triform.closed-file-archive/v1',
                 'owner': kwargs['owner'], 'source': source, 'source_sha256': self.sha,
-                'source_bytes': len(self.original), 'source_identity': list(compactor.identity(self.path.stat())),
+                'source_bytes': len(self.original), 'source_identity': list(compactor.identity((state / source).stat())),
                 'plaintext_verified': True, 'manifest_key': 'cluster-retention/v1/gchat-infrastructure-builds/exact/manifest.json'})
         elif action == 'restore': destination.write_bytes(self.original)
         else:
             self.assertEqual(action, 'retire')
-            blocks = self.path.stat().st_blocks * 512; self.path.unlink()
+            original = json.loads(receipt.read_text())
+            path = state / original['source']; before = path.stat()
+            self.assertEqual(list(compactor.identity(before)), original['source_identity'])
+            blocks = before.st_blocks * 512 if before.st_nlink == 1 else 0
+            path.unlink()
             return {'allocated_bytes_released': blocks}
         return {}
 
@@ -757,3 +757,50 @@ class ColdInfrastructureProducerTests(unittest.TestCase):
         self.assertTrue(self.path.exists())
         self.assertTrue(self.path.with_name('controller.tar.archive.json').exists())
         self.assertEqual(compactor.cold_infrastructure_plan(self.root), [])
+
+    def native_alias(self):
+        directory = self.work / 'native/signed/infrastructure'
+        directory.mkdir(parents=True)
+        (directory / 'build.json').write_bytes((self.image / 'source-build.json').read_bytes())
+        alias = directory / 'controller.tar'
+        os.link(self.path, alias)
+        return alias
+
+    def test_original_hardlinks_have_separate_receipts_and_reclaim_only_final_blocks(self):
+        alias = self.native_alias()
+        result = self.run_archive(retire=True)
+        self.assertEqual(len(result['objects']), 2)
+        self.assertEqual(result['objects'][0]['retirement']['allocated_bytes_released'], 0)
+        self.assertGreater(result['objects'][1]['retirement']['allocated_bytes_released'], 0)
+        self.assertFalse(self.path.exists()); self.assertFalse(alias.exists())
+        refs = [json.loads(p.with_name(p.name + '.archive.json').read_text())['archive_receipt']
+                for p in (self.path, alias)]
+        self.assertNotEqual(*refs)
+        receipts = [json.loads((self.root / ref).read_text()) for ref in refs]
+        self.assertNotEqual(receipts[0]['source_identity'], receipts[1]['source_identity'])
+
+    def test_bounded_first_link_retirement_resumes_from_fresh_alias_identity(self):
+        alias = self.native_alias()
+        first = self.run_archive(retire=True, maximum_files=1)
+        self.assertEqual(first['reclaimed_bytes'], 0)
+        self.assertFalse(self.path.exists()); self.assertTrue(alias.exists())
+        second = self.run_archive(retire=True, maximum_files=1)
+        self.assertGreater(second['reclaimed_bytes'], 0)
+        self.assertFalse(alias.exists())
+
+    def test_unknown_hardlink_holds_every_known_path(self):
+        alias = self.native_alias()
+        os.link(self.path, self.root / 'operator-owned.tar')
+        self.assertEqual(self.run_archive(retire=True)['objects'], [])
+        self.assertTrue(alias.exists()); self.assertTrue(self.path.exists())
+
+    def test_changed_original_alias_metadata_holds_both_paths(self):
+        alias = self.native_alias()
+        (alias.parent / 'build.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'extracted infrastructure'):
+            self.run_archive(retire=True)
+        self.assertTrue(alias.exists()); self.assertTrue(self.path.exists())
+
+
+if __name__ == '__main__':
+    unittest.main()

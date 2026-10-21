@@ -208,8 +208,10 @@ def cold_infrastructure_plan(state, keep_recent=40, maximum_files=4):
                     or build.get('qualification_sha256') != controls[str((work / 'qualification.json').relative_to(state))]
                     or set(proof.get('receipts', {})) != {'build', 'verify'}):
                 raise ValueError('infrastructure source qualification changed')
+            build_request = None
             for stage, reference in proof['receipts'].items():
                 request = hashlib.sha256(canonical([work.name, 'linux-x86_64', stage])).hexdigest()
+                if stage == 'build': build_request = request
                 path = state / 'jobs' / request / 'receipt.json'
                 if reference.get('path') != str(path): raise ValueError('foreign infrastructure receipt path')
                 receipt = metadata(path)
@@ -220,18 +222,30 @@ def cold_infrastructure_plan(state, keep_recent=40, maximum_files=4):
                             'sources': manifest['sources'], 'platform': 'linux-x86_64', 'stage': stage,
                             'passed': True, 'source_unchanged': True}.items())):
                     raise ValueError('infrastructure original receipt is not confirmed')
+            native = retained_path(state, 'jobs/' + build_request + '/native/signed/infrastructure')
+            if native.exists() and metadata(native / 'build.json') != original:
+                raise ValueError('original extracted infrastructure metadata changed')
             for name, field in (('controller.tar', 'controller_config'), ('image.tar', 'image_config'), ('push.tar', 'push_config')):
-                path = retained_path(state, str((work / name).relative_to(state)))
-                if not path.exists() or path.with_name(name + '.archive.json').exists(): continue
-                before = path.lstat()
                 sha, config = build['sha256'].get(name), build.get(field)
-                if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or not 0 < before.st_size <= 2 * 1024**3): continue
+                paths = [retained_path(state, str((directory / name).relative_to(state))) for directory in (work, native)]
+                paths = [p for p in paths if p.exists()]
+                if not paths: continue
                 if (not re.fullmatch('[a-f0-9]{64}', str(sha)) or not re.fullmatch('sha256:[a-f0-9]{64}', str(config))
                         or original.get(field) != config):
                     raise ValueError('infrastructure image identity missing')
-                selected.append({'schema': 1, 'release_id': work.name, 'sources': manifest['sources'],
-                    'source': str(path.relative_to(state)), 'source_sha256': sha, 'source_bytes': before.st_size,
-                    'source_identity': list(identity(before)), 'image_config': config, 'controls': dict(controls)})
+                for path in paths:
+                    if path.with_name(name + '.archive.json').exists(): continue
+                    before = path.lstat()
+                    if (not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= 2 * 1024**3): continue
+                    # Only the two original, source-bound producer paths may
+                    # share this inode. An unknown alias remains a hold.
+                    aliases = [p for p in paths if (p.lstat().st_dev, p.lstat().st_ino) ==
+                               (before.st_dev, before.st_ino)]
+                    if before.st_nlink != len(aliases): continue
+                    selected.append({'schema': 1, 'release_id': work.name, 'sources': manifest['sources'],
+                        'source': str(path.relative_to(state)), 'source_sha256': sha, 'source_bytes': before.st_size,
+                        'source_identity': list(identity(before)), 'image_config': config, 'controls': dict(controls),
+                        'known_aliases': sorted(str(p.relative_to(state)) for p in aliases)})
     return sorted(selected, key=lambda row: (-row['source_bytes'], row['source']))[:maximum_files]
 
 
@@ -273,11 +287,21 @@ def archive_cold_infrastructure(state, tool, *, retire=False, maximum_files=4, k
     with (root / 'producer.lock').open('a') as producer, (state / 'deployment/rollout.lock').open('a') as rollout:
         fcntl.flock(producer, fcntl.LOCK_EX | fcntl.LOCK_NB)
         fcntl.flock(rollout, fcntl.LOCK_SH | fcntl.LOCK_NB)
-        for item in cold_infrastructure_plan(state, keep_recent, maximum_files):
+        if type(maximum_files) is not int or not 1 <= maximum_files <= 16:
+            raise ValueError('bounded infrastructure archive batch required')
+        seen = set()
+        for _ in range(maximum_files):
+            # Unlinking one hard link changes the remaining link's ctime.
+            # Replan each path; never rewrite or reuse another path's receipt.
+            pending = [i for i in cold_infrastructure_plan(state, keep_recent, maximum_files=16)
+                       if i['source'] not in seen]
+            if not pending: break
+            item = pending[0]
+            seen.add(item['source'])
             path = retained_path(state, item['source'])
             before = verify_archived_image(path, item['source_sha256'], item['image_config'])
             if list(identity(before)) != item['source_identity']: raise ValueError('image changed after archive planning')
-            record = root / item['release_id'] / path.name
+            record = root / item['release_id'] / hashlib.sha256(item['source'].encode()).hexdigest()
             record.mkdir(parents=True, exist_ok=True, mode=0o700)
             eligibility = record / 'eligibility.json'
             if eligibility.exists() and checked_metadata(eligibility, 65536)[0] != item:

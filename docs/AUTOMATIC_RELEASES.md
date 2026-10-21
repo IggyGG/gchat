@@ -829,3 +829,11 @@ exact file through `archive.py restore --receipt RECEIPT --destination ORIGINAL`
 before using its unchanged original build record. The normal consumer reports
 that recovery requirement explicitly. Source-qualified code is not installed
 acceptance; PLAN.md records the actual rollout and scheduled proof.
+
+Closed infrastructure tars can have an original signed-build hard link. The
+archive producer admits only those two source-bound paths, refuses additional
+unknown links, and archives each original path with its own recovery receipt.
+It replans after each unlink and reports disk blocks only for the final link.
+An operator request racing the archive lease receives a retry before it is
+queued; already queued requests remain protected. This admission rule requires
+activation of the matching controller source before unattended archival.

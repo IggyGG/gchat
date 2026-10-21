@@ -132,7 +132,17 @@ def request(state, action, release=None, platform=None, *, observed=None, reason
         value.update(observed=observed, reason=reason,
                      journal_sha256=hashlib.sha256(journal.read_bytes()).hexdigest())
     path = Path(state) / 'control/incoming' / (ident + '.json')
-    atomic_json(path, value)
+    # A queued request pins its release before the next archive selection.
+    # Serialize the admission boundary with the producer's retirement lease;
+    # a busy archive reports retry before accepting an operator request.
+    import fcntl
+    from release_compaction import retained_path
+    archive = retained_path(Path(state).resolve(), 'maintenance/infrastructure-archives')
+    archive.mkdir(parents=True, exist_ok=True, mode=0o700)
+    lock_path = retained_path(Path(state).resolve(), 'maintenance/infrastructure-archives/producer.lock')
+    with lock_path.open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        atomic_json(path, value)
     return {'request_id': ident, 'release_id': release, 'action': action, 'state': 'queued'}
 
 

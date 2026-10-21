@@ -27,6 +27,20 @@ class ControlTests(unittest.TestCase):
         self.controller.ledger.transition(self.release, platform, 'building')
         self.controller.ledger.transition(self.release, platform, 'blocked', reason='source-bound failure')
 
+    @unittest.skipUnless(os.name == 'posix', 'archive ownership uses POSIX locks')
+    def test_archive_excludes_request_admission_until_original_retirement_finishes(self):
+        import fcntl
+        self.blocked()
+        archive = self.root / 'maintenance/infrastructure-archives'
+        archive.mkdir(parents=True)
+        with (archive / 'producer.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaises(BlockingIOError):
+                control.request(self.root, 'resume', platform='linux-x86_64')
+            self.assertFalse(list((self.root / 'control/incoming').glob('*.json')))
+        result = control.request(self.root, 'resume', platform='linux-x86_64')
+        self.assertTrue((self.root / 'control/incoming' / (result['request_id'] + '.json')).is_file())
+
     def test_status_does_not_write_the_ledger_or_expose_private_paths(self):
         atomic_json(self.root / 'deployment' / self.release / 'journal.json', {
             'state': 'blocked', 'targets': {'relay-1': {'observed': {'healthy': True,

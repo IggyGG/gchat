@@ -2202,3 +2202,18 @@ actual final-link blocks. No runtime retirement or deployment has occurred.
 AGENTS.md is now classified as control documentation for future source builds;
 the installed older classifier still requires adoption before main publication
 can avoid an unnecessary application flight. Task-branch publication only.
+
+CLOUD-OPS-1 / original hard-link recovery, 2026-10-21T08:04:43.666643+00:00
+The producer now archives the infrastructure and original signed-build paths
+independently. Each path retains its own immutable encrypted receipt and cold
+reference; inode identity is replanned after each unlink. Unknown aliases hold
+every known path.46 compaction checks pass, including interruption between links
+and final-link allocation accounting. The full suite at this checkpoint passed
+1,222 tests with the unchanged Windows-only skip. The subsequent request
+admission fence passes all15 control tests: an archive lease refuses a new
+operator request before queueing it; accepted requests pin the release.
+Read-only production selection validates the old original build and verification
+receipts and finds the expected closed paths. No GChat state has been archived
+or retired by this change. Native immutable helper-image qualification is next;
+public controller activation, classifier adoption, scheduled retirement and
+production request-fence adoption remain separate gates.
