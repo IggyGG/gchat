@@ -2307,3 +2307,19 @@ and never retires an image or source archive. All58 focused controls pass,
 including corrupt cross-inventory rejection and an existing outside alias.
 Actual-image and combined live readback remain pending. No public controller
 change or infrastructure-original retirement has occurred.
+
+CLOUD-OPS-1 / combined inventory and source publication, 2026-10-21T12:16:00Z
+Source c1d91ab passed 538 actual-image controls and landed through the ordinary
+main source-mirror route. Its combined live compaction verified 16 controller
+and 62 rollback images, shared 72 duplicate paths, and reclaimed 5,298,548,736
+bytes. Every path, manifest and blob remains verified. The mounted claim now
+has 19,049,406,464 free bytes, above the unchanged 16GiB controller reserve.
+Receipt: gchat-controller-compaction-02-result.json, Job UID
+6bb3caa1-4e5c-4241-98d0-f28e1cd1a6d4, native receipt SHA256
+c6c627f249de7ef4f47dbecd118aba02c073511876b16d4d1b8038d07f93f99e.
+This makes a temporary writer shutdown unnecessary for the next controller
+qualification. No such shutdown was performed, and all 18 archived infrastructure
+originals remain local. The exact qualified image is being exported into its
+native controller bundle, preserving the selected release 230 and unchanged
+application/native input fingerprints. Kubernetes qualification, sole-coordinator
+activation, request-fence adoption and recurring retirement remain pending.
