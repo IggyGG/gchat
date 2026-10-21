@@ -2372,3 +2372,30 @@ committed input identities, and delegates Kubernetes qualification and activatio
 to the existing controller path. No application/native release is requested.
 Actual request-fence adoption, remaining historical retirement, recurring producer
 budgets and sustained acceptance remain open; Job creation is not acceptance.
+
+
+CLOUD-OPS-1 / native controller activated, 2026-10-21T13:43:00Z
+The exact sourcec1d91ab passed538 tests and271 file checks in Kubernetes Job
+controller-check-d748b9d09ecafe3577b9, UID8a2066aa-14a1-479d-9d01-a6d45842e2d9.
+The normal coordinator activated image49b574f8aca8123bec639a4abe51466e9940461fe2e11b2f6ee8a40a21a34b96;
+Deployment generation130 is ready1/1. Its controller-only journal is deployed
+with a fresh healthy/matching actual image observation. Selected application230
+and its original native/global failure evidence are unchanged. Qualification
+SHAab707436923006a4599df0667e8f9b4a0340bc2ef532c3b22734237dfeb896fa.
+
+Bootstrap01 failed registry-transfer networking;02 transferred the exact archive
+but refused Skopeo's byte-changing JSON conversion. The derived OCI repair kept
+the original config51e0dfd7 bytes, verified all compressed hashes and original
+rootfs diff_ids, and retained the original archive/index/blobs. All normal
+publisher, cold-pull, runtime and rollback-image gates then passed. The older
+coordinator's classifier refusal remains as blocked-retained-bootstrap-03.json;
+it was released only after native qualification and an exact blocker/hash check.
+No release gate was relaxed. Evidence: gchat-controller-c1-bootstrap-03-complete.json
+and the corresponding immutable transport/resume receipts on release storage.
+
+The existing hourly archive adapter is being extended in tf-infra PR95 to process
+both kinds of history, four files total, with a fresh deployed writer-fence check.
+That template is prepared suspended; actual two-image qualification and recurring
+business/space acceptance remain pending. Ten historical paths remain local.
+The request-writer fence is installed; full CLOUD-OPS-1 and seven-day acceptance
+remain open.
