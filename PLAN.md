@@ -2399,3 +2399,21 @@ That template is prepared suspended; actual two-image qualification and recurrin
 business/space acceptance remain pending. Ten historical paths remain local.
 The request-writer fence is installed; full CLOUD-OPS-1 and seven-day acceptance
 remain open.
+
+
+2026-10-21T14:41:00Z CLOUD-OPS-1 recurring acceptance checkpoint: tf-infra
+PR95/source9679e79 installed the held combined template using the adopted
+c1d91ab writer. Exact-template Job760981bc-7523-45a2-88e0-953073fd7230 passed
+both image/source inventories, the fresh538-test controller fence and two native
+S3 restore checks before local retirement. The bound native batch receipts verify
+both original hashes, retained manifests and absent retired paths, reclaiming
+146,685,952allocated bytes. State has18,178,777,088free bytes and16,311,412free
+inodes. Product/application230 remains unchanged. The helper ConfigMaps now share
+their original terminal Jobs'24-hour TTL; failure/success evidence remains retained.
+
+Hourly recurrence resumption is in tf-infra PR96; it does not create another
+producer or change keep-recent40, current/rollback/request protection, two files
+per producer or5Gi serial scratch. Runtime acceptance of this template is met;
+natural recurring production and the broader cloud budget/observation gates
+remain open. Evidence: gchat-recurring-qualification-01-{result,native-bindings}.json
+and gchat-bootstrap-config-ownership-01-* in the shared implementation directory.
