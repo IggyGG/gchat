@@ -576,6 +576,106 @@ def compact_rollback_images(state, maximum_images=32, minimum_bytes=16 * 1024**2
         return report
 
 
+def compact_controller_images(state, maximum_images=128, minimum_bytes=16 * 1024**2):
+    """Share authenticated OCI layers of completed controller qualifications.
+
+    Keep every bundle, image, rollback path and original receipt. Incomplete
+    qualifications are not candidates. This never retires a source archive.
+    """
+    import fcntl
+    from controller_runtime import validate as validate_runtime
+    if type(maximum_images) is not int or not 1 <= maximum_images <= 256:
+        raise ValueError('controller image compaction limit must be between 1 and 256')
+    state = Path(state).resolve()
+    root = retained_path(state, 'controller-updates')
+    if not root.is_dir(): return None
+    directories = sorted(root.iterdir())
+    if len(directories) > 4096:
+        raise ValueError('controller qualification inventory exceeds bound')
+    # Compaction does not change qualification timestamps. Keep new completed
+    # images inside the bounded pass instead of revisiting an old no-op prefix.
+    directories.sort(key=lambda p: (p / 'ready.json').lstat().st_mtime_ns
+                     if (p / 'ready.json').exists() else 0, reverse=True)
+    retained = retained_path(state, 'maintenance/compaction')
+    retained.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (retained / 'lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        controls, duplicates, images = [], {}, []
+        def metadata(path, maximum=2 * 1024**2):
+            path = retained_path(state, str(path.relative_to(state)))
+            value, binding = checked_metadata(path, maximum)
+            controls.append((path, binding))
+            return value, binding[0]
+        for work in directories:
+            if len(images) >= maximum_images: break
+            if not re.fullmatch('[0-9a-f]{64}', work.name): continue
+            retained_path(state, str(work.relative_to(state)))
+            if not (work / 'ready.json').exists(): continue
+            ready, _ = metadata(work / 'ready.json', 65536)
+            proof, proof_sha = metadata(work / 'qualification.json')
+            image = proof.get('image', '')
+            match = re.fullmatch(r'[^/]+/ghost/gchat-release@sha256:([0-9a-f]{64})', image)
+            if (not match or ready.get('id') != work.name or proof.get('intent_id') != work.name
+                    or ready.get('qualification_sha256') != proof_sha
+                    or ready.get('release_id') != proof.get('artifact_release_id')
+                    or not re.fullmatch('[0-9a-f]{64}', str(ready.get('release_id', '')))
+                    or proof.get('registry_configuration_verified') is not True):
+                raise ValueError('controller qualification identity changed')
+            configuration, source = proof.get('configuration'), proof.get('source')
+            if (not re.fullmatch('sha256:[0-9a-f]{64}', str(configuration))
+                    or not isinstance(source, dict) or set(source) != {'commit', 'tree'}
+                    or any(not re.fullmatch('[0-9a-f]{40}', str(v)) for v in source.values())):
+                raise ValueError('controller qualification source is invalid')
+            validate_runtime(proof.get('runtime', {}), source, configuration, historical=True)
+            native, native_sha = metadata(work / 'kubernetes-runtime.json')
+            validate_runtime(native, source, configuration, historical=True)
+            _, provider_sha = metadata(work / 'provider.json')
+            if (native_sha != proof.get('kubernetes_runtime_sha256')
+                    or provider_sha != proof.get('provider_sha256')
+                    or native.get('image_id') != image):
+                raise ValueError('controller native qualification changed')
+            oci = retained_path(state, str((work / 'bundle/controller-oci').relative_to(state)))
+            if not (oci / 'index.json').exists(): continue
+            index, _ = metadata(oci / 'index.json', 65536)
+            entries = index.get('manifests', [])
+            if (not isinstance(entries, list) or len(entries) != 1
+                    or not isinstance(entries[0], dict)
+                    or entries[0].get('digest') != 'sha256:' + match[1]):
+                raise ValueError('controller image index changed')
+            manifest, manifest_sha = metadata(oci / 'blobs/sha256' / match[1])
+            layers = manifest.get('layers')
+            if (manifest_sha != match[1] or manifest.get('config', {}).get('digest') != configuration
+                    or not isinstance(layers, list) or len(layers) > 128):
+                raise ValueError('controller image manifest changed')
+            for descriptor in [manifest['config'], *layers]:
+                if not isinstance(descriptor, dict): raise ValueError('invalid controller layer')
+                digest, size = descriptor.get('digest'), descriptor.get('size')
+                if (not re.fullmatch('sha256:[0-9a-f]{64}', str(digest))
+                        or type(size) is not int or not 0 <= size <= 2 * 1024**3):
+                    raise ValueError('invalid controller layer digest or size')
+                path = retained_path(state, str((oci / 'blobs/sha256' / digest[7:]).relative_to(state)))
+                actual, before = file_digest(path)
+                if actual != digest[7:] or before.st_size != size:
+                    raise ValueError('controller image layer digest or size differs')
+                if size >= minimum_bytes:
+                    key = (before.st_dev, size, stat.S_IMODE(before.st_mode), before.st_uid, before.st_gid, actual)
+                    duplicates.setdefault(key, []).append((path, before))
+            images.append({'intent_id': work.name, 'image': image})
+        def unchanged():
+            for path, (_, before) in controls:
+                if path.is_symlink() or identity(path.stat()) != identity(before):
+                    raise ValueError('controller provenance changed during compaction')
+        unchanged()  # Authenticate all qualifying images before the first link.
+        changes, reclaimed = share_files(duplicates, state)
+        unchanged()
+        report = {'schema': 1, 'images': images, 'all_paths_retained': True,
+                  'all_image_manifests_and_blobs_verified': True,
+                  'estimated_reclaimed_bytes': reclaimed, 'changes': changes,
+                  'completed_at': int(time.time())}
+        atomic_json(retained / ('controller-images-' + str(time.time_ns()) + '.json'), report)
+        return report
+
+
 def compact_canaries(state, maximum_canaries=128, minimum_bytes=16 * 1024**2):
     """Share immutable copies from successful, cleaned-up native canaries."""
     import fcntl
@@ -980,6 +1080,7 @@ def main():
     print(json.dumps({'completed': compact(args.state, args.maximum_builds),
                       'canaries': compact_canaries(args.state),
                       'rollback_images': compact_rollback_images(args.state),
+                      'controller_images': compact_controller_images(args.state),
                       'public_sdk': compact_public_sdk(args.state)}), flush=True)
 
 

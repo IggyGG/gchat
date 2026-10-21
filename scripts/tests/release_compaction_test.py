@@ -345,6 +345,110 @@ class RollbackImageCompactionTests(unittest.TestCase):
 
 
 @unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
+class ControllerImageCompactionTests(unittest.TestCase):
+    def setUp(self):
+        from controller_runtime import BASELINE_SUITES
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.state = Path(self.temp.name)
+        self.content = b'original controller layer' * 100
+        self.paths, self.works = [], []
+        self.source = {'commit': 'a' * 40, 'tree': 'b' * 40}
+        for number in (1, 2, 3):
+            ident = str(number) * 64
+            work = self.state / 'controller-updates' / ident
+            blobs = work / 'bundle/controller-oci/blobs/sha256'; blobs.mkdir(parents=True)
+            configuration = ('original config ' + str(number)).encode()
+            config_sha = hashlib.sha256(configuration).hexdigest()
+            layer_sha = hashlib.sha256(self.content).hexdigest()
+            (blobs / config_sha).write_bytes(configuration)
+            layer = blobs / layer_sha; layer.write_bytes(self.content)
+            manifest = {'schemaVersion': 2, 'config': {'digest': 'sha256:' + config_sha, 'size': len(configuration)},
+                        'layers': [{'digest': 'sha256:' + layer_sha, 'size': len(self.content)}]}
+            raw = canonical(manifest); image_sha = hashlib.sha256(raw).hexdigest()
+            (blobs / image_sha).write_bytes(raw)
+            (blobs.parent.parent / 'index.json').write_bytes(canonical({'manifests': [{'digest': 'sha256:' + image_sha}]}))
+            image = '127.0.0.1:30444/ghost/gchat-release@sha256:' + image_sha
+            runtime = {'schema': 1, 'passed': True, 'source': self.source, 'source_unchanged': True,
+                       'production_controller_revision_tested': True, 'suites': list(BASELINE_SUITES),
+                       'tests': 101, 'source_files_verified': 200, 'inventory_sha256': 'c' * 64,
+                       'configuration_digest': 'sha256:' + config_sha}
+            native = dict(runtime, image_id=image)
+            (work / 'kubernetes-runtime.json').write_bytes(canonical(native))
+            (work / 'provider.json').write_bytes(canonical({'source': self.source}))
+            proof = {'schema': 1, 'intent_id': ident, 'artifact_release_id': 'd' * 64,
+                     'configuration': 'sha256:' + config_sha, 'source': self.source,
+                     'image': image, 'registry_configuration_verified': True, 'runtime': runtime,
+                     'kubernetes_runtime_sha256': hashlib.sha256(canonical(native)).hexdigest(),
+                     'provider_sha256': hashlib.sha256((work / 'provider.json').read_bytes()).hexdigest()}
+            (work / 'qualification.json').write_bytes(canonical(proof))
+            (work / 'ready.json').write_bytes(canonical({'id': ident, 'release_id': 'd' * 64,
+                'qualification_sha256': hashlib.sha256(canonical(proof)).hexdigest()}))
+            self.paths.append(layer); self.works.append(work)
+
+    def compact(self):
+        return compactor.compact_controller_images(self.state, minimum_bytes=1)
+
+    def test_all_paths_and_native_image_bytes_survive_and_repeat_is_noop(self):
+        before = {p: p.read_bytes() for p in (self.state / 'controller-updates').rglob('*') if p.is_file()}
+        result = self.compact()
+        self.assertEqual(len(result['images']), 3)
+        self.assertEqual(len(result['changes']), 2)
+        self.assertEqual(len({p.stat().st_ino for p in self.paths}), 1)
+        self.assertTrue(result['all_paths_retained'])
+        self.assertTrue(all(p.read_bytes() == raw for p, raw in before.items()))
+        self.assertEqual(self.compact()['changes'], [])
+
+    def test_corrupt_last_image_prevents_any_link(self):
+        self.paths[-1].write_bytes(b'x' * len(self.content))
+        before = [p.stat().st_ino for p in self.paths]
+        with self.assertRaisesRegex(ValueError, 'layer digest or size differs'): self.compact()
+        self.assertEqual([p.stat().st_ino for p in self.paths], before)
+
+    def test_bounded_repeat_includes_new_completions(self):
+        for index, work in enumerate(self.works):
+            os.utime(work / 'ready.json', (100 + index, 100 + index))
+        result = compactor.compact_controller_images(self.state, maximum_images=2, minimum_bytes=1)
+        self.assertEqual({r['intent_id'] for r in result['images']}, {w.name for w in self.works[1:]})
+        self.assertEqual(self.paths[1].stat().st_ino, self.paths[2].stat().st_ino)
+        self.assertNotEqual(self.paths[0].stat().st_ino, self.paths[1].stat().st_ino)
+
+    def test_incomplete_qualification_is_untouched(self):
+        (self.works[-1] / 'ready.json').unlink()
+        before = self.paths[-1].stat().st_ino
+        self.assertEqual(len(self.compact()['images']), 2)
+        self.assertEqual(self.paths[-1].stat().st_ino, before)
+
+    def test_changed_native_or_ready_receipt_prevents_any_link(self):
+        for name in ('kubernetes-runtime.json', 'ready.json'):
+            path = self.works[-1] / name; raw = path.read_bytes()
+            value = json.loads(raw)
+            value['id' if name == 'ready.json' else 'passed'] = False
+            path.write_bytes(canonical(value))
+            before = [p.stat().st_ino for p in self.paths]
+            with self.assertRaises(ValueError): self.compact()
+            self.assertEqual([p.stat().st_ino for p in self.paths], before)
+            path.write_bytes(raw)
+
+    def test_symlinks_and_permission_boundaries(self):
+        victim = self.paths[-1]; victim.unlink(); victim.symlink_to(self.paths[0])
+        with self.assertRaises(ValueError): self.compact()
+        victim.unlink(); victim.write_bytes(self.content)
+        self.paths[0].chmod(0o600)
+        self.assertEqual(len(self.compact()['changes']), 1)
+        self.assertNotEqual(self.paths[0].stat().st_ino, self.paths[1].stat().st_ino)
+
+    def test_changed_provenance_refuses_success_and_temporary_links_are_removed(self):
+        original = os.link
+        def race(source, target, **kwargs):
+            original(source, target, **kwargs)
+            path = self.works[0] / 'ready.json'
+            path.write_bytes(path.read_bytes() + b' ')
+        with patch('release_compaction.os.link', side_effect=race):
+            with self.assertRaisesRegex(ValueError, 'provenance changed'): self.compact()
+        self.assertFalse(list(self.state.rglob('.compact-*')))
+
+
+@unittest.skipUnless(os.name == 'posix', 'the release filesystem requires POSIX links')
 class PublicSdkCompactionTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

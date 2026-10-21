@@ -2273,3 +2273,25 @@ new actual-image/controller qualification remain pending. Existing qualified
 archive helper and all18 native recovery receipts remain valid for their source.
 No current source, desired release, request, infrastructure original or controller
 free-space threshold has been changed in production.
+
+CLOUD-OPS-1 / controller image copies, 2026-10-21T11:50:04.498163+00:00
+Exact helper654c05b passed530 actual-image controls and preserves selected
+application/native fingerprints. The corrected recovery inventory binds18
+original paths to completed native restore receipts, representing4,940,935,168
+allocated bytes; all remain local. The earlier zero-record audit used the wrong
+filename, not missing evidence (gchat-history-audit-02.json corrects it).
+A read-only inventory also found832,102,400potential duplicate OCI layer bytes
+across16 qualified controller images. Source now includes completed controller
+images in the existing compactor: verify original qualification/native runtime,
+image manifest and every blob before any sharing; preserve all paths, permissions,
+source archives, active images and historical failures. Incomplete qualification
+is excluded; newest completions enter the bounded recurring pass. Runtime
+reclamation and controller activation remain pending actual-image qualification.
+The current controller, selected sequence230, deployment owner and16GiB floor
+remain unchanged. Next: finish compaction controls, build a qualified exact-source
+helper, reclaim only verified duplicate layers, and complete the existing archive
+and controller-fence rollout through the native release path.
+
+Controller compaction source gate:57 focused controls pass, including a bounded
+pass that admits newly completed images. Receipt:gchat-controller-compaction-tests-03.log.
+Actual-image and live reclamation gates remain pending.

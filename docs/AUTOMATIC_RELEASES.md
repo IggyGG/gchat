@@ -844,3 +844,12 @@ It replans after each unlink and reports disk blocks only for the final link.
 An operator request racing the archive lease receives a retry before it is
 queued; already queued requests remain protected. This admission rule requires
 activation of the matching controller source before unattended archival.
+
+Completed controller-update OCI layouts participate in routine compaction. Each
+layout must bind its ready receipt, original qualification, provider and native
+Kubernetes runtime to the image digest. Every manifest and blob is checked before
+sharing identical files with matching ownership and modes. Incomplete updates
+remain untouched, and all source archives, image paths and receipts are retained.
+Newest completed qualifications are included first so bounded recurring passes
+do not starve new work behind already compacted images. This is duplicate-copy
+compaction, not permission to retire a controller or its history.

@@ -1735,3 +1735,10 @@ provider failure after a successful original, and refusal of changed completion
 proofs. Reusing a recovery-only receipt must never bypass the separate native
 restore required for retirement. Production failure and retry receipts remain
 separate; a partial successful batch is not full history acceptance.
+
+CLOUD-OPS-1 controller compaction: verify all-path/native-byte preservation,
+idempotence, corrupt last-image rejection before any link, incomplete-qualification
+exclusion, changed native/ready evidence, symlink and permission boundaries,
+concurrent provenance changes and temporary-link cleanup. Run
+`python3 -m unittest discover -s scripts/tests -p release_compaction_test.py`;
+actual-image qualification and live reclaimed-byte readback remain separate gates.
