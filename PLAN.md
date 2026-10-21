@@ -1,23 +1,24 @@
-CLOUD-OPS-1 / release history storage, 2026-10-21T07:13:29.106544+00:00
+CLOUD-OPS-1 / release history storage, 2026-10-21T15:47:19.918498+00:00
 
 Owner codex-cloud-ops-20261020; task checkout .worktrees/cloud-storage-retention/gchat,
 branch agent/cloud-storage-retention-20252ffd, base1792dff199310ac6296b7a95a7758a5c85130c57.
 Canonical programme: https://forgejo.triform.dev/triform/tf-infra/src/branch/main/docs/runbooks/cloud-operations-execution.md.
 Scope: exact S3 recovery and continuous producer-qualified retention of completed
 release history, preserving current/recent40, active work, rollback and evidence.
-Native ZIP and daily SQLite adapters already run. Both last hourly passes are
-healthy; native selection is empty, so that schedule does not reclaim accumulated
-controller/infrastructure bundles. Current free space is13,238,829,056bytes, below
-the unchanged16GiB release reserve. No GChat runtime mutation in this checkpoint.
-Plan: bind closed artifacts to original receipts and owner selections, reuse the
-existing encrypted archive primitive/native readback, qualify interrupted/outage/
-concurrent-owner behavior and bounded scratch, then publish/activate a compatible
-archive/restore path. No eligibility is inferred from age or lack of a Pod alone.
-The existing F5/current app publication belongs to its owner and is preserved.
-Acceptance: exact historical restore, measured local release, genuine scheduled
-recurrence, preserved current release health; whole CLOUD-OPS-1 needs seven days.
-Checks/publication/deployment: pending. Next: bounded artifact inventory and native
-consumer/selection review before changing retention.
+The qualified c1d91ab controller is installed and ready. The existing hourly
+archive schedule now processes both native and infrastructure history. Its genuine
+15:37 run restored and retired two originals, reclaiming293,371,904allocated bytes;
+original S3 manifests, native recovery and absent local paths are independently
+bound in the retained receipts. Free space at15:45 is18,459,406,336bytes with
+16,310,019free inodes, above the unchanged16GiB release reserve.
+
+Acceptance met for this interval: original recovery, measured local release,
+genuine scheduled recurrence and ready controller. Product source and runtime
+qualification remain c1d91ab/538tests; documentation does not rebuild them.
+Remaining: historical backlog, peak-write reservations and sustained observation.
+Whole CLOUD-OPS-1 remains open, including its seven-day programme acceptance.
+The existing F5/application work remains with its owner. No age-only deletion or
+history rewrite is authorized by this record. See chronological receipts below.
 
 F5 / owner-selected Raspberry Pi reboot completed, 2026-10-17: the exact 0.1.235
 source-pair ARM64 fixture on `pi-home` passes real reboot, existing pinned root
@@ -2417,3 +2418,24 @@ per producer or5Gi serial scratch. Runtime acceptance of this template is met;
 natural recurring production and the broader cloud budget/observation gates
 remain open. Evidence: gchat-recurring-qualification-01-{result,native-bindings}.json
 and gchat-bootstrap-config-ownership-01-* in the shared implementation directory.
+
+
+CLOUD-OPS-1 / natural recurring retirement — 2026-10-21T15:47:19.918498+00:00
+PR96 resumed the original hourly Cron through Flux. Natural Job
+gchat-native-archive-29876617 (UID34b57039-6ad2-4173-81e7-fcceea0eb598),
+owned by Cron UIDc5fb4026-44a8-44bc-bc17-45338aef425d, ran15:37–15:38:17Z.
+It verified the current native request fence, restored two original
+infrastructure archives, and retired their exact local paths. Independent
+readback binds both plaintext hashes, archive manifest keys, retirement journals
+and absent originals to the batch SHA
+07b4942bf0eae70dc4338f4daf93e147b2a3d7b3acdd50777f6bcb4ca9a1563b.
+Allocated bytes reclaimed293,371,904; both original objects remain recoverable
+from S3. Native release selection was empty and is recorded separately.
+
+The unchanged coordinator Deployment remains generation130, ready1/1 with
+image49b574f8. Source/image gates are reused unchanged; no new build/deployment.
+Receipts: gchat-natural-recurring-1537-{job.json,archive.log,native-bindings-02.json}
+in the retained shared cloud implementation directory. The first readback used
+an incorrect container name and failed; that failure is retained. Natural
+recurrence is now verified for this interval; producer admission and seven-day
+programme acceptance remain open.
