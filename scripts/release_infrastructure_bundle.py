@@ -152,8 +152,6 @@ def collect(state, manifest, config):
     if digest(root / 'qualification.json') != value['qualification_sha256']:
         raise ValueError('retained qualification changed')
     for name, expected in value['sha256'].items():
-        if not (root / name).exists() and (root / (name + '.archive.json')).is_file():
-            raise ValueError('historical infrastructure image is archived; restore its exact bytes through the retained archive receipt before requalification')
         if digest(root / name) != expected: raise ValueError('retained infrastructure artifact changed')
     for name in IMAGES:
         image = publish(root, config, name + '-' + manifest['release_id'], name)

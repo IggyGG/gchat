@@ -238,6 +238,12 @@ def run(target, manifest, stage, output):
         # A cached successful artifact receipt cannot prove registry availability.
         # Re-publish retained qualified OCI blobs before the cold pull check.
         if target.get('infrastructure_config'):
+            # Cold history remains recoverable through its original receipt.
+            # This is a deployment-consumer diagnostic, not a change to the
+            # native image builder or its immutable artifact fingerprint.
+            for name in build.get('sha256', {}):
+                if not (directory / name).exists() and (directory / (name + '.archive.json')).is_file():
+                    raise ValueError('historical infrastructure image is archived; restore its exact bytes through the retained archive receipt before requalification')
             from release_infrastructure_bundle import collect
             config = json.loads(Path(target['infrastructure_config']).read_text())
             if collect(Path(target['artifact_root']).parent, manifest, config) is None:

@@ -2260,3 +2260,16 @@ actual fingerprint comparison with selected upstreame59bc319 proves this is not
 yet a controller-only update. Preserve that gate. Next: qualify compatible
 controller request-fence adoption and maintenance headroom before continuous
 retirement; full source publication and seven-day recurrence remain open.
+
+CLOUD-OPS-1 / controller consumer boundary, 2026-10-21T11:07:00Z
+The archived-image diagnostic now belongs to the Kubernetes deployment consumer.
+It refuses publication or rollout until the exact original bytes are restored,
+then delegates to the unchanged native collector for original hash/qualification
+checks. The native builder file is byte-identical to selected upstreame59bc319;
+no classifier exception was added to hide a native-input change. All16 affected
+worker controls pass, including refusal before any publication/rollout and the
+subsequent original collector path. Exact committed fingerprint comparison and
+new actual-image/controller qualification remain pending. Existing qualified
+archive helper and all18 native recovery receipts remain valid for their source.
+No current source, desired release, request, infrastructure original or controller
+free-space threshold has been changed in production.

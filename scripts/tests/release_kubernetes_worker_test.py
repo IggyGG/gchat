@@ -11,6 +11,33 @@ import release_kubernetes_worker as worker
 
 
 class KubernetesWorkerTests(unittest.TestCase):
+    def test_archived_infrastructure_requires_restore_before_publication_or_rollout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = {'release_id': 'b' * 64, 'sources': {'gchat': 'original', 'gcoms': 'companion'}}
+            directory = root / manifest['release_id']; directory.mkdir()
+            (directory / 'build.json').write_text(json.dumps({'sources': manifest['sources'],
+                'qualified': True, 'images': {'gcnode': self.image}, 'sha256': {'controller.tar': 'c' * 64}}))
+            (directory / 'controller.tar.archive.json').write_text('{"retained": "original receipt"}')
+            target = {**self.target, 'artifact_root': str(root), 'image': 'gcnode',
+                      'infrastructure_config': str(root / 'config.json')}
+            (root / 'config.json').write_text('{}')
+            with patch.object(worker, 'resource', return_value=self.current), \
+                 patch('release_infrastructure_bundle.collect') as collect, \
+                 patch.object(worker.subprocess, 'run') as apply:
+                with self.assertRaisesRegex(ValueError, 'archived; restore its exact bytes'):
+                    worker.run(target, manifest, 'prepare', root / 'result.json')
+                collect.assert_not_called()
+                apply.assert_not_called()
+                self.assertFalse((root / 'kubernetes-before.json').exists())
+                # The pointer alone never qualifies an image. Restored bytes
+                # must still pass the original collector's identity checks.
+                (directory / 'controller.tar').write_bytes(b'restored bytes')
+                collect.return_value = None
+                self.assertIsNone(worker.run(target, manifest, 'prepare', root / 'result.json'))
+                collect.assert_called_once_with(root.parent, manifest, {})
+                apply.assert_not_called()
+
     def test_pull_probe_uses_lab_dns_and_a_new_identity_after_policy_correction(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
