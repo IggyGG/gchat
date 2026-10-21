@@ -806,6 +806,13 @@ application release. Unknown/native changes still fail input classification.
 
 ### Closed infrastructure image history (CLOUD-OPS-1)
 
+Recovery-only batches resume after exact completed entries, filtering them before
+the batch limit so old successes cannot starve later paths. Reuse requires the
+same source inode identity, eligibility, original control hashes, archive and
+native image recovery proof. A changed or damaged proof stops the pass. This
+optimization never authorizes retirement: retirement always repeats remote
+recovery and native verification under the existing producer and rollout locks.
+
 `release_compaction.py --state /state --archive-infrastructure --archive-tool TOOL`
 uses the same encrypted archive primitive for old qualified infrastructure image
 archives. The default independently restores and decodes each original Docker-save

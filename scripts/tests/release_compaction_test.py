@@ -702,6 +702,40 @@ class ColdInfrastructureProducerTests(unittest.TestCase):
         self.assertFalse(result['objects'][0]['retired'])
         self.assertNotIn('retire', self.actions)
 
+    def test_archive_only_batches_resume_after_completed_paths(self):
+        alias = self.native_alias()
+        first = self.run_archive(maximum_files=1)
+        self.assertEqual(len(first['objects']), 1)
+        self.actions.clear()
+        second = self.run_archive(maximum_files=1)
+        self.assertEqual(self.actions, ['archive', 'restore'])
+        self.assertNotEqual(first['objects'][0]['source'], second['objects'][0]['source'])
+        self.actions.clear()
+        self.assertEqual(self.run_archive()['objects'], [])
+        self.assertEqual(self.actions, [])
+        self.assertTrue(self.path.exists()); self.assertTrue(alias.exists())
+
+    def test_failed_later_path_does_not_replay_completed_recovery(self):
+        self.native_alias()
+        def interrupted(*args, **kwargs):
+            if args[1] == 'archive' and self.actions.count('archive') == 1:
+                raise OSError('provider connection interrupted')
+            return self.tool(*args, **kwargs)
+        with self.assertRaises(OSError): self.run_archive(interrupted)
+        self.actions.clear()
+        result = self.run_archive()
+        self.assertEqual(len(result['objects']), 1)
+        self.assertEqual(self.actions, ['archive', 'restore'])
+
+    def test_completed_recovery_tampering_does_not_authorize_skip(self):
+        result = self.run_archive()
+        receipt = self.root / result['objects'][0]['archive_receipt']
+        path = receipt.parent / 'result.json'
+        proof = json.loads(path.read_text()); proof['source_sha256'] = '0' * 64
+        compactor.atomic_json(path, proof)
+        with self.assertRaisesRegex(ValueError, 'recovery binding changed'): self.run_archive()
+        self.assertTrue(self.path.exists())
+
     def test_archive_outage_keeps_original(self):
         with self.assertRaises(OSError):
             self.run_archive(tool=lambda *a, **k: (_ for _ in ()).throw(OSError('offline')), retire=True)

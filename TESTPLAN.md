@@ -1728,3 +1728,11 @@ unknown-alias and changed-source-metadata holds, and exclusion of new operator
 request admission by the archive lease. Qualify the actual immutable helper
 image before bounded operational use; source tests do not install the request
 fence in a running controller.
+# CLOUD-OPS-1 recovery continuation
+
+`release_compaction_test.py` covers bounded recovery-only continuation, a later
+provider failure after a successful original, and refusal of changed completion
+proofs. Reusing a recovery-only receipt must never bypass the separate native
+restore required for retirement. Production failure and retry receipts remain
+separate; a partial successful batch is not full history acceptance.
+

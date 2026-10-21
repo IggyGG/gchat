@@ -2227,3 +2227,17 @@ source retains separate immutable identity generations rather than overwriting
 a receipt or refusing all future recovery.47 focused compaction tests pass,
 including the exact archive-only-then-two-link-retirement regression. The
 corrected immutable image requires its own native source/runtime gate.
+CLOUD-OPS-1 / bounded recovery continuation, 2026-10-21T09:10:00Z
+Helper source1beddbf/image2a60096d passed526 actual-container controls and the
+shared adapter landed as tf-infra PR89. Recovery-only Job
+gchat-infrastructure-recovery-20261021-01 restored three original controller-tar
+paths, then failed with ProtocolError at08:52:26Z. Its52-byte sanitized error
+log and per-path receipts remain durable. No original was retired. Evidence:
+gchat-infrastructure-partial-results-0903.json in the shared retained directory.
+Review found that bounded archive-only passes would revisit the first successes
+forever. Source now filters exact completed identities before the batch slice;
+retirement still performs fresh remote/native recovery.50 focused compaction
+checks pass. New immutable-helper qualification and interrupted-object remote
+reconciliation are next. Public request-fence/classifier adoption, full history
+recovery and continuous retirement remain pending; existing owner work is intact.
+

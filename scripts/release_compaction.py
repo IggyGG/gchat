@@ -167,7 +167,36 @@ def archive_cold_native(state, tool, *, retire=False, target_bytes=20 * 1024 ** 
     return report
 
 
-def cold_infrastructure_plan(state, keep_recent=40, maximum_files=4):
+def infrastructure_record(state, item):
+    generation = hashlib.sha256(json.dumps(item['source_identity']).encode()).hexdigest()
+    return retained_path(state, 'maintenance/infrastructure-archives/' + item['release_id'] + '/' +
+                         hashlib.sha256(item['source'].encode()).hexdigest() + '/' + generation)
+
+
+def infrastructure_recovery_complete(state, item):
+    """Reuse an exact completed recovery, never as authority for retirement."""
+    record = infrastructure_record(state, item)
+    if not (record / 'result.json').exists(): return False
+    eligibility = checked_metadata(record / 'eligibility.json', 65536)[0]
+    receipt = checked_metadata(record / 'archive.json', 16384)[0]
+    result = checked_metadata(record / 'result.json', 65536)[0]
+    if (eligibility != item or receipt.get('format') != 'triform.closed-file-archive/v1'
+            or receipt.get('owner') != 'gchat-infrastructure-builds'
+            or receipt.get('plaintext_verified') is not True
+            or any(receipt.get(k) != item[k] for k in ('source', 'source_sha256', 'source_bytes', 'source_identity'))
+            or result.get('original_bytes_restored') is not True or result.get('retired') is not False
+            or any(result.get(k) != item[k] for k in ('source', 'source_sha256', 'image_config'))
+            or result.get('archive_receipt') != str((record / 'archive.json').relative_to(state))
+            or not isinstance(receipt.get('manifest_key'), str)
+            or not receipt['manifest_key'].startswith('cluster-retention/v1/gchat-infrastructure-builds/')
+            or not receipt['manifest_key'].endswith('/manifest.json')
+            or result.get('archive_manifest') != receipt.get('manifest_key')
+            or result.get('original_controls') != item['controls']):
+        raise ValueError('completed infrastructure recovery binding changed')
+    return True
+
+
+def cold_infrastructure_plan(state, keep_recent=40, maximum_files=4, *, omit_verified=False):
     """Old qualified image archives; current, rollback and pending owners stay hot.
 
     Keep all provenance, original receipts and extracted image layouts. Never
@@ -242,10 +271,14 @@ def cold_infrastructure_plan(state, keep_recent=40, maximum_files=4):
                     aliases = [p for p in paths if (p.lstat().st_dev, p.lstat().st_ino) ==
                                (before.st_dev, before.st_ino)]
                     if before.st_nlink != len(aliases): continue
-                    selected.append({'schema': 1, 'release_id': work.name, 'sources': manifest['sources'],
+                    item = {'schema': 1, 'release_id': work.name, 'sources': manifest['sources'],
                         'source': str(path.relative_to(state)), 'source_sha256': sha, 'source_bytes': before.st_size,
                         'source_identity': list(identity(before)), 'image_config': config, 'controls': dict(controls),
-                        'known_aliases': sorted(str(p.relative_to(state)) for p in aliases)})
+                        'known_aliases': sorted(str(p.relative_to(state)) for p in aliases)}
+                    # Filter before the bounded slice so successful earlier
+                    # batches cannot permanently starve later original paths.
+                    if omit_verified and infrastructure_recovery_complete(state, item): continue
+                    selected.append(item)
     return sorted(selected, key=lambda row: (-row['source_bytes'], row['source']))[:maximum_files]
 
 
@@ -293,7 +326,8 @@ def archive_cold_infrastructure(state, tool, *, retire=False, maximum_files=4, k
         for _ in range(maximum_files):
             # Unlinking one hard link changes the remaining link's ctime.
             # Replan each path; never rewrite or reuse another path's receipt.
-            pending = [i for i in cold_infrastructure_plan(state, keep_recent, maximum_files=16)
+            pending = [i for i in cold_infrastructure_plan(state, keep_recent, maximum_files=16,
+                                                         omit_verified=not retire)
                        if i['source'] not in seen]
             if not pending: break
             item = pending[0]
@@ -304,8 +338,7 @@ def archive_cold_infrastructure(state, tool, *, retire=False, maximum_files=4, k
             # A prior archive-only pass can have covered both hard links.
             # After one is retired, the survivor has a new ctime. Preserve the
             # old receipt and qualify a separate exact-identity generation.
-            generation = hashlib.sha256(json.dumps(item['source_identity']).encode()).hexdigest()
-            record = root / item['release_id'] / hashlib.sha256(item['source'].encode()).hexdigest() / generation
+            record = infrastructure_record(state, item)
             record.mkdir(parents=True, exist_ok=True, mode=0o700)
             eligibility = record / 'eligibility.json'
             if eligibility.exists() and checked_metadata(eligibility, 65536)[0] != item:
