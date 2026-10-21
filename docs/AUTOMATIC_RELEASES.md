@@ -853,3 +853,8 @@ remain untouched, and all source archives, image paths and receipts are retained
 Newest completed qualifications are included first so bounded recurring passes
 do not starve new work behind already compacted images. This is duplicate-copy
 compaction, not permission to retire a controller or its history.
+
+Controller-image compaction joins the existing native rollback-image inventory
+when sharing matching blobs. Both inventories must authenticate completely before
+any new link; an outside rollback alias cannot silently keep a duplicate inode
+allocated. Every original path and the two producers' provenance remain intact.

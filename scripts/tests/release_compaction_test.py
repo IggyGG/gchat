@@ -412,6 +412,34 @@ class ControllerImageCompactionTests(unittest.TestCase):
         self.assertEqual(self.paths[1].stat().st_ino, self.paths[2].stat().st_ino)
         self.assertNotEqual(self.paths[0].stat().st_ino, self.paths[1].stat().st_ino)
 
+    def test_controller_and_native_rollback_aliases_share_one_verified_copy(self):
+        config = b'original rollback configuration'
+        config_sha = hashlib.sha256(config).hexdigest()
+        layer_sha = hashlib.sha256(self.content).hexdigest()
+        manifest = {'config': {'digest': 'sha256:' + config_sha, 'size': len(config)},
+                    'layers': [{'digest': 'sha256:' + layer_sha, 'size': len(self.content)}]}
+        raw = canonical(manifest); digest = hashlib.sha256(raw).hexdigest()
+        root = self.state / 'rollback-images' / digest
+        image = root / 'image'; image.mkdir(parents=True)
+        (image / 'manifest.json').write_bytes(raw)
+        (image / config_sha).write_bytes(config)
+        layer = image / layer_sha; layer.write_bytes(self.content)
+        (root / 'retained.json').write_bytes(canonical({'schema': 1, 'transport': 'dir',
+            'image': '127.0.0.1:30444/ghost/gchat-release@sha256:' + digest,
+            'manifest_sha256': 'sha256:' + digest}))
+        # An outside rollback alias used to retain the old inode after sharing
+        # only controller paths. Both original producer inventories are needed.
+        self.paths[-1].unlink(); os.link(layer, self.paths[-1])
+        before = [p.stat().st_ino for p in [layer, *self.paths]]
+        (image / config_sha).write_bytes(b'corrupt')
+        with self.assertRaises(ValueError): self.compact()
+        self.assertEqual([p.stat().st_ino for p in [layer, *self.paths]], before)
+        (image / config_sha).write_bytes(config)
+        result = self.compact()
+        self.assertEqual(result['additional_rollback_images'], 1)
+        self.assertEqual(len({p.stat().st_ino for p in [layer, *self.paths]}), 1)
+        self.assertTrue(all(p.read_bytes() == self.content for p in [layer, *self.paths]))
+
     def test_incomplete_qualification_is_untouched(self):
         (self.works[-1] / 'ready.json').unlink()
         before = self.paths[-1].stat().st_ino

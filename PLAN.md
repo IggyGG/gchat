@@ -2295,3 +2295,15 @@ and controller-fence rollout through the native release path.
 Controller compaction source gate:57 focused controls pass, including a bounded
 pass that admits newly completed images. Receipt:gchat-controller-compaction-tests-03.log.
 Actual-image and live reclamation gates remain pending.
+
+CLOUD-OPS-1 / native duplicate readback, 2026-10-21T12:01:49.742603+00:00
+Helper93d539c passed537 actual-image controls. Its live Jobb942e412 verified16
+qualified controller images, shared22 paths and released378,228,736bytes; every
+original path and image blob passed readback. The832MB inventory was potential,
+not reclaimed space: outside rollback aliases retained several old inodes.
+The successor joins both authenticated producer inventories under the existing
+maintenance lock, rechecking provenance before sharing; it preserves all paths
+and never retires an image or source archive. All58 focused controls pass,
+including corrupt cross-inventory rejection and an existing outside alias.
+Actual-image and combined live readback remain pending. No public controller
+change or infrastructure-original retirement has occurred.

@@ -475,7 +475,7 @@ def checked_metadata(path, maximum_bytes):
     return value, (digest, before)
 
 
-def compact_rollback_images(state, maximum_images=32, minimum_bytes=16 * 1024**2):
+def compact_rollback_images(state, maximum_images=32, minimum_bytes=16 * 1024**2, *, _inventory=None):
     """Retain every image path while sharing digest-authenticated controller layers."""
     import fcntl
     if type(maximum_images) is not int or not 1 <= maximum_images <= 256:
@@ -564,6 +564,11 @@ def compact_rollback_images(state, maximum_images=32, minimum_bytes=16 * 1024**2
         for path, (digest, before) in controls:
             if identity(path.stat()) != identity(before) or path.is_symlink():
                 raise ValueError('rollback image provenance changed during compaction')
+        if _inventory is not None:
+            # The controller compactor joins these authenticated paths under
+            # the same maintenance lock, rechecking every observed identity.
+            _inventory.append((duplicates, controls, images))
+            return
         changes, reclaimed = share_files(duplicates, state)
         for path, (digest, before) in controls:
             if path.is_symlink() or identity(path.stat()) != identity(before):
@@ -598,9 +603,15 @@ def compact_controller_images(state, maximum_images=128, minimum_bytes=16 * 1024
                      if (p / 'ready.json').exists() else 0, reverse=True)
     retained = retained_path(state, 'maintenance/compaction')
     retained.mkdir(parents=True, exist_ok=True, mode=0o700)
+    rollback = []
+    compact_rollback_images(state, maximum_images=256, minimum_bytes=minimum_bytes, _inventory=rollback)
     with (retained / 'lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         controls, duplicates, images = [], {}, []
+        rollback_images = []
+        for prior_duplicates, prior_controls, prior_images in rollback:
+            controls.extend(prior_controls); rollback_images.extend(prior_images)
+            for key, paths in prior_duplicates.items(): duplicates.setdefault(key, []).extend(paths)
         def metadata(path, maximum=2 * 1024**2):
             path = retained_path(state, str(path.relative_to(state)))
             value, binding = checked_metadata(path, maximum)
@@ -669,6 +680,7 @@ def compact_controller_images(state, maximum_images=128, minimum_bytes=16 * 1024
         changes, reclaimed = share_files(duplicates, state)
         unchanged()
         report = {'schema': 1, 'images': images, 'all_paths_retained': True,
+                  'additional_rollback_images': len(rollback_images),
                   'all_image_manifests_and_blobs_verified': True,
                   'estimated_reclaimed_bytes': reclaimed, 'changes': changes,
                   'completed_at': int(time.time())}

@@ -1742,3 +1742,7 @@ exclusion, changed native/ready evidence, symlink and permission boundaries,
 concurrent provenance changes and temporary-link cleanup. Run
 `python3 -m unittest discover -s scripts/tests -p release_compaction_test.py`;
 actual-image qualification and live reclaimed-byte readback remain separate gates.
+
+The controller/rollback compaction control covers pre-existing cross-inventory
+aliases and a corrupt rollback configuration refusing every link. Focused suite:
+58passed at source checkpoint; actual-image and measured reclamation are separate.
