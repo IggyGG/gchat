@@ -2323,3 +2323,29 @@ originals remain local. The exact qualified image is being exported into its
 native controller bundle, preserving the selected release 230 and unchanged
 application/native input fingerprints. Kubernetes qualification, sole-coordinator
 activation, request-fence adoption and recurring retirement remain pending.
+
+CLOUD-OPS-1 / queued writer and bounded maintenance, 2026-10-21T12:28:00Z
+The earlier headroom observation was transient: the pre-existing F5 controller
+intent6995bc64 resumed its authenticated 464MB provider archive and 1.38GB
+extraction, then returned to waiting_storage. Those original requests and files
+remain intact. This demonstrates that checking only the reserve before a write
+does not reserve its peak archive/extraction space; producer admission is still
+an open requirement, not solved by compaction.
+
+With no incoming operator request or rollout owner, an identity-bound maintenance
+operation suspended exactly four original schedules and gracefully recreated the
+same two-container Deployment with the coordinator idle and its state mount
+read-only. The unchanged public container is ready and continues serving files.
+Every active claim mount is now read-only; original image, selected230, source
+bindings and failed F5 journal remain unchanged. A 45-minute systemd restoration
+guard was armed before the first mutation. It stops only this operation's native
+archive writers before restoring the exact original Deployment and schedules;
+foreign changes prevent overwrite. Intent/dry-run/readbacks are retained in
+gchat-history-maintenance-01/. The qualified529-test archive producer is now
+performing fresh remote/native recovery before bounded historical retirement.
+Restoration and public-controller adoption remain required before handoff.
+
+Both direct Kubernetes image export attempts failed transport bounds (timeout,
+then truncated compressed stream); their original logs and partials are retained.
+A native registry read of the same538-test immutable image is preparing the
+controller bundle. None of these local transfer attempts activated an image.
