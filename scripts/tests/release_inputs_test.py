@@ -85,7 +85,7 @@ class InputTests(unittest.TestCase):
             self.assertEqual(first['infrastructure'], second['infrastructure'])
             self.assertNotEqual(first['controller'], second['controller'])
             self.assertNotEqual(first['qualification'], second['qualification'])
-            for path in ('release/downloads.json', 'scripts/website.py',
+            for path in ('AGENTS.md', 'release/downloads.json', 'scripts/website.py',
                          'scripts/release_inventory.py', 'scripts/release_sdk.py',
                          'scripts/release_host_install.py', 'release/automation/kubernetes.yaml',
                           'release/automation/operations.yaml',

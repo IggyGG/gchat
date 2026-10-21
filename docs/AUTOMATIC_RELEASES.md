@@ -802,3 +802,30 @@ The selected global journal must have no outstanding effects, and the controller
 target must already be deployed. Recovery validates its immutable intent and
 qualification, and never changes the failed global journal or publishes its
 application release. Unknown/native changes still fail input classification.
+
+
+### Closed infrastructure image history (CLOUD-OPS-1)
+
+`release_compaction.py --state /state --archive-infrastructure --archive-tool TOOL`
+uses the same encrypted archive primitive for old qualified infrastructure image
+archives. The default independently restores and decodes each original Docker-save
+image; `--retire-archived` additionally retires its exact inode after fresh producer
+checks. At most four files of2GiB each are processed. Keep the existing5GiB separate
+scratch allocation and external Job deadline; do not put recovery scratch on the
+pressured release claim.
+
+The newest40 candidates, every advertised/current release, deployment owner and
+pending request remain hot. Only available/superseded Linux candidates qualify.
+Original ledger-confirmed build/verify receipts, source bindings, image hashes
+and native image configuration are required. Existing rollout and producer locks
+exclude active rollout and concurrent archival. All original metadata, signatures,
+rollback images and extracted layouts stay in place. Failed/outage/changed-owner
+checks preserve originals. An interrupted retirement retains the cold pointer and
+archive journal for explicit reconciliation; it is not automatically replayed.
+
+Each retired image leaves `<image>.tar.archive.json` and a producer record under
+`maintenance/infrastructure-archives/`. Historical requalification restores the
+exact file through `archive.py restore --receipt RECEIPT --destination ORIGINAL`
+before using its unchanged original build record. The normal consumer reports
+that recovery requirement explicitly. Source-qualified code is not installed
+acceptance; PLAN.md records the actual rollout and scheduled proof.

@@ -1,3 +1,10 @@
+CLOUD-OPS-1: run release_compaction_test and release_infrastructure_bundle_test,
+then the complete Python suite and actual immutable helper-image suite. Native
+archive acceptance additionally requires original image hashes/configuration,
+independent S3 restore, unchanged control receipts, measured free bytes, interrupted
+retirement reconciliation and a genuine schedule. A successful zero-object pass
+does not qualify backlog reclamation. No production deletion is implied by source.
+
 F5 / actual 0.1.235 Pi reboot acceptance, 2026-10-17: the owner's chosen surrogate
 `pi-home` runs a native ARM64 build of `a13c326f` / `7af9c125`. Require two actual
 TTY views and one owner with home-only launch; a changed boot ID; user manager and

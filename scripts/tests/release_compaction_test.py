@@ -618,3 +618,142 @@ class CanaryCompactionTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+@unittest.skipUnless(os.name == 'posix', 'archive ownership uses POSIX locks')
+class ColdInfrastructureProducerTests(unittest.TestCase):
+    def setUp(self):
+        import tarfile
+        ColdNativeProducerTests.setUp(self)
+        self.root = self.root.resolve()
+        self.work = self.work.resolve()
+        (self.root / 'deployment').mkdir()
+        self.image = self.root / 'infrastructure' / self.manifest['release_id']
+        self.image.mkdir(parents=True)
+        self.path = self.image / 'controller.tar'
+        config = b'{"architecture":"amd64","os":"linux"}'
+        self.config = 'sha256:' + hashlib.sha256(config).hexdigest()
+        with tarfile.open(self.path, 'w') as archive:
+            for name, body in [('manifest.json', json.dumps([{'Config': 'config.json', 'Layers': ['layer.tar']}]).encode()),
+                               ('config.json', config), ('layer.tar', b'original qualified layer' * 1024)]:
+                info = tarfile.TarInfo(name); info.size = len(body)
+                archive.addfile(info, io.BytesIO(body))
+        self.original = self.path.read_bytes()
+        self.sha = hashlib.sha256(self.original).hexdigest()
+        verify = self.ledger.effect(self.manifest['release_id'], self.platform, 'verify')['id']
+        verify_path = self.root / 'jobs' / verify / 'receipt.json'
+        compactor.atomic_json(verify_path, {'schema': 1, 'release_id': self.manifest['release_id'],
+            'sources': self.manifest['sources'], 'platform': self.platform, 'stage': 'verify',
+            'passed': True, 'source_unchanged': True, 'evidence': []})
+        verify_sha = hashlib.sha256(verify_path.read_bytes()).hexdigest()
+        self.ledger.complete_effect(verify, 'original-native-verify', verify_sha)
+        proof = {'release_id': self.manifest['release_id'], 'sources': self.manifest['sources'],
+                 'receipts': {'build': {'path': str(self.work / 'receipt.json'), 'sha256': self.receipt_sha},
+                              'verify': {'path': str(verify_path), 'sha256': verify_sha}}}
+        compactor.atomic_json(self.image / 'qualification.json', proof)
+        original = {'schema': 2, 'release_id': self.manifest['release_id'], 'sources': self.manifest['sources'],
+                    'controller_config': self.config, 'sha256': {'controller.tar': self.sha}}
+        compactor.atomic_json(self.image / 'source-build.json', original)
+        compactor.atomic_json(self.image / 'build.json', dict(original, qualified=True,
+            qualification_sha256=hashlib.sha256((self.image / 'qualification.json').read_bytes()).hexdigest()))
+        self.actions = []
+
+    def tool(self, tool, action, state, receipt, *, source=None, destination=None, **kwargs):
+        self.actions.append(action)
+        if action == 'archive':
+            self.assertEqual(kwargs['owner'], 'gchat-infrastructure-builds')
+            compactor.atomic_json(receipt, {'format': 'triform.closed-file-archive/v1',
+                'owner': kwargs['owner'], 'source': source, 'source_sha256': self.sha,
+                'source_bytes': len(self.original), 'source_identity': list(compactor.identity(self.path.stat())),
+                'plaintext_verified': True, 'manifest_key': 'cluster-retention/v1/gchat-infrastructure-builds/exact/manifest.json'})
+        elif action == 'restore': destination.write_bytes(self.original)
+        else:
+            self.assertEqual(action, 'retire')
+            blocks = self.path.stat().st_blocks * 512; self.path.unlink()
+            return {'allocated_bytes_released': blocks}
+        return {}
+
+    def run_archive(self, tool=None, **kwargs):
+        with patch.object(compactor, 'archive_tool', side_effect=tool or self.tool):
+            return compactor.archive_cold_infrastructure(self.root, Path('/qualified/archive.py'), **kwargs)
+
+    def test_native_archive_restore_retirement_preserves_original_proofs(self):
+        proof = (self.image / 'qualification.json').read_bytes()
+        result = self.run_archive(retire=True)
+        self.assertEqual(self.actions, ['archive', 'restore', 'retire'])
+        self.assertEqual(len(result['objects']), 1)
+        self.assertGreater(result['reclaimed_bytes'], 0)
+        self.assertFalse(self.path.exists())
+        pointer = json.loads(self.path.with_name('controller.tar.archive.json').read_text())
+        self.assertEqual(pointer['source_sha256'], self.sha)
+        self.assertTrue(pointer['restore_before_explicit_historical_requalification'])
+        self.assertEqual((self.image / 'qualification.json').read_bytes(), proof)
+        self.assertEqual(self.run_archive(retire=True)['objects'], [])
+
+    def test_current_and_operator_pending_releases_stay_online(self):
+        compactor.atomic_json(self.root / 'control/incoming/request.json', {'release_id': self.manifest['release_id']})
+        self.assertEqual(compactor.cold_infrastructure_plan(self.root), [])
+        self.assertEqual(self.run_archive(retire=True)['objects'], [])
+        self.assertTrue(self.path.exists())
+
+    def test_archive_only_does_not_retire(self):
+        result = self.run_archive()
+        self.assertTrue(self.path.exists())
+        self.assertFalse(result['objects'][0]['retired'])
+        self.assertNotIn('retire', self.actions)
+
+    def test_archive_outage_keeps_original(self):
+        with self.assertRaises(OSError):
+            self.run_archive(tool=lambda *a, **k: (_ for _ in ()).throw(OSError('offline')), retire=True)
+        self.assertTrue(self.path.exists())
+        self.assertFalse(self.path.with_name('controller.tar.archive.json').exists())
+
+    def test_bad_restoration_is_never_retired(self):
+        def corrupt(*args, **kwargs):
+            result = self.tool(*args, **kwargs)
+            if args[1] == 'restore': kwargs['destination'].write_bytes(b'corrupt')
+            return result
+        with self.assertRaisesRegex(ValueError, 'bytes differ'):
+            self.run_archive(corrupt, retire=True)
+        self.assertNotIn('retire', self.actions)
+        self.assertTrue(self.path.exists())
+
+    def test_new_pending_owner_before_retirement_retains_source(self):
+        def claim(*args, **kwargs):
+            result = self.tool(*args, **kwargs)
+            if args[1] == 'restore':
+                compactor.atomic_json(self.root / 'control/incoming/new.json', {'release_id': self.manifest['release_id']})
+            return result
+        with self.assertRaisesRegex(ValueError, 'ownership or provenance'):
+            self.run_archive(claim, retire=True)
+        self.assertNotIn('retire', self.actions)
+        self.assertTrue(self.path.exists())
+
+    def test_concurrent_rollout_excludes_archive_before_network_io(self):
+        import fcntl
+        with (self.root / 'deployment/rollout.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaises(BlockingIOError): self.run_archive(retire=True)
+        self.assertEqual(self.actions, [])
+        self.assertTrue(self.path.exists())
+
+    def test_changed_original_receipt_or_symlink_never_qualifies(self):
+        path = self.work / 'receipt.json'
+        path.write_bytes(path.read_bytes() + b' ')
+        with self.assertRaisesRegex(ValueError, 'not confirmed'): compactor.cold_infrastructure_plan(self.root)
+        self.assertTrue(self.path.exists())
+        self.path.rename(self.image / 'moved.tar'); self.path.symlink_to(self.image / 'moved.tar')
+        with self.assertRaises(ValueError): compactor.cold_infrastructure_plan(self.root)
+
+    def test_wrong_native_configuration_refuses_restore(self):
+        with self.assertRaisesRegex(ValueError, 'configuration changed'):
+            compactor.verify_archived_image(self.path, self.sha, 'sha256:' + '0' * 64)
+
+    def test_interrupted_retirement_keeps_pointer_and_requires_reconciliation(self):
+        def interrupted(*args, **kwargs):
+            if args[1] == 'retire': raise KeyboardInterrupt()
+            return self.tool(*args, **kwargs)
+        with self.assertRaises(KeyboardInterrupt): self.run_archive(interrupted, retire=True)
+        self.assertTrue(self.path.exists())
+        self.assertTrue(self.path.with_name('controller.tar.archive.json').exists())
+        self.assertEqual(compactor.cold_infrastructure_plan(self.root), [])

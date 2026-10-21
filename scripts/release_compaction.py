@@ -14,6 +14,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import tarfile
 from contextlib import closing
 
 from release_coordinator import atomic_json, read_receipt
@@ -86,9 +87,10 @@ def cold_native_plan(state, keep_recent=40, maximum_files=64):
     return sorted(selected, key=lambda item: item['source_bytes'], reverse=True)[:maximum_files]
 
 
-def archive_tool(tool, action, state, receipt, *, source=None, destination=None, maximum_bytes=2 * 1024 ** 3):
+def archive_tool(tool, action, state, receipt, *, source=None, destination=None, maximum_bytes=2 * 1024 ** 3,
+                 owner='gchat-native-builds'):
     argv = [sys.executable, str(tool), action, '--root', str(state), '--receipt', str(receipt)]
-    if source: argv += ['--source', source, '--owner', 'gchat-native-builds', '--maximum-bytes', str(maximum_bytes)]
+    if source: argv += ['--source', source, '--owner', owner, '--maximum-bytes', str(maximum_bytes)]
     if destination: argv += ['--destination', str(destination)]
     result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1800)
     if result.returncode:
@@ -162,6 +164,157 @@ def archive_cold_native(state, tool, *, retire=False, target_bytes=20 * 1024 ** 
                   'target_reclaimed_bytes': target_bytes, 'target_met': reclaimed >= target_bytes,
                   'keep_recent_candidates': keep_recent, 'completed_at': int(time.time()), 'objects': results}
         atomic_json(root / ('batch-' + str(time.time_ns()) + '.json'), report)
+    return report
+
+
+def cold_infrastructure_plan(state, keep_recent=40, maximum_files=4):
+    """Old qualified image archives; current, rollback and pending owners stay hot.
+
+    Keep all provenance, original receipts and extracted image layouts. Never
+    infer completion from directory age or from an unreferenced Kubernetes Pod.
+    """
+    from release_pair import canonical
+    state = Path(state).resolve()
+    if type(maximum_files) is not int or not 1 <= maximum_files <= 16:
+        raise ValueError('bounded infrastructure archive inventory required')
+    directory = retained_path(state, 'infrastructure')
+    if not directory.is_dir(): return []
+    with closing(sqlite3.connect((state / 'ledger.sqlite').as_uri() + '?mode=ro', uri=True)) as db:
+        protected = protected_archive_releases(state, db, keep_recent)
+        roots = list(directory.iterdir())
+        if len(roots) > 4096: raise ValueError('infrastructure history inventory exceeds bound')
+        selected = []
+        for work in roots:
+            if not re.fullmatch('[a-f0-9]{64}', work.name): continue
+            retained_path(state, str(work.relative_to(state)))
+            if work.name in protected or not work.is_dir(): continue
+            row = db.execute("SELECT c.manifest,p.state FROM candidates c JOIN platforms p ON p.candidate=c.id "
+                "WHERE c.id=? AND p.platform='linux-x86_64'", (work.name,)).fetchone()
+            if not row or row[1] not in ('available', 'superseded'): continue
+            manifest = json.loads(row[0])
+            controls = {}
+            def metadata(path, maximum=2 * 1024**2):
+                value, (digest, _) = checked_metadata(retained_path(state, str(path.relative_to(state))), maximum)
+                controls[str(path.relative_to(state))] = digest
+                return value
+            if not (work / 'build.json').is_file(): continue
+            build = metadata(work / 'build.json')
+            original = metadata(work / 'source-build.json')
+            proof = metadata(work / 'qualification.json')
+            if (build.get('schema') != 2 or build.get('qualified') is not True
+                    or any(v.get('release_id') != work.name or v.get('sources') != manifest['sources']
+                           for v in (build, original, proof))
+                    or build.get('sha256') != original.get('sha256')
+                    or build.get('qualification_sha256') != controls[str((work / 'qualification.json').relative_to(state))]
+                    or set(proof.get('receipts', {})) != {'build', 'verify'}):
+                raise ValueError('infrastructure source qualification changed')
+            for stage, reference in proof['receipts'].items():
+                request = hashlib.sha256(canonical([work.name, 'linux-x86_64', stage])).hexdigest()
+                path = state / 'jobs' / request / 'receipt.json'
+                if reference.get('path') != str(path): raise ValueError('foreign infrastructure receipt path')
+                receipt = metadata(path)
+                digest = controls[str(path.relative_to(state))]
+                effect = db.execute("SELECT state,evidence FROM effects WHERE id=?", (request,)).fetchone()
+                if (reference.get('sha256') != digest or effect != ('confirmed', digest)
+                        or any(receipt.get(k) != v for k, v in {'schema': 1, 'release_id': work.name,
+                            'sources': manifest['sources'], 'platform': 'linux-x86_64', 'stage': stage,
+                            'passed': True, 'source_unchanged': True}.items())):
+                    raise ValueError('infrastructure original receipt is not confirmed')
+            for name, field in (('controller.tar', 'controller_config'), ('image.tar', 'image_config'), ('push.tar', 'push_config')):
+                path = retained_path(state, str((work / name).relative_to(state)))
+                if not path.exists() or path.with_name(name + '.archive.json').exists(): continue
+                before = path.lstat()
+                sha, config = build['sha256'].get(name), build.get(field)
+                if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or not 0 < before.st_size <= 2 * 1024**3): continue
+                if (not re.fullmatch('[a-f0-9]{64}', str(sha)) or not re.fullmatch('sha256:[a-f0-9]{64}', str(config))
+                        or original.get(field) != config):
+                    raise ValueError('infrastructure image identity missing')
+                selected.append({'schema': 1, 'release_id': work.name, 'sources': manifest['sources'],
+                    'source': str(path.relative_to(state)), 'source_sha256': sha, 'source_bytes': before.st_size,
+                    'source_identity': list(identity(before)), 'image_config': config, 'controls': dict(controls)})
+    return sorted(selected, key=lambda row: (-row['source_bytes'], row['source']))[:maximum_files]
+
+
+def verify_archived_image(path, expected_sha, expected_config):
+    """Native Docker-save decoding, bound to the original qualified image config."""
+    digest, info = file_digest(path)
+    if digest != expected_sha: raise ValueError('archived image bytes differ from qualification')
+    with tarfile.open(path) as archive:
+        members = archive.getmembers()
+        manifests = [m for m in members if m.name == 'manifest.json']
+        if len(manifests) != 1 or not manifests[0].isfile() or not 0 < manifests[0].size <= 1024**2:
+            raise ValueError('native image manifest missing or ambiguous')
+        manifest = json.load(archive.extractfile(manifests[0]))
+        if not isinstance(manifest, list) or len(manifest) != 1 or not isinstance(manifest[0], dict):
+            raise ValueError('native image selection is ambiguous')
+        name = manifest[0].get('Config', '')
+        if not name or PurePosixPath(name).is_absolute() or '..' in PurePosixPath(name).parts:
+            raise ValueError('unsafe image configuration path')
+        configs = [m for m in members if m.name == name]
+        if len(configs) != 1 or not configs[0].isfile() or not 0 < configs[0].size <= 16 * 1024**2:
+            raise ValueError('native image configuration missing or ambiguous')
+        config = 'sha256:' + hashlib.sha256(archive.extractfile(configs[0]).read()).hexdigest()
+        if config != expected_config: raise ValueError('native image configuration changed')
+    return info
+
+
+def archive_cold_infrastructure(state, tool, *, retire=False, maximum_files=4, keep_recent=40):
+    """Reuse the encrypted archive/restore/retirement protocol for closed images.
+
+    The existing shared rollout lock excludes active deployment and rollback.
+    Current/pending ownership and all original receipt hashes are checked again
+    after remote restoration, before calling exact-inode retirement.
+    """
+    import fcntl
+    state = Path(state).resolve()
+    root = retained_path(state, 'maintenance/infrastructure-archives')
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    results = []
+    with (root / 'producer.lock').open('a') as producer, (state / 'deployment/rollout.lock').open('a') as rollout:
+        fcntl.flock(producer, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.flock(rollout, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        for item in cold_infrastructure_plan(state, keep_recent, maximum_files):
+            path = retained_path(state, item['source'])
+            before = verify_archived_image(path, item['source_sha256'], item['image_config'])
+            if list(identity(before)) != item['source_identity']: raise ValueError('image changed after archive planning')
+            record = root / item['release_id'] / path.name
+            record.mkdir(parents=True, exist_ok=True, mode=0o700)
+            eligibility = record / 'eligibility.json'
+            if eligibility.exists() and checked_metadata(eligibility, 65536)[0] != item:
+                raise ValueError('archive eligibility changed; reconcile original attempt')
+            atomic_json(eligibility, item)
+            receipt = record / 'archive.json'
+            if not receipt.exists():
+                archive_tool(tool, 'archive', state, receipt, source=item['source'], owner='gchat-infrastructure-builds')
+            retained, _ = checked_metadata(receipt, 16384)
+            if (retained.get('format') != 'triform.closed-file-archive/v1'
+                    or retained.get('owner') != 'gchat-infrastructure-builds' or retained.get('plaintext_verified') is not True
+                    or any(retained.get(k) != item[k] for k in ('source', 'source_sha256', 'source_bytes', 'source_identity'))):
+                raise ValueError('archive does not bind the qualified infrastructure image')
+            with tempfile.TemporaryDirectory(prefix='infrastructure-restore-') as scratch:
+                restored = Path(scratch) / path.name
+                archive_tool(tool, 'restore', state, receipt, destination=restored)
+                check = verify_archived_image(restored, item['source_sha256'], item['image_config'])
+                if check.st_size != item['source_bytes']: raise ValueError('restored infrastructure size changed')
+            result = {'schema': 1, 'source': item['source'], 'source_sha256': item['source_sha256'],
+                'image_config': item['image_config'], 'original_bytes_restored': True, 'retired': False,
+                'archive_receipt': str(receipt.relative_to(state)), 'archive_manifest': retained['manifest_key'],
+                'original_controls': item['controls'], 'restore_before_explicit_historical_requalification': True}
+            atomic_json(record / 'restoration.json', result)
+            if retire:
+                # Plan before publishing the cold pointer; existing cold pointers
+                # deliberately keep restored/requalified originals online.
+                fresh = cold_infrastructure_plan(state, keep_recent, maximum_files=16)
+                if item not in fresh: raise ValueError('infrastructure ownership or provenance changed')
+                atomic_json(path.with_name(path.name + '.archive.json'), result)
+                retirement = archive_tool(tool, 'retire', state, receipt)
+                result.update(retired=True, retirement=retirement)
+            atomic_json(record / 'result.json', result)
+            results.append(result)
+    report = {'schema': 1, 'objects': results, 'completed_at': int(time.time()),
+        'reclaimed_bytes': sum(r.get('retirement', {}).get('allocated_bytes_released', 0) for r in results),
+        'original_bytes_retained': True, 'keep_recent_candidates': keep_recent}
+    atomic_json(root / ('batch-' + str(time.time_ns()) + '.json'), report)
     return report
 
 
@@ -746,18 +899,23 @@ def main():
     parser.add_argument('--state', type=Path, required=True)
     parser.add_argument('--maximum-builds', type=int, default=8)
     parser.add_argument('--archive-native', action='store_true', help='use the approved encrypted closed-file archive CLI')
+    parser.add_argument('--archive-infrastructure', action='store_true', help='archive old qualified infrastructure images')
     parser.add_argument('--archive-tool', type=Path)
     parser.add_argument('--retire-archived', action='store_true')
     parser.add_argument('--reclaim-gib', type=int, default=20)
     args = parser.parse_args()
     if not 1 <= args.maximum_builds <= 256:
         parser.error('maximum builds must be between 1 and 256')
-    if args.archive_native:
+    if args.archive_native and args.archive_infrastructure:
+        parser.error('select exactly one producer archive mode')
+    if args.archive_native or args.archive_infrastructure:
         if not args.archive_tool or not args.archive_tool.is_file(): parser.error('--archive-tool is required')
-        print(json.dumps(archive_cold_native(args.state, args.archive_tool, retire=args.retire_archived,
-                                            target_bytes=args.reclaim_gib * 1024 ** 3)), flush=True)
+        report = (archive_cold_infrastructure(args.state, args.archive_tool, retire=args.retire_archived)
+                  if args.archive_infrastructure else archive_cold_native(args.state, args.archive_tool,
+                      retire=args.retire_archived, target_bytes=args.reclaim_gib * 1024 ** 3))
+        print(json.dumps(report), flush=True)
         return
-    if args.archive_tool or args.retire_archived: parser.error('archival options require --archive-native')
+    if args.archive_tool or args.retire_archived: parser.error('archival options require a producer archive mode')
     print(json.dumps({'completed': compact(args.state, args.maximum_builds),
                       'canaries': compact_canaries(args.state),
                       'rollback_images': compact_rollback_images(args.state),

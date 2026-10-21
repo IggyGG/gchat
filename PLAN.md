@@ -2169,3 +2169,36 @@ pending/failed rollback or operator rollback can yield. Original artifacts,
 platform/effect state, deadlines and already dispatched requests remain retained.
 Controller image qualification and deployment are tracked separately from source
 checks in `docs/evidence/durable-host/source.json`.
+
+
+CLOUD-OPS-1 / infrastructure archive checkpoint 2026-10-21T07:37:13.544067+00:00
+The existing native ZIP schedule has no eligible files. Three unprotected old
+infrastructure candidates(93,155,162) retain4.60GiB of original image tars. New
+producer selection checks the original ledger-confirmed build/verify receipts
+and current/recent40/pending ownership before reuse of the existing encrypted
+archive primitive. Native Docker-save/configuration restoration precedes retirement.
+No GChat deletion or runtime rollout yet.
+Initial tests found the release canonical encoder's required trailing newline
+and a logical-vs-physical TMPDIR fixture path; both are corrected.42 focused
+compaction controls pass, including10 new native recovery/outage/pinning/rollout/
+interruption controls. Consumer diagnostic/CLI additions await affected full
+qualification. Read-only live producer plan is retained in cloud implementation
+evidence. Source/image publication, natural cleanup and exact restored history
+remain pending. Existing F5 ownership and all release/rollback state are preserved.
+
+CLOUD-OPS-1 / native archive source checks, 2026-10-21T07:56:00Z
+The complete Python suite passes 1,218 tests with the one existing Windows-only
+skip. The first full run failed on runner TMPDIR symlink/Unix-socket path length;
+rerunning in declared short physical SSD scratch fixes those environmental
+failures without changing the controls. Evidence: gchat-python-suite-02.log in
+the retained cloud implementation directory.
+The 4.60 GiB infrastructure figure is logical, not yet reclaimable: all nine
+old tars have two links, including original jobs/native/signed/infrastructure
+paths. Current selection correctly refuses them. A bounded broad alias scan
+hit its 200,000-file ceiling and is incomplete; follow-up uses only the original
+ledger-bound build paths. Extend the producer to prove and archive each closed
+path independently, refresh inode identity after each unlink, and count only
+actual final-link blocks. No runtime retirement or deployment has occurred.
+AGENTS.md is now classified as control documentation for future source builds;
+the installed older classifier still requires adoption before main publication
+can avoid an unnecessary application flight. Task-branch publication only.
